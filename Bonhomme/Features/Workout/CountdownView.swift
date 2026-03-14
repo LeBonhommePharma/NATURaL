@@ -1,4 +1,5 @@
 import SwiftUI
+import BonhommeCore
 
 /// Full-screen 3-2-1 countdown overlay shown before workout starts.
 struct CountdownView: View {
@@ -15,7 +16,7 @@ struct CountdownView: View {
                     .contentTransition(.numericText())
                     .animation(.spring(duration: 0.3), value: secondsRemaining)
 
-                Text("Get Ready")
+                Text(LocalizedString(en: "Get Ready", fr: "Préparez-vous").localized)
                     .font(.system(size: 24, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             }

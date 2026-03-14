@@ -70,7 +70,7 @@ public struct TVDisplayView: View {
                 Image(systemName: "pause.circle.fill")
                     .font(.system(size: 64))
                     .foregroundStyle(.white.opacity(0.8))
-                Text("Paused")
+                Text(LocalizedString(en: "Paused", fr: "En pause").localized)
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.8))
             }
@@ -95,7 +95,7 @@ public struct TVIdleView: View {
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Waiting for workout session...")
+                Text(LocalizedString(en: "Waiting for workout session...", fr: "En attente d'une séance d'entraînement...").localized)
                     .font(.system(size: 20, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.5))
 

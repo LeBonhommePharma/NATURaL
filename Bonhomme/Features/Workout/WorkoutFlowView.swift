@@ -46,7 +46,7 @@ struct WorkoutFlowView: View {
                 .font(.system(size: 80))
                 .foregroundStyle(.cyan)
 
-            Text(viewModel.plan.name)
+            Text(viewModel.plan.name.localized)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -59,7 +59,7 @@ struct WorkoutFlowView: View {
             Button {
                 viewModel.start()
             } label: {
-                Text("Begin Session")
+                Text(LocalizedString(en: "Begin Session", fr: "Commencer la séance").localized)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
@@ -68,7 +68,7 @@ struct WorkoutFlowView: View {
             }
             .padding(.horizontal, 40)
 
-            Button("Cancel") { dismiss() }
+            Button(LocalizedString(en: "Cancel", fr: "Annuler").localized) { dismiss() }
                 .foregroundStyle(.white.opacity(0.5))
                 .padding(.bottom, 32)
         }
@@ -84,12 +84,12 @@ struct WorkoutFlowView: View {
                 .font(.system(size: 120))
                 .foregroundStyle(.cyan.opacity(0.4))
 
-            Text(pose.name)
+            Text(pose.name.localized)
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .padding(.top, 16)
 
-            Text(pose.description)
+            Text(pose.description.localized)
                 .font(.system(size: 16))
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -136,12 +136,12 @@ struct WorkoutFlowView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Text("Next Up")
+            Text(LocalizedString(en: "Next Up", fr: "Prochaine posture").localized)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
 
             if nextIndex < viewModel.plan.poses.count {
-                Text(viewModel.plan.poses[nextIndex].name)
+                Text(viewModel.plan.poses[nextIndex].name.localized)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
@@ -164,11 +164,11 @@ struct WorkoutFlowView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.cyan)
 
-            Text("Great work!")
+            Text(LocalizedString(en: "Great work!", fr: "Excellent travail!").localized)
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            Text("Wrapping up your session...")
+            Text(LocalizedString(en: "Wrapping up your session...", fr: "Fin de votre séance...").localized)
                 .font(.system(size: 18))
                 .foregroundStyle(.white.opacity(0.6))
 

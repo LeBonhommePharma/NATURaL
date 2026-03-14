@@ -71,12 +71,14 @@ public struct HeartRateGaugeView: View {
     }
 
     private var zoneName: String {
-        guard let bpm else { return "No Signal" }
+        guard let bpm else {
+            return LocalizedString(en: "No Signal", fr: "Aucun signal").localized
+        }
         switch bpm {
-        case ..<100: return "Recovery"
-        case 100..<130: return "Fat Burn"
-        case 130..<160: return "Cardio"
-        default: return "Peak"
+        case ..<100: return LocalizedString(en: "Recovery", fr: "Récupération").localized
+        case 100..<130: return LocalizedString(en: "Fat Burn", fr: "Brûle-graisse").localized
+        case 130..<160: return LocalizedString(en: "Cardio", fr: "Cardio").localized
+        default: return LocalizedString(en: "Peak", fr: "Pointe").localized
         }
     }
 }

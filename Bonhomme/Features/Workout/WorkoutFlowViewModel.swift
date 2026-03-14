@@ -105,7 +105,7 @@ final class WorkoutFlowViewModel {
     func buildResult() -> WorkoutResult {
         WorkoutResult(
             workoutPlanId: plan.id,
-            workoutPlanName: plan.name,
+            workoutPlanName: plan.name.localized,
             startDate: sessionStartDate ?? Date(),
             endDate: Date(),
             totalDuration: elapsedTime,

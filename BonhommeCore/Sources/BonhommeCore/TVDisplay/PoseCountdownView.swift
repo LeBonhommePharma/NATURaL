@@ -19,7 +19,7 @@ public struct PoseCountdownView: View {
 
     public var body: some View {
         VStack(spacing: 24) {
-            Text(pose.name)
+            Text(pose.name.localized)
                 .font(.system(size: 36, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -47,7 +47,7 @@ public struct PoseCountdownView: View {
             }
             .frame(width: 280, height: 280)
 
-            Text(pose.voiceCueText)
+            Text(pose.voiceCueText.localized)
                 .font(.system(size: 18, weight: .regular, design: .rounded))
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
