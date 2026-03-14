@@ -47,7 +47,7 @@ public struct SCIVisualizationView: View {
             }
             .frame(width: 100, height: 100)
 
-            Text("Focus Index")
+            Text(LocalizedString(en: "Focus Index", fr: "Indice de concentration").localized)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
         }

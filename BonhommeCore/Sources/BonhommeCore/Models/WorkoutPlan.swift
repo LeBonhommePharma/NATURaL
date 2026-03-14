@@ -3,8 +3,8 @@ import Foundation
 /// A structured sequence of poses forming a complete chair yoga session.
 public struct WorkoutPlan: Codable, Sendable, Identifiable {
     public let id: String
-    public let name: String
-    public let description: String
+    public let name: LocalizedString
+    public let description: LocalizedString
     public let poses: [Pose]
     public let transitionSeconds: TimeInterval
     public let isFree: Bool
@@ -19,8 +19,8 @@ public struct WorkoutPlan: Codable, Sendable, Identifiable {
 
     public init(
         id: String,
-        name: String,
-        description: String,
+        name: LocalizedString,
+        description: LocalizedString,
         poses: [Pose],
         transitionSeconds: TimeInterval = 5,
         isFree: Bool = false

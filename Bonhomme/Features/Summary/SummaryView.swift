@@ -16,7 +16,7 @@ struct SummaryView: View {
                     .foregroundStyle(.green)
                     .padding(.top, 32)
 
-                Text("Session Complete!")
+                Text(LocalizedString(en: "Session Complete!", fr: "Séance terminée!").localized)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
 
                 // Stat cards
@@ -24,25 +24,25 @@ struct SummaryView: View {
                     statCard(
                         icon: "clock",
                         value: formattedDuration(result.totalDuration),
-                        label: "Duration",
+                        label: LocalizedString(en: "Duration", fr: "Durée").localized,
                         color: .cyan
                     )
                     statCard(
                         icon: "flame.fill",
                         value: "\(Int(result.activeCalories))",
-                        label: "Calories",
+                        label: LocalizedString(en: "Calories", fr: "Calories").localized,
                         color: .orange
                     )
                     statCard(
                         icon: "heart.fill",
                         value: result.averageHeartRate.map { "\(Int($0))" } ?? "--",
-                        label: "Avg HR",
+                        label: LocalizedString(en: "Avg HR", fr: "FC moy.").localized,
                         color: .red
                     )
                     statCard(
                         icon: "figure.yoga",
                         value: "\(result.posesCompleted)/\(result.totalPoses)",
-                        label: "Poses",
+                        label: LocalizedString(en: "Poses", fr: "Postures").localized,
                         color: .purple
                     )
                 }
@@ -58,7 +58,7 @@ struct SummaryView: View {
                 Button {
                     onDismiss()
                 } label: {
-                    Text("Done")
+                    Text(LocalizedString(en: "Done", fr: "Terminé").localized)
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
@@ -93,7 +93,7 @@ struct SummaryView: View {
 
     private var hrChartView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Heart Rate")
+            Text(LocalizedString(en: "Heart Rate", fr: "Fréquence cardiaque").localized)
                 .font(.system(size: 16, weight: .semibold))
 
             Chart(result.heartRateSamples, id: \.timestamp) { sample in

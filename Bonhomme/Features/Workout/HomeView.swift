@@ -13,7 +13,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("NATURaL")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text("Chair Yoga")
+                    Text(LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise").localized)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -25,11 +25,13 @@ struct HomeView: View {
                     isPremium: false
                 )
 
-                // Premium session
-                workoutCard(
-                    plan: PoseCatalog.intermediateFlow,
-                    isPremium: !appState.isPremium
-                )
+                // All plans
+                ForEach(PoseCatalog.allPlans.filter { !$0.isFree }) { plan in
+                    workoutCard(
+                        plan: plan,
+                        isPremium: !appState.isPremium
+                    )
+                }
 
                 // TV connection status
                 tvStatusSection
@@ -64,11 +66,11 @@ struct HomeView: View {
                         .foregroundStyle(.cyan)
 
                     VStack(alignment: .leading) {
-                        Text(plan.name)
+                        Text(plan.name.localized)
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(.primary)
 
-                        Text(plan.description)
+                        Text(plan.description.localized)
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -101,13 +103,16 @@ struct HomeView: View {
 
     private var tvStatusSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("TV Display")
+            Text(LocalizedString(en: "TV Display", fr: "Affichage TV").localized)
                 .font(.system(size: 16, weight: .semibold))
 
             HStack {
                 Image(systemName: "tv")
                     .foregroundStyle(.cyan)
-                Text("Connect during a workout to display poses on your TV")
+                Text(LocalizedString(
+                    en: "Connect during a workout to display poses on your TV",
+                    fr: "Connectez-vous pendant un entraînement pour afficher les postures sur votre télé"
+                ).localized)
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
