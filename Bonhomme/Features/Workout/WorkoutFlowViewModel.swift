@@ -26,6 +26,9 @@ final class WorkoutFlowViewModel {
 
     let plan: WorkoutPlan
     let recorder = WorkoutRecorder()
+    let feedbackEngine = FeedbackEngine()
+    private let hrvAnalyzer = HRVAnalyzer()
+    private let medicationAnalyzer = MedicationAnalyzer()
 
     var currentPose: Pose? {
         switch phase {
@@ -50,6 +53,8 @@ final class WorkoutFlowViewModel {
 
     init(plan: WorkoutPlan) {
         self.plan = plan
+        feedbackEngine.register(hrvAnalyzer)
+        feedbackEngine.register(medicationAnalyzer)
     }
 
     // MARK: - Controls
@@ -81,23 +86,37 @@ final class WorkoutFlowViewModel {
     }
 
     /// Builds a TVDisplayPayload from current state for TV relay.
+    /// Uses FeedbackEngine insights to populate the SCI score and trend.
     func buildTVPayload() -> TVDisplayPayload? {
         guard let pose = currentPose else { return nil }
+
+        let insights = feedbackEngine.analyzeAll()
         return TVDisplayPayload(
             currentPose: pose,
             poseTimeRemaining: poseTimeRemaining,
             totalPoseTime: pose.durationSeconds,
             biofeedback: BiofeedbackSnapshot(
                 heartRate: recorder.currentHeartRate,
-                sciScore: nil,
-                sciTrend: .stable,
-                activeCalories: recorder.activeCalories
+                activeCalories: recorder.activeCalories,
+                feedbackInsights: insights
             ),
             sessionElapsed: elapsedTime,
             isPaused: false,
             sequenceIndex: currentPoseIndex,
             sequenceTotal: plan.poseCount
         )
+    }
+
+    /// Ingest an HRV sample from HealthKit into the FeedbackEngine.
+    /// Call this from the workout recorder's HRV observer query.
+    func ingestHRVSample(sdnn: Double, rmssd: Double, rrIntervals: [Double] = []) {
+        let signal = HRVSignal(
+            timestamp: Date(),
+            sdnn: sdnn,
+            rmssd: rmssd,
+            rrIntervals: rrIntervals
+        )
+        feedbackEngine.ingest(signal)
     }
 
     // MARK: - Result
