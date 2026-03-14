@@ -2,6 +2,17 @@ import WatchConnectivity
 import Observation
 import BonhommeCore
 
+/// Type-safe message types for WatchConnectivity communication.
+/// Shared between watch and phone bridges to prevent string typos.
+enum WCMessageType: String {
+    case biofeedback
+    case workoutStatus
+    case workoutResult
+    case ping
+    case startWorkout
+    case stopWorkout
+}
+
 /// iOS-side WatchConnectivity bridge that receives biofeedback data from
 /// the Apple Watch companion app and forwards it to the TVDisplayCoordinator.
 @Observable
@@ -53,7 +64,7 @@ final class PhoneConnectivityBridge: NSObject {
         guard let session = wcSession, session.isReachable else { return }
 
         session.sendMessage([
-            "type": "startWorkout",
+            "type": WCMessageType.startWorkout.rawValue,
             "planId": planId
         ], replyHandler: nil)
     }
@@ -63,7 +74,7 @@ final class PhoneConnectivityBridge: NSObject {
         guard let session = wcSession, session.isReachable else { return }
 
         session.sendMessage([
-            "type": "stopWorkout"
+            "type": WCMessageType.stopWorkout.rawValue
         ], replyHandler: nil)
     }
 
@@ -74,15 +85,19 @@ final class PhoneConnectivityBridge: NSObject {
             return
         }
 
-        session.sendMessage(["type": "ping"], replyHandler: { _ in
-            Task { @MainActor in
-                self.isWatchReachable = true
+        session.sendMessage(
+            ["type": WCMessageType.ping.rawValue],
+            replyHandler: { _ in
+                Task { @MainActor in
+                    self.isWatchReachable = true
+                }
+            },
+            errorHandler: { _ in
+                Task { @MainActor in
+                    self.isWatchReachable = false
+                }
             }
-        }, errorHandler: { _ in
-            Task { @MainActor in
-                self.isWatchReachable = false
-            }
-        })
+        )
     }
 
     /// Clears the pending workout result after it's been processed.
@@ -107,7 +122,6 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
-        // Reactivate for future pairing
         session.activate()
     }
 
@@ -165,16 +179,18 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
 
     @MainActor
     private func handleIncomingMessage(_ message: [String: Any]) {
-        guard let type = message["type"] as? String else { return }
+        guard let typeRaw = message["type"] as? String,
+              let type = WCMessageType(rawValue: typeRaw) else { return }
 
         switch type {
-        case "biofeedback":
-            if let data = message["data"] as? Data,
+        case .biofeedback:
+            if let base64 = message["data"] as? String,
+               let data = Data(base64Encoded: base64),
                let snapshot = try? decoder.decode(BiofeedbackSnapshot.self, from: data) {
                 latestSnapshot = snapshot
             }
 
-        case "workoutStatus":
+        case .workoutStatus:
             if let planName = message["planName"] as? String,
                let phase = message["phase"] as? String,
                let poseIndex = message["poseIndex"] as? Int,
@@ -196,11 +212,13 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
 
     @MainActor
     private func handleUserInfo(_ userInfo: [String: Any]) {
-        guard let type = userInfo["type"] as? String else { return }
+        guard let typeRaw = userInfo["type"] as? String,
+              let type = WCMessageType(rawValue: typeRaw) else { return }
 
         switch type {
-        case "workoutResult":
-            if let data = userInfo["data"] as? Data,
+        case .workoutResult:
+            if let base64 = userInfo["data"] as? String,
+               let data = Data(base64Encoded: base64),
                let result = try? decoder.decode(WorkoutResult.self, from: data) {
                 pendingWorkoutResult = result
             }

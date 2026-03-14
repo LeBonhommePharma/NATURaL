@@ -80,10 +80,16 @@ extension Notification.Name {
 struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var showResumeAlert = false
+    @State private var navigateToRestoredWorkout = false
 
     var body: some View {
         NavigationStack {
             HomeView()
+                .navigationDestination(isPresented: $navigateToRestoredWorkout) {
+                    if let vm = appState.pendingRestoredWorkout {
+                        WorkoutFlowView(restoredViewModel: vm)
+                    }
+                }
         }
         .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
             showResumeAlert = hasWorkout
@@ -96,7 +102,7 @@ struct ContentView: View {
             isPresented: $showResumeAlert
         ) {
             Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
-                // Navigation to the restored workout is handled by HomeView
+                navigateToRestoredWorkout = true
             }
             Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
                 appState.dismissRestoredWorkout()

@@ -7,7 +7,7 @@ import BonhommeCore
 /// Persists the workout result to SwiftData and records CareKit completion.
 struct SummaryView: View {
     let result: WorkoutResult
-    let sciScore: Double?
+    var sciScore: Double? = nil
     let onDismiss: () -> Void
 
     @Environment(\.modelContext) private var modelContext
