@@ -206,10 +206,11 @@ struct SpatialPoseView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
 
             if let vm = viewModel {
+                let completed = min(vm.currentPoseIndex + 1, vm.plan.poseCount)
                 let minutes = Int(vm.elapsedTime) / 60
                 Text(LocalizedString(
-                    en: "\(vm.currentPoseIndex + 1) poses in \(minutes) minutes",
-                    fr: "\(vm.currentPoseIndex + 1) postures en \(minutes) minutes"
+                    en: "\(completed)/\(vm.plan.poseCount) poses in \(minutes) minutes",
+                    fr: "\(completed)/\(vm.plan.poseCount) postures en \(minutes) minutes"
                 ).localized)
                 .font(.system(size: 18))
                 .foregroundStyle(.secondary)

@@ -47,8 +47,8 @@ final class WatchConnectivityBridge: NSObject {
 
         guard let data = try? encoder.encode(snapshot) else { return }
         let message: [String: Any] = [
-            "type": "biofeedback",
-            "data": data
+            "type": WCMessageType.biofeedback.rawValue,
+            "data": data.base64EncodedString()
         ]
 
         guard let session = wcSession else { return }
@@ -76,7 +76,7 @@ final class WatchConnectivityBridge: NSObject {
         guard let session = wcSession else { return }
 
         let status: [String: Any] = [
-            "type": "workoutStatus",
+            "type": WCMessageType.workoutStatus.rawValue,
             "planName": planName,
             "phase": phase,
             "poseIndex": poseIndex,
@@ -100,8 +100,8 @@ final class WatchConnectivityBridge: NSObject {
               let session = wcSession else { return }
 
         let userInfo: [String: Any] = [
-            "type": "workoutResult",
-            "data": data
+            "type": WCMessageType.workoutResult.rawValue,
+            "data": data.base64EncodedString()
         ]
 
         session.transferUserInfo(userInfo)
@@ -115,8 +115,8 @@ final class WatchConnectivityBridge: NSObject {
               let session = wcSession else { return }
 
         try? session.updateApplicationContext([
-            "type": "biofeedback",
-            "data": data
+            "type": WCMessageType.biofeedback.rawValue,
+            "data": data.base64EncodedString()
         ])
     }
 }
@@ -163,21 +163,19 @@ extension WatchConnectivityBridge: WCSessionDelegate {
 
     @MainActor
     private func handleIncomingMessage(_ message: [String: Any]) {
-        guard let type = message["type"] as? String else { return }
+        guard let typeRaw = message["type"] as? String,
+              let type = WCMessageType(rawValue: typeRaw) else { return }
 
         switch type {
-        case "ping":
-            // iOS checking if watch is available
+        case .ping:
             break
-        case "startWorkout":
-            // iOS requesting watch to start a workout
-            // The WatchHomeView handles this via notification
+        case .startWorkout:
             NotificationCenter.default.post(
                 name: .watchStartWorkoutRequested,
                 object: nil,
                 userInfo: message
             )
-        case "stopWorkout":
+        case .stopWorkout:
             NotificationCenter.default.post(
                 name: .watchStopWorkoutRequested,
                 object: nil
@@ -186,6 +184,19 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             break
         }
     }
+}
+
+// MARK: - Shared Message Types
+
+/// Type-safe message types for WatchConnectivity communication.
+/// Shared between watch and phone bridges to prevent string typos.
+enum WCMessageType: String {
+    case biofeedback
+    case workoutStatus
+    case workoutResult
+    case ping
+    case startWorkout
+    case stopWorkout
 }
 
 // MARK: - Notification Names
