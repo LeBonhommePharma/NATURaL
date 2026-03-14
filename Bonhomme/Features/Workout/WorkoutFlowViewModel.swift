@@ -3,13 +3,14 @@ import Observation
 import BonhommeCore
 
 /// State machine driving the guided pose-by-pose workout experience.
+/// Supports state restoration for killed-app recovery and adaptive music via SCI.
 @Observable
 @MainActor
 final class WorkoutFlowViewModel {
 
     // MARK: - Phase
 
-    enum Phase: Equatable {
+    enum Phase: Equatable, Codable {
         case ready
         case countdown(secondsRemaining: Int)
         case active(poseIndex: Int)
@@ -27,8 +28,13 @@ final class WorkoutFlowViewModel {
     let plan: WorkoutPlan
     let recorder = WorkoutRecorder()
     let feedbackEngine = FeedbackEngine()
+    let musicService = MusicService()
     private let hrvAnalyzer = HRVAnalyzer()
     private let medicationAnalyzer = MedicationAnalyzer()
+    private let stateStore = WorkoutStateStore()
+
+    /// Tracks whether this session was restored from a killed app.
+    private(set) var isRestoredSession = false
 
     var currentPose: Pose? {
         switch phase {
@@ -50,11 +56,111 @@ final class WorkoutFlowViewModel {
 
     private var timerTask: Task<Void, Never>?
     private var sessionStartDate: Date?
+    private var persistenceCounter: Int = 0
+    private var lastMusicAdaptation: Date = .distantPast
 
     init(plan: WorkoutPlan) {
         self.plan = plan
         feedbackEngine.register(hrvAnalyzer)
         feedbackEngine.register(medicationAnalyzer)
+    }
+
+    // MARK: - State Restoration
+
+    /// Attempt to restore a killed-app workout session.
+    /// Returns a configured ViewModel if recoverable state exists, nil otherwise.
+    static func restoreIfAvailable() -> WorkoutFlowViewModel? {
+        let store = WorkoutStateStore()
+        guard let persisted = store.load(),
+              let plan = persisted.resolvePlan() else {
+            return nil
+        }
+
+        let vm = WorkoutFlowViewModel(plan: plan)
+        vm.isRestoredSession = true
+        vm.sessionStartDate = persisted.sessionStartDate
+        vm.elapsedTime = persisted.elapsedTime
+        vm.poseTimeRemaining = persisted.poseTimeRemaining
+
+        // Map persisted phase back to VM phase
+        switch persisted.phase {
+        case .ready:
+            vm.phase = .ready
+        case .countdown(let secs):
+            vm.phase = .countdown(secondsRemaining: secs)
+        case .active(let idx):
+            vm.phase = .active(poseIndex: idx)
+        case .transition(let nextIdx, let secs):
+            vm.phase = .transition(nextPoseIndex: nextIdx, secondsRemaining: secs)
+        case .cooldown:
+            vm.phase = .cooldown
+        case .complete:
+            store.clear()
+            return nil
+        }
+
+        return vm
+    }
+
+    /// Resume a restored session: reconnect to the HealthKit workout session
+    /// and restart timers from the persisted state.
+    func resumeRestoredSession() {
+        guard isRestoredSession else { return }
+
+        Task {
+            // Attempt to recover the existing HealthKit workout session
+            await recoverHealthKitSession()
+
+            // Resume at the current phase
+            switch phase {
+            case .active(let idx):
+                startPoseTimer(for: idx)
+            case .transition(let nextIdx, _):
+                startTransition(to: nextIdx)
+            case .cooldown:
+                startCooldown()
+            case .countdown:
+                startCountdownSequence()
+            default:
+                break
+            }
+        }
+    }
+
+    /// Tries to recover an active HKWorkoutSession from a previous app launch.
+    private func recoverHealthKitSession() async {
+        // HKWorkoutSession persists across app restarts on iOS 17+.
+        // The WorkoutRecorder will attempt to reconnect to any active session.
+        // If no session is found, we start a fresh one.
+        do {
+            try await recorder.start()
+        } catch {
+            // Session may already be active from the previous launch;
+            // WorkoutRecorder handles this gracefully.
+        }
+    }
+
+    /// Persist current state to UserDefaults. Called every 5 seconds during
+    /// active workouts and on scene phase changes.
+    func persistState() {
+        let persistedPhase: WorkoutStateStore.PersistedPhase
+        switch phase {
+        case .ready: persistedPhase = .ready
+        case .countdown(let secs): persistedPhase = .countdown(secondsRemaining: secs)
+        case .active(let idx): persistedPhase = .active(poseIndex: idx)
+        case .transition(let nextIdx, let secs): persistedPhase = .transition(nextPoseIndex: nextIdx, secondsRemaining: secs)
+        case .cooldown: persistedPhase = .cooldown
+        case .complete: persistedPhase = .complete
+        }
+
+        stateStore.save(
+            planId: plan.id,
+            phase: persistedPhase,
+            poseTimeRemaining: poseTimeRemaining,
+            elapsedTime: elapsedTime,
+            sessionStartDate: sessionStartDate ?? Date(),
+            currentPoseIndex: currentPoseIndex
+        )
     }
 
     // MARK: - Controls
@@ -67,11 +173,14 @@ final class WorkoutFlowViewModel {
 
     func pause() {
         recorder.pause()
+        musicService.pause()
         timerTask?.cancel()
+        persistState()
     }
 
     func resume() {
         recorder.resume()
+        Task { await musicService.playWorkoutMusic(mood: musicService.adaptiveMood) }
         if case .active(let idx) = phase {
             startPoseTimer(for: idx)
         }
@@ -80,6 +189,8 @@ final class WorkoutFlowViewModel {
     func stop() {
         timerTask?.cancel()
         phase = .complete
+        stateStore.clear()
+        musicService.stop()
         Task {
             try? await recorder.end()
         }
@@ -122,7 +233,8 @@ final class WorkoutFlowViewModel {
     // MARK: - Result
 
     func buildResult() -> WorkoutResult {
-        WorkoutResult(
+        stateStore.clear()
+        return WorkoutResult(
             workoutPlanId: plan.id,
             workoutPlanName: plan.name.localized,
             startDate: sessionStartDate ?? Date(),
@@ -151,6 +263,10 @@ final class WorkoutFlowViewModel {
             // Start HealthKit recording
             try? await recorder.start()
 
+            // Start adaptive music
+            await musicService.requestAuthorization()
+            await musicService.playWorkoutMusic(mood: .calm)
+
             // Begin first pose
             beginPose(at: 0)
         }
@@ -178,6 +294,13 @@ final class WorkoutFlowViewModel {
                 poseTimeRemaining = max(0, poseTimeRemaining - 1)
                 if let start = sessionStartDate {
                     elapsedTime = Date().timeIntervalSince(start)
+                }
+
+                // Periodic state persistence (every 5 seconds)
+                persistenceCounter += 1
+                if persistenceCounter % 5 == 0 {
+                    persistState()
+                    await adaptMusicToCurrentSCI()
                 }
             }
 
@@ -211,8 +334,23 @@ final class WorkoutFlowViewModel {
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
             try? await recorder.end()
+            musicService.stop()
+            stateStore.clear()
             phase = .complete
         }
+    }
+
+    // MARK: - Adaptive Music
+
+    /// Checks current SCI from FeedbackEngine and adapts music mood.
+    /// Debounced to minimum 30-second intervals.
+    private func adaptMusicToCurrentSCI() async {
+        let now = Date()
+        guard now.timeIntervalSince(lastMusicAdaptation) >= 30 else { return }
+
+        let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
+        await musicService.adaptToSCI(score: insight?.score, trend: insight?.trend ?? .stable)
+        lastMusicAdaptation = now
     }
 }
 

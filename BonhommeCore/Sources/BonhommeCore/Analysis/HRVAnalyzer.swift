@@ -12,19 +12,22 @@ import Foundation
 public struct HRVAnalyzer: SignalAnalyzer, Sendable {
     public let primarySignalType: SignalType = .heartRateVariability
 
-    /// Number of histogram bins for entropy calculation.
-    private let binCount: Int
+    /// Shared entropy calculator (reusable across sleep, respiratory, activity analyzers).
+    private let entropyCalc: EntropyCalculator
     /// Window size in seconds for sliding entropy.
     private let windowSeconds: TimeInterval
     /// Entropy threshold (bits) below which we consider "focused".
     private let collapseThreshold: Double
+
+    /// Number of histogram bins (delegates to EntropyCalculator).
+    var binCount: Int { entropyCalc.binCount }
 
     public init(
         binCount: Int = 32,
         windowSeconds: TimeInterval = 60,
         collapseThreshold: Double = 3.2
     ) {
-        self.binCount = binCount
+        self.entropyCalc = EntropyCalculator(binCount: binCount)
         self.windowSeconds = windowSeconds
         self.collapseThreshold = collapseThreshold
     }
@@ -82,42 +85,17 @@ public struct HRVAnalyzer: SignalAnalyzer, Sendable {
         )
     }
 
-    // MARK: - Entropy Math
+    // MARK: - Entropy Math (delegates to EntropyCalculator)
 
-    /// Shannon entropy of a distribution of RR intervals, binned into a histogram.
-    /// H = -sum(p_i * log2(p_i)) for each bin with p_i > 0.
+    /// Shannon entropy of RR intervals. Delegates to the shared EntropyCalculator.
+    /// Kept as internal API so existing tests continue to work unchanged.
     func shannonEntropy(_ intervals: [Double]) -> Double {
-        guard intervals.count >= 2 else { return 0 }
-
-        let minRR = intervals.min()!
-        let maxRR = intervals.max()!
-        let range = maxRR - minRR
-        guard range > 0 else { return 0 }
-
-        let binWidth = range / Double(binCount)
-        var bins = [Int](repeating: 0, count: binCount)
-
-        for rr in intervals {
-            let idx = min(binCount - 1, Int((rr - minRR) / binWidth))
-            bins[idx] += 1
-        }
-
-        let total = Double(intervals.count)
-        var entropy = 0.0
-        for count in bins where count > 0 {
-            let p = Double(count) / total
-            entropy -= p * log2(p)
-        }
-        return entropy
+        entropyCalc.shannonEntropy(intervals)
     }
 
     /// Map entropy (bits) to a 0–1 score where 1 = maximally focused.
-    /// Normal resting: H ~ 6-8 bits → score ~ 0.0-0.3
-    /// Focused breathing: H ~ 2-4 bits → score ~ 0.6-1.0
     private func entropyToScore(_ entropy: Double) -> Double {
-        // Linear mapping: 8 bits → 0.0, 0 bits → 1.0
-        let clamped = max(0, min(8, entropy))
-        return 1.0 - (clamped / 8.0)
+        entropyCalc.entropyToScore(entropy)
     }
 
     private func computeTrend(signals: [HRVSignal]) -> InsightTrend {
