@@ -2,12 +2,19 @@ import SwiftUI
 import BonhommeCore
 
 /// The main guided workout screen that drives the pose-by-pose flow.
+/// On iPad (regular width), displays a 60/40 split with pose visual and metrics panel.
 struct WorkoutFlowView: View {
     @State private var viewModel: WorkoutFlowViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(plan: WorkoutPlan) {
         _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan))
+    }
+
+    /// Initializer for restoring a killed-app workout session.
+    init(restoredViewModel: WorkoutFlowViewModel) {
+        _viewModel = State(initialValue: restoredViewModel)
     }
 
     var body: some View {
@@ -20,13 +27,18 @@ struct WorkoutFlowView: View {
             case .countdown(let seconds):
                 CountdownView(secondsRemaining: seconds)
             case .active(let poseIndex):
-                activePoseView(poseIndex: poseIndex)
+                if sizeClass == .regular {
+                    iPadActivePoseView(poseIndex: poseIndex)
+                } else {
+                    activePoseView(poseIndex: poseIndex)
+                }
             case .transition(let nextIndex, let seconds):
                 transitionView(nextIndex: nextIndex, seconds: seconds)
             case .cooldown:
                 cooldownView
             case .complete:
-                SummaryView(result: viewModel.buildResult()) {
+                let sciScore = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+                SummaryView(result: viewModel.buildResult(), sciScore: sciScore) {
                     dismiss()
                 }
             }
@@ -34,9 +46,139 @@ struct WorkoutFlowView: View {
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
         .statusBarHidden()
+        .onAppear {
+            if viewModel.isRestoredSession {
+                viewModel.resumeRestoredSession()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
+            viewModel.persistState()
+        }
     }
 
-    // MARK: - Phase Views
+    // MARK: - iPad Active Pose (60/40 Split)
+
+    private func iPadActivePoseView(poseIndex: Int) -> some View {
+        let pose = viewModel.plan.poses[poseIndex]
+        let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
+
+        return HStack(spacing: 0) {
+            // Left 60%: Pose visual + countdown
+            VStack(spacing: 0) {
+                Spacer()
+
+                Image(systemName: pose.category.symbolName)
+                    .font(.system(size: 100))
+                    .foregroundStyle(catColor.opacity(0.35))
+                    .shadow(color: catColor.opacity(0.2), radius: 16)
+
+                Text(pose.name.localized)
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.top, 16)
+
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(i < pose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                    Text(pose.category.localizedName.localized)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .padding(.top, 6)
+
+                Text(pose.description.localized)
+                    .font(.system(size: 17))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 48)
+                    .padding(.top, 10)
+
+                Text("\(Int(viewModel.poseTimeRemaining))")
+                    .font(.system(size: 80, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .contentTransition(.numericText())
+                    .padding(.top, 24)
+
+                if !pose.breathingPattern.localized.isEmpty {
+                    HStack(spacing: 5) {
+                        Image(systemName: "wind")
+                            .font(.system(size: 14))
+                            .foregroundStyle(catColor.opacity(0.6))
+                        Text(pose.breathingPattern.localized)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                    .padding(.top, 8)
+                }
+
+                Spacer()
+
+                // Controls
+                HStack(spacing: 40) {
+                    Button { viewModel.pause() } label: {
+                        Image(systemName: "pause.circle.fill")
+                            .font(.system(size: 52))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    Button { viewModel.stop() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 52))
+                            .foregroundStyle(.red.opacity(0.7))
+                    }
+                }
+                .padding(.bottom, 40)
+            }
+            .frame(maxWidth: .infinity)
+
+            // Right 40%: Biofeedback panel (mirrors TV display layout)
+            VStack(spacing: 24) {
+                Spacer()
+
+                // Heart rate gauge (reuse BonhommeCore view)
+                HeartRateGaugeView(bpm: viewModel.recorder.currentHeartRate)
+                    .frame(width: 160, height: 160)
+
+                // SCI visualization
+                let insight = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)
+                SCIVisualizationView(
+                    score: insight?.score,
+                    trend: insight?.trend.asSCITrend
+                )
+                .frame(width: 120, height: 120)
+
+                // Session progress
+                SessionProgressView(
+                    currentIndex: poseIndex,
+                    totalPoses: viewModel.plan.poseCount,
+                    elapsed: viewModel.elapsedTime
+                )
+
+                // Calories
+                HStack {
+                    Image(systemName: "flame.fill")
+                        .foregroundStyle(.orange)
+                    Text("\(Int(viewModel.recorder.activeCalories))")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("cal")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(0.03))
+        }
+    }
+
+    // MARK: - Phone Phase Views
 
     private var readyView: some View {
         VStack(spacing: 32) {
@@ -80,7 +222,6 @@ struct WorkoutFlowView: View {
         return VStack(spacing: 0) {
             Spacer()
 
-            // Category icon — specific to this pose's target area
             Image(systemName: pose.category.symbolName)
                 .font(.system(size: 80))
                 .foregroundStyle(catColor.opacity(0.35))
@@ -91,7 +232,6 @@ struct WorkoutFlowView: View {
                 .foregroundStyle(.white)
                 .padding(.top, 16)
 
-            // Difficulty dots + category label
             HStack(spacing: 12) {
                 HStack(spacing: 4) {
                     ForEach(0..<3, id: \.self) { i in
@@ -113,7 +253,6 @@ struct WorkoutFlowView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 10)
 
-            // Countdown
             Text("\(Int(viewModel.poseTimeRemaining))")
                 .font(.system(size: 64, weight: .bold, design: .rounded))
                 .monospacedDigit()
@@ -121,7 +260,6 @@ struct WorkoutFlowView: View {
                 .contentTransition(.numericText())
                 .padding(.top, 20)
 
-            // Breathing cue
             if !pose.breathingPattern.localized.isEmpty {
                 HStack(spacing: 5) {
                     Image(systemName: "wind")
@@ -138,7 +276,6 @@ struct WorkoutFlowView: View {
 
             Spacer()
 
-            // Metrics bar
             MetricsOverlayView(
                 heartRate: viewModel.recorder.currentHeartRate,
                 calories: viewModel.recorder.activeCalories,
@@ -147,14 +284,12 @@ struct WorkoutFlowView: View {
                 totalPoses: viewModel.plan.poseCount
             )
 
-            // Controls
             HStack(spacing: 40) {
                 Button { viewModel.pause() } label: {
                     Image(systemName: "pause.circle.fill")
                         .font(.system(size: 48))
                         .foregroundStyle(.white.opacity(0.7))
                 }
-
                 Button { viewModel.stop() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 48))
@@ -184,7 +319,6 @@ struct WorkoutFlowView: View {
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                // Difficulty + category
                 HStack(spacing: 10) {
                     HStack(spacing: 4) {
                         ForEach(0..<3, id: \.self) { i in
@@ -239,5 +373,17 @@ struct WorkoutFlowView: View {
             return "\(minutes) min"
         }
         return "\(minutes)m \(seconds)s"
+    }
+}
+
+// MARK: - InsightTrend → SCITrend Bridge
+
+extension InsightTrend {
+    var asSCITrend: SCITrend {
+        switch self {
+        case .improving: return .improving
+        case .stable: return .stable
+        case .declining: return .declining
+        }
     }
 }

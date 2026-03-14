@@ -1,11 +1,18 @@
 import SwiftUI
+import SwiftData
 import Charts
 import BonhommeCore
 
 /// Post-workout summary screen showing stats, HR chart, and activity ring progress.
+/// Persists the workout result to SwiftData and records CareKit completion.
 struct SummaryView: View {
     let result: WorkoutResult
+    let sciScore: Double?
     let onDismiss: () -> Void
+
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    @State private var hasPersisted = false
 
     var body: some View {
         ScrollView {
@@ -70,6 +77,44 @@ struct SummaryView: View {
             }
         }
         .background(Color(.systemBackground))
+        .task {
+            guard !hasPersisted else { return }
+            hasPersisted = true
+            await persistWorkoutResult()
+        }
+    }
+
+    /// Saves the workout to SwiftData and records CareKit completion.
+    private func persistWorkoutResult() async {
+        // 1. Save to SwiftData for history and CloudKit sync
+        let record = WorkoutRecord(from: result, sciScore: sciScore)
+        modelContext.insert(record)
+        try? modelContext.save()
+
+        // 2. Update session streak
+        let streakDescriptor = FetchDescriptor<SessionStreak>()
+        let streaks = (try? modelContext.fetch(streakDescriptor)) ?? []
+        let streak = streaks.first ?? SessionStreak()
+        if streaks.isEmpty {
+            modelContext.insert(streak)
+        }
+        streak.recordSession()
+        try? modelContext.save()
+
+        // 3. Record CareKit completion if this was a prescribed workout
+        if appState.careKitBridge.hasPrescriptions {
+            try? await appState.careKitBridge.recordCompletion(
+                planId: result.workoutPlanId,
+                result: result,
+                sciScore: sciScore
+            )
+        }
+
+        // 4. Save mindful session to HealthKit
+        try? await appState.healthKitManager.saveMindfulSession(
+            start: result.startDate,
+            end: result.endDate
+        )
     }
 
     private func statCard(icon: String, value: String, label: String, color: Color) -> some View {
