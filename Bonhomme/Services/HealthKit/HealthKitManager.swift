@@ -8,16 +8,23 @@ final class HealthKitManager: Sendable {
         HKHealthStore.isHealthDataAvailable()
     }
 
-    /// Requests HealthKit authorization for workout, heart rate, and activity data.
+    /// Requests HealthKit authorization for workout, heart rate, HRV,
+    /// medication records, and activity data.
     func requestAuthorization() async throws {
-        let typesToRead: Set<HKObjectType> = [
+        var typesToRead: Set<HKObjectType> = [
             HKQuantityType(.heartRate),
+            HKQuantityType(.heartRateVariabilitySDNN),
             HKQuantityType(.activeEnergyBurned),
             HKQuantityType(.appleExerciseTime),
             HKObjectType.workoutType(),
             HKObjectType.activitySummaryType(),
             HKCategoryType(.mindfulSession),
         ]
+
+        // Clinical medication records (requires Health Records entitlement)
+        if HKHealthStore.isHealthDataAvailable() {
+            typesToRead.insert(HKClinicalType(.medicationRecord))
+        }
 
         let typesToShare: Set<HKSampleType> = [
             HKQuantityType(.activeEnergyBurned),
