@@ -16,6 +16,15 @@ public enum PoseDifficulty: String, Codable, Sendable, CaseIterable {
             return LocalizedString(en: "Advanced", fr: "Avancé")
         }
     }
+
+    /// Number of filled dots to represent this difficulty level.
+    public var dotCount: Int {
+        switch self {
+        case .beginner: return 1
+        case .intermediate: return 2
+        case .advanced: return 3
+        }
+    }
 }
 
 /// Target body area for filtering and categorization.
@@ -37,6 +46,32 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
         case .fullBody:  return LocalizedString(en: "Full Body", fr: "Corps complet")
         case .breathing: return LocalizedString(en: "Breathing", fr: "Respiration")
         case .balance:   return LocalizedString(en: "Balance", fr: "Équilibre")
+        }
+    }
+
+    /// SF Symbol name representing this body category.
+    public var symbolName: String {
+        switch self {
+        case .spine:     return "figure.flexibility"
+        case .hips:      return "figure.walk"
+        case .shoulders: return "figure.arms.open"
+        case .neck:      return "head.profile"
+        case .fullBody:  return "figure.yoga"
+        case .breathing: return "wind"
+        case .balance:   return "figure.stand"
+        }
+    }
+
+    /// Accent color tint for this category.
+    public var accentHue: Double {
+        switch self {
+        case .spine:     return 0.52   // cyan-blue
+        case .hips:      return 0.75   // purple
+        case .shoulders: return 0.58   // teal
+        case .neck:      return 0.45   // cyan
+        case .fullBody:  return 0.55   // blue-cyan
+        case .breathing: return 0.33   // green
+        case .balance:   return 0.65   // indigo
         }
     }
 }
