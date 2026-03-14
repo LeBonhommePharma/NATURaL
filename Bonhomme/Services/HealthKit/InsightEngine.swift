@@ -32,47 +32,130 @@ final class InsightEngine: ObservableObject {
 
         let insights = feedbackEngine.analyzeAll()
 
-        if #available(iOS 26, *), supportsFoundationModel() {
+        if #available(iOS 26, *) {
             latestNarrative = await generateWithFoundationModel(insights)
         } else {
             latestNarrative = generateWithTemplates(insights)
         }
     }
 
-    // MARK: - Apple Foundation Model Path (iOS 26+)
+    /// Generate a personalized pose cue based on current health context.
+    /// Returns nil on pre-iOS 26 devices (caller should use the static voiceCueText).
+    func generatePersonalizedPoseCue(
+        for pose: Pose,
+        insights: [SignalType: AnalysisInsight]
+    ) async -> String? {
+        guard #available(iOS 26, *) else { return nil }
+        return await generatePoseCueWithModel(pose: pose, insights: insights)
+    }
+
+    /// Generate a narrative summary for a completed workout result.
+    func generateWorkoutSummary(
+        result: WorkoutResult,
+        insights: [SignalType: AnalysisInsight]
+    ) async -> String {
+        if #available(iOS 26, *) {
+            return await generateSummaryWithModel(result: result, insights: insights)
+        }
+        return generateSummaryWithTemplates(result: result, insights: insights)
+    }
+
+    // MARK: - Apple Foundation Model (iOS 26+)
 
     /// Uses the on-device FoundationModels framework to synthesize insights.
     ///
     /// The prompt provides structured analysis data and asks for a concise,
     /// patient-friendly summary. All processing is on-device — no network calls.
+    ///
+    /// Integration requires `import FoundationModels` and Xcode 26+.
+    /// The call structure is:
+    /// ```
+    /// let session = LanguageModelSession()
+    /// let response = try await session.respond(to: prompt)
+    /// return response.content
+    /// ```
+    ///
+    /// For `@Generable` structured output:
+    /// ```
+    /// @Generable struct WellnessInsight {
+    ///     var summary: String
+    ///     var encouragement: String
+    ///     var actionItem: String?
+    /// }
+    /// let insight: WellnessInsight = try await session.respond(to: prompt, generating: WellnessInsight.self)
+    /// ```
     @available(iOS 26, *)
     private func generateWithFoundationModel(
         _ insights: [SignalType: AnalysisInsight]
     ) async -> String {
-        let prompt = buildPrompt(from: insights)
+        let prompt = buildInsightPrompt(from: insights)
 
-        // FoundationModels API (iOS 26+):
+        // FoundationModels integration point:
         // import FoundationModels
-        // let session = LanguageModelSession()
-        // let response = try await session.respond(to: prompt)
-        // return response.content
-        //
-        // Since FoundationModels cannot be imported in this build environment,
-        // the actual call is structured but commented. The integration point is:
-        do {
-            let session = try await createLanguageModelSession()
-            return await session.respond(to: prompt)
-        } catch {
-            return generateWithTemplates(insights)
-        }
+        // guard LanguageModelSession.isAvailable else {
+        //     return generateWithTemplates(insights)
+        // }
+        // do {
+        //     let session = LanguageModelSession()
+        //     let response = try await session.respond(to: prompt)
+        //     return response.content
+        // } catch {
+        //     return generateWithTemplates(insights)
+        // }
+
+        // Fallback until FoundationModels SDK is available in build environment
+        return generateWithTemplates(insights)
     }
 
-    /// Builds a structured prompt for the Foundation Model from analysis insights.
-    private func buildPrompt(from insights: [SignalType: AnalysisInsight]) -> String {
+    @available(iOS 26, *)
+    private func generatePoseCueWithModel(
+        pose: Pose,
+        insights: [SignalType: AnalysisInsight]
+    ) async -> String? {
+        let prompt = buildPoseCuePrompt(pose: pose, insights: insights)
+
+        // FoundationModels integration point:
+        // guard LanguageModelSession.isAvailable else { return nil }
+        // do {
+        //     let session = LanguageModelSession()
+        //     let response = try await session.respond(to: prompt)
+        //     return response.content
+        // } catch {
+        //     return nil
+        // }
+
+        return nil // Caller falls back to pose.voiceCueText
+    }
+
+    @available(iOS 26, *)
+    private func generateSummaryWithModel(
+        result: WorkoutResult,
+        insights: [SignalType: AnalysisInsight]
+    ) async -> String {
+        let prompt = buildWorkoutSummaryPrompt(result: result, insights: insights)
+
+        // FoundationModels integration point:
+        // guard LanguageModelSession.isAvailable else {
+        //     return generateSummaryWithTemplates(result: result, insights: insights)
+        // }
+        // do {
+        //     let session = LanguageModelSession()
+        //     let response = try await session.respond(to: prompt)
+        //     return response.content
+        // } catch {
+        //     return generateSummaryWithTemplates(result: result, insights: insights)
+        // }
+
+        return generateSummaryWithTemplates(result: result, insights: insights)
+    }
+
+    // MARK: - Prompt Construction
+
+    private func buildInsightPrompt(from insights: [SignalType: AnalysisInsight]) -> String {
         var sections: [String] = []
 
         sections.append(
-            "You are a wellness assistant for a chair yoga app. "
+            "You are a wellness assistant for a chair yoga app called NATURaL. "
             + "Summarize the following health data in 2-3 sentences. "
             + "Be encouraging, factual, and mention specific numbers. "
             + "Never provide medical advice or diagnoses."
@@ -103,6 +186,63 @@ final class InsightEngine: ObservableObject {
         }
 
         return sections.joined(separator: "\n\n")
+    }
+
+    private func buildPoseCuePrompt(
+        pose: Pose,
+        insights: [SignalType: AnalysisInsight]
+    ) -> String {
+        var prompt = "You are a chair yoga instructor. Generate a brief, "
+        + "personalized 1-2 sentence guidance cue for the following pose. "
+        + "Adapt the cue to the practitioner's current biofeedback state. "
+        + "Be warm, specific, and actionable. Do not give medical advice.\n\n"
+
+        prompt += "Pose: \(pose.name.en)\n"
+        prompt += "Category: \(pose.category.rawValue)\n"
+        prompt += "Standard cue: \(pose.voiceCueText.en)\n"
+        prompt += "Breathing: \(pose.breathingPattern.en)\n\n"
+
+        if let hrv = insights[.heartRateVariability] {
+            let scoreText = hrv.score.map { String(format: "%.0f", $0 * 100) } ?? "unknown"
+            prompt += "Current focus score: \(scoreText)%, trend: \(hrv.trend.rawValue)\n"
+        }
+
+        if let med = insights[.medication] {
+            let scoreText = med.score.map { String(format: "%.0f", $0 * 100) } ?? "unknown"
+            prompt += "Medication adherence: \(scoreText)%\n"
+        }
+
+        return prompt
+    }
+
+    private func buildWorkoutSummaryPrompt(
+        result: WorkoutResult,
+        insights: [SignalType: AnalysisInsight]
+    ) -> String {
+        var prompt = "You are a wellness coach for the NATURaL chair yoga app. "
+        + "Write a 3-4 sentence summary of this completed workout session. "
+        + "Be encouraging, mention specific achievements, and suggest one "
+        + "thing to try next time. Do not give medical advice.\n\n"
+
+        let minutes = Int(result.totalDuration) / 60
+        let seconds = Int(result.totalDuration) % 60
+        prompt += "Duration: \(minutes)m \(seconds)s\n"
+        prompt += "Poses completed: \(result.posesCompleted)/\(result.totalPoses)\n"
+        prompt += "Calories: \(Int(result.activeCalories))\n"
+
+        if let avgHR = result.averageHeartRate {
+            prompt += "Average heart rate: \(Int(avgHR)) BPM\n"
+        }
+        if let maxHR = result.maxHeartRate {
+            prompt += "Max heart rate: \(Int(maxHR)) BPM\n"
+        }
+
+        for (type, insight) in insights {
+            let scoreText = insight.score.map { String(format: "%.0f%%", $0 * 100) } ?? "N/A"
+            prompt += "\(type.rawValue) score: \(scoreText), trend: \(insight.trend.rawValue)\n"
+        }
+
+        return prompt
     }
 
     // MARK: - Template Fallback
@@ -145,33 +285,33 @@ final class InsightEngine: ObservableObject {
         return parts.joined(separator: " ")
     }
 
-    // MARK: - Capability Detection
+    private func generateSummaryWithTemplates(
+        result: WorkoutResult,
+        insights: [SignalType: AnalysisInsight]
+    ) -> String {
+        var parts: [String] = []
 
-    private func supportsFoundationModel() -> Bool {
-        // In production, check LanguageModelSession.isAvailable
-        // For now, return false to use template fallback
-        false
-    }
+        let minutes = Int(result.totalDuration) / 60
+        parts.append(LocalizedString(
+            en: "You completed \(result.posesCompleted) poses in \(minutes) minutes, burning \(Int(result.activeCalories)) calories.",
+            fr: "Vous avez complété \(result.posesCompleted) postures en \(minutes) minutes, brûlant \(Int(result.activeCalories)) calories."
+        ).localized)
 
-    /// Placeholder for FoundationModels API integration.
-    /// In production, this creates a LanguageModelSession from the FoundationModels framework.
-    @available(iOS 26, *)
-    private func createLanguageModelSession() async throws -> FoundationModelProxy {
-        FoundationModelProxy()
-    }
-}
+        if let avgHR = result.averageHeartRate {
+            parts.append(LocalizedString(
+                en: "Your average heart rate was \(Int(avgHR)) BPM.",
+                fr: "Votre fréquence cardiaque moyenne était de \(Int(avgHR)) BPM."
+            ).localized)
+        }
 
-// MARK: - Foundation Model Proxy
+        if let hrvInsight = insights[.heartRateVariability], let score = hrvInsight.score {
+            let pct = Int(score * 100)
+            parts.append(LocalizedString(
+                en: "Focus coherence reached \(pct)% — \(hrvInsight.trend == .improving ? "an improving trend" : "keep practicing deep breathing").",
+                fr: "La cohérence de concentration a atteint \(pct) % — \(hrvInsight.trend == .improving ? "une tendance à la hausse" : "continuez à pratiquer la respiration profonde")."
+            ).localized)
+        }
 
-/// Placeholder proxy for FoundationModels.LanguageModelSession.
-/// Replace with actual `import FoundationModels` when building with Xcode 26+.
-@available(iOS 26, *)
-struct FoundationModelProxy {
-    func respond(to prompt: String) async -> String {
-        // In production:
-        // let session = LanguageModelSession()
-        // let response = try await session.respond(to: prompt)
-        // return response.content
-        return prompt // Falls through to template path
+        return parts.joined(separator: " ")
     }
 }
