@@ -1,0 +1,191 @@
+import XCTest
+@testable import BonhommeCore
+
+final class AnalyzerTests: XCTestCase {
+
+    // MARK: - HRVAnalyzer
+
+    func testHRVAnalyzerNoData() {
+        let analyzer = HRVAnalyzer()
+        let result = analyzer.analyze(signals: [], context: AnalysisContext())
+
+        XCTAssertNil(result.score)
+        XCTAssertEqual(result.trend, .stable)
+        XCTAssertEqual(result.status, .normal)
+        XCTAssertEqual(result.signalType, .heartRateVariability)
+    }
+
+    func testHRVAnalyzerShannonEntropy() {
+        let analyzer = HRVAnalyzer(binCount: 8)
+
+        // Uniform distribution: maximum entropy
+        let uniform = Array(stride(from: 700.0, through: 900.0, by: 1.0))
+        let highEntropy = analyzer.shannonEntropy(uniform)
+        XCTAssertGreaterThan(highEntropy, 2.0, "Uniform RR intervals should have high entropy")
+
+        // Nearly constant: minimum entropy
+        let constant = Array(repeating: 800.0, count: 100) + [801.0]
+        let lowEntropy = analyzer.shannonEntropy(constant)
+        XCTAssertLessThan(lowEntropy, 1.0, "Constant RR intervals should have near-zero entropy")
+    }
+
+    func testHRVAnalyzerWithSignals() {
+        let analyzer = HRVAnalyzer()
+        let signals: [any HealthSignal] = (0..<10).map { i in
+            HRVSignal(
+                timestamp: Date().addingTimeInterval(Double(-10 + i)),
+                sdnn: 40 + Double(i),
+                rmssd: 35 + Double(i),
+                rrIntervals: [800, 810, 790, 820, 805]
+            )
+        }
+
+        let result = analyzer.analyze(signals: signals, context: AnalysisContext())
+        XCTAssertNotNil(result.score)
+        if let score = result.score {
+            XCTAssertGreaterThanOrEqual(score, 0.0)
+            XCTAssertLessThanOrEqual(score, 1.0)
+        }
+    }
+
+    // MARK: - MedicationAnalyzer
+
+    func testMedicationAnalyzerNoData() {
+        let analyzer = MedicationAnalyzer()
+        let result = analyzer.analyze(signals: [], context: AnalysisContext())
+
+        XCTAssertNil(result.score)
+        XCTAssertEqual(result.signalType, .medication)
+    }
+
+    func testMedicationAnalyzerPerfectAdherence() {
+        let analyzer = MedicationAnalyzer(windowDays: 7)
+        let signals: [any HealthSignal] = (0..<7).map { i in
+            MedicationSignal(
+                timestamp: Date().addingTimeInterval(Double(-86400 * i)),
+                medicationId: "rx-1",
+                name: LocalizedString(en: "TestMed", fr: "TestMed"),
+                doseValue: 100,
+                doseUnit: "mg",
+                event: .taken
+            )
+        }
+
+        let result = analyzer.analyze(signals: signals, context: AnalysisContext())
+        XCTAssertEqual(result.score, 1.0, "All doses taken should yield 100% adherence")
+        XCTAssertEqual(result.status, .normal)
+    }
+
+    func testMedicationAnalyzerMixedAdherence() {
+        let analyzer = MedicationAnalyzer(windowDays: 7)
+        let signals: [any HealthSignal] = [
+            MedicationSignal(
+                timestamp: Date(),
+                medicationId: "rx-1",
+                name: LocalizedString(en: "Med", fr: "Med"),
+                doseValue: 100, doseUnit: "mg", event: .taken
+            ),
+            MedicationSignal(
+                timestamp: Date().addingTimeInterval(-86400),
+                medicationId: "rx-1",
+                name: LocalizedString(en: "Med", fr: "Med"),
+                doseValue: 100, doseUnit: "mg", event: .missed
+            ),
+        ]
+
+        let result = analyzer.analyze(signals: signals, context: AnalysisContext())
+        XCTAssertNotNil(result.score)
+        XCTAssertEqual(result.score!, 0.5, accuracy: 0.01, "1 taken + 1 missed = 50%")
+    }
+
+    // MARK: - FeedbackEngine
+
+    func testFeedbackEngineMultiSignal() {
+        let engine = FeedbackEngine()
+        engine.register(HRVAnalyzer())
+        engine.register(MedicationAnalyzer())
+
+        // Ingest HRV
+        engine.ingest(HRVSignal(
+            timestamp: Date(),
+            sdnn: 42,
+            rmssd: 38,
+            rrIntervals: [800, 810, 790, 820]
+        ))
+
+        // Ingest medication
+        engine.ingest(MedicationSignal(
+            timestamp: Date(),
+            medicationId: "rx-1",
+            name: LocalizedString(en: "Aspirin", fr: "Aspirine"),
+            doseValue: 81,
+            doseUnit: "mg",
+            event: .taken
+        ))
+
+        let results = engine.analyzeAll()
+
+        XCTAssertNotNil(results[.heartRateVariability])
+        XCTAssertNotNil(results[.medication])
+        XCTAssertEqual(results.count, 2)
+    }
+
+    func testFeedbackEngineLatestInsight() {
+        let engine = FeedbackEngine()
+        engine.register(HRVAnalyzer())
+
+        XCTAssertNil(engine.latestInsight(for: .heartRateVariability))
+
+        _ = engine.analyze(for: .heartRateVariability)
+
+        XCTAssertNotNil(engine.latestInsight(for: .heartRateVariability))
+    }
+
+    // MARK: - AnalysisInsight Codable
+
+    func testAnalysisInsightCodable() throws {
+        let insight = AnalysisInsight(
+            signalType: .medication,
+            score: 0.85,
+            trend: .improving,
+            status: .normal,
+            summary: LocalizedString(en: "Good adherence", fr: "Bonne adhérence")
+        )
+
+        let data = try JSONEncoder().encode(insight)
+        let decoded = try JSONDecoder().decode(AnalysisInsight.self, from: data)
+
+        XCTAssertEqual(decoded.signalType, .medication)
+        XCTAssertEqual(decoded.score, 0.85)
+        XCTAssertEqual(decoded.trend, .improving)
+        XCTAssertEqual(decoded.status, .normal)
+    }
+
+    // MARK: - BiofeedbackSnapshot with Insights
+
+    func testBiofeedbackSnapshotFromFeedbackEngine() throws {
+        let insight = AnalysisInsight(
+            signalType: .heartRateVariability,
+            score: 0.72,
+            trend: .improving,
+            status: .normal,
+            summary: LocalizedString(en: "Focused", fr: "Concentré")
+        )
+
+        let snapshot = BiofeedbackSnapshot(
+            heartRate: 68,
+            activeCalories: 12.5,
+            feedbackInsights: [.heartRateVariability: insight]
+        )
+
+        XCTAssertEqual(snapshot.sciScore, 0.72)
+        XCTAssertEqual(snapshot.sciTrend, .improving)
+        XCTAssertEqual(snapshot.insights.count, 1)
+
+        // Verify Codable roundtrip
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(BiofeedbackSnapshot.self, from: data)
+        XCTAssertEqual(decoded.sciScore, 0.72)
+        XCTAssertEqual(decoded.insights[.heartRateVariability]?.score, 0.72)
+    }
+}
