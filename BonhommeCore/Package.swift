@@ -17,5 +17,10 @@ let package = Package(
             name: "BonhommeCore",
             path: "Sources/BonhommeCore"
         ),
+        .testTarget(
+            name: "BonhommeCoreTests",
+            dependencies: ["BonhommeCore"],
+            path: "Tests/BonhommeCoreTests"
+        ),
     ]
 )
