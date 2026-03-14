@@ -76,24 +76,42 @@ struct WorkoutFlowView: View {
 
     private func activePoseView(poseIndex: Int) -> some View {
         let pose = viewModel.plan.poses[poseIndex]
-        return VStack {
+        let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
+        return VStack(spacing: 0) {
             Spacer()
 
-            // Pose visual placeholder
-            Image(systemName: "figure.yoga")
-                .font(.system(size: 120))
-                .foregroundStyle(.cyan.opacity(0.4))
+            // Category icon — specific to this pose's target area
+            Image(systemName: pose.category.symbolName)
+                .font(.system(size: 80))
+                .foregroundStyle(catColor.opacity(0.35))
+                .shadow(color: catColor.opacity(0.2), radius: 16)
 
             Text(pose.name.localized)
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .padding(.top, 16)
 
+            // Difficulty dots + category label
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { i in
+                        Circle()
+                            .fill(i < pose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                Text(pose.category.localizedName.localized)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .padding(.top, 6)
+
             Text(pose.description.localized)
                 .font(.system(size: 16))
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+                .padding(.top, 10)
 
             // Countdown
             Text("\(Int(viewModel.poseTimeRemaining))")
@@ -101,7 +119,22 @@ struct WorkoutFlowView: View {
                 .monospacedDigit()
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
-                .padding(.top, 24)
+                .padding(.top, 20)
+
+            // Breathing cue
+            if !pose.breathingPattern.localized.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: "wind")
+                        .font(.system(size: 12))
+                        .foregroundStyle(catColor.opacity(0.6))
+                    Text(pose.breathingPattern.localized)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .lineLimit(1)
+                .padding(.horizontal, 40)
+                .padding(.top, 6)
+            }
 
             Spacer()
 
@@ -133,23 +166,43 @@ struct WorkoutFlowView: View {
     }
 
     private func transitionView(nextIndex: Int, seconds: Int) -> some View {
-        VStack(spacing: 24) {
+        let nextPose = nextIndex < viewModel.plan.poses.count ? viewModel.plan.poses[nextIndex] : nil
+        let catColor = nextPose.map { Color(hue: $0.category.accentHue, saturation: 0.7, brightness: 0.9) } ?? .cyan
+        return VStack(spacing: 20) {
             Spacer()
 
             Text(LocalizedString(en: "Next Up", fr: "Prochaine posture").localized)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
 
-            if nextIndex < viewModel.plan.poses.count {
-                Text(viewModel.plan.poses[nextIndex].name.localized)
+            if let nextPose {
+                Image(systemName: nextPose.category.symbolName)
+                    .font(.system(size: 48))
+                    .foregroundStyle(catColor.opacity(0.5))
+
+                Text(nextPose.name.localized)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
+
+                // Difficulty + category
+                HStack(spacing: 10) {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(i < nextPose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    Text(nextPose.category.localizedName.localized)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
             }
 
             Text("\(seconds)")
                 .font(.system(size: 72, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.cyan)
+                .foregroundStyle(catColor)
                 .contentTransition(.numericText())
 
             Spacer()
