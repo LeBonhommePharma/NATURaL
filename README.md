@@ -8,7 +8,7 @@
 ║    ██║╚██╗██║██╔══██║   ██║   ██║   ██║██╔══██╗██╔══██║ ║
 ║    ██║ ╚████║██║  ██║   ██║   ╚██████╔╝██║  ██║██║  ██║ ║
 ║    ╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ║
-║                      L  E  A  F  G  R  E  E  N            ║
+║               E  N  T  R  O  P  Y     E  D  I  T  I  O  N  ║
 ║                                                          ║
 ║        Biofeedback-Driven Chair Yoga for Every           ║
 ║                   Apple Platform                         ║
@@ -42,19 +42,19 @@
 ---
 
 ```
-          Pokemon NATURaL              TRAINER CARD
+           NATURaL RPG                 TRAINER CARD
    ╔════════════════════════╗    ╔═══════════════════════╗
    ║  Press START to begin  ║    ║ NAME: Bonhomme        ║
    ║                        ║    ║ REGION: Apple          ║
    ║   ◄ NEW GAME ►        ║    ║ BADGES: 13             ║
-   ║     CONTINUE           ║    ║ POKÉDEX: 26/26         ║
+   ║     CONTINUE           ║    ║ CODEX: 26/26           ║
    ║     OPTIONS            ║    ║ TIME: ∞                ║
    ╚════════════════════════╝    ╚═══════════════════════╝
 ```
 
 ---
 
-## Pokédex Entry #001 — Overview
+## Codex Entry #001 — Overview
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -91,7 +91,7 @@ SCI score:             0 ──────────── 50 ─────
 
 ## Moves & Abilities
 
-> *NATURaL learned the following moves!*
+> *NATURaL acquired the following skills!*
 
 ### MOVE 1 — Pose Engine `NORMAL`
 
@@ -130,7 +130,7 @@ SCI score:             0 ──────────── 50 ─────
 
 ### ABILITY — Multi-Signal Analysis Engine `DRAGON`
 
-*It's super effective!* The analysis pipeline is built on a protocol-driven architecture that generalizes the SCI methodology to any health signal:
+*Critical hit!* The analysis pipeline is built on a protocol-driven architecture that generalizes the SCI methodology to any health signal:
 
 ```
 HealthSignal (protocol)          SignalAnalyzer (protocol)
@@ -340,9 +340,9 @@ On-device insight generation via the FoundationModels framework:
 
 ---
 
-## Pokédex — Pose Catalog
+## Codex — Pose Catalog
 
-> *Gotta stretch 'em all!*
+> *Collect every pose!*
 
 ### Difficulty Distribution
 
@@ -365,7 +365,7 @@ On-device insight generation via the FoundationModels framework:
 | Advanced Chair Yoga | 8 | ~6 min | Advanced | Premium |
 
 <details>
-<summary><strong>Full Pokédex (click to expand)</strong></summary>
+<summary><strong>Full Codex (click to expand)</strong></summary>
 
 **COMMON — Beginner (Free)**
 1. Seated Mountain — *Montagne assise*
@@ -518,7 +518,7 @@ NATURaL/
 
 ### Quick Start
 
-> *Professor Oak: "Are you ready? Your very own NATURaL adventure is about to unfold!"*
+> *The Professor: "Are you ready? Your very own NATURaL adventure is about to unfold!"*
 
 ```bash
 # Clone
@@ -553,9 +553,9 @@ open Bonhomme.xcodeproj    # or .xcworkspace
 
 ---
 
-## Gym Badge Challenge — Testing
+## Arena Challenge — Testing
 
-> *"You've defeated the GYM LEADER! You earned the test badge!"*
+> *"You've defeated the ARENA MASTER! You earned the test badge!"*
 
 ```bash
 # BonhommeCore unit tests (platform-agnostic)
@@ -568,7 +568,7 @@ xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhon
 xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
 ```
 
-### Gym Badges Earned
+### Arena Badges Earned
 
 | Badge | Tests | Scope |
 |-------|-------|-------|
@@ -592,7 +592,7 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  LEGENDARY POKÉMON ENCOUNTERED!                         │
+│  LEGENDARY ALLIES ENCOUNTERED!                         │
 │                                                         │
 │  Shannon          — Entropy collapse detection.         │
 │                     Provides the mathematical           │
