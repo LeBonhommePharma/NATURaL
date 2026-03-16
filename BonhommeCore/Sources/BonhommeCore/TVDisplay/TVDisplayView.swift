@@ -70,7 +70,7 @@ public struct TVDisplayView: View {
                 Image(systemName: "pause.circle.fill")
                     .font(.system(size: 64))
                     .foregroundStyle(.white.opacity(0.8))
-                Text(LocalizedString(en: "Paused", fr: "En pause").localized)
+                Text(LocalizedString(en: "Paused", fr: "En pause", es: "En pausa", ja: "一時停止", zh: "已暂停", ko: "일시 정지", ru: "Пауза", de: "Pausiert", ar: "متوقف مؤقتًا").localized)
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.8))
             }
@@ -95,7 +95,7 @@ public struct TVIdleView: View {
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text(LocalizedString(en: "Waiting for workout session...", fr: "En attente d'une séance d'entraînement...").localized)
+                Text(LocalizedString(en: "Waiting for workout session...", fr: "En attente d'une séance d'entraînement...", es: "Esperando la sesión de entrenamiento...", ja: "ワークアウトセッションを待っています...", zh: "正在等待训练课程...", ko: "운동 세션을 기다리는 중...", ru: "Ожидание тренировки...", de: "Warten auf Trainingseinheit...", ar: "في انتظار جلسة التمرين...").localized)
                     .font(.system(size: 20, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.5))
 

@@ -121,7 +121,14 @@ public struct SelectivityEntropyAnalyzer: Sendable {
             existingSpecialAttack: existingStat,
             summary: LocalizedString(
                 en: "\(substanceId): H_selectivity = \(hText) bits across \(n) targets. Normalized selectivity: \(normText)%. Dominant: \(dominant.targetId).",
-                fr: "\(substanceId) : H_sélectivité = \(hText) bits sur \(n) cibles. Sélectivité normalisée : \(normText) %. Dominante : \(dominant.targetId)."
+                fr: "\(substanceId) : H_sélectivité = \(hText) bits sur \(n) cibles. Sélectivité normalisée : \(normText) %. Dominante : \(dominant.targetId).",
+                es: "\(substanceId): H_selectividad = \(hText) bits en \(n) dianas. Selectividad normalizada: \(normText)%. Dominante: \(dominant.targetId).",
+                ja: "\(substanceId): H_選択性 = \(hText)ビット（\(n)標的）。正規化選択性: \(normText)%。主要標的: \(dominant.targetId)。",
+                zh: "\(substanceId)：H_选择性 = \(hText)比特，跨\(n)个靶点。归一化选择性：\(normText)%。主要靶点：\(dominant.targetId)。",
+                ko: "\(substanceId): H_선택성 = \(hText)비트, \(n)개 표적. 정규화 선택성: \(normText)%. 주요 표적: \(dominant.targetId).",
+                ru: "\(substanceId): H_селективность = \(hText) бит по \(n) мишеням. Нормализованная селективность: \(normText)%. Доминантная: \(dominant.targetId).",
+                de: "\(substanceId): H_Selektivität = \(hText) Bit über \(n) Ziele. Normalisierte Selektivität: \(normText)%. Dominant: \(dominant.targetId).",
+                ar: "\(substanceId): H_الانتقائية = \(hText) بت عبر \(n) أهداف. الانتقائية المعيارية: \(normText)%. السائد: \(dominant.targetId)."
             )
         )
     }

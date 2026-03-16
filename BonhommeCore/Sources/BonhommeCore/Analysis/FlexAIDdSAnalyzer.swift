@@ -181,12 +181,26 @@ public struct FlexAIDdSResult: Sendable {
         if bindingDetected {
             return LocalizedString(
                 en: "Binding entropy penalty detected: ΔS_config = \(deltaText) bits (\(bondCount) bonds, \(lossText)% mean loss). S_free = \(freeText), S_bound = \(boundText).",
-                fr: "Pénalité entropique de liaison détectée : ΔS_config = \(deltaText) bits (\(bondCount) liaisons, \(lossText) % perte moyenne). S_libre = \(freeText), S_lié = \(boundText)."
+                fr: "Pénalité entropique de liaison détectée : ΔS_config = \(deltaText) bits (\(bondCount) liaisons, \(lossText) % perte moyenne). S_libre = \(freeText), S_lié = \(boundText).",
+                es: "Penalización entrópica de unión detectada: ΔS_config = \(deltaText) bits (\(bondCount) enlaces, \(lossText) % pérdida media). S_libre = \(freeText), S_unido = \(boundText).",
+                ja: "結合エントロピーペナルティ検出：ΔS_config = \(deltaText) ビット（\(bondCount) 結合、平均損失 \(lossText)%）。S_自由 = \(freeText)、S_結合 = \(boundText)。",
+                zh: "检测到结合熵罚值：ΔS_config = \(deltaText) 比特（\(bondCount) 个键，平均损失 \(lossText)%）。S_自由 = \(freeText)，S_结合 = \(boundText)。",
+                ko: "결합 엔트로피 페널티 감지: ΔS_config = \(deltaText) 비트 (\(bondCount)개 결합, 평균 손실 \(lossText)%). S_자유 = \(freeText), S_결합 = \(boundText).",
+                ru: "Обнаружен энтропийный штраф связывания: ΔS_config = \(deltaText) бит (\(bondCount) связей, средняя потеря \(lossText) %). S_свободное = \(freeText), S_связанное = \(boundText).",
+                de: "Bindungsentropiestrafe erkannt: ΔS_config = \(deltaText) Bits (\(bondCount) Bindungen, \(lossText) % mittlerer Verlust). S_frei = \(freeText), S_gebunden = \(boundText).",
+                ar: "اكتُشفت عقوبة إنتروبيا الارتباط: ΔS_config = \(deltaText) بت (\(bondCount) روابط، متوسط الفقد \(lossText)٪). S_حر = \(freeText)، S_مرتبط = \(boundText)."
             )
         } else {
             return LocalizedString(
                 en: "No significant binding entropy penalty: ΔS_config = \(deltaText) bits (\(bondCount) bonds).",
-                fr: "Aucune pénalité entropique significative : ΔS_config = \(deltaText) bits (\(bondCount) liaisons)."
+                fr: "Aucune pénalité entropique significative : ΔS_config = \(deltaText) bits (\(bondCount) liaisons).",
+                es: "Sin penalización entrópica de unión significativa: ΔS_config = \(deltaText) bits (\(bondCount) enlaces).",
+                ja: "有意な結合エントロピーペナルティなし：ΔS_config = \(deltaText) ビット（\(bondCount) 結合）。",
+                zh: "无显著结合熵罚值：ΔS_config = \(deltaText) 比特（\(bondCount) 个键）。",
+                ko: "유의미한 결합 엔트로피 페널티 없음: ΔS_config = \(deltaText) 비트 (\(bondCount)개 결합).",
+                ru: "Значимого энтропийного штрафа связывания нет: ΔS_config = \(deltaText) бит (\(bondCount) связей).",
+                de: "Keine signifikante Bindungsentropiestrafe: ΔS_config = \(deltaText) Bits (\(bondCount) Bindungen).",
+                ar: "لا عقوبة إنتروبيا ارتباط ملحوظة: ΔS_config = \(deltaText) بت (\(bondCount) روابط)."
             )
         }
     }

@@ -63,7 +63,14 @@ public struct ConsistencyReport: Sendable {
     public var summary: LocalizedString {
         LocalizedString(
             en: "Consistency check: \(substancesChecked) substances, \(issues.count) issues (\(errorCount) errors, \(warningCount) warnings).",
-            fr: "Vérification de cohérence : \(substancesChecked) substances, \(issues.count) problèmes (\(errorCount) erreurs, \(warningCount) avertissements)."
+            fr: "Vérification de cohérence : \(substancesChecked) substances, \(issues.count) problèmes (\(errorCount) erreurs, \(warningCount) avertissements).",
+            es: "Verificación de consistencia: \(substancesChecked) sustancias, \(issues.count) problemas (\(errorCount) errores, \(warningCount) advertencias).",
+            ja: "整合性チェック: \(substancesChecked)物質、\(issues.count)件の問題（\(errorCount)件のエラー、\(warningCount)件の警告）。",
+            zh: "一致性检查：\(substancesChecked)种物质，\(issues.count)个问题（\(errorCount)个错误，\(warningCount)个警告）。",
+            ko: "일관성 검사: \(substancesChecked)개 물질, \(issues.count)개 문제 (\(errorCount)개 오류, \(warningCount)개 경고).",
+            ru: "Проверка согласованности: \(substancesChecked) веществ, \(issues.count) проблем (\(errorCount) ошибок, \(warningCount) предупреждений).",
+            de: "Konsistenzprüfung: \(substancesChecked) Substanzen, \(issues.count) Probleme (\(errorCount) Fehler, \(warningCount) Warnungen).",
+            ar: "فحص الاتساق: \(substancesChecked) مادة، \(issues.count) مشكلة (\(errorCount) أخطاء، \(warningCount) تحذيرات)."
         )
     }
 
@@ -109,7 +116,14 @@ public struct ProfileConsistencyValidator: Sendable {
                 substanceId: id, issueType: .missingPKProfile, severity: .warning,
                 detail: LocalizedString(
                     en: "\(id) has no PharmacokineticProfile",
-                    fr: "\(id) n'a pas de PharmacokineticProfile"
+                    fr: "\(id) n'a pas de PharmacokineticProfile",
+                    es: "\(id) no tiene PharmacokineticProfile",
+                    ja: "\(id)にPharmacokineticProfileがありません",
+                    zh: "\(id)没有PharmacokineticProfile",
+                    ko: "\(id)에 PharmacokineticProfile이 없습니다",
+                    ru: "\(id) не имеет PharmacokineticProfile",
+                    de: "\(id) hat kein PharmacokineticProfile",
+                    ar: "\(id) لا يملك PharmacokineticProfile"
                 )
             ))
         }
@@ -119,7 +133,14 @@ public struct ProfileConsistencyValidator: Sendable {
                 substanceId: id, issueType: .missingBindingEntropyProfile, severity: .warning,
                 detail: LocalizedString(
                     en: "\(id) has no BindingEntropyProfile",
-                    fr: "\(id) n'a pas de BindingEntropyProfile"
+                    fr: "\(id) n'a pas de BindingEntropyProfile",
+                    es: "\(id) no tiene BindingEntropyProfile",
+                    ja: "\(id)にBindingEntropyProfileがありません",
+                    zh: "\(id)没有BindingEntropyProfile",
+                    ko: "\(id)에 BindingEntropyProfile이 없습니다",
+                    ru: "\(id) не имеет BindingEntropyProfile",
+                    de: "\(id) hat kein BindingEntropyProfile",
+                    ar: "\(id) لا يملك BindingEntropyProfile"
                 )
             ))
         }
@@ -130,7 +151,14 @@ public struct ProfileConsistencyValidator: Sendable {
                 substanceId: id, issueType: .missingThermodynamicProfile, severity: .warning,
                 detail: LocalizedString(
                     en: "\(id) has no ThermodynamicBindingProfile",
-                    fr: "\(id) n'a pas de ThermodynamicBindingProfile"
+                    fr: "\(id) n'a pas de ThermodynamicBindingProfile",
+                    es: "\(id) no tiene ThermodynamicBindingProfile",
+                    ja: "\(id)にThermodynamicBindingProfileがありません",
+                    zh: "\(id)没有ThermodynamicBindingProfile",
+                    ko: "\(id)에 ThermodynamicBindingProfile이 없습니다",
+                    ru: "\(id) не имеет ThermodynamicBindingProfile",
+                    de: "\(id) hat kein ThermodynamicBindingProfile",
+                    ar: "\(id) لا يملك ThermodynamicBindingProfile"
                 )
             ))
         }
@@ -147,7 +175,14 @@ public struct ProfileConsistencyValidator: Sendable {
                     severity: delta >= 2 ? .error : .warning,
                     detail: LocalizedString(
                         en: "\(id) Defense: curated=\(species.stats.defense), derived=\(derivedDefense) (from t½=\(pk.halfLifeMinutes) min)",
-                        fr: "\(id) Défense : curé=\(species.stats.defense), dérivé=\(derivedDefense) (de t½=\(pk.halfLifeMinutes) min)"
+                        fr: "\(id) Défense : curé=\(species.stats.defense), dérivé=\(derivedDefense) (de t½=\(pk.halfLifeMinutes) min)",
+                        es: "\(id) Defensa: curado=\(species.stats.defense), derivado=\(derivedDefense) (de t½=\(pk.halfLifeMinutes) min)",
+                        ja: "\(id) 防御: 管理値=\(species.stats.defense), 導出値=\(derivedDefense) (t½=\(pk.halfLifeMinutes)分より)",
+                        zh: "\(id) 防御：策划值=\(species.stats.defense)，推导值=\(derivedDefense)（来自t½=\(pk.halfLifeMinutes)分钟）",
+                        ko: "\(id) 방어: 큐레이션=\(species.stats.defense), 도출=\(derivedDefense) (t½=\(pk.halfLifeMinutes)분에서)",
+                        ru: "\(id) Защита: курированное=\(species.stats.defense), расчётное=\(derivedDefense) (из t½=\(pk.halfLifeMinutes) мин)",
+                        de: "\(id) Verteidigung: kuratiert=\(species.stats.defense), abgeleitet=\(derivedDefense) (aus t½=\(pk.halfLifeMinutes) Min)",
+                        ar: "\(id) الدفاع: منسق=\(species.stats.defense)، مشتق=\(derivedDefense) (من t½=\(pk.halfLifeMinutes) دقيقة)"
                     )
                 ))
             }
@@ -160,7 +195,14 @@ public struct ProfileConsistencyValidator: Sendable {
                     severity: speedDelta >= 2 ? .error : .warning,
                     detail: LocalizedString(
                         en: "\(id) Speed: curated=\(species.stats.speed), derived=\(derivedSpeed) (from onset=\(pk.onsetMinutes) min)",
-                        fr: "\(id) Vitesse : curé=\(species.stats.speed), dérivé=\(derivedSpeed) (de début=\(pk.onsetMinutes) min)"
+                        fr: "\(id) Vitesse : curé=\(species.stats.speed), dérivé=\(derivedSpeed) (de début=\(pk.onsetMinutes) min)",
+                        es: "\(id) Velocidad: curado=\(species.stats.speed), derivado=\(derivedSpeed) (de inicio=\(pk.onsetMinutes) min)",
+                        ja: "\(id) 速度: 管理値=\(species.stats.speed), 導出値=\(derivedSpeed) (発現=\(pk.onsetMinutes)分より)",
+                        zh: "\(id) 速度：策划值=\(species.stats.speed)，推导值=\(derivedSpeed)（来自起效=\(pk.onsetMinutes)分钟）",
+                        ko: "\(id) 속도: 큐레이션=\(species.stats.speed), 도출=\(derivedSpeed) (발현=\(pk.onsetMinutes)분에서)",
+                        ru: "\(id) Скорость: курированное=\(species.stats.speed), расчётное=\(derivedSpeed) (из начала=\(pk.onsetMinutes) мин)",
+                        de: "\(id) Geschwindigkeit: kuratiert=\(species.stats.speed), abgeleitet=\(derivedSpeed) (aus Onset=\(pk.onsetMinutes) Min)",
+                        ar: "\(id) السرعة: منسق=\(species.stats.speed)، مشتق=\(derivedSpeed) (من بداية التأثير=\(pk.onsetMinutes) دقيقة)"
                     )
                 ))
             }
@@ -176,7 +218,14 @@ public struct ProfileConsistencyValidator: Sendable {
                     severity: delta >= 2 ? .error : .warning,
                     detail: LocalizedString(
                         en: "\(id) Attack: curated=\(species.stats.attack), derived=\(derivedAttack) (from Ki=\(ki) nM)",
-                        fr: "\(id) Attaque : curé=\(species.stats.attack), dérivé=\(derivedAttack) (de Ki=\(ki) nM)"
+                        fr: "\(id) Attaque : curé=\(species.stats.attack), dérivé=\(derivedAttack) (de Ki=\(ki) nM)",
+                        es: "\(id) Ataque: curado=\(species.stats.attack), derivado=\(derivedAttack) (de Ki=\(ki) nM)",
+                        ja: "\(id) 攻撃: 管理値=\(species.stats.attack), 導出値=\(derivedAttack) (Ki=\(ki) nMより)",
+                        zh: "\(id) 攻击：策划值=\(species.stats.attack)，推导值=\(derivedAttack)（来自Ki=\(ki) nM）",
+                        ko: "\(id) 공격: 큐레이션=\(species.stats.attack), 도출=\(derivedAttack) (Ki=\(ki) nM에서)",
+                        ru: "\(id) Атака: курированное=\(species.stats.attack), расчётное=\(derivedAttack) (из Ki=\(ki) нМ)",
+                        de: "\(id) Angriff: kuratiert=\(species.stats.attack), abgeleitet=\(derivedAttack) (aus Ki=\(ki) nM)",
+                        ar: "\(id) الهجوم: منسق=\(species.stats.attack)، مشتق=\(derivedAttack) (من Ki=\(ki) نانومول)"
                     )
                 ))
             }
@@ -191,7 +240,14 @@ public struct ProfileConsistencyValidator: Sendable {
                     severity: delta >= 2 ? .error : .warning,
                     detail: LocalizedString(
                         en: "\(id) Sp.Atk: curated=\(species.stats.specialAttack), derived=\(derivedSpAtk)",
-                        fr: "\(id) Att.Sp. : curé=\(species.stats.specialAttack), dérivé=\(derivedSpAtk)"
+                        fr: "\(id) Att.Sp. : curé=\(species.stats.specialAttack), dérivé=\(derivedSpAtk)",
+                        es: "\(id) At.Esp.: curado=\(species.stats.specialAttack), derivado=\(derivedSpAtk)",
+                        ja: "\(id) 特攻: 管理値=\(species.stats.specialAttack), 導出値=\(derivedSpAtk)",
+                        zh: "\(id) 特攻：策划值=\(species.stats.specialAttack)，推导值=\(derivedSpAtk)",
+                        ko: "\(id) 특수공격: 큐레이션=\(species.stats.specialAttack), 도출=\(derivedSpAtk)",
+                        ru: "\(id) Спец.Атака: курированное=\(species.stats.specialAttack), расчётное=\(derivedSpAtk)",
+                        de: "\(id) Sp.Angr.: kuratiert=\(species.stats.specialAttack), abgeleitet=\(derivedSpAtk)",
+                        ar: "\(id) هجوم خاص: منسق=\(species.stats.specialAttack)، مشتق=\(derivedSpAtk)"
                     )
                 ))
             }
@@ -204,7 +260,14 @@ public struct ProfileConsistencyValidator: Sendable {
                     substanceId: id, issueType: .thermodynamicInconsistency, severity: .error,
                     detail: LocalizedString(
                         en: "\(id):\(profile.targetId) ITC inconsistent: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
-                        fr: "\(id):\(profile.targetId) ITC incohérent : ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)"
+                        fr: "\(id):\(profile.targetId) ITC incohérent : ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        es: "\(id):\(profile.targetId) ITC inconsistente: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        ja: "\(id):\(profile.targetId) ITC不整合: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        zh: "\(id):\(profile.targetId) ITC不一致：ΔG=\(thermo.deltaGKcal)，ΔH=\(thermo.deltaHKcal)，-TΔS=\(thermo.minusTDeltaSKcal)",
+                        ko: "\(id):\(profile.targetId) ITC 불일치: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        ru: "\(id):\(profile.targetId) ITC несогласованность: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        de: "\(id):\(profile.targetId) ITC inkonsistent: ΔG=\(thermo.deltaGKcal), ΔH=\(thermo.deltaHKcal), -TΔS=\(thermo.minusTDeltaSKcal)",
+                        ar: "\(id):\(profile.targetId) ITC غير متسق: ΔG=\(thermo.deltaGKcal)، ΔH=\(thermo.deltaHKcal)، -TΔS=\(thermo.minusTDeltaSKcal)"
                     )
                 ))
             }

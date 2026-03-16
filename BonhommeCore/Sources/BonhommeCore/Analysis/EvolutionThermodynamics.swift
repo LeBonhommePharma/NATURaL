@@ -213,7 +213,14 @@ public struct EvolutionThermodynamics: Sendable {
             safetyFlag: flag,
             summary: LocalizedString(
                 en: "\(from) → \(to): ΔΔG = \(ddGText) kcal/mol, fold change = \(foldText). Safety: \(flag.rawValue).",
-                fr: "\(from) → \(to) : ΔΔG = \(ddGText) kcal/mol, changement = \(foldText). Sécurité : \(flag.rawValue)."
+                fr: "\(from) → \(to) : ΔΔG = \(ddGText) kcal/mol, changement = \(foldText). Sécurité : \(flag.rawValue).",
+                es: "\(from) → \(to): ΔΔG = \(ddGText) kcal/mol, cambio = \(foldText). Seguridad: \(flag.rawValue).",
+                ja: "\(from) → \(to): ΔΔG = \(ddGText) kcal/mol, 倍率変化 = \(foldText). 安全性: \(flag.rawValue).",
+                zh: "\(from) → \(to)：ΔΔG = \(ddGText) kcal/mol，倍数变化 = \(foldText)。安全性：\(flag.rawValue)。",
+                ko: "\(from) → \(to): ΔΔG = \(ddGText) kcal/mol, 배수 변화 = \(foldText). 안전성: \(flag.rawValue).",
+                ru: "\(from) → \(to): ΔΔG = \(ddGText) ккал/моль, кратность = \(foldText). Безопасность: \(flag.rawValue).",
+                de: "\(from) → \(to): ΔΔG = \(ddGText) kcal/mol, Faltungsänderung = \(foldText). Sicherheit: \(flag.rawValue).",
+                ar: "\(from) → \(to): ΔΔG = \(ddGText) كيلوكالوري/مول، التغير = \(foldText). السلامة: \(flag.rawValue)."
             )
         )
     }

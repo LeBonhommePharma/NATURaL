@@ -168,6 +168,7 @@ public struct LigandEfficiencyCalculator: Sendable {
         let beiText = bei.map { String(format: "%.1f", $0) } ?? "N/A"
         let lipEText = String(format: "%.1f", lipE)
 
+        let pKiText = String(format: "%.2f", pKi)
         return LigandEfficiencyResult(
             substanceId: descriptor.substanceId,
             targetId: profile.targetId,
@@ -176,8 +177,15 @@ public struct LigandEfficiencyCalculator: Sendable {
             lipE: lipE,
             pKi: pKi,
             summary: LocalizedString(
-                en: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(String(format: "%.2f", pKi)))",
-                fr: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(String(format: "%.2f", pKi)))"
+                en: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                fr: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                es: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                ja: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                zh: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText)，BEI=\(beiText)，LipE=\(lipEText)（pKi=\(pKiText)）",
+                ko: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                ru: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                de: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText), BEI=\(beiText), LipE=\(lipEText) (pKi=\(pKiText))",
+                ar: "\(descriptor.substanceId):\(profile.targetId) — LE=\(leText)، BEI=\(beiText)، LipE=\(lipEText) (pKi=\(pKiText))"
             )
         )
     }

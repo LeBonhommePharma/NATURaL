@@ -71,16 +71,34 @@ public struct CompensationResult: Sendable {
     public var summary: LocalizedString {
         let slopeText = String(format: "%.2f", slope)
         let r2Text = String(format: "%.3f", rSquared)
-        let typeText: String
-        let typeFr: String
+        let typeEn: String; let typeFr: String; let typeEs: String
+        let typeJa: String; let typeZh: String; let typeKo: String
+        let typeRu: String; let typeDe: String; let typeAr: String
         switch compensationType {
-        case .full: typeText = "full"; typeFr = "complète"
-        case .partial: typeText = "partial"; typeFr = "partielle"
-        case .none: typeText = "not significant"; typeFr = "non significative"
+        case .full:
+            typeEn = "full"; typeFr = "complète"; typeEs = "completa"
+            typeJa = "完全"; typeZh = "完全"; typeKo = "완전"
+            typeRu = "полная"; typeDe = "vollständig"; typeAr = "كاملة"
+        case .partial:
+            typeEn = "partial"; typeFr = "partielle"; typeEs = "parcial"
+            typeJa = "部分的"; typeZh = "部分"; typeKo = "부분적"
+            typeRu = "частичная"; typeDe = "teilweise"; typeAr = "جزئية"
+        case .none:
+            typeEn = "not significant"; typeFr = "non significative"; typeEs = "no significativa"
+            typeJa = "有意でない"; typeZh = "不显著"; typeKo = "유의하지 않음"
+            typeRu = "не значимая"; typeDe = "nicht signifikant"; typeAr = "غير معنوية"
         }
+        let intText = String(format: "%.1f", intercept)
         return LocalizedString(
-            en: "Enthalpy-entropy compensation (n=\(n)): -TΔS = \(slopeText)×ΔH + \(String(format: "%.1f", intercept)). R² = \(r2Text). Compensation: \(typeText). \(outliers.count) outlier(s).",
-            fr: "Compensation enthalpie-entropie (n=\(n)) : -TΔS = \(slopeText)×ΔH + \(String(format: "%.1f", intercept)). R² = \(r2Text). Compensation : \(typeFr). \(outliers.count) valeur(s) aberrante(s)."
+            en: "Enthalpy-entropy compensation (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). Compensation: \(typeEn). \(outliers.count) outlier(s).",
+            fr: "Compensation enthalpie-entropie (n=\(n)) : -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). Compensation : \(typeFr). \(outliers.count) valeur(s) aberrante(s).",
+            es: "Compensación entalpía-entropía (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). Compensación: \(typeEs). \(outliers.count) valor(es) atípico(s).",
+            ja: "エンタルピー・エントロピー補償 (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). 補償: \(typeJa). \(outliers.count)件の外れ値。",
+            zh: "焓熵补偿 (n=\(n))：-TΔS = \(slopeText)×ΔH + \(intText)。R² = \(r2Text)。补偿：\(typeZh)。\(outliers.count)个异常值。",
+            ko: "엔탈피-엔트로피 보상 (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). 보상: \(typeKo). \(outliers.count)개 이상치.",
+            ru: "Энтальпийно-энтропийная компенсация (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). Компенсация: \(typeRu). \(outliers.count) выброс(ов).",
+            de: "Enthalpie-Entropie-Kompensation (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). Kompensation: \(typeDe). \(outliers.count) Ausreißer.",
+            ar: "تعويض الإنثالبي-الإنتروبي (n=\(n)): -TΔS = \(slopeText)×ΔH + \(intText). R² = \(r2Text). التعويض: \(typeAr). \(outliers.count) قيمة شاذة."
         )
     }
 

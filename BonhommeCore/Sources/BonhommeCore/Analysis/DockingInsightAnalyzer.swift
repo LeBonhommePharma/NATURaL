@@ -37,7 +37,14 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
                 status: .normal,
                 summary: LocalizedString(
                     en: "No molecular docking data available.",
-                    fr: "Aucune donnée d'amarrage moléculaire disponible."
+                    fr: "Aucune donnée d'amarrage moléculaire disponible.",
+                    es: "No hay datos de acoplamiento molecular disponibles.",
+                    ja: "分子ドッキングデータがありません。",
+                    zh: "无分子对接数据。",
+                    ko: "분자 도킹 데이터가 없습니다.",
+                    ru: "Данные молекулярного докинга недоступны.",
+                    de: "Keine molekularen Docking-Daten verfügbar.",
+                    ar: "لا تتوفر بيانات الالتحام الجزيئي."
                 )
             )
         }
@@ -80,7 +87,14 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
             status: status,
             summary: LocalizedString(
                 en: "Binding entropy: ΔS = \(deltaText) bits (-TΔS = \(kcalText) kcal/mol). \(bondText) rotatable bonds analyzed for \(latest.substanceName.en).\(medNote)",
-                fr: "Entropie de liaison : ΔS = \(deltaText) bits (-TΔS = \(kcalText) kcal/mol). \(bondText) liaisons rotatives analysées pour \(latest.substanceName.fr).\(medNote)"
+                fr: "Entropie de liaison : ΔS = \(deltaText) bits (-TΔS = \(kcalText) kcal/mol). \(bondText) liaisons rotatives analysées pour \(latest.substanceName.fr).\(medNote)",
+                es: "Entropía de unión: ΔS = \(deltaText) bits (-TΔS = \(kcalText) kcal/mol). \(bondText) enlaces rotables analizados para \(latest.substanceName.en).\(medNote)",
+                ja: "結合エントロピー：ΔS = \(deltaText) ビット（-TΔS = \(kcalText) kcal/mol）。\(latest.substanceName.en) の回転可能結合 \(bondText) 本を解析。\(medNote)",
+                zh: "结合熵：ΔS = \(deltaText) 比特（-TΔS = \(kcalText) kcal/mol）。已分析 \(latest.substanceName.en) 的 \(bondText) 个可旋转键。\(medNote)",
+                ko: "결합 엔트로피: ΔS = \(deltaText) 비트 (-TΔS = \(kcalText) kcal/mol). \(latest.substanceName.en)의 회전 가능 결합 \(bondText)개 분석.\(medNote)",
+                ru: "Энтропия связывания: ΔS = \(deltaText) бит (-TΔS = \(kcalText) ккал/моль). Проанализировано \(bondText) вращаемых связей для \(latest.substanceName.en).\(medNote)",
+                de: "Bindungsentropie: ΔS = \(deltaText) Bits (-TΔS = \(kcalText) kcal/mol). \(bondText) drehbare Bindungen analysiert für \(latest.substanceName.en).\(medNote)",
+                ar: "إنتروبيا الارتباط: ΔS = \(deltaText) بت (-TΔS = \(kcalText) kcal/mol). تم تحليل \(bondText) روابط قابلة للدوران لـ \(latest.substanceName.en).\(medNote)"
             )
         )
     }

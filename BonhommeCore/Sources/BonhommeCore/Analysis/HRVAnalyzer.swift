@@ -46,7 +46,14 @@ public struct HRVAnalyzer: SignalAnalyzer, Sendable {
                 status: .normal,
                 summary: LocalizedString(
                     en: "No HRV data available yet.",
-                    fr: "Aucune donnée VRC disponible pour le moment."
+                    fr: "Aucune donnée VRC disponible pour le moment.",
+                    es: "No hay datos de VRC disponibles aún.",
+                    ja: "HRVデータはまだありません。",
+                    zh: "尚无心率变异性数据。",
+                    ko: "아직 HRV 데이터가 없습니다.",
+                    ru: "Данные ВСР ещё недоступны.",
+                    de: "Noch keine HRV-Daten verfügbar.",
+                    ar: "لا تتوفر بيانات تقلب معدل ضربات القلب بعد."
                 )
             )
         }
@@ -80,7 +87,14 @@ public struct HRVAnalyzer: SignalAnalyzer, Sendable {
             status: status,
             summary: LocalizedString(
                 en: "Focus coherence: \(scoreText)%.\(medNote)",
-                fr: "Cohérence de concentration : \(scoreText) %.\(medNote)"
+                fr: "Cohérence de concentration : \(scoreText) %.\(medNote)",
+                es: "Coherencia de concentración: \(scoreText) %.\(medNote)",
+                ja: "集中コヒーレンス：\(scoreText)%。\(medNote)",
+                zh: "专注一致性：\(scoreText)%。\(medNote)",
+                ko: "집중 코히어런스: \(scoreText)%.\(medNote)",
+                ru: "Когерентность концентрации: \(scoreText) %.\(medNote)",
+                de: "Fokus-Kohärenz: \(scoreText) %.\(medNote)",
+                ar: "تماسك التركيز: \(scoreText)٪.\(medNote)"
             )
         )
     }

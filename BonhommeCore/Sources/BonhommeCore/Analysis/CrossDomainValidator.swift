@@ -89,9 +89,24 @@ public struct CrossDomainValidator: Sendable {
             let sigText = isSignificant ? "significant" : "not significant"
             let sigFr = isSignificant ? "significative" : "non significative"
 
+            let sigEs = isSignificant ? "significativa" : "no significativa"
+            let sigJa = isSignificant ? "有意" : "非有意"
+            let sigZh = isSignificant ? "显著" : "不显著"
+            let sigKo = isSignificant ? "유의미함" : "유의미하지 않음"
+            let sigRu = isSignificant ? "значимая" : "незначимая"
+            let sigDe = isSignificant ? "signifikant" : "nicht signifikant"
+            let sigAr = isSignificant ? "ذات دلالة إحصائية" : "غير ذات دلالة إحصائية"
+
             return LocalizedString(
                 en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlation is \(sigText).",
-                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Corrélation \(sigFr)."
+                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Corrélation \(sigFr).",
+                es: "Validación interdominio (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlación \(sigEs).",
+                ja: "クロスドメイン検証（n=\(n)）：r = \(rText)、R² = \(r2Text)、MAE = \(maeText) ビット。相関は\(sigJa)。",
+                zh: "跨域验证（n=\(n)）：r = \(rText)，R² = \(r2Text)，MAE = \(maeText) 比特。相关性\(sigZh)。",
+                ko: "교차 도메인 검증 (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) 비트. 상관관계 \(sigKo).",
+                ru: "Кросс-доменная валидация (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) бит. Корреляция \(sigRu).",
+                de: "Domänenübergreifende Validierung (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) Bits. Korrelation \(sigDe).",
+                ar: "التحقق عبر المجالات (n=\(n)): r = \(rText)، R² = \(r2Text)، MAE = \(maeText) بت. الارتباط \(sigAr)."
             )
         }
 
@@ -291,7 +306,14 @@ public struct CrossDomainValidator: Sendable {
 
             return LocalizedString(
                 en: "Three-way validation (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                fr: "Validation tripartite (n=\(n)) : FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn)."
+                fr: "Validation tripartite (n=\(n)) : FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                es: "Validación tripartita (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ja: "三者間検証（n=\(n)）：FlexAID↔SCORPIO r=\(fs)、FlexAID↔NATURaL r=\(fn)、SCORPIO↔NATURaL r=\(sn)。",
+                zh: "三方验证（n=\(n)）：FlexAID↔SCORPIO r=\(fs)，FlexAID↔NATURaL r=\(fn)，SCORPIO↔NATURaL r=\(sn)。",
+                ko: "삼자 검증 (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ru: "Трёхсторонняя валидация (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                de: "Drei-Wege-Validierung (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ar: "التحقق الثلاثي (n=\(n)): FlexAID↔SCORPIO r=\(fs)، FlexAID↔NATURaL r=\(fn)، SCORPIO↔NATURaL r=\(sn)."
             )
         }
 

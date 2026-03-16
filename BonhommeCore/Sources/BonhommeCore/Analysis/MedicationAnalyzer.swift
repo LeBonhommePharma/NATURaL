@@ -29,7 +29,14 @@ public struct MedicationAnalyzer: SignalAnalyzer, Sendable {
                 status: .normal,
                 summary: LocalizedString(
                     en: "No medication data recorded.",
-                    fr: "Aucune donnée de médicament enregistrée."
+                    fr: "Aucune donnée de médicament enregistrée.",
+                    es: "No se han registrado datos de medicación.",
+                    ja: "服薬データが記録されていません。",
+                    zh: "尚未记录用药数据。",
+                    ko: "기록된 투약 데이터가 없습니다.",
+                    ru: "Данные о приёме лекарств не зарегистрированы.",
+                    de: "Keine Medikamentendaten erfasst.",
+                    ar: "لم يتم تسجيل بيانات الأدوية."
                 )
             )
         }
@@ -65,7 +72,17 @@ public struct MedicationAnalyzer: SignalAnalyzer, Sendable {
             score: adherence,
             trend: trend,
             status: status,
-            summary: LocalizedString(en: enSummary, fr: frSummary)
+            summary: LocalizedString(
+                en: enSummary,
+                fr: frSummary,
+                es: "Adherencia de \(windowDays) días: \(pct) %." + (!missedNames.isEmpty ? " Omitidos: \(missedNames.joined(separator: ", "))." : "") + hrvCorrelation,
+                ja: "\(windowDays)日間の服薬遵守率：\(pct)%。" + (!missedNames.isEmpty ? " 未服用：\(missedNames.joined(separator: "、"))。" : "") + hrvCorrelation,
+                zh: "\(windowDays)天服药依从性：\(pct)%。" + (!missedNames.isEmpty ? " 漏服：\(missedNames.joined(separator: "、"))。" : "") + hrvCorrelation,
+                ko: "\(windowDays)일 복약 순응도: \(pct)%." + (!missedNames.isEmpty ? " 누락: \(missedNames.joined(separator: ", "))." : "") + hrvCorrelation,
+                ru: "Приверженность за \(windowDays) дней: \(pct) %." + (!missedNames.isEmpty ? " Пропущено: \(missedNames.joined(separator: ", "))." : "") + hrvCorrelation,
+                de: "Adhärenz über \(windowDays) Tage: \(pct) %." + (!missedNames.isEmpty ? " Verpasst: \(missedNames.joined(separator: ", "))." : "") + hrvCorrelation,
+                ar: "الالتزام خلال \(windowDays) أيام: \(pct)٪." + (!missedNames.isEmpty ? " فائت: \(missedNames.joined(separator: "، "))." : "") + hrvCorrelation
+            )
         )
     }
 
