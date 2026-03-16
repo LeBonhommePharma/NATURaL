@@ -256,60 +256,6 @@ public struct CrossDomainValidator: Sendable {
         )
     }
 
-    /// Pearson correlation coefficient between two arrays.
-    private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        let n = Double(x.count)
-        guard n >= 2, x.count == y.count else { return 0 }
-
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-        var sumY2 = 0.0
-
-        for i in 0..<x.count {
-            let dx = x[i] - meanX
-            let dy = y[i] - meanY
-            sumXY += dx * dy
-            sumX2 += dx * dx
-            sumY2 += dy * dy
-        }
-
-        let denom = sqrt(sumX2 * sumY2)
-        guard denom > 0 else { return 0 }
-        return sumXY / denom
-    }
-
-    /// Simple linear regression: y = slope × x + intercept, plus MAE.
-    private func linearRegression(
-        x: [Double],
-        y: [Double]
-    ) -> (slope: Double, intercept: Double, mae: Double) {
-        let n = Double(x.count)
-        guard n >= 2 else { return (slope: 0, intercept: 0, mae: 0) }
-
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-
-        for i in 0..<x.count {
-            sumXY += (x[i] - meanX) * (y[i] - meanY)
-            sumX2 += (x[i] - meanX) * (x[i] - meanX)
-        }
-
-        let slope = sumX2 > 0 ? sumXY / sumX2 : 0
-        let intercept = meanY - slope * meanX
-
-        var totalError = 0.0
-        for i in 0..<x.count {
-            let predicted = slope * x[i] + intercept
-            totalError += abs(y[i] - predicted)
-        }
-        let mae = totalError / n
-
-        return (slope: slope, intercept: intercept, mae: mae)
-    }
+    // Statistics helpers delegated to shared utilities in EntropyCalculator.swift:
+    // pearsonCorrelation(_:_:) and linearRegression(x:y:)
 }

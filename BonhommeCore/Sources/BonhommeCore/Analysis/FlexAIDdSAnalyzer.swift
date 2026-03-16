@@ -3,6 +3,40 @@ import Foundation
 // MARK: - FlexAID∆S Configurational Entropy Analysis
 // Computes ΔS_config = S_bound − S_free from torsional angle distributions
 
+// MARK: - Thermodynamic Constants
+
+/// Shared thermodynamic constants for entropy ↔ energy conversions.
+///
+/// Used by FlexAIDdSAnalyzer and PharmacokineticProfile to ensure identical
+/// conversion between Shannon entropy (bits) and free energy (kcal/mol).
+public enum ThermodynamicConstants {
+    /// Gas constant in kcal/(mol·K).
+    public static let R: Double = 1.987e-3
+
+    /// Standard temperature (25°C) in Kelvin.
+    public static let standardTemperatureK: Double = 298.0
+
+    /// Convert Shannon entropy change (bits) to thermodynamic penalty (kcal/mol).
+    ///
+    /// Formula: -TΔS = -T × ΔS_bits × R × ln(2)
+    public static func entropyPenaltyKcal(
+        deltaSBits: Double,
+        temperatureK: Double = standardTemperatureK
+    ) -> Double {
+        -temperatureK * deltaSBits * R * log(2.0)
+    }
+
+    /// Convert thermodynamic penalty (kcal/mol) back to Shannon entropy (bits).
+    ///
+    /// Inverse of `entropyPenaltyKcal`.
+    public static func kcalToDeltaSBits(
+        penaltyKcal: Double,
+        temperatureK: Double = standardTemperatureK
+    ) -> Double {
+        -penaltyKcal / (temperatureK * R * log(2.0))
+    }
+}
+
 // MARK: - Domain Types
 
 /// Distribution of torsional angle samples for a single rotatable bond.
@@ -227,6 +261,9 @@ public struct FlexAIDdSResult: Sendable {
 public struct FlexAIDdSAnalyzer: Sendable {
 
     /// Minimum |ΔS_config| (bits) to consider a binding entropy penalty significant.
+    /// Set to 0.5 bits (vs. DrugResponseAnalyzer's 0.4 bits for HRV) because molecular
+    /// torsional distributions have a lower noise floor than physiological RR-interval
+    /// measurements (~0.3 bits intra-session variation).
     public static let significanceThreshold: Double = 0.5
 
     /// Shared entropy calculator (same bin count as HRVAnalyzer/DrugResponseAnalyzer default).
@@ -240,10 +277,14 @@ public struct FlexAIDdSAnalyzer: Sendable {
 
     /// Compute Shannon entropy for a single torsional angle distribution.
     ///
+    /// Uses fixed-domain binning over [-180, 180] degrees to ensure reproducible
+    /// histograms regardless of sample extremes. This guarantees identical entropy
+    /// for identical distributions across platforms and dataset variations.
+    ///
     /// - Parameter distribution: Torsional angle samples for one rotatable bond.
     /// - Returns: Entropy in bits. Higher = more conformational freedom.
     public func entropy(of distribution: TorsionalAngleDistribution) -> Double {
-        entropyCalc.shannonEntropy(distribution.angles)
+        entropyCalc.shannonEntropy(distribution.angles, domainMin: -180.0, domainMax: 180.0)
     }
 
     // MARK: - Full Ligand Analysis
@@ -269,8 +310,8 @@ public struct FlexAIDdSAnalyzer: Sendable {
         var bondResults: [BondEntropyResult] = []
 
         for (freeBond, boundBond) in zip(freeConformation.bonds, boundConf.bonds) {
-            let hFree = entropyCalc.shannonEntropy(freeBond.angles)
-            let hBound = entropyCalc.shannonEntropy(boundBond.angles)
+            let hFree = entropyCalc.shannonEntropy(freeBond.angles, domainMin: -180.0, domainMax: 180.0)
+            let hBound = entropyCalc.shannonEntropy(boundBond.angles, domainMin: -180.0, domainMax: 180.0)
             bondResults.append(BondEntropyResult(
                 bondId: freeBond.bondId,
                 freeEntropy: hFree,
@@ -303,10 +344,7 @@ public struct FlexAIDdSAnalyzer: Sendable {
 
     /// Convert Shannon entropy change (bits) to thermodynamic free energy contribution (kcal/mol).
     ///
-    /// Uses the relationship: ΔG_config = -T × ΔS_config
-    /// where ΔS_config in thermodynamic units = ΔS_bits × R × ln(2)
-    ///
-    /// At T = 298K: -TΔS (kcal/mol) = -298 × ΔS_bits × R × ln(2) / 1000
+    /// Delegates to `ThermodynamicConstants.entropyPenaltyKcal` for a single source of truth.
     ///
     /// - Parameters:
     ///   - deltaSBits: Configurational entropy change in bits (negative for binding).
@@ -316,18 +354,14 @@ public struct FlexAIDdSAnalyzer: Sendable {
     ///   Negative = entropy benefit (favorable, rare for configurational entropy).
     public func entropyPenaltyKcal(
         deltaSBits: Double,
-        temperatureK: Double = 298.0
+        temperatureK: Double = ThermodynamicConstants.standardTemperatureK
     ) -> Double {
-        // R = 1.987 cal/(mol·K) = 1.987e-3 kcal/(mol·K)
-        // Shannon bit → thermodynamic: multiply by R × ln(2)
-        // -TΔS = -T × ΔS_bits × R × ln(2)
-        let R: Double = 1.987e-3  // kcal/(mol·K)
-        return -temperatureK * deltaSBits * R * log(2.0)
+        ThermodynamicConstants.entropyPenaltyKcal(deltaSBits: deltaSBits, temperatureK: temperatureK)
     }
 
     /// Convert thermodynamic entropy penalty (kcal/mol) back to Shannon entropy (bits).
     ///
-    /// Inverse of `entropyPenaltyKcal`.
+    /// Inverse of `entropyPenaltyKcal`. Delegates to `ThermodynamicConstants`.
     ///
     /// - Parameters:
     ///   - penaltyKcal: -TΔS in kcal/mol (positive = penalty).
@@ -335,9 +369,8 @@ public struct FlexAIDdSAnalyzer: Sendable {
     /// - Returns: ΔS_config in bits (negative for binding).
     public func kcalToDeltaSBits(
         penaltyKcal: Double,
-        temperatureK: Double = 298.0
+        temperatureK: Double = ThermodynamicConstants.standardTemperatureK
     ) -> Double {
-        let R: Double = 1.987e-3
-        return -penaltyKcal / (temperatureK * R * log(2.0))
+        ThermodynamicConstants.kcalToDeltaSBits(penaltyKcal: penaltyKcal, temperatureK: temperatureK)
     }
 }

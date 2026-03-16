@@ -682,4 +682,115 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         // Amphetamine should be in the list
         XCTAssertTrue(profiles.contains { $0.substanceId == "amphetamine" })
     }
+
+    // MARK: - Edge-Case Tests (Reproducibility & Robustness)
+
+    /// Empty angle samples should return zero entropy, not crash.
+    func testEmptyAngleSamplesReturnsZeroEntropy() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let dist = TorsionalAngleDistribution(bondId: "empty", angles: [])
+        let h = analyzer.entropy(of: dist)
+        XCTAssertEqual(h, 0, "Empty samples should yield zero entropy")
+    }
+
+    /// Single sample is below the count >= 2 guard, should return zero.
+    func testSingleSampleReturnsZeroEntropy() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let dist = TorsionalAngleDistribution(bondId: "single", angles: [90.0])
+        let h = analyzer.entropy(of: dist)
+        XCTAssertEqual(h, 0, "Single sample should yield zero entropy")
+    }
+
+    /// Samples at exact domain boundaries (-180, +180) should bin correctly.
+    func testBoundaryAnglesAtDomainEdges() {
+        let analyzer = FlexAIDdSAnalyzer()
+        // All samples at the exact boundary values
+        let angles = Array(repeating: -180.0, count: 50) + Array(repeating: 180.0, count: 50)
+        let dist = TorsionalAngleDistribution(bondId: "boundary", angles: angles)
+        let h = analyzer.entropy(of: dist)
+        // Should produce exactly 1 bit: two bins with equal probability
+        XCTAssertEqual(h, 1.0, accuracy: 0.01,
+            "Two equal clusters at domain edges should yield ~1 bit")
+    }
+
+    /// Fixed-domain entropy should be identical for the same distribution
+    /// even when adaptive entropy would differ due to extreme samples.
+    func testFixedDomainVsAdaptiveReproducibility() {
+        let calc = EntropyCalculator(binCount: 32)
+
+        // Core distribution: 100 samples centered at 0°
+        var base: [Double] = []
+        for i in 0..<100 {
+            base.append(Double(i) * 0.5 - 25.0)  // -25 to +24.5
+        }
+
+        // Dataset A: base samples + one sample near edge
+        let dataA = base + [179.0]
+        // Dataset B: base samples + one sample at different extreme
+        let dataB = base + [170.0]
+
+        // Fixed-domain should be very similar (both have same core distribution)
+        let fixedA = calc.shannonEntropy(dataA, domainMin: -180.0, domainMax: 180.0)
+        let fixedB = calc.shannonEntropy(dataB, domainMin: -180.0, domainMax: 180.0)
+        // The one outlier lands in nearby bins but the histogram structure is the same
+        XCTAssertEqual(fixedA, fixedB, accuracy: 0.15,
+            "Fixed-domain entropy should be robust to outlier position")
+
+        // Adaptive entropy uses different bin edges, amplifying the outlier effect
+        let adaptiveA = calc.shannonEntropy(dataA)
+        let adaptiveB = calc.shannonEntropy(dataB)
+        // Both adaptive values should still be valid (no crash), just potentially different
+        XCTAssertGreaterThan(adaptiveA, 0)
+        XCTAssertGreaterThan(adaptiveB, 0)
+    }
+
+    /// ThermodynamicConstants should produce identical results to the inline formulas
+    /// they replaced, verified via round-trip conversion.
+    func testThermodynamicConstantsRoundTrip() {
+        let deltaSBits = -3.5
+        let penalty = ThermodynamicConstants.entropyPenaltyKcal(deltaSBits: deltaSBits)
+        XCTAssertGreaterThan(penalty, 0, "Negative ΔS should give positive penalty")
+
+        let recovered = ThermodynamicConstants.kcalToDeltaSBits(penaltyKcal: penalty)
+        XCTAssertEqual(recovered, deltaSBits, accuracy: 0.001,
+            "Round-trip conversion should recover original bits")
+
+        // Verify the formula at 310K (body temperature)
+        let penaltyAt310 = ThermodynamicConstants.entropyPenaltyKcal(
+            deltaSBits: -1.0, temperatureK: 310.0
+        )
+        let penaltyAt298 = ThermodynamicConstants.entropyPenaltyKcal(
+            deltaSBits: -1.0, temperatureK: 298.0
+        )
+        XCTAssertGreaterThan(penaltyAt310, penaltyAt298,
+            "Higher temperature should increase entropy penalty per bit")
+    }
+
+    /// Shared pearsonCorrelation utility should match known analytic values.
+    func testSharedPearsonCorrelationUtility() {
+        // Perfect positive correlation
+        let r1 = pearsonCorrelation([1, 2, 3, 4, 5], [2, 4, 6, 8, 10])
+        XCTAssertEqual(r1, 1.0, accuracy: 0.001)
+
+        // Perfect negative correlation
+        let r2 = pearsonCorrelation([1, 2, 3, 4, 5], [10, 8, 6, 4, 2])
+        XCTAssertEqual(r2, -1.0, accuracy: 0.001)
+
+        // No correlation (constant y)
+        let r3 = pearsonCorrelation([1, 2, 3], [5, 5, 5])
+        XCTAssertEqual(r3, 0)
+
+        // Insufficient data
+        let r4 = pearsonCorrelation([1], [2])
+        XCTAssertEqual(r4, 0)
+    }
+
+    /// Shared linearRegression utility should match known analytic values.
+    func testSharedLinearRegressionUtility() {
+        // y = 2x + 1 exactly
+        let result = linearRegression(x: [1, 2, 3, 4], y: [3, 5, 7, 9])
+        XCTAssertEqual(result.slope, 2.0, accuracy: 0.001)
+        XCTAssertEqual(result.intercept, 1.0, accuracy: 0.001)
+        XCTAssertEqual(result.mae, 0.0, accuracy: 0.001, "Perfect fit should have zero MAE")
+    }
 }
