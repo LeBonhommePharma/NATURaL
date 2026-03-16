@@ -77,6 +77,40 @@ extension PokeDrugSpecies {
         }
         return [primaryType]
     }
+
+    /// All thermodynamic binding profiles for this species (all targets).
+    public var thermodynamicProfiles: [ThermodynamicBindingProfile] {
+        ThermodynamicBindingProfile.profiles(for: substanceId)
+    }
+
+    /// Primary-target thermodynamic binding profile, if available.
+    public var primaryThermodynamicProfile: ThermodynamicBindingProfile? {
+        ThermodynamicBindingProfile.profile(for: substanceId)
+    }
+
+    /// Attack stat derived from primary target Ki (nM) via thermodynamic data.
+    /// Returns nil if no thermodynamic profile or affinity data is available.
+    public var derivedAttack: Int? {
+        guard let profile = primaryThermodynamicProfile,
+              let ki = profile.affinity.bestAffinityNM else { return nil }
+        return PokeDrugStats.deriveAttack(kiNM: ki)
+    }
+
+    /// Sp. Atk stat derived from selectivity ratio (best off-target Ki / primary Ki).
+    /// Returns nil if fewer than 2 targets or no affinity data.
+    public var derivedSpecialAttack: Int? {
+        let profiles = thermodynamicProfiles
+        guard let primary = profiles.first(where: { $0.isPrimaryTarget }),
+              let primaryKi = primary.affinity.bestAffinityNM else { return nil }
+        let offTargets = profiles.filter { !$0.isPrimaryTarget }
+        guard let bestOffTarget = offTargets.compactMap({ $0.affinity.bestAffinityNM }).min() else {
+            // Single target — maximum selectivity
+            return 5
+        }
+        guard primaryKi > 0 else { return 1 }
+        let ratio = bestOffTarget / primaryKi
+        return PokeDrugStats.deriveSpecialAttack(selectivityRatio: ratio)
+    }
 }
 
 // MARK: - New PharmacokineticProfile Entries for PokeDrug Substances

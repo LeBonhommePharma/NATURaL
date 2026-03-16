@@ -85,6 +85,43 @@ extension PokeDrugStats {
         }
     }
 
+    /// Derive Attack star rating from primary target Ki (nM).
+    ///
+    /// Lower Ki = tighter binding = higher Attack:
+    /// - ★★★★★: < 10 nM (e.g., LSD, fentanyl, morphine)
+    /// - ★★★★: 10-100 nM (e.g., amphetamine, THC)
+    /// - ★★★: 100-1,000 nM (e.g., MDMA, cocaine, DMT)
+    /// - ★★: 1,000-10,000 nM (e.g., caffeine, mescaline)
+    /// - ★: > 10,000 nM (e.g., apigenin)
+    public static func deriveAttack(kiNM: Double) -> Int {
+        switch kiNM {
+        case ..<10:      return 5
+        case 10..<100:   return 4
+        case 100..<1000: return 3
+        case 1000..<10000: return 2
+        default:         return 1
+        }
+    }
+
+    /// Derive Sp. Atk star rating from selectivity ratio.
+    ///
+    /// Selectivity ratio = best off-target Ki / primary target Ki.
+    /// Higher ratio = more selective = higher Sp. Atk:
+    /// - ★★★★★: > 1,000x (e.g., salvinorin A at KOR)
+    /// - ★★★★: 100-1,000x
+    /// - ★★★: 10-100x
+    /// - ★★: 3-10x
+    /// - ★: < 3x (e.g., ibogaine — hits everything)
+    public static func deriveSpecialAttack(selectivityRatio: Double) -> Int {
+        switch selectivityRatio {
+        case _ where selectivityRatio > 1000: return 5
+        case _ where selectivityRatio > 100:  return 4
+        case _ where selectivityRatio > 10:   return 3
+        case _ where selectivityRatio > 3:    return 2
+        default:                              return 1
+        }
+    }
+
     /// Format a single stat as a star string (e.g., 3 → "★★★").
     public static func starString(for value: Int) -> String {
         String(repeating: "★", count: max(1, min(5, value)))
