@@ -1571,6 +1571,8 @@ extension PharmacokineticProfile {
         .metoclopramide, .levothyroxine, .insulinRapid,
         // Muscle Relaxants & Other
         .cyclobenzaprine, .baclofen, .tizanidine,
+        // PokeDrug Natural Product Scaffolds
+        .dmt, .mescaline, .salvinorinA, .ibogaine, .cathinone, .apigenin,
     ]
 
     /// Look up a profile by substance ID (case-insensitive).
