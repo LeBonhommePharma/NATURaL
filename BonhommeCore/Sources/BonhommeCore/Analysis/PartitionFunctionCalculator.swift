@@ -91,30 +91,30 @@ public struct PartitionFunctionCalculator: Sendable {
     /// Compute the global partition function and Boltzmann weights from independent
     /// FlexAID∆S docking results.
     ///
-    /// Each result contributes one microstate. The free energy ΔGᵢ is derived from
-    /// the configurational entropy penalty: ΔGᵢ = -TΔSᵢ (the entropy-dominated term).
+    /// Each result contributes one microstate. The energy ΔGᵢ used for Boltzmann
+    /// weighting is the docking score from the FlexAID scoring function (lower = better
+    /// binding = higher Boltzmann weight). Configurational entropy data (ΔS_config)
+    /// is preserved in each `PoseAttribution` as metadata.
     ///
     /// - Parameters:
     ///   - results: FlexAID∆S analysis results from independent simulations.
     ///   - degeneracies: Optional degeneracy factors gᵢ for each pose (default 1.0 each).
     ///     Use > 1.0 when a single representative pose stands for a cluster of similar conformations.
+    ///     All values must be positive.
     /// - Returns: `EnsembleResult` with partition function, Boltzmann weights, and thermodynamic summary.
     public func computeEnsemble(
         results: [FlexAIDdSResult],
         degeneracies: [Double]? = nil
     ) -> EnsembleResult? {
         guard !results.isEmpty else { return nil }
+        guard temperatureK > 0 else { return nil }
 
         let g = degeneracies ?? [Double](repeating: 1.0, count: results.count)
         guard g.count == results.count else { return nil }
+        guard g.allSatisfy({ $0 > 0 }) else { return nil }
 
-        // Step 1: Compute ΔGᵢ for each pose (kcal/mol)
-        let freeEnergies = results.map { result in
-            dockingAnalyzer.entropyPenaltyKcal(
-                deltaSBits: result.totalDeltaSConfig,
-                temperatureK: temperatureK
-            )
-        }
+        // Step 1: Energy for Boltzmann weighting — docking score (lower = better binding)
+        let freeEnergies = results.map { $0.dockingScore }
 
         // Step 2: Shift energies so the minimum is zero (numerical stability for exp)
         let minG = freeEnergies.min()!
@@ -137,17 +137,24 @@ public struct PartitionFunctionCalculator: Sendable {
         // ΔG_ens = -kT·ln(Z_true) = -kT·ln(Z_shifted) - kT·(-β·minG) = -kT·ln(Z_shifted) + minG)
         let ensembleFreeEnergy = -(Self.kB * temperatureK) * log(Z) + minG
 
-        // Step 7: Ensemble entropy  S_ens = -k · Σ pᵢ · ln(pᵢ)  (Kahan)
-        let pLogP = populations.map { p in p > 0 ? p * log(p) : 0.0 }
-        let ensembleEntropyKcalPerK = -Self.kB * kahanSum(pLogP)
+        // Steps 7-9 fused: ensemble entropy, Shannon entropy, mean energy.
+        // Single pass with inline Kahan accumulators (eliminates 3×N allocations).
+        var sumPLogP = 0.0, cPLogP = 0.0
+        var sumPLog2P = 0.0, cPLog2P = 0.0
+        var sumPE = 0.0, cPE = 0.0
 
-        // Step 8: Shannon entropy of the population distribution (bits, Kahan)
-        let pLog2P = populations.map { p in p > 0 ? p * log2(p) : 0.0 }
-        let shannonEntropyBits = -kahanSum(pLog2P)
+        for i in 0..<populations.count {
+            let p = populations[i]
+            if p > 0 {
+                kahanAccumulate(&sumPLogP, &cPLogP, p * log(p))
+                kahanAccumulate(&sumPLog2P, &cPLog2P, p * log2(p))
+            }
+            kahanAccumulate(&sumPE, &cPE, p * freeEnergies[i])
+        }
 
-        // Step 9: Mean internal energy  ⟨E⟩ = Σ pᵢ · ΔGᵢ  (Kahan)
-        let pE = zip(populations, freeEnergies).map { $0 * $1 }
-        let meanEnergy = kahanSum(pE)
+        let ensembleEntropyKcalPerK = -Self.kB * sumPLogP
+        let shannonEntropyBits = -sumPLog2P
+        let meanEnergy = sumPE
 
         // Step 10: Build pose-level attributions
         let attributions = buildAttributions(
@@ -183,19 +190,28 @@ public struct PartitionFunctionCalculator: Sendable {
     /// comes from an independent FlexAID simulation that can run on a separate core,
     /// node, or cloud function.
     ///
-    /// - Note: Degeneracies are only passed through when all poses produce valid
-    ///   analysis results. If any pose fails analysis, degeneracies are dropped
-    ///   (count mismatch) and uniform degeneracy g=1 is used for the surviving poses.
+    /// - Note: Degeneracies are aligned to surviving poses by original index.
+    ///   If some poses fail analysis, only their corresponding degeneracy entries
+    ///   are dropped (matching the parallel path's behavior).
     public func computeEnsembleFromPoses(
         freeConformation: LigandConformation,
         dockingPoses: [DockingPose],
         degeneracies: [Double]? = nil
     ) -> EnsembleResult? {
-        let results = dockingPoses.compactMap { pose in
-            dockingAnalyzer.analyze(freeConformation: freeConformation, dockingPose: pose)
+        var results: [FlexAIDdSResult] = []
+        var survivingIndices: [Int] = []
+        for (i, pose) in dockingPoses.enumerated() {
+            if let r = dockingAnalyzer.analyze(freeConformation: freeConformation, dockingPose: pose) {
+                results.append(r)
+                survivingIndices.append(i)
+            }
         }
-        // Only forward degeneracies if no poses were filtered out (count still matches).
-        let effectiveDegeneracies = (degeneracies?.count == results.count) ? degeneracies : nil
+        let effectiveDegeneracies: [Double]?
+        if let g = degeneracies {
+            effectiveDegeneracies = survivingIndices.map { g[$0] }
+        } else {
+            effectiveDegeneracies = nil
+        }
         return computeEnsemble(results: results, degeneracies: effectiveDegeneracies)
     }
 
@@ -294,8 +310,14 @@ public struct PartitionFunctionCalculator: Sendable {
             ))
         }
 
-        // Sort by Boltzmann weight descending (most important first)
-        attributions.sort { $0.boltzmannWeight > $1.boltzmannWeight }
+        // Sort by Boltzmann weight descending (most important first).
+        // Use poseIndex as tiebreaker for deterministic ordering when weights are equal.
+        attributions.sort {
+            if $0.boltzmannWeight != $1.boltzmannWeight {
+                return $0.boltzmannWeight > $1.boltzmannWeight
+            }
+            return $0.poseIndex < $1.poseIndex
+        }
 
         // Assign cumulative weight and rank
         var cumulative = 0.0
@@ -353,6 +375,14 @@ public struct PartitionFunctionCalculator: Sendable {
         }
         return sum
     }
+
+    /// Inline Kahan accumulation step for fused multi-sum loops.
+    private func kahanAccumulate(_ sum: inout Double, _ c: inout Double, _ value: Double) {
+        let y = value - c
+        let t = sum + y
+        c = (t - sum) - y
+        sum = t
+    }
 }
 
 // MARK: - Result Types
@@ -373,7 +403,7 @@ public struct EnsembleResult: Sendable {
     /// Numerically-stabilized Z (shifted so ΔG_min = 0). Used internally.
     /// This is always representable because it equals Σ gᵢ·exp(-β·(ΔGᵢ - ΔG_min))
     /// where all exponents are ≤ 0.
-    public let effectivePartitionFunction: Double
+    let effectivePartitionFunction: Double
 
     /// Ensemble binding free energy: ΔG_ens = -kT · ln(Z) in kcal/mol.
     /// Always ≤ min(ΔGᵢ) because the ensemble captures all accessible states.
@@ -478,7 +508,7 @@ public struct PoseAttribution: Sendable {
     /// ΔS_config in bits (negative = binding constrains).
     public let deltaSConfigBits: Double
 
-    /// ΔG contribution in kcal/mol (from -TΔS conversion).
+    /// Docking score used for Boltzmann weighting (lower = better binding).
     public let freeEnergyKcal: Double
 
     /// Boltzmann population fraction pᵢ = gᵢ · exp(-βΔGᵢ) / Z.

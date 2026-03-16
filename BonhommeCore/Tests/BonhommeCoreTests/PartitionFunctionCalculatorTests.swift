@@ -146,7 +146,7 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     func testBoltzmannWeightsNormalize() {
         let calc = PartitionFunctionCalculator()
         let results = (0..<10).map { i in
-            makeResult(deltaSBits: -Double(i + 1) * 0.5)
+            makeResult(deltaSBits: -Double(i + 1) * 0.5, dockingScore: -Double(i + 1) * 1.0)
         }
 
         let ensemble = calc.computeEnsemble(results: results)!
@@ -160,18 +160,15 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     func testEnsembleFreeEnergyLowerBound() {
         let calc = PartitionFunctionCalculator()
         let results = [
-            makeResult(deltaSBits: -1.0),
-            makeResult(deltaSBits: -3.0),
-            makeResult(deltaSBits: -5.0)
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -8.0),
+            makeResult(deltaSBits: -5.0, dockingScore: -12.0)
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
 
-        // Convert each ΔS to ΔG for comparison
-        let analyzer = FlexAIDdSAnalyzer()
-        let minDeltaG = results.map {
-            analyzer.entropyPenaltyKcal(deltaSBits: $0.totalDeltaSConfig)
-        }.min()!
+        // Energy for Boltzmann weighting is now the docking score
+        let minDeltaG = results.map { $0.dockingScore }.min()!
 
         // Ensemble ΔG must be ≤ best single-state ΔG
         XCTAssertLessThanOrEqual(ensemble.ensembleFreeEnergy, minDeltaG + 1e-10)
@@ -184,7 +181,7 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         let calc = PartitionFunctionCalculator()
         let n = 8
         let results = (0..<n).map { i in
-            makeResult(deltaSBits: -Double(i + 1) * 0.7)
+            makeResult(deltaSBits: -Double(i + 1) * 0.7, dockingScore: -Double(i + 1) * 1.5)
         }
 
         let ensemble = calc.computeEnsemble(results: results)!
@@ -222,9 +219,9 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     /// When one pose dominates, N_eff → 1.
     func testEffectivePoseCountDominant() {
         let calc = PartitionFunctionCalculator()
-        // One very favorable pose, others much worse
-        var results = [makeResult(deltaSBits: -10.0)]  // dominant
-        results += (0..<5).map { _ in makeResult(deltaSBits: -0.1) }  // negligible
+        // One very favorable pose (best docking score), others much worse
+        var results = [makeResult(deltaSBits: -10.0, dockingScore: -15.0)]  // dominant
+        results += (0..<5).map { _ in makeResult(deltaSBits: -0.1, dockingScore: -5.0) }  // negligible
 
         let ensemble = calc.computeEnsemble(results: results)!
         XCTAssertLessThan(ensemble.effectivePoseCount, 2.0)
@@ -246,18 +243,22 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     // MARK: - Ranking and Attribution
 
     /// Poses must be ranked by Boltzmann weight descending.
+    /// Best docking score (most negative) → highest Boltzmann weight → rank 1.
     func testPoseRanking() {
         let calc = PartitionFunctionCalculator()
         let results = [
-            makeResult(substanceId: "weak", deltaSBits: -1.0),
-            makeResult(substanceId: "strong", deltaSBits: -5.0),
-            makeResult(substanceId: "medium", deltaSBits: -3.0)
+            makeResult(substanceId: "weak", deltaSBits: -1.0, dockingScore: -5.0),
+            makeResult(substanceId: "strong", deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(substanceId: "medium", deltaSBits: -3.0, dockingScore: -7.5)
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
 
-        // Rank 1 should have the highest Boltzmann weight
+        // Rank 1 should have the highest Boltzmann weight (best docking score)
         XCTAssertEqual(ensemble.attributions[0].rank, 1)
+        XCTAssertEqual(ensemble.attributions[0].substanceId, "strong")
+        XCTAssertEqual(ensemble.attributions[1].substanceId, "medium")
+        XCTAssertEqual(ensemble.attributions[2].substanceId, "weak")
         XCTAssertGreaterThan(
             ensemble.attributions[0].boltzmannWeight,
             ensemble.attributions[1].boltzmannWeight
@@ -275,8 +276,8 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     func testShannonImportance() {
         let calc = PartitionFunctionCalculator()
         let results = [
-            makeResult(deltaSBits: -5.0),
-            makeResult(deltaSBits: -1.0)
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0)
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
@@ -292,9 +293,9 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     /// Essential set must reach 95% cumulative weight.
     func testEssentialPoseSet() {
         let calc = PartitionFunctionCalculator()
-        // One dominant + many minor poses
-        var results = [makeResult(deltaSBits: -8.0)]
-        results += (0..<9).map { _ in makeResult(deltaSBits: -1.0) }
+        // One dominant (best docking score) + many minor poses
+        var results = [makeResult(deltaSBits: -8.0, dockingScore: -15.0)]
+        results += (0..<9).map { _ in makeResult(deltaSBits: -1.0, dockingScore: -5.0) }
 
         let ensemble = calc.computeEnsemble(results: results)!
         let essential = calc.essentialPoseSet(from: ensemble, threshold: 0.95)
@@ -363,8 +364,8 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         let highT = PartitionFunctionCalculator(temperatureK: 500.0)
 
         let results = [
-            makeResult(deltaSBits: -5.0),
-            makeResult(deltaSBits: -1.0)
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0)
         ]
 
         let ensLow = lowT.computeEnsemble(results: results)!
@@ -404,9 +405,9 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         let totalWeight = ens.attributions.reduce(0.0) { $0 + $1.boltzmannWeight }
         XCTAssertEqual(totalWeight, 1.0, accuracy: 1e-10)
 
-        // Most constrained pose (spread=10) should have largest |ΔS| → largest ΔG
-        // → highest Boltzmann weight
+        // Pose with best docking score (-9.0, spread=10) should have highest Boltzmann weight
         XCTAssertEqual(ens.attributions[0].rank, 1)
+        XCTAssertEqual(ens.attributions[0].dockingScore, -9.0)
         XCTAssertTrue(ens.attributions[0].bindingDetected)
     }
 
@@ -482,10 +483,10 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         // Construct an ensemble where the top pose has ~60% and #2 has ~30%,
         // so pose #2 is the one that crosses 95% cumulative.
         let results = [
-            makeResult(deltaSBits: -6.0),   // dominant
-            makeResult(deltaSBits: -4.0),   // strong
-            makeResult(deltaSBits: -0.5),   // weak
-            makeResult(deltaSBits: -0.3),   // very weak
+            makeResult(deltaSBits: -6.0, dockingScore: -12.0),   // dominant
+            makeResult(deltaSBits: -4.0, dockingScore: -9.0),    // strong
+            makeResult(deltaSBits: -0.5, dockingScore: -4.0),    // weak
+            makeResult(deltaSBits: -0.3, dockingScore: -3.0),    // very weak
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
@@ -511,8 +512,8 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     /// A single dominant pose (p > 95%) should be the only essential pose.
     func testIsEssentialSingleDominant() {
         let calc = PartitionFunctionCalculator()
-        var results = [makeResult(deltaSBits: -10.0)]  // dominant
-        results += (0..<4).map { _ in makeResult(deltaSBits: -0.1) }
+        var results = [makeResult(deltaSBits: -10.0, dockingScore: -20.0)]  // dominant
+        results += (0..<4).map { _ in makeResult(deltaSBits: -0.1, dockingScore: -3.0) }
 
         let ensemble = calc.computeEnsemble(results: results)!
 
@@ -530,9 +531,9 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     func testLogPartitionFunctionConsistency() {
         let calc = PartitionFunctionCalculator()
         let results = [
-            makeResult(deltaSBits: -3.0),
-            makeResult(deltaSBits: -5.0),
-            makeResult(deltaSBits: -7.0)
+            makeResult(deltaSBits: -3.0, dockingScore: -6.0),
+            makeResult(deltaSBits: -5.0, dockingScore: -9.0),
+            makeResult(deltaSBits: -7.0, dockingScore: -12.0)
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
@@ -546,10 +547,9 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     /// Extreme energy values that would overflow exp() are safe in log-space.
     func testLogPartitionFunctionNoOverflow() {
         let calc = PartitionFunctionCalculator()
-        // ΔS = -100 bits → ΔG ≈ 41 kcal/mol → β·ΔG ≈ 69
-        // exp(69) ≈ 1e30, representable, but raw Z could overflow with many such poses.
+        // Wide spread of docking scores to test numerical stability.
         let results = (0..<5).map { i in
-            makeResult(deltaSBits: -Double(i + 1) * 20.0)
+            makeResult(deltaSBits: -Double(i + 1) * 20.0, dockingScore: -Double(i + 1) * 20.0)
         }
 
         let ensemble = calc.computeEnsemble(results: results)
@@ -585,13 +585,93 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
 
     // MARK: - Summary Generation
 
+    // MARK: - Input Validation Guards
+
+    /// Zero temperature should return nil.
+    func testZeroTemperatureReturnsNil() {
+        let calc = PartitionFunctionCalculator(temperatureK: 0)
+        let results = [makeResult(deltaSBits: -3.0)]
+        XCTAssertNil(calc.computeEnsemble(results: results))
+    }
+
+    /// Negative degeneracy should return nil.
+    func testNegativeDegeneracyReturnsNil() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -3.0),
+            makeResult(deltaSBits: -3.0)
+        ]
+        let ensemble = calc.computeEnsemble(results: results, degeneracies: [-1.0, 1.0])
+        XCTAssertNil(ensemble)
+    }
+
+    /// Zero degeneracy should return nil.
+    func testZeroDegeneracyReturnsNil() {
+        let calc = PartitionFunctionCalculator()
+        let results = [makeResult(deltaSBits: -3.0)]
+        let ensemble = calc.computeEnsemble(results: results, degeneracies: [0.0])
+        XCTAssertNil(ensemble)
+    }
+
+    // MARK: - Sort Stability
+
+    /// Poses with identical docking scores should be ordered by poseIndex.
+    func testIdenticalWeightStability() {
+        let calc = PartitionFunctionCalculator()
+        let results = (0..<5).map { i in
+            makeResult(substanceId: "pose_\(i)", deltaSBits: -3.0, dockingScore: -8.0)
+        }
+        let ensemble = calc.computeEnsemble(results: results)!
+        // All weights equal → tiebreaker should order by poseIndex ascending
+        let indices = ensemble.attributions.map(\.poseIndex)
+        XCTAssertEqual(indices, [0, 1, 2, 3, 4])
+    }
+
+    // MARK: - Parallel with Degeneracies
+
+    /// Parallel and sequential computation with degeneracies must match.
+    func testParallelConsistencyWithDegeneracies() async {
+        let calc = PartitionFunctionCalculator()
+        let freeConf = makeConformation(bondCount: 3, spread: 180.0)
+        let poses = (0..<10).map { i in
+            makePose(
+                conformation: makeConformation(bondCount: 3, spread: 10.0 + Double(i) * 15.0),
+                receptorId: "1ABC",
+                dockingScore: -5.0 - Double(i) * 0.5
+            )
+        }
+        let degeneracies = (0..<10).map { Double($0 + 1) }
+
+        let sequential = calc.computeEnsembleFromPoses(
+            freeConformation: freeConf, dockingPoses: poses, degeneracies: degeneracies
+        )
+        let parallel = await calc.computeEnsembleParallel(
+            freeConformation: freeConf, dockingPoses: poses, degeneracies: degeneracies
+        )
+
+        XCTAssertNotNil(sequential)
+        XCTAssertNotNil(parallel)
+        guard let seq = sequential, let par = parallel else { return }
+
+        XCTAssertEqual(seq.poseCount, par.poseCount)
+        for (s, p) in zip(
+            seq.attributions.sorted(by: { $0.poseIndex < $1.poseIndex }),
+            par.attributions.sorted(by: { $0.poseIndex < $1.poseIndex })
+        ) {
+            XCTAssertEqual(s.degeneracy, p.degeneracy, accuracy: 1e-10)
+            XCTAssertEqual(s.boltzmannWeight, p.boltzmannWeight, accuracy: 1e-10)
+        }
+    }
+
+    // MARK: - Summary Generation
+
     /// Bilingual summary should contain key thermodynamic values.
     func testSummaryContainsKeyValues() {
         let calc = PartitionFunctionCalculator()
         let results = [
-            makeResult(deltaSBits: -5.0),
-            makeResult(deltaSBits: -3.0),
-            makeResult(deltaSBits: -1.0)
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -4.0)
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
