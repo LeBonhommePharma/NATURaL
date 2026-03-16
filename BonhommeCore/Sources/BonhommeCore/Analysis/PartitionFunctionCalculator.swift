@@ -93,8 +93,6 @@ public struct PartitionFunctionCalculator: Sendable {
     ///
     /// Each result contributes one microstate. The free energy ΔGᵢ is derived from
     /// the configurational entropy penalty: ΔGᵢ = -TΔSᵢ (the entropy-dominated term).
-    /// If the docking pose also carries an explicit `bindingFreeEnergy`, that value
-    /// is used instead (it typically includes enthalpy + entropy from the scoring function).
     ///
     /// - Parameters:
     ///   - results: FlexAID∆S analysis results from independent simulations.
@@ -127,31 +125,29 @@ public struct PartitionFunctionCalculator: Sendable {
             gi * exp(-beta * dGi)
         }
 
-        // Step 4: Partition function  Z = Σ wᵢ
-        let Z = boltzmannFactors.reduce(0, +)
+        // Step 4: Partition function  Z = Σ wᵢ  (Kahan compensated summation)
+        let Z = kahanSum(boltzmannFactors)
         guard Z > 0 else { return nil }
 
         // Step 5: Population fractions  pᵢ = wᵢ / Z
         let populations = boltzmannFactors.map { $0 / Z }
 
-        // Step 6: Ensemble free energy  ΔG_ens = -kT · ln(Z) + ΔG_min
-        // (undo the shift)
+        // Step 6: Ensemble free energy  ΔG_ens = -kT · ln(Z_shifted) + ΔG_min
+        // (undo the shift: ln(Z_true) = ln(Z_shifted) + (-β·minG) isn't needed;
+        // ΔG_ens = -kT·ln(Z_true) = -kT·ln(Z_shifted) - kT·(-β·minG) = -kT·ln(Z_shifted) + minG)
         let ensembleFreeEnergy = -(Self.kB * temperatureK) * log(Z) + minG
 
-        // Step 7: Ensemble entropy  S_ens = -k · Σ pᵢ · ln(pᵢ)
-        let ensembleEntropyKcalPerK = -Self.kB * populations.reduce(0.0) { sum, p in
-            p > 0 ? sum + p * log(p) : sum
-        }
+        // Step 7: Ensemble entropy  S_ens = -k · Σ pᵢ · ln(pᵢ)  (Kahan)
+        let pLogP = populations.map { p in p > 0 ? p * log(p) : 0.0 }
+        let ensembleEntropyKcalPerK = -Self.kB * kahanSum(pLogP)
 
-        // Step 8: Shannon entropy of the population distribution (bits)
-        let shannonEntropyBits = -populations.reduce(0.0) { sum, p in
-            p > 0 ? sum + p * log2(p) : sum
-        }
+        // Step 8: Shannon entropy of the population distribution (bits, Kahan)
+        let pLog2P = populations.map { p in p > 0 ? p * log2(p) : 0.0 }
+        let shannonEntropyBits = -kahanSum(pLog2P)
 
-        // Step 9: Mean internal energy  ⟨E⟩ = Σ pᵢ · ΔGᵢ
-        let meanEnergy = zip(populations, freeEnergies).reduce(0.0) { sum, pair in
-            sum + pair.0 * pair.1
-        }
+        // Step 9: Mean internal energy  ⟨E⟩ = Σ pᵢ · ΔGᵢ  (Kahan)
+        let pE = zip(populations, freeEnergies).map { $0 * $1 }
+        let meanEnergy = kahanSum(pE)
 
         // Step 10: Build pose-level attributions
         let attributions = buildAttributions(
@@ -161,9 +157,13 @@ public struct PartitionFunctionCalculator: Sendable {
             degeneracies: g
         )
 
+        // Step 11: Log-space partition function (overflow-safe representation).
+        // ln(Z_true) = ln(Z_shifted) - β·minG  →  stored as natural log.
+        let logPartitionFunction = log(Z) - beta * minG
+
         return EnsembleResult(
-            partitionFunction: Z * exp(-beta * minG),  // true Z without shift
-            effectivePartitionFunction: Z,               // shifted Z (for numerics)
+            logPartitionFunction: logPartitionFunction,
+            effectivePartitionFunction: Z,
             ensembleFreeEnergy: ensembleFreeEnergy,
             ensembleEntropyKcalPerK: ensembleEntropyKcalPerK,
             shannonEntropyBits: shannonEntropyBits,
@@ -182,16 +182,21 @@ public struct PartitionFunctionCalculator: Sendable {
     /// This is the entry point for massive parallel workflows: each `DockingPose`
     /// comes from an independent FlexAID simulation that can run on a separate core,
     /// node, or cloud function.
+    ///
+    /// - Note: Degeneracies are only passed through when all poses produce valid
+    ///   analysis results. If any pose fails analysis, degeneracies are dropped
+    ///   (count mismatch) and uniform degeneracy g=1 is used for the surviving poses.
     public func computeEnsembleFromPoses(
         freeConformation: LigandConformation,
         dockingPoses: [DockingPose],
         degeneracies: [Double]? = nil
     ) -> EnsembleResult? {
-        let analyzer = FlexAIDdSAnalyzer()
         let results = dockingPoses.compactMap { pose in
-            analyzer.analyze(freeConformation: freeConformation, dockingPose: pose)
+            dockingAnalyzer.analyze(freeConformation: freeConformation, dockingPose: pose)
         }
-        return computeEnsemble(results: results, degeneracies: degeneracies)
+        // Only forward degeneracies if no poses were filtered out (count still matches).
+        let effectiveDegeneracies = (degeneracies?.count == results.count) ? degeneracies : nil
+        return computeEnsemble(results: results, degeneracies: effectiveDegeneracies)
     }
 
     // MARK: - Parallel Batch (Swift Concurrency)
@@ -201,6 +206,10 @@ public struct PartitionFunctionCalculator: Sendable {
     ///
     /// Each pose analysis runs as an independent `Task` in a `TaskGroup`,
     /// fully exploiting multi-core Apple Silicon (or any platform with Swift concurrency).
+    ///
+    /// Results are collected with their original indices and re-sorted to preserve
+    /// input ordering, ensuring reproducible `poseIndex` values and correct
+    /// degeneracy alignment across runs.
     ///
     /// ```swift
     /// let calc = PartitionFunctionCalculator()
@@ -215,31 +224,46 @@ public struct PartitionFunctionCalculator: Sendable {
         dockingPoses: [DockingPose],
         degeneracies: [Double]? = nil
     ) async -> EnsembleResult? {
-        let analyzer = FlexAIDdSAnalyzer()
+        let analyzer = dockingAnalyzer
 
-        let results: [FlexAIDdSResult] = await withTaskGroup(
-            of: FlexAIDdSResult?.self,
-            returning: [FlexAIDdSResult].self
+        // Collect (index, result) pairs to restore deterministic input order.
+        let indexed: [(Int, FlexAIDdSResult)] = await withTaskGroup(
+            of: (Int, FlexAIDdSResult?).self,
+            returning: [(Int, FlexAIDdSResult)].self
         ) { group in
-            for pose in dockingPoses {
+            for (i, pose) in dockingPoses.enumerated() {
                 group.addTask {
-                    analyzer.analyze(
+                    let result = analyzer.analyze(
                         freeConformation: freeConformation,
                         dockingPose: pose
                     )
+                    return (i, result)
                 }
             }
 
-            var collected: [FlexAIDdSResult] = []
-            for await result in group {
+            var collected: [(Int, FlexAIDdSResult)] = []
+            for await (index, result) in group {
                 if let r = result {
-                    collected.append(r)
+                    collected.append((index, r))
                 }
             }
             return collected
         }
 
-        return computeEnsemble(results: results, degeneracies: degeneracies)
+        // Sort by original index for reproducible ordering.
+        let sorted = indexed.sorted { $0.0 < $1.0 }
+        let results = sorted.map(\.1)
+
+        // Align degeneracies to surviving indices.
+        let effectiveDegeneracies: [Double]?
+        if let g = degeneracies {
+            let survivingG = sorted.map { g[$0.0] }
+            effectiveDegeneracies = survivingG
+        } else {
+            effectiveDegeneracies = nil
+        }
+
+        return computeEnsemble(results: results, degeneracies: effectiveDegeneracies)
     }
 
     // MARK: - Pose Importance Attribution
@@ -292,18 +316,42 @@ public struct PartitionFunctionCalculator: Sendable {
     /// This defines the "essential pose set" — the smallest number of binding modes
     /// that account for ≥ threshold of the thermodynamic population.
     /// Useful for patent claims: these are the poses that matter.
+    ///
+    /// Uses the pre-computed `cumulativeWeight` on each attribution (which is
+    /// accumulated in Boltzmann-weight-descending order). A pose is included if
+    /// its predecessor's cumulative weight has not yet reached the threshold.
     public func essentialPoseSet(
         from ensemble: EnsembleResult,
         threshold: Double = 0.95
     ) -> [PoseAttribution] {
-        var cumulative = 0.0
+        // Attributions are already sorted by Boltzmann weight descending
+        // with cumulativeWeight pre-computed. Include all poses up to and
+        // including the one whose cumulative weight crosses the threshold.
         var essential: [PoseAttribution] = []
         for attribution in ensemble.attributions {
             essential.append(attribution)
-            cumulative += attribution.boltzmannWeight
-            if cumulative >= threshold { break }
+            if attribution.cumulativeWeight >= threshold { break }
         }
         return essential
+    }
+
+    // MARK: - Kahan Compensated Summation
+
+    /// Kahan summation for reduced floating-point accumulation error.
+    ///
+    /// Critical for reproducibility across platforms when N is large:
+    /// naive `reduce(0, +)` accumulates O(N·ε) rounding error;
+    /// Kahan summation keeps it at O(ε) regardless of N.
+    private func kahanSum(_ values: [Double]) -> Double {
+        var sum = 0.0
+        var c = 0.0   // compensation for lost low-order bits
+        for v in values {
+            let y = v - c
+            let t = sum + y
+            c = (t - sum) - y
+            sum = t
+        }
+        return sum
     }
 }
 
@@ -312,11 +360,19 @@ public struct PartitionFunctionCalculator: Sendable {
 /// Complete result of a global partition function calculation over an ensemble
 /// of independent docking simulations.
 public struct EnsembleResult: Sendable {
-    /// Global partition function Z = Σᵢ gᵢ · exp(-βΔGᵢ).
-    /// Larger Z = more accessible microstates = more favorable binding landscape.
-    public let partitionFunction: Double
+    /// Natural logarithm of the global partition function: ln(Z).
+    ///
+    /// Stored in log-space to avoid overflow for large ensembles or extreme energies.
+    /// The true Z can be recovered as `exp(logPartitionFunction)` when the value
+    /// is within representable range, but for most downstream uses (free energy,
+    /// population fractions) log-space is sufficient and numerically safer.
+    ///
+    /// Relationship: ΔG_ens = -kT · logPartitionFunction.
+    public let logPartitionFunction: Double
 
     /// Numerically-stabilized Z (shifted so ΔG_min = 0). Used internally.
+    /// This is always representable because it equals Σ gᵢ·exp(-β·(ΔGᵢ - ΔG_min))
+    /// where all exponents are ≤ 0.
     public let effectivePartitionFunction: Double
 
     /// Ensemble binding free energy: ΔG_ens = -kT · ln(Z) in kcal/mol.
@@ -364,7 +420,7 @@ public struct EnsembleResult: Sendable {
 
     /// Bilingual summary.
     public var summary: LocalizedString {
-        let zText = String(format: "%.2e", partitionFunction)
+        let zText = String(format: "%.2f", logPartitionFunction)
         let gText = String(format: "%.2f", ensembleFreeEnergy)
         let hText = String(format: "%.2f", shannonEntropyBits)
         let nEffText = String(format: "%.1f", effectivePoseCount)
@@ -386,10 +442,10 @@ public struct EnsembleResult: Sendable {
         }
 
         return LocalizedString(
-            en: "Partition function Z = \(zText) over \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
+            en: "Partition function ln(Z) = \(zText) over \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
                 "Shannon H = \(hText) bits (N_eff = \(nEffText)). " +
                 "Top pose: \(topPct)% population. Binding mode: \(bindingMode).",
-            fr: "Fonction de partition Z = \(zText) sur \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
+            fr: "Fonction de partition ln(Z) = \(zText) sur \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
                 "Shannon H = \(hText) bits (N_eff = \(nEffText)). " +
                 "Pose principale : \(topPct) % de la population. Mode de liaison : \(bindingModeFr)."
         )
@@ -452,8 +508,9 @@ public struct PoseAttribution: Sendable {
     /// Cumulative Boltzmann weight up to and including this pose. Assigned after sorting.
     public var cumulativeWeight: Double = 0.0
 
-    /// Whether this pose is in the essential set (cumulative ≤ 95%).
-    public var isEssential: Bool { cumulativeWeight <= 0.95 || rank == 1 }
+    /// Whether this pose is in the essential set (cumulative weight before this
+    /// pose was below 95%, meaning this pose is needed to reach the threshold).
+    public var isEssential: Bool { (cumulativeWeight - boltzmannWeight) < 0.95 }
 
     /// Bilingual summary for this single pose.
     public var summary: LocalizedString {

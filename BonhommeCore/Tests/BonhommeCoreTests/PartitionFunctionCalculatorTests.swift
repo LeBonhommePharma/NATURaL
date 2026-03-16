@@ -412,7 +412,8 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
 
     // MARK: - Parallel Computation Consistency
 
-    /// Parallel and sequential computation should produce the same result.
+    /// Parallel and sequential computation must produce identical results,
+    /// including per-pose poseIndex alignment (tests deterministic ordering).
     func testParallelConsistency() async {
         let calc = PartitionFunctionCalculator()
 
@@ -449,11 +450,137 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         // Shannon entropy should match
         XCTAssertEqual(seq.shannonEntropyBits, par.shannonEntropyBits, accuracy: 1e-6)
 
+        // Log partition function should match
+        XCTAssertEqual(seq.logPartitionFunction, par.logPartitionFunction, accuracy: 1e-6)
+
         // All weights should sum to 1.0 in both
         let seqTotal = seq.attributions.reduce(0.0) { $0 + $1.boltzmannWeight }
         let parTotal = par.attributions.reduce(0.0) { $0 + $1.boltzmannWeight }
         XCTAssertEqual(seqTotal, 1.0, accuracy: 1e-10)
         XCTAssertEqual(parTotal, 1.0, accuracy: 1e-10)
+
+        // Per-pose reproducibility: same poseIndex order and identical weights.
+        // Attributions are sorted by Boltzmann weight, so if ordering is
+        // deterministic the poseIndex sequences must match exactly.
+        let seqIndices = seq.attributions.map(\.poseIndex)
+        let parIndices = par.attributions.map(\.poseIndex)
+        XCTAssertEqual(seqIndices, parIndices, "Parallel poseIndex order must match sequential")
+
+        for (s, p) in zip(seq.attributions, par.attributions) {
+            XCTAssertEqual(s.boltzmannWeight, p.boltzmannWeight, accuracy: 1e-10,
+                           "Boltzmann weight mismatch at pose \(s.poseIndex)")
+            XCTAssertEqual(s.freeEnergyKcal, p.freeEnergyKcal, accuracy: 1e-10,
+                           "Free energy mismatch at pose \(s.poseIndex)")
+        }
+    }
+
+    // MARK: - isEssential Boundary Correctness
+
+    /// The pose that crosses the 95% threshold must be marked essential.
+    func testIsEssentialBoundaryPose() {
+        let calc = PartitionFunctionCalculator()
+        // Construct an ensemble where the top pose has ~60% and #2 has ~30%,
+        // so pose #2 is the one that crosses 95% cumulative.
+        let results = [
+            makeResult(deltaSBits: -6.0),   // dominant
+            makeResult(deltaSBits: -4.0),   // strong
+            makeResult(deltaSBits: -0.5),   // weak
+            makeResult(deltaSBits: -0.3),   // very weak
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)!
+
+        // Top pose should always be essential
+        XCTAssertTrue(ensemble.attributions[0].isEssential)
+
+        // Find the pose whose cumulativeWeight first crosses 0.95
+        let crossingIdx = ensemble.attributions.firstIndex { $0.cumulativeWeight >= 0.95 }
+        XCTAssertNotNil(crossingIdx)
+        if let idx = crossingIdx {
+            XCTAssertTrue(ensemble.attributions[idx].isEssential,
+                          "Pose crossing 95% threshold must be marked essential")
+        }
+
+        // Poses after the crossing should NOT be essential
+        if let idx = crossingIdx, idx + 1 < ensemble.attributions.count {
+            XCTAssertFalse(ensemble.attributions[idx + 1].isEssential,
+                           "Pose after 95% crossing should be non-essential")
+        }
+    }
+
+    /// A single dominant pose (p > 95%) should be the only essential pose.
+    func testIsEssentialSingleDominant() {
+        let calc = PartitionFunctionCalculator()
+        var results = [makeResult(deltaSBits: -10.0)]  // dominant
+        results += (0..<4).map { _ in makeResult(deltaSBits: -0.1) }
+
+        let ensemble = calc.computeEnsemble(results: results)!
+
+        XCTAssertTrue(ensemble.attributions[0].isEssential)
+        XCTAssertTrue(ensemble.attributions[0].cumulativeWeight > 0.95)
+        // All others should be non-essential
+        for attr in ensemble.attributions.dropFirst() {
+            XCTAssertFalse(attr.isEssential)
+        }
+    }
+
+    // MARK: - Log-Space Partition Function
+
+    /// Log-space Z must be consistent with ensemble free energy: ΔG = -kT · ln(Z).
+    func testLogPartitionFunctionConsistency() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -3.0),
+            makeResult(deltaSBits: -5.0),
+            makeResult(deltaSBits: -7.0)
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)!
+
+        // ΔG_ens = -kT · ln(Z_true)  →  ln(Z_true) = -ΔG_ens / (kT)
+        let kT = 1.987e-3 * 298.0
+        let expectedLogZ = -ensemble.ensembleFreeEnergy / kT
+        XCTAssertEqual(ensemble.logPartitionFunction, expectedLogZ, accuracy: 1e-8)
+    }
+
+    /// Extreme energy values that would overflow exp() are safe in log-space.
+    func testLogPartitionFunctionNoOverflow() {
+        let calc = PartitionFunctionCalculator()
+        // ΔS = -100 bits → ΔG ≈ 41 kcal/mol → β·ΔG ≈ 69
+        // exp(69) ≈ 1e30, representable, but raw Z could overflow with many such poses.
+        let results = (0..<5).map { i in
+            makeResult(deltaSBits: -Double(i + 1) * 20.0)
+        }
+
+        let ensemble = calc.computeEnsemble(results: results)
+        XCTAssertNotNil(ensemble)
+        guard let ens = ensemble else { return }
+
+        // logPartitionFunction should be finite
+        XCTAssertTrue(ens.logPartitionFunction.isFinite)
+        XCTAssertTrue(ens.ensembleFreeEnergy.isFinite)
+
+        // Weights still sum to 1.0
+        let totalWeight = ens.attributions.reduce(0.0) { $0 + $1.boltzmannWeight }
+        XCTAssertEqual(totalWeight, 1.0, accuracy: 1e-10)
+    }
+
+    // MARK: - Kahan Summation Accuracy
+
+    /// Verify that many small weights still sum to exactly 1.0 with Kahan.
+    func testKahanSummationManyPoses() {
+        let calc = PartitionFunctionCalculator()
+        // 100 identical poses: each p = 0.01, naive sum can drift at ~1e-14
+        let results = (0..<100).map { _ in makeResult(deltaSBits: -3.0) }
+
+        let ensemble = calc.computeEnsemble(results: results)!
+        let totalWeight = ensemble.attributions.reduce(0.0) { $0 + $1.boltzmannWeight }
+        XCTAssertEqual(totalWeight, 1.0, accuracy: 1e-14)
+
+        // Each weight should be exactly 0.01
+        for attr in ensemble.attributions {
+            XCTAssertEqual(attr.boltzmannWeight, 0.01, accuracy: 1e-12)
+        }
     }
 
     // MARK: - Summary Generation
@@ -469,12 +596,12 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
 
         let ensemble = calc.computeEnsemble(results: results)!
 
-        XCTAssertTrue(ensemble.summary.en.contains("Partition function"))
+        XCTAssertTrue(ensemble.summary.en.contains("Partition function ln(Z)"))
         XCTAssertTrue(ensemble.summary.en.contains("kcal/mol"))
         XCTAssertTrue(ensemble.summary.en.contains("Shannon"))
         XCTAssertTrue(ensemble.summary.en.contains("3 poses"))
 
-        XCTAssertTrue(ensemble.summary.fr.contains("Fonction de partition"))
+        XCTAssertTrue(ensemble.summary.fr.contains("Fonction de partition ln(Z)"))
         XCTAssertTrue(ensemble.summary.fr.contains("kcal/mol"))
 
         // Pose attribution summary
