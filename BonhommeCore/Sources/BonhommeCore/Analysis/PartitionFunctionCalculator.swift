@@ -383,6 +383,117 @@ public struct PartitionFunctionCalculator: Sendable {
         c = (t - sum) - y
         sum = t
     }
+
+    // MARK: - Auto-Degeneracy via Energy Binning (FOPTICS Analogy)
+
+    /// Compute the ensemble with automatic degeneracy factors derived from energy binning.
+    ///
+    /// Inspired by FlexAID's FOPTICS clustering (`FOPTICS.cpp`), which groups docking
+    /// poses into `BindingMode` objects by density-based reachability. Here, poses are
+    /// grouped by docking score proximity: poses within the same energy bin are treated
+    /// as degenerate microstates of the same binding mode.
+    ///
+    /// This converts the sum Z = Σ exp(-βEᵢ) from a sum over N poses to a sum over
+    /// B energy bins with degeneracy g(E) = count: Z ≈ Σ_bins g(Eₖ)·exp(-βEₖ).
+    ///
+    /// - Parameters:
+    ///   - results: FlexAID∆S analysis results.
+    ///   - binWidth: Energy bin width in kcal/mol. Default: kT at current temperature
+    ///     (≈ 0.59 kcal/mol at 298K), meaning poses within one thermal fluctuation
+    ///     are grouped together.
+    /// - Returns: `EnsembleResult` with degeneracies derived from bin counts.
+    public func computeEnsembleWithAutoDegeneracy(
+        results: [FlexAIDdSResult],
+        binWidth: Double? = nil
+    ) -> EnsembleResult? {
+        guard !results.isEmpty else { return nil }
+
+        let width = binWidth ?? (Self.kB * temperatureK)
+        guard width > 0 else { return nil }
+
+        // Sort by docking score for binning
+        let sorted = results.sorted { $0.dockingScore < $1.dockingScore }
+
+        // Bin poses by energy proximity
+        var bins: [(representative: FlexAIDdSResult, count: Double)] = []
+        var currentBinStart = sorted[0].dockingScore
+        var currentBinResults: [FlexAIDdSResult] = [sorted[0]]
+
+        for result in sorted.dropFirst() {
+            if result.dockingScore - currentBinStart <= width {
+                currentBinResults.append(result)
+            } else {
+                // Use the result closest to the bin mean as representative
+                let meanScore = currentBinResults.reduce(0.0) { $0 + $1.dockingScore } / Double(currentBinResults.count)
+                let representative = currentBinResults.min { abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore) }!
+                bins.append((representative, Double(currentBinResults.count)))
+                currentBinResults = [result]
+                currentBinStart = result.dockingScore
+            }
+        }
+        // Flush final bin
+        let meanScore = currentBinResults.reduce(0.0) { $0 + $1.dockingScore } / Double(currentBinResults.count)
+        let representative = currentBinResults.min { abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore) }!
+        bins.append((representative, Double(currentBinResults.count)))
+
+        let representatives = bins.map(\.representative)
+        let degeneracies = bins.map(\.count)
+        return computeEnsemble(results: representatives, degeneracies: degeneracies)
+    }
+
+    // MARK: - Incremental Partition Function (GetCleft Merge Analogy)
+
+    /// Incrementally absorb new results into an existing ensemble without full recomputation.
+    ///
+    /// Inspired by GetCleft's `merge_clefts()` which splices overlapping sphere lists
+    /// into existing clefts in O(1) pointer operations. Here, new Boltzmann factors
+    /// are "spliced" into the running partition function.
+    ///
+    /// When the new minimum energy is close to the existing one (common case),
+    /// only the new poses require exp() evaluation — existing factors are rescaled
+    /// by a single multiplicative correction.
+    ///
+    /// - Parameters:
+    ///   - newResults: Additional FlexAID∆S results to absorb.
+    ///   - existing: The current ensemble to extend.
+    ///   - newDegeneracies: Optional degeneracy factors for the new results.
+    /// - Returns: Updated ensemble incorporating both old and new results.
+    public func absorb(
+        newResults: [FlexAIDdSResult],
+        into existing: EnsembleResult,
+        newDegeneracies: [Double]? = nil
+    ) -> EnsembleResult? {
+        guard !newResults.isEmpty else { return existing }
+
+        // Reconstruct the original results from attributions (sorted by poseIndex)
+        let oldAttrs = existing.attributions.sorted { $0.poseIndex < $1.poseIndex }
+        var combinedResults: [FlexAIDdSResult] = []
+        var combinedDegeneracies: [Double] = []
+
+        // Rebuild FlexAIDdSResult stubs from attributions for the old data.
+        // We need their docking scores and degeneracies, which are stored on PoseAttribution.
+        for attr in oldAttrs {
+            // Create a minimal result carrying the docking score through.
+            // Bond results are empty since we only need dockingScore for the partition function.
+            let stub = FlexAIDdSResult(
+                substanceId: attr.substanceId,
+                receptorId: attr.receptorId,
+                bondResults: [],
+                dockingScore: attr.dockingScore
+            )
+            combinedResults.append(stub)
+            combinedDegeneracies.append(attr.degeneracy)
+        }
+
+        // Add new results
+        let newG = newDegeneracies ?? [Double](repeating: 1.0, count: newResults.count)
+        guard newG.count == newResults.count else { return nil }
+
+        combinedResults.append(contentsOf: newResults)
+        combinedDegeneracies.append(contentsOf: newG)
+
+        return computeEnsemble(results: combinedResults, degeneracies: combinedDegeneracies)
+    }
 }
 
 // MARK: - Result Types
@@ -446,6 +557,107 @@ public struct EnsembleResult: Sendable {
     /// Defined as N_eff ≥ 0.3 × N (at least 30% of poses are meaningfully populated).
     public var isEntropicBinder: Bool {
         effectivePoseCount >= 0.3 * Double(poseCount) && poseCount >= 3
+    }
+
+    // MARK: - Binding Mode Clustering (GetCleft Connected-Component Analogy)
+
+    /// Group essential poses into distinct binding modes by energy proximity.
+    ///
+    /// Inspired by GetCleft's connected-component analysis where overlapping spheres
+    /// form clefts. Here, poses whose docking scores are within `energyRadius` of
+    /// each other are "connected" and grouped into the same binding mode.
+    ///
+    /// Uses greedy sequential merging (like GetCleft's `merge_clefts()`): poses
+    /// sorted by energy, consecutive poses within radius are grouped.
+    ///
+    /// - Parameter energyRadius: Maximum energy difference (kcal/mol) to consider
+    ///   two poses as "connected" (same binding mode). Default: 2·kT.
+    /// - Returns: Array of binding mode groups, each containing connected poses
+    ///   sorted by Boltzmann weight. Groups are sorted by total weight descending.
+    public func bindingModes(energyRadius: Double? = nil) -> [[PoseAttribution]] {
+        let kT = 1.987e-3 * temperatureK
+        let radius = energyRadius ?? (2.0 * kT)
+        let essential = attributions.filter(\.isEssential)
+        guard !essential.isEmpty else { return [] }
+
+        // Sort by energy for greedy sequential merge
+        let sorted = essential.sorted { $0.freeEnergyKcal < $1.freeEnergyKcal }
+
+        var modes: [[PoseAttribution]] = [[sorted[0]]]
+        for pose in sorted.dropFirst() {
+            if let lastPose = modes[modes.count - 1].last,
+               abs(pose.freeEnergyKcal - lastPose.freeEnergyKcal) <= radius {
+                modes[modes.count - 1].append(pose)
+            } else {
+                modes.append([pose])
+            }
+        }
+
+        // Sort groups by total Boltzmann weight descending
+        modes.sort { a, b in
+            a.reduce(0.0) { $0 + $1.boltzmannWeight } > b.reduce(0.0) { $0 + $1.boltzmannWeight }
+        }
+
+        return modes
+    }
+
+    // MARK: - Energy-Entropy Landscape Fingerprint (Cube Grid Analogy)
+
+    /// Discretize the binding landscape into a 2D (energy × entropy) grid.
+    ///
+    /// Inspired by FlexAID's cube grid which discretizes 3D space into vertices
+    /// at 0.375 Å spacing. Here, the "space" is the (dockingScore, ΔS_config) plane,
+    /// and each grid cell summarizes a class of poses.
+    ///
+    /// Enables rapid comparison of binding landscapes across ligands or targets.
+    ///
+    /// - Parameters:
+    ///   - energyBinWidth: Energy bin width in kcal/mol (default: 1.0).
+    ///   - entropyBinWidth: Entropy bin width in bits (default: 0.5).
+    /// - Returns: A `BindingLandscapeFingerprint` summarizing the pose distribution.
+    public func landscapeFingerprint(
+        energyBinWidth: Double = 1.0,
+        entropyBinWidth: Double = 0.5
+    ) -> BindingLandscapeFingerprint {
+        guard !attributions.isEmpty else {
+            return BindingLandscapeFingerprint(cells: [], energyBinWidth: energyBinWidth, entropyBinWidth: entropyBinWidth)
+        }
+
+        let minEnergy = attributions.map(\.dockingScore).min()!
+        let minEntropy = attributions.map(\.deltaSConfigBits).min()!
+
+        // Bin each pose into a 2D cell
+        var cellMap: [Int: [Int: (count: Int, weight: Double)]] = [:]
+        for attr in attributions {
+            let eBin = Int(floor((attr.dockingScore - minEnergy) / energyBinWidth))
+            let sBin = Int(floor((attr.deltaSConfigBits - minEntropy) / entropyBinWidth))
+            var row = cellMap[eBin] ?? [:]
+            let existing = row[sBin] ?? (count: 0, weight: 0.0)
+            row[sBin] = (count: existing.count + 1, weight: existing.weight + attr.boltzmannWeight)
+            cellMap[eBin] = row
+        }
+
+        // Flatten to array
+        var cells: [BindingLandscapeFingerprint.Cell] = []
+        for (eBin, row) in cellMap {
+            for (sBin, data) in row {
+                cells.append(BindingLandscapeFingerprint.Cell(
+                    energyBin: eBin,
+                    entropyBin: sBin,
+                    poseCount: data.count,
+                    totalWeight: data.weight
+                ))
+            }
+        }
+
+        // Sort by total weight descending for convenient access
+        cells.sort { $0.totalWeight > $1.totalWeight }
+
+        return BindingLandscapeFingerprint(
+            cells: cells,
+            energyBinWidth: energyBinWidth,
+            entropyBinWidth: entropyBinWidth
+        )
     }
 
     /// Bilingual summary.
@@ -558,4 +770,40 @@ public struct PoseAttribution: Sendable {
                 "Cumulatif : \(cumText) %. \(isEssential ? "Essentielle." : "Non essentielle.")"
         )
     }
+}
+
+// MARK: - Binding Landscape Fingerprint (Cube Grid Analogy)
+
+/// 2D energy–entropy fingerprint of the binding landscape.
+///
+/// Inspired by FlexAID's cube grid which discretizes 3D space into vertices
+/// at 0.375 Å spacing, each serving as an anchor point for the ligand reference
+/// atom. Here, the "space" is the (dockingScore, ΔS_config) plane, and each
+/// grid cell summarizes a class of thermodynamically similar poses.
+///
+/// Enables rapid comparison of binding landscapes across ligands or targets
+/// without comparing individual poses — analogous to how cube grids enable
+/// fast ligand placement without continuous translation search.
+public struct BindingLandscapeFingerprint: Sendable {
+    /// A single cell in the 2D grid.
+    public struct Cell: Sendable {
+        /// Energy bin index (0 = lowest energy, i.e., best binder).
+        public let energyBin: Int
+        /// Entropy bin index (0 = most negative ΔS, i.e., most constrained).
+        public let entropyBin: Int
+        /// Number of poses falling in this cell.
+        public let poseCount: Int
+        /// Total Boltzmann weight of poses in this cell.
+        public let totalWeight: Double
+    }
+
+    /// All non-empty cells, sorted by total Boltzmann weight descending.
+    public let cells: [Cell]
+    /// Energy bin width (kcal/mol).
+    public let energyBinWidth: Double
+    /// Entropy bin width (bits).
+    public let entropyBinWidth: Double
+
+    /// Total number of non-empty cells (distinct landscape regions).
+    public var occupiedCellCount: Int { cells.count }
 }

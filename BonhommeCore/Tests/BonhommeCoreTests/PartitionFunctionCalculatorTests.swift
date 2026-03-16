@@ -689,4 +689,193 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         XCTAssertTrue(topPose.summary.en.contains("Pose #1"))
         XCTAssertTrue(topPose.summary.fr.contains("Pose #1"))
     }
+
+    // MARK: - Auto-Degeneracy (FOPTICS Analogy)
+
+    /// Auto-degeneracy with identical energies should match manual degeneracy.
+    func testAutoDegeneracyMatchesManual() {
+        let calc = PartitionFunctionCalculator()
+        // 6 poses: 3 at -10.0, 3 at -5.0 (identical within bins)
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+        ]
+
+        // Auto with wide bin (captures all at same score)
+        let auto = calc.computeEnsembleWithAutoDegeneracy(results: results, binWidth: 0.1)!
+
+        // Manual: 2 representatives with degeneracies [3, 3]
+        let manual = calc.computeEnsemble(results: [results[0], results[3]], degeneracies: [3.0, 3.0])!
+
+        // Ensemble free energy should match closely
+        XCTAssertEqual(auto.ensembleFreeEnergy, manual.ensembleFreeEnergy, accuracy: 1e-6)
+        XCTAssertEqual(auto.shannonEntropyBits, manual.shannonEntropyBits, accuracy: 1e-6)
+    }
+
+    /// Auto-degeneracy bin width affects grouping.
+    func testAutoDegeneracyBinWidth() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -5.0, dockingScore: -9.5),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+        ]
+
+        // Narrow bins: each pose is its own bin → 3 effective poses
+        let narrow = calc.computeEnsembleWithAutoDegeneracy(results: results, binWidth: 0.1)!
+        XCTAssertEqual(narrow.poseCount, 3)
+
+        // Wide bins: first two merge → 2 effective bins
+        let wide = calc.computeEnsembleWithAutoDegeneracy(results: results, binWidth: 1.0)!
+        XCTAssertEqual(wide.poseCount, 2)
+    }
+
+    /// Empty results return nil.
+    func testAutoDegeneracyEmpty() {
+        let calc = PartitionFunctionCalculator()
+        XCTAssertNil(calc.computeEnsembleWithAutoDegeneracy(results: []))
+    }
+
+    // MARK: - Incremental Absorb (GetCleft Merge Analogy)
+
+    /// Absorbing results must match full recomputation.
+    func testAbsorbMatchesFullRecompute() {
+        let calc = PartitionFunctionCalculator()
+        let first = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0),
+        ]
+        let second = [
+            makeResult(deltaSBits: -1.0, dockingScore: -4.0),
+            makeResult(deltaSBits: -4.0, dockingScore: -8.0),
+        ]
+
+        let full = calc.computeEnsemble(results: first + second)!
+        let initial = calc.computeEnsemble(results: first)!
+        let absorbed = calc.absorb(newResults: second, into: initial)!
+
+        XCTAssertEqual(absorbed.ensembleFreeEnergy, full.ensembleFreeEnergy, accuracy: 1e-6)
+        XCTAssertEqual(absorbed.shannonEntropyBits, full.shannonEntropyBits, accuracy: 1e-6)
+        XCTAssertEqual(absorbed.poseCount, full.poseCount)
+    }
+
+    /// Absorbing with a new lower-energy pose correctly rescales.
+    func testAbsorbWithNewMinimum() {
+        let calc = PartitionFunctionCalculator()
+        let initial = calc.computeEnsemble(results: [
+            makeResult(deltaSBits: -3.0, dockingScore: -5.0),
+        ])!
+
+        // New pose has much lower energy → should become dominant
+        let absorbed = calc.absorb(
+            newResults: [makeResult(deltaSBits: -5.0, dockingScore: -15.0)],
+            into: initial
+        )!
+
+        // The new pose (dockingScore=-15) should be rank 1
+        XCTAssertEqual(absorbed.attributions[0].dockingScore, -15.0)
+        XCTAssertGreaterThan(absorbed.attributions[0].boltzmannWeight, 0.99)
+    }
+
+    /// Absorbing empty results returns the existing ensemble unchanged.
+    func testAbsorbEmptyReturnsExisting() {
+        let calc = PartitionFunctionCalculator()
+        let initial = calc.computeEnsemble(results: [
+            makeResult(deltaSBits: -3.0, dockingScore: -8.0),
+        ])!
+
+        let result = calc.absorb(newResults: [], into: initial)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result!.ensembleFreeEnergy, initial.ensembleFreeEnergy, accuracy: 1e-10)
+    }
+
+    // MARK: - Binding Mode Clustering (GetCleft Connected-Component Analogy)
+
+    /// Clustered energies produce a single binding mode.
+    func testSingleBindingMode() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -4.5, dockingScore: -9.8),
+            makeResult(deltaSBits: -4.0, dockingScore: -9.5),
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)!
+        let modes = ensemble.bindingModes(energyRadius: 1.0)
+
+        // All poses within 0.5 kcal/mol → single binding mode
+        XCTAssertEqual(modes.count, 1)
+        XCTAssertEqual(modes[0].count, 3)
+    }
+
+    /// Bimodal energy distribution produces two binding modes.
+    func testMultipleBindingModes() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -4.5, dockingScore: -9.8),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+            makeResult(deltaSBits: -0.5, dockingScore: -4.8),
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)!
+        let modes = ensemble.bindingModes(energyRadius: 1.0)
+
+        // Two clusters: {-10.0, -9.8} and {-5.0, -4.8}
+        XCTAssertEqual(modes.count, 2)
+
+        // Both modes should have 2 poses each
+        XCTAssertEqual(modes[0].count + modes[1].count, ensemble.attributions.filter(\.isEssential).count)
+    }
+
+    // MARK: - Landscape Fingerprint (Cube Grid Analogy)
+
+    /// All poses land in valid cells, total weight sums to 1.0.
+    func testFingerprintWeightSum() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -4.0),
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)!
+        let fp = ensemble.landscapeFingerprint()
+
+        // Total weight across all cells = 1.0
+        let totalWeight = fp.cells.reduce(0.0) { $0 + $1.totalWeight }
+        XCTAssertEqual(totalWeight, 1.0, accuracy: 1e-10)
+
+        // Total pose count across cells = 3
+        let totalPoses = fp.cells.reduce(0) { $0 + $1.poseCount }
+        XCTAssertEqual(totalPoses, 3)
+    }
+
+    /// Fingerprint grid coverage: each cell has valid indices.
+    func testFingerprintGridCoverage() {
+        let calc = PartitionFunctionCalculator()
+        let results = (0..<10).map { i in
+            makeResult(
+                deltaSBits: -Double(i + 1) * 0.5,
+                dockingScore: -Double(i + 1) * 1.5
+            )
+        }
+
+        let ensemble = calc.computeEnsemble(results: results)!
+        let fp = ensemble.landscapeFingerprint(energyBinWidth: 2.0, entropyBinWidth: 1.0)
+
+        // All bins should have non-negative indices
+        for cell in fp.cells {
+            XCTAssertGreaterThanOrEqual(cell.energyBin, 0)
+            XCTAssertGreaterThanOrEqual(cell.entropyBin, 0)
+            XCTAssertGreaterThan(cell.poseCount, 0)
+            XCTAssertGreaterThan(cell.totalWeight, 0)
+        }
+
+        XCTAssertGreaterThan(fp.occupiedCellCount, 0)
+    }
 }
