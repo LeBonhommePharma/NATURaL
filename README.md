@@ -1,22 +1,81 @@
-# NATURaL
+<h1 align="center">
+<pre>
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║    ███╗   ██╗ █████╗ ████████╗██╗   ██╗██████╗  █████╗  ║
+║    ████╗  ██║██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔══██╗ ║
+║    ██╔██╗ ██║███████║   ██║   ██║   ██║██████╔╝███████║ ║
+║    ██║╚██╗██║██╔══██║   ██║   ██║   ██║██╔══██╗██╔══██║ ║
+║    ██║ ╚████║██║  ██║   ██║   ╚██████╔╝██║  ██║██║  ██║ ║
+║    ╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ║
+║                      L  E  A  F  G  R  E  E  N            ║
+║                                                          ║
+║        Biofeedback-Driven Chair Yoga for Every           ║
+║                   Apple Platform                         ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+</pre>
+</h1>
 
-**Biofeedback-Driven Chair Yoga for Every Apple Platform**
+<p align="center">
+  <i>Guided wellness sessions with real-time heart rate, Shannon Collapse Index, adaptive music, CareKit prescriptions, and multi-screen display across iPhone, iPad, Apple Watch, Apple TV, and Apple Vision Pro.</i>
+</p>
 
-*Guided wellness sessions with real-time heart rate, Shannon Collapse Index, adaptive music, CareKit prescriptions, and multi-screen display across iPhone, iPad, Apple Watch, Apple TV, and Apple Vision Pro.*
+<p align="center">
+  <img src="https://img.shields.io/badge/TYPE-FIRE%20%2F%20SWIFT_5.9-orange?style=for-the-badge" alt="Swift">
+  <img src="https://img.shields.io/badge/TYPE-GRASS%20%2F%20iOS_17%2B-green?style=for-the-badge" alt="iOS">
+  <img src="https://img.shields.io/badge/TYPE-WATER%20%2F%20watchOS_10%2B-blue?style=for-the-badge" alt="watchOS">
+  <img src="https://img.shields.io/badge/TYPE-PSYCHIC%20%2F%20visionOS_1%2B-purple?style=for-the-badge" alt="visionOS">
+  <img src="https://img.shields.io/badge/TYPE-ELECTRIC%20%2F%20tvOS_17%2B-yellow?style=for-the-badge" alt="tvOS">
+  <img src="https://img.shields.io/badge/LICENSE-PROPRIETARY-lightgrey?style=for-the-badge" alt="License">
+</p>
 
-![Swift](https://img.shields.io/badge/Swift-5.9-orange)
-![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20iPadOS%20|%20watchOS%20|%20tvOS%20|%20visionOS-blue)
-![iOS](https://img.shields.io/badge/iOS-17%2B-green)
-![watchOS](https://img.shields.io/badge/watchOS-10%2B-green)
-![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
-
-> 26 bilingual poses (EN / FR-CA) | 6 guided workout plans | Real-time biofeedback | CareKit clinical integration | CloudKit sync | Zero external dependencies
+<p align="center">
+  <code>26 bilingual poses (EN / FR-CA)</code> ·
+  <code>6 guided workout plans</code> ·
+  <code>Real-time biofeedback</code> ·
+  <code>CareKit clinical integration</code> ·
+  <code>CloudKit sync</code> ·
+  <code>Zero external dependencies</code>
+</p>
 
 ---
 
-## Overview
+```
+          Pokemon NATURaL              TRAINER CARD
+   ╔════════════════════════╗    ╔═══════════════════════╗
+   ║  Press START to begin  ║    ║ NAME: Bonhomme        ║
+   ║                        ║    ║ REGION: Apple          ║
+   ║   ◄ NEW GAME ►        ║    ║ BADGES: 13             ║
+   ║     CONTINUE           ║    ║ POKÉDEX: 26/26         ║
+   ║     OPTIONS            ║    ║ TIME: ∞                ║
+   ╚════════════════════════╝    ╚═══════════════════════╝
+```
 
-NATURaL (code name **Bonhomme**) is a chair yoga app that pairs guided poses with live biofeedback from Apple Watch. Sessions render simultaneously on your phone, TV, and Vision Pro through a unified display architecture — native tvOS companion or AirPlay 2 second-screen, with automatic fallback between them.
+---
+
+## Pokédex Entry #001 — Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│  #001  NATURaL                                      │
+│  Code Name: Bonhomme                                │
+│  Type: BIOFEEDBACK / ENTROPY                        │
+│  Region: All Apple Platforms                        │
+│                                                     │
+│  "A chair yoga app that pairs guided poses with     │
+│   live biofeedback from Apple Watch. Sessions       │
+│   render simultaneously on phone, TV, and Vision    │
+│   Pro through a unified display architecture."      │
+│                                                     │
+│  STATS          ░░░░░░░░░░░░░░░░░░░░                │
+│  HP ████████████████████░░░  85/100                  │
+│  ATK ██████████████░░░░░░░  65/100  (Entropy)       │
+│  DEF ████████████████████░  90/100  (Stability)     │
+│  SPD ██████████████████░░░  80/100  (Real-time)     │
+│  SP  █████████████████████  95/100  (Multi-signal)  │
+└─────────────────────────────────────────────────────┘
+```
 
 The **Shannon Collapse Index (SCI)** — inspired by the entropy framework in [Shannon](https://github.com/lmorency/Shannon) and the thermodynamic scoring validated in [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) — measures focus coherence from heart rate variability in real time. When HRV entropy narrows during deep breathing, the SCI rises, giving practitioners a live "focus ring" on every display surface.
 
@@ -30,9 +89,17 @@ SCI score:             0 ──────────── 50 ─────
 
 ---
 
-## Features
+## Moves & Abilities
 
-### Pose Engine
+> *NATURaL learned the following moves!*
+
+### MOVE 1 — Pose Engine `NORMAL`
+
+| | |
+|---|---|
+| **Power** | 26 poses / 3 levels |
+| **Accuracy** | Bilingual EN + FR-CA |
+| **PP** | Unlimited |
 
 - **26 chair yoga poses** across 3 difficulty levels with bilingual content (English / French Canadian)
 - 7 anatomical categories: spine, hip, shoulder, neck, balance, breathing, full-body
@@ -40,7 +107,15 @@ SCI score:             0 ──────────── 50 ─────
 - Voice cue text for guided audio in both languages
 - Category-specific SF Symbols and accent colors for visual differentiation
 
-### Biofeedback Pipeline
+---
+
+### MOVE 2 — Biofeedback Pipeline `PSYCHIC`
+
+| | |
+|---|---|
+| **Power** | Real-time HRV |
+| **Accuracy** | Shannon Entropy |
+| **PP** | Continuous |
 
 - Real-time heart rate and calorie tracking via `HKWorkoutSession`
 - **Shannon Collapse Index** computed from R-R interval entropy via shared `EntropyCalculator`
@@ -51,9 +126,11 @@ SCI score:             0 ──────────── 50 ─────
 - Apple Fitness+ session history blended into unified timeline
 - Background delivery for HRV, sleep, respiratory rate, and medication records
 
-### Multi-Signal Analysis Engine
+---
 
-The analysis pipeline is built on a protocol-driven architecture that generalizes the SCI methodology to any health signal:
+### ABILITY — Multi-Signal Analysis Engine `DRAGON`
+
+*It's super effective!* The analysis pipeline is built on a protocol-driven architecture that generalizes the SCI methodology to any health signal:
 
 ```
 HealthSignal (protocol)          SignalAnalyzer (protocol)
@@ -73,7 +150,15 @@ HealthSignal (protocol)          SignalAnalyzer (protocol)
 
 The `EntropyCalculator` — extracted as a shared utility — enables entropy-based scoring for any distribution: HRV intervals, sleep stage durations, respiratory rate patterns, or activity variability.
 
-### Drug Response Analysis (PokeDrug)
+---
+
+### MOVE 3 — Drug Response Analysis (PokeDrug) `POISON`
+
+| | |
+|---|---|
+| **Power** | 70+ pharmacokinetic profiles |
+| **Accuracy** | p < 0.05 validated |
+| **PP** | Per-dose event |
 
 Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological analog of [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) molecular docking entropy:
 
@@ -96,7 +181,15 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
 
 See [POKEDRUG_PLAN.md](POKEDRUG_PLAN.md) for the complete technical plan.
 
-### Adaptive MusicKit
+---
+
+### MOVE 4 — Adaptive MusicKit `FAIRY`
+
+| | |
+|---|---|
+| **Power** | SCI-driven |
+| **Accuracy** | 3s crossfade |
+| **PP** | Per-session |
 
 Music dynamically adjusts based on real-time SCI during workouts:
 - **High coherence + improving** (SCI > 70%): crossfade to energizing playlists
@@ -105,7 +198,15 @@ Music dynamically adjusts based on real-time SCI during workouts:
 - 30-second debounce prevents jarring rapid transitions
 - 3-second volume crossfade between mood switches
 
-### CareKit Integration
+---
+
+### MOVE 5 — CareKit Integration `STEEL`
+
+| | |
+|---|---|
+| **Power** | Clinical-grade |
+| **Accuracy** | OCKStore |
+| **PP** | Prescribed |
 
 For clinical and rehabilitation settings where a therapist prescribes yoga regimens:
 - `CareKitBridge` manages `OCKStore` with prescribed task scheduling
@@ -114,7 +215,15 @@ For clinical and rehabilitation settings where a therapist prescribes yoga regim
 - Adherence tracking over configurable time windows
 - "Prescribed" section in HomeView when active prescriptions exist
 
-### State Restoration
+---
+
+### MOVE 6 — State Restoration `GHOST`
+
+| | |
+|---|---|
+| **Power** | Seamless |
+| **Accuracy** | 5s intervals |
+| **PP** | Automatic |
 
 If the app is killed mid-workout, the session resumes seamlessly:
 - `WorkoutStateStore` persists phase, pose index, and timing every 5 seconds
@@ -122,7 +231,15 @@ If the app is killed mid-workout, the session resumes seamlessly:
 - HealthKit workout sessions recovered via `HKWorkoutSession` persistence (iOS 17+)
 - State cleared on normal completion or explicit stop
 
-### CloudKit Sync via SwiftData
+---
+
+### MOVE 7 — CloudKit Sync `ICE`
+
+| | |
+|---|---|
+| **Power** | Cross-device |
+| **Accuracy** | SwiftData |
+| **PP** | Automatic |
 
 Cross-device persistence with automatic iCloud synchronization:
 - `WorkoutRecord` — full workout history with SCI scores
@@ -132,7 +249,15 @@ Cross-device persistence with automatic iCloud synchronization:
 - Shared app group container for widget data access
 - Automatic fallback to local storage when iCloud unavailable
 
-### Apple Intelligence (iOS 26+)
+---
+
+### MOVE 8 — Apple Intelligence `PSYCHIC`
+
+| | |
+|---|---|
+| **Power** | On-device AI |
+| **Accuracy** | FoundationModels |
+| **PP** | iOS 26+ |
 
 On-device insight generation via the FoundationModels framework:
 - `InsightEngine` synthesizes natural-language narratives from multi-signal analysis
@@ -140,7 +265,15 @@ On-device insight generation via the FoundationModels framework:
 - Post-workout summary generation correlating HRV, medication, and survey data
 - Template-based bilingual fallback on pre-iOS 26 devices
 
-### Multi-Screen Display
+---
+
+### MOVE 9 — Multi-Screen Display `FLYING`
+
+| | |
+|---|---|
+| **Power** | 5 surfaces |
+| **Accuracy** | Bonjour + AirPlay |
+| **PP** | Simultaneous |
 
 - **Native tvOS companion** via Bonjour (`_bonhomme._tcp`) with length-prefixed JSON framing
 - **AirPlay 2 second-screen** via `UIScene` with `.windowExternalDisplayNonInteractive` role
@@ -176,7 +309,11 @@ On-device insight generation via the FoundationModels framework:
                                        └──────────────────┘
 ```
 
-### Platform Integration
+---
+
+### Party Roster — Platform Integration
+
+> *Your party is ready for battle!*
 
 | Feature | Framework | Platform |
 |---------|-----------|----------|
@@ -203,12 +340,14 @@ On-device insight generation via the FoundationModels framework:
 
 ---
 
-## Pose Catalog
+## Pokédex — Pose Catalog
+
+> *Gotta stretch 'em all!*
 
 ### Difficulty Distribution
 
-| Level | Count | Access | Categories |
-|-------|-------|--------|------------|
+| Level | Caught | Access | Categories |
+|-------|--------|--------|------------|
 | Beginner | 10 | Free | Spine, Hip, Shoulder, Neck, Breathing |
 | Intermediate | 11 | Premium | Balance, Full-body, Hip, Shoulder |
 | Advanced | 5 | Premium | Balance, Full-body, Spine |
@@ -226,9 +365,9 @@ On-device insight generation via the FoundationModels framework:
 | Advanced Chair Yoga | 8 | ~6 min | Advanced | Premium |
 
 <details>
-<summary><strong>Full pose list (click to expand)</strong></summary>
+<summary><strong>Full Pokédex (click to expand)</strong></summary>
 
-**Beginner (Free)**
+**COMMON — Beginner (Free)**
 1. Seated Mountain — *Montagne assise*
 2. Seated Cat-Cow — *Chat-Vache assis*
 3. Seated Forward Fold — *Flexion avant assise*
@@ -240,7 +379,7 @@ On-device insight generation via the FoundationModels framework:
 9. Wrist Stretches — *Étirements des poignets*
 10. Knee Lifts — *Levées de genoux*
 
-**Intermediate (Premium)**
+**UNCOMMON — Intermediate (Premium)**
 11. Seated Pigeon — *Pigeon assis*
 12. Seated Eagle Arms — *Bras d'aigle assis*
 13. Seated Warrior I — *Guerrier I assis*
@@ -253,7 +392,7 @@ On-device insight generation via the FoundationModels framework:
 20. Chest Expansion — *Expansion thoracique*
 21. Thread the Needle — *Enfiler l'aiguille*
 
-**Advanced (Premium)**
+**RARE — Advanced (Premium)**
 22. Seated Dancer — *Danseur assis*
 23. Seated Crow Prep — *Préparation corbeau assis*
 24. Breath of Joy — *Souffle de joie*
@@ -264,7 +403,7 @@ On-device insight generation via the FoundationModels framework:
 
 ---
 
-## Architecture
+## Region Map — Architecture
 
 ### Shared Swift Package
 
@@ -363,7 +502,7 @@ NATURaL/
 
 ---
 
-## Build
+## Professor's Lab — Build
 
 ### Requirements
 
@@ -378,6 +517,8 @@ NATURaL/
 | External dependencies | **None** (CareKit added at project level) |
 
 ### Quick Start
+
+> *Professor Oak: "Are you ready? Your very own NATURaL adventure is about to unfold!"*
 
 ```bash
 # Clone
@@ -412,7 +553,9 @@ open Bonhomme.xcodeproj    # or .xcworkspace
 
 ---
 
-## Testing
+## Gym Badge Challenge — Testing
+
+> *"You've defeated the GYM LEADER! You earned the test badge!"*
 
 ```bash
 # BonhommeCore unit tests (platform-agnostic)
@@ -425,9 +568,9 @@ xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhon
 xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
 ```
 
-### Test Coverage
+### Gym Badges Earned
 
-| Suite | Tests | Scope |
+| Badge | Tests | Scope |
 |-------|-------|-------|
 | `LocalizedStringTests` | 5 | Codable, hashable, EN/FR resolution |
 | `PoseTests` | 5 | Init, codable, difficulty/category enums |
@@ -445,7 +588,23 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 
 ---
 
-## Related Projects
+## Legendary Allies — Related Projects
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  LEGENDARY POKÉMON ENCOUNTERED!                         │
+│                                                         │
+│  Shannon          — Entropy collapse detection.         │
+│                     Provides the mathematical           │
+│                     foundation for the SCI              │
+│                     biofeedback metric.                 │
+│                                                         │
+│  FlexAID∆S        — Entropy-driven molecular docking.   │
+│                     Validated the thermodynamic          │
+│                     scoring framework adapted for        │
+│                     HRV analysis.                       │
+└─────────────────────────────────────────────────────────┘
+```
 
 | Project | Role |
 |---------|------|
@@ -454,10 +613,19 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 
 ---
 
-## License
+## Hall of Fame
 
-Proprietary. All rights reserved.
-
-## Contributing
-
-This project is currently in private development. Contact the maintainer for collaboration inquiries.
+```
+╔══════════════════════════════════════════════════╗
+║                 HALL OF FAME                     ║
+║                                                  ║
+║  LICENSE: Proprietary. All rights reserved.      ║
+║                                                  ║
+║  CONTRIBUTING:                                   ║
+║  This project is currently in private            ║
+║  development. Contact the maintainer for         ║
+║  collaboration inquiries.                        ║
+║                                                  ║
+║           SAVE GAME? [Y] / [N]                   ║
+╚══════════════════════════════════════════════════╝
+```
