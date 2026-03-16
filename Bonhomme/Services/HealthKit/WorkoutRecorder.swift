@@ -15,9 +15,9 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
 
-    func start() async throws {
+    func start(style: YogaStyle = .chairYoga) async throws {
         let config = HKWorkoutConfiguration()
-        config.activityType = .yoga
+        config.activityType = style.healthKitActivityType
         config.locationType = .indoor
 
         session = try HKWorkoutSession(healthStore: healthStore, configuration: config)
@@ -44,10 +44,21 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     /// Ends the workout using the correct ordering:
-    /// 1. session.end()  2. builder.endCollection()  3. builder.finishWorkout()
-    func end() async throws {
+    /// 1. session.end()  2. builder.endCollection()  3. builder.addMetadata()  4. builder.finishWorkout()
+    func end(metadata: WorkoutMetadata? = nil) async throws {
         session?.end()
         try await builder?.endCollection(at: Date())
+
+        if let metadata {
+            try await builder?.addMetadata([
+                HKMetadataKeyWorkoutBrandName: "NATURaL",
+                "NATURaLYogaStyle": metadata.styleName,
+                "NATURaLPlanId": metadata.planId,
+                "NATURaLPlanName": metadata.planName,
+                "NATURaLSCIScore": metadata.sciScore as Any,
+            ])
+        }
+
         _ = try await builder?.finishWorkout()
         isRecording = false
     }

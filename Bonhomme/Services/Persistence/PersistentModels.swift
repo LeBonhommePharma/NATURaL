@@ -19,6 +19,7 @@ final class WorkoutRecord {
     var averageHeartRate: Double?
     var maxHeartRate: Double?
     var sciScore: Double?
+    var yogaStyleRaw: String?
 
     init(
         planId: String,
@@ -31,7 +32,8 @@ final class WorkoutRecord {
         activeCalories: Double,
         averageHeartRate: Double?,
         maxHeartRate: Double?,
-        sciScore: Double?
+        sciScore: Double?,
+        yogaStyleRaw: String? = nil
     ) {
         self.planId = planId
         self.planName = planName
@@ -44,6 +46,7 @@ final class WorkoutRecord {
         self.averageHeartRate = averageHeartRate
         self.maxHeartRate = maxHeartRate
         self.sciScore = sciScore
+        self.yogaStyleRaw = yogaStyleRaw
     }
 
     /// Creates a WorkoutRecord from a WorkoutResult and optional final SCI score.
@@ -59,8 +62,15 @@ final class WorkoutRecord {
             activeCalories: result.activeCalories,
             averageHeartRate: result.averageHeartRate,
             maxHeartRate: result.maxHeartRate,
-            sciScore: sciScore
+            sciScore: sciScore,
+            yogaStyleRaw: result.yogaStyle.rawValue
         )
+    }
+
+    /// Resolved YogaStyle from the persisted raw string.
+    var yogaStyle: YogaStyle? {
+        guard let raw = yogaStyleRaw else { return nil }
+        return YogaStyle(rawValue: raw)
     }
 
     /// Formatted duration string (e.g., "12m 30s").
