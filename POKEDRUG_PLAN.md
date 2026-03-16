@@ -318,7 +318,7 @@ HealthSignal (protocol: Codable, Sendable)
 | Summary generation | EN/FR bilingual, contains ΔH, direction, units |
 | Aggregate statistics summary | n, Cohen's d, detection rate in text |
 
-### 5.2 FlexAIDdSAnalyzerTests (25 tests)
+### 5.2 FlexAIDdSAnalyzerTests (27 tests)
 
 | Test | Validates |
 |------|-----------|
@@ -456,13 +456,85 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 ---
 
-## 10. Summary
+## 10. Gaps & Roadmap
+
+The analysis engine is fully implemented and tested. The following integration layers
+remain unbuilt and represent the path from "working library" to "shipping feature."
+
+### 10.1 Persistence
+
+**Status:** Not implemented.
+
+`DrugResponseResult` and `DrugResponseAggregate` are computed in-memory but never saved.
+No SwiftData `@Model` exists for drug response history. Analysis results are lost on
+app restart, preventing historical trend tracking and multi-session dose-response curves.
+
+**Required:** Add `DrugResponseRecord` to `PersistentModels.swift` and register it in
+`PersistenceConfiguration.makeContainer()`.
+
+### 10.2 App Lifecycle
+
+**Status:** Partially wired.
+
+- `MedicationTracker` is defined but **not instantiated** in `AppState`. It must be
+  manually created each time medication features are accessed.
+- `FeedbackEngine` is **session-local** — created fresh in each `WorkoutFlowViewModel`.
+  This means medication signals from one workout don't carry over to the next.
+- `DockingInsightAnalyzer` is **never registered** in the FeedbackEngine at any level.
+
+**Required:** Lift `FeedbackEngine` and `MedicationTracker` to `AppState` as app-wide
+singletons. Register all three analyzers (HRV, Medication, Docking) at init time.
+
+### 10.3 UI / Visualization
+
+**Status:** Not implemented.
+
+No SwiftUI views exist to display drug response data:
+- No ΔH time-series chart (entropy measurements over post-dose windows)
+- No dose-response scatter plot (dose vs |ΔH|)
+- No medication entropy timeline
+- No cross-domain validation visualization (|ΔS_config| vs |ΔH_hrv|)
+
+The `SummaryView` shows HR chart but has no drug response correlation card.
+
+### 10.4 InsightEngine (Apple Intelligence)
+
+**Status:** Not integrated.
+
+`InsightEngine` generates narratives from `FeedbackEngine` insights but:
+- Does not reference `DrugResponseResult` data
+- Does not include `.molecularDocking` insight type in prompts or templates
+- Missing drug-HRV cross-correlation narrative (e.g., "Your focus score dropped
+  30 minutes after your dose, consistent with the expected sympathomimetic profile")
+
+### 10.5 Siri / App Intents
+
+**Status:** Not implemented.
+
+No intents exist for:
+- "What was my drug response after my last dose?"
+- "Show my medication entropy history"
+- Drug response aggregate queries
+
+Only `GetAdherenceIntent` exists for medication, and it's a stub.
+
+### 10.6 README
+
+**Status:** Not documented.
+
+The main `README.md` describes the full platform (poses, HRV, SCI, CareKit, CloudKit,
+Apple Intelligence, multi-screen) but does not mention drug response analysis,
+FlexAID∆S integration, substance profiles, or cross-domain validation.
+
+---
+
+## 11. Summary
 
 PokeDrug bridges computational chemistry and wearable health monitoring through a single
 mathematical principle: Shannon entropy measures the cost of binding — whether a ligand
 locking into a receptor pocket (ΔS_config) or a drug compressing cardiac rhythm variability
 (ΔH_hrv). The implementation is complete: 70+ substance profiles, cross-domain validation,
-FeedbackEngine integration, HealthKit medication tracking, and 49 tests validating every
+FeedbackEngine integration, HealthKit medication tracking, and 51 tests validating every
 layer from raw entropy computation to bilingual summary generation.
 
 The framework is ready for real-world validation: collect Apple Watch RR intervals around

@@ -27,10 +27,8 @@ final class WorkoutFlowViewModel {
 
     let plan: WorkoutPlan
     let recorder = WorkoutRecorder()
-    let feedbackEngine = FeedbackEngine()
+    let feedbackEngine: FeedbackEngine
     let musicService = MusicService()
-    private let hrvAnalyzer = HRVAnalyzer()
-    private let medicationAnalyzer = MedicationAnalyzer()
     private let stateStore = WorkoutStateStore()
 
     /// Tracks whether this session was restored from a killed app.
@@ -59,24 +57,23 @@ final class WorkoutFlowViewModel {
     private var persistenceCounter: Int = 0
     private var lastMusicAdaptation: Date = .distantPast
 
-    init(plan: WorkoutPlan) {
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
         self.plan = plan
-        feedbackEngine.register(hrvAnalyzer)
-        feedbackEngine.register(medicationAnalyzer)
+        self.feedbackEngine = feedbackEngine
     }
 
     // MARK: - State Restoration
 
     /// Attempt to restore a killed-app workout session.
     /// Returns a configured ViewModel if recoverable state exists, nil otherwise.
-    static func restoreIfAvailable() -> WorkoutFlowViewModel? {
+    static func restoreIfAvailable(feedbackEngine: FeedbackEngine = FeedbackEngine()) -> WorkoutFlowViewModel? {
         let store = WorkoutStateStore()
         guard let persisted = store.load(),
               let plan = persisted.resolvePlan() else {
             return nil
         }
 
-        let vm = WorkoutFlowViewModel(plan: plan)
+        let vm = WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine)
         vm.isRestoredSession = true
         vm.sessionStartDate = persisted.sessionStartDate
         vm.elapsedTime = persisted.elapsedTime

@@ -8,6 +8,7 @@ import BonhommeCore
 struct SummaryView: View {
     let result: WorkoutResult
     var sciScore: Double? = nil
+    var drugResponse: DrugResponseResult? = nil
     let onDismiss: () -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -61,6 +62,12 @@ struct SummaryView: View {
                         .padding(.horizontal)
                 }
 
+                // Drug response card (shown only when medication data exists)
+                if let response = drugResponse {
+                    drugResponseCard(response)
+                        .padding(.horizontal)
+                }
+
                 // Done button
                 Button {
                     onDismiss()
@@ -110,7 +117,29 @@ struct SummaryView: View {
             )
         }
 
-        // 4. Save mindful session to HealthKit
+        // 4. Save drug response record if available
+        if let response = drugResponse {
+            let record = DrugResponseRecord(
+                medicationId: response.doseEvent.medicationId,
+                medicationName: response.doseEvent.name,
+                doseValue: response.doseEvent.doseValue,
+                doseUnit: response.doseEvent.doseUnit,
+                doseTimestamp: response.doseEvent.timestamp,
+                baselineEntropy: response.baselineEntropy,
+                peakDeltaH: response.peakDeltaH,
+                peakTimeMinutes: response.peakTimeMinutes,
+                responseDirection: response.responseDirection.rawValue,
+                effectSize: response.effectSize,
+                deltaHAUC: response.deltaHAUC,
+                bindingDetected: response.bindingDetected,
+                profileMatchId: response.profileMatch?.profile.substanceId,
+                profileMatchConfidence: response.profileMatch?.confidence
+            )
+            modelContext.insert(record)
+            try? modelContext.save()
+        }
+
+        // 5. Save mindful session to HealthKit
         try? await appState.healthKitManager.saveMindfulSession(
             start: result.startDate,
             end: result.endDate
@@ -160,6 +189,60 @@ struct SummaryView: View {
                 AxisMarks(position: .leading)
             }
             .frame(height: 160)
+        }
+        .padding()
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func drugResponseCard(_ response: DrugResponseResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "pill.fill")
+                    .foregroundStyle(.cyan)
+                Text(LocalizedString(en: "Drug Response", fr: "Réponse médicamenteuse").localized)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+
+            HStack(spacing: 16) {
+                VStack(spacing: 4) {
+                    Text(response.bindingDetected
+                        ? (response.peakDeltaH < 0 ? "↓" : "↑")
+                        : "→")
+                        .font(.system(size: 32))
+                    Text(String(format: "%+.2f bits", response.peakDeltaH))
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    Text("ΔH")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                VStack(spacing: 4) {
+                    Text(String(format: "%.0f%%", response.effectSize * 100))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                    Text(LocalizedString(en: "Effect", fr: "Effet").localized)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                VStack(spacing: 4) {
+                    Text(String(format: "+%.0f min", response.peakTimeMinutes))
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                    Text(LocalizedString(en: "Peak", fr: "Pic").localized)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            if let match = response.profileMatch {
+                Text(String(format: "%@ (%.0f%%)",
+                    match.profile.name.localized,
+                    match.confidence * 100))
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))

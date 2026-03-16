@@ -59,6 +59,7 @@ The analysis pipeline is built on a protocol-driven architecture that generalize
 HealthSignal (protocol)          SignalAnalyzer (protocol)
 ├── HRVSignal ──────────────────▸ HRVAnalyzer (Shannon entropy → SCI)
 ├── MedicationSignal ───────────▸ MedicationAnalyzer (adherence scoring)
+├── DockingSignal ─────────────▸ DockingInsightAnalyzer (FlexAID∆S entropy)
 └── SurveySignal ───────────────▸ (extensible for ResearchKit surveys)
                                          │
                                          ▼
@@ -71,6 +72,29 @@ HealthSignal (protocol)          SignalAnalyzer (protocol)
 ```
 
 The `EntropyCalculator` — extracted as a shared utility — enables entropy-based scoring for any distribution: HRV intervals, sleep stage durations, respiratory rate patterns, or activity variability.
+
+### Drug Response Analysis (PokeDrug)
+
+Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological analog of [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) molecular docking entropy:
+
+```
+FlexAID∆S (in silico)           NATURaL (in vivo)
+─────────────────────           ─────────────────────
+Torsional angles (°)            RR intervals (ms)
+H = -Σ p_i log₂(p_i)           H = -Σ p_i log₂(p_i)     ← same math
+Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
+                    ↘                     ↙
+                  EntropyCalculator (shared)
+```
+
+- **DrugResponseAnalyzer** — Computes baseline entropy (30 min pre-dose), measures ΔH at post-dose windows (15–360 min), detects entropy collapse (sympathomimetic) or expansion (parasympathomimetic)
+- **70+ pharmacokinetic profiles** — Substance database with autonomic mechanism, Tmax, expected ΔH range, therapeutic class, and FDA status
+- **60+ binding entropy profiles** — Published ΔS_config values (bits) and -TΔS (kcal/mol) from computational chemistry literature
+- **CrossDomainValidator** — Correlates |ΔS_config| (molecular) with |ΔH_hrv| (physiological) via Pearson r to validate the entropy-collapse framework across domains
+- **FlexAIDdSAnalyzer** — Computes configurational entropy from torsional angle distributions using the same EntropyCalculator
+- **MedicationTracker** — HealthKit FHIR medication import, manual dose logging, automatic drug response analysis
+
+See [POKEDRUG_PLAN.md](POKEDRUG_PLAN.md) for the complete technical plan.
 
 ### Adaptive MusicKit
 
@@ -260,11 +284,17 @@ BonhommeCore/
     │   └── WorkoutResult.swift       # Post-session summary with HR samples
     ├── Analysis/
     │   ├── EntropyCalculator.swift   # Shared Shannon entropy utility (reusable)
-    │   ├── HealthSignal.swift        # Protocol + HRVSignal, MedicationSignal, SurveySignal
+    │   ├── HealthSignal.swift        # Protocol + HRVSignal, MedicationSignal, DockingSignal
     │   ├── SignalAnalyzer.swift      # Protocol + AnalysisInsight, AnalysisContext
     │   ├── HRVAnalyzer.swift         # Shannon Collapse Index from R-R intervals
     │   ├── MedicationAnalyzer.swift  # Adherence scoring with HRV correlation
-    │   └── FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
+    │   ├── FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
+    │   ├── DrugResponseAnalyzer.swift # ΔH detection around medication dose events
+    │   ├── PharmacokineticProfile.swift # 70+ substance PK/autonomic profiles
+    │   ├── BindingEntropyProfile.swift # 60+ molecular ΔS_config reference values
+    │   ├── FlexAIDdSAnalyzer.swift   # Torsional ΔS_config computation
+    │   ├── CrossDomainValidator.swift # |ΔS_config| ↔ |ΔH_hrv| correlation
+    │   └── DockingInsightAnalyzer.swift # SignalAnalyzer adapter for FeedbackEngine
     └── TVDisplay/
         ├── TVDisplayView.swift       # Shared layout: 60% pose + 40% biofeedback
         ├── PoseCountdownView.swift   # Circular countdown timer with category color
@@ -406,6 +436,8 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 | `TVDisplayPayloadTests` | 4 | Codable roundtrip, nil biofeedback, SCI trend |
 | `WorkoutResultTests` | 3 | Result codable, nil heart rate |
 | `AnalyzerTests` | 17 | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal, EntropyCalculator edge cases + parity |
+| `DrugResponseAnalyzerTests` | 24 | Sympathomimetic/parasympathomimetic detection, dose-response curves, profile matching, batch aggregation, Cohen's d, AUC |
+| `FlexAIDdSAnalyzerTests` | 27 | Torsional entropy, ΔS_config, kcal/mol conversion, cross-domain validation, BindingEntropyProfile registry, DockingInsightAnalyzer pipeline |
 | `WorkoutFlowViewModelTests` | 3 | Plan structure, TV payload, localization |
 | `TVDisplayCoordinatorTests` | 3 | Payload size <10KB, framing, Bonjour type |
 | `WorkoutFlowUITests` | 5 | Home screen, navigation, countdown, a11y |
