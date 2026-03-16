@@ -21,12 +21,19 @@ final class MusicService: ObservableObject {
     }
 
     /// Searches Apple Music for yoga-related playlists and plays the first match.
-    func playWorkoutMusic(mood: WorkoutMood) async {
+    func playWorkoutMusic(mood: WorkoutMood, style: YogaStyle? = nil) async {
         guard isAuthorized else { return }
+
+        let searchTerm: String
+        if let style, let styleTerm = style.musicSearchTerms[mood] {
+            searchTerm = styleTerm
+        } else {
+            searchTerm = mood.searchTerm
+        }
 
         do {
             var request = MusicCatalogSearchRequest(
-                term: mood.searchTerm,
+                term: searchTerm,
                 types: [Playlist.self]
             )
             request.limit = 5
@@ -56,86 +63,6 @@ final class MusicService: ObservableObject {
     }
 
     // MARK: - Adaptive SCI-Driven Music
-
-    /// Adapts music mood based on real-time SCI (Shannon Collapse Index) score.
-    ///
-    /// - High coherence + improving (>0.7): switch to energizing music
-    /// - High coherence, stable (>0.7): maintain calm music
-    /// - Low coherence (<0.3): fade to meditative/calming music
-    /// - Mid-range: maintain current mood
-    ///
-    /// Debounced to minimum 30-second intervals between transitions.
-    func adaptToSCI(score: Double?, trend: InsightTrend) async {
-        guard isPlaying, isAuthorized else { return }
-
-        let now = Date()
-        guard now.timeIntervalSince(lastTransitionDate) >= transitionDebounce else { return }
-
-        let currentScore = score ?? 0.5
-        let targetMood: WorkoutMood
-
-        switch (currentScore, trend) {
-        case (0.7..., .improving):
-            targetMood = .energizing
-        case (0.7..., _):
-            targetMood = .calm
-        case (..<0.3, _):
-            targetMood = .meditative
-        default:
-            return // Mid-range: don't change
-        }
-
-        guard targetMood != adaptiveMood else { return }
-
-        lastTransitionDate = now
-        await crossfadeToMood(targetMood)
-    }
-
-    /// Crossfades from the current playlist to a new mood-matched playlist.
-    /// Fades volume down over 3 seconds, switches playlist, fades volume up.
-    private func crossfadeToMood(_ newMood: WorkoutMood) async {
-        fadeTask?.cancel()
-
-        fadeTask = Task {
-            let player = ApplicationMusicPlayer.shared
-
-            // Phase 1: Fade out current track (3 seconds)
-            await fadeVolume(from: 1.0, to: 0.05, duration: 3.0)
-            guard !Task.isCancelled else { return }
-
-            // Phase 2: Search and queue new mood playlist
-            do {
-                var request = MusicCatalogSearchRequest(
-                    term: newMood.searchTerm,
-                    types: [Playlist.self]
-                )
-                request.limit = 5
-                let response = try await request.response()
-
-                guard !Task.isCancelled else { return }
-
-                if let playlist = response.playlists.first {
-                    player.queue = [playlist]
-                    try await player.play()
-                }
-            } catch {
-                // If search fails, restore volume on current track
-                await fadeVolume(from: 0.05, to: 1.0, duration: 1.0)
-                return
-            }
-
-            guard !Task.isCancelled else { return }
-
-            // Phase 3: Fade in new track (3 seconds)
-            await fadeVolume(from: 0.05, to: 1.0, duration: 3.0)
-
-            await MainActor.run {
-                adaptiveMood = newMood
-            }
-        }
-
-        await fadeTask?.value
-    }
 
     /// Smoothly adjusts the system music player volume over a duration.
     /// Uses 10 discrete steps for a smooth-feeling transition.
@@ -168,6 +95,82 @@ final class MusicService: ObservableObject {
 
             try? await Task.sleep(for: .milliseconds(Int(stepDuration * 1000)))
         }
+    }
+
+    // MARK: - Style-Aware Search Terms
+
+    /// Crossfade with style awareness during adaptive SCI transitions.
+    func adaptToSCI(score: Double?, trend: InsightTrend, style: YogaStyle?) async {
+        guard isPlaying, isAuthorized else { return }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastTransitionDate) >= transitionDebounce else { return }
+
+        let currentScore = score ?? 0.5
+        let targetMood: WorkoutMood
+
+        switch (currentScore, trend) {
+        case (0.7..., .improving):
+            targetMood = .energizing
+        case (0.7..., _):
+            targetMood = .calm
+        case (..<0.3, _):
+            targetMood = .meditative
+        default:
+            return
+        }
+
+        guard targetMood != adaptiveMood else { return }
+
+        lastTransitionDate = now
+        await crossfadeToMood(targetMood, style: style)
+    }
+
+    private func crossfadeToMood(_ newMood: WorkoutMood, style: YogaStyle?) async {
+        fadeTask?.cancel()
+
+        fadeTask = Task {
+            let player = ApplicationMusicPlayer.shared
+
+            await fadeVolume(from: 1.0, to: 0.05, duration: 3.0)
+            guard !Task.isCancelled else { return }
+
+            let searchTerm: String
+            if let style, let styleTerm = style.musicSearchTerms[newMood] {
+                searchTerm = styleTerm
+            } else {
+                searchTerm = newMood.searchTerm
+            }
+
+            do {
+                var request = MusicCatalogSearchRequest(
+                    term: searchTerm,
+                    types: [Playlist.self]
+                )
+                request.limit = 5
+                let response = try await request.response()
+
+                guard !Task.isCancelled else { return }
+
+                if let playlist = response.playlists.first {
+                    player.queue = [playlist]
+                    try await player.play()
+                }
+            } catch {
+                await fadeVolume(from: 0.05, to: 1.0, duration: 1.0)
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+
+            await fadeVolume(from: 0.05, to: 1.0, duration: 3.0)
+
+            await MainActor.run {
+                adaptiveMood = newMood
+            }
+        }
+
+        await fadeTask?.value
     }
 
     // MARK: - Mood Types
@@ -207,6 +210,71 @@ final class MusicService: ObservableObject {
             case .energizing: return "bolt.fill"
             case .meditative: return "moon.fill"
             }
+        }
+    }
+}
+
+// MARK: - Style-Aware Music Search Terms
+
+extension YogaStyle {
+    /// Style-specific search terms for each workout mood, providing curated
+    /// playlist discovery that matches the energy and pace of each yoga style.
+    var musicSearchTerms: [MusicService.WorkoutMood: String] {
+        switch self {
+        case .chairYoga:
+            return [
+                .calm: "gentle chair yoga music",
+                .energizing: "uplifting yoga flow",
+                .meditative: "seated meditation ambient",
+            ]
+        case .vinyasa:
+            return [
+                .calm: "vinyasa flow yoga",
+                .energizing: "power vinyasa beats",
+                .meditative: "yoga cooldown ambient",
+            ]
+        case .hatha:
+            return [
+                .calm: "hatha yoga relaxation",
+                .energizing: "yoga flow upbeat",
+                .meditative: "yoga nidra ambient",
+            ]
+        case .yin:
+            return [
+                .calm: "yin yoga ambient",
+                .energizing: "gentle yoga",
+                .meditative: "deep relaxation meditation",
+            ]
+        case .restorative:
+            return [
+                .calm: "restorative yoga",
+                .energizing: "gentle yoga flow",
+                .meditative: "sleep meditation ambient",
+            ]
+        case .power:
+            return [
+                .calm: "power yoga warm up",
+                .energizing: "intense workout beats",
+                .meditative: "yoga cooldown",
+            ]
+        case .standingBalance:
+            return [
+                .calm: "balance yoga music",
+                .energizing: "focused workout music",
+                .meditative: "mindfulness meditation",
+            ]
+        case .prenatal:
+            return [
+                .calm: "prenatal yoga relaxation",
+                .energizing: "gentle prenatal movement",
+                .meditative: "pregnancy meditation",
+            ]
+        case .pranayama:
+            return [
+                .calm: "pranayama breathing music",
+                .energizing: "energizing breathwork",
+                .meditative: "meditation singing bowls",
+            ]
         }
     }
 }

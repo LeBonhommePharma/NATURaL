@@ -13,6 +13,8 @@ public struct WorkoutResult: Codable, Sendable {
     public let averageHeartRate: Double?
     public let maxHeartRate: Double?
     public let heartRateSamples: [HeartRateSample]
+    public let yogaStyle: YogaStyle
+    public let yogaStyleName: String
 
     public init(
         workoutPlanId: String,
@@ -25,7 +27,9 @@ public struct WorkoutResult: Codable, Sendable {
         activeCalories: Double,
         averageHeartRate: Double? = nil,
         maxHeartRate: Double? = nil,
-        heartRateSamples: [HeartRateSample] = []
+        heartRateSamples: [HeartRateSample] = [],
+        yogaStyle: YogaStyle = .chairYoga,
+        yogaStyleName: String = ""
     ) {
         self.workoutPlanId = workoutPlanId
         self.workoutPlanName = workoutPlanName
@@ -38,6 +42,8 @@ public struct WorkoutResult: Codable, Sendable {
         self.averageHeartRate = averageHeartRate
         self.maxHeartRate = maxHeartRate
         self.heartRateSamples = heartRateSamples
+        self.yogaStyle = yogaStyle
+        self.yogaStyleName = yogaStyleName
     }
 }
 
