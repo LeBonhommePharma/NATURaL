@@ -227,23 +227,35 @@ public struct FlexAIDdSResult: Sendable {
 public struct FlexAIDdSAnalyzer: Sendable {
 
     /// Minimum |ΔS_config| (bits) to consider a binding entropy penalty significant.
-    public static let significanceThreshold: Double = 0.5
+    public static let significanceThreshold: Double = AnalysisConfiguration.default.dockingSignificanceThreshold
 
     /// Shared entropy calculator (same bin count as HRVAnalyzer/DrugResponseAnalyzer default).
     private let entropyCalc: EntropyCalculator
 
+    /// Configuration for thresholds and parameters.
+    private let configuration: AnalysisConfiguration
+
     public init(binCount: Int = 32) {
         self.entropyCalc = EntropyCalculator(binCount: binCount)
+        self.configuration = .default
+    }
+
+    public init(configuration: AnalysisConfiguration) {
+        self.entropyCalc = EntropyCalculator(binCount: configuration.histogramBinCount)
+        self.configuration = configuration
     }
 
     // MARK: - Single Bond Analysis
 
     /// Compute Shannon entropy for a single torsional angle distribution.
     ///
+    /// Uses circular entropy (fixed [-180°, +180°) bins) because torsional angles
+    /// are periodic: -179° and +179° are only 2° apart on the circle.
+    ///
     /// - Parameter distribution: Torsional angle samples for one rotatable bond.
     /// - Returns: Entropy in bits. Higher = more conformational freedom.
     public func entropy(of distribution: TorsionalAngleDistribution) -> Double {
-        entropyCalc.shannonEntropy(distribution.angles)
+        entropyCalc.circularShannonEntropy(distribution.angles)
     }
 
     // MARK: - Full Ligand Analysis
@@ -269,8 +281,8 @@ public struct FlexAIDdSAnalyzer: Sendable {
         var bondResults: [BondEntropyResult] = []
 
         for (freeBond, boundBond) in zip(freeConformation.bonds, boundConf.bonds) {
-            let hFree = entropyCalc.shannonEntropy(freeBond.angles)
-            let hBound = entropyCalc.shannonEntropy(boundBond.angles)
+            let hFree = entropyCalc.circularShannonEntropy(freeBond.angles)
+            let hBound = entropyCalc.circularShannonEntropy(boundBond.angles)
             bondResults.append(BondEntropyResult(
                 bondId: freeBond.bondId,
                 freeEntropy: hFree,

@@ -528,17 +528,62 @@ FlexAID∆S integration, substance profiles, or cross-domain validation.
 
 ---
 
-## 11. Summary
+## 11. Research Quality Enhancements
+
+Enhancements to improve scientific rigor and numerical robustness.
+
+### 11.1 Circular Entropy for Torsional Angles
+
+**Problem:** Torsional angles are circular [-180°, +180°], but `EntropyCalculator.shannonEntropy` used data-adaptive linear binning. Angles -179° and +179° (2° apart physically) were histogram-binned ~358° apart, underestimating entropy for wrapped distributions.
+
+**Fix:** Added `circularShannonEntropy(_:)` to EntropyCalculator with fixed bins spanning [-180°, +180°), wrapping inputs via modular arithmetic. `FlexAIDdSAnalyzer` now uses circular entropy for all torsional angle computations while `DrugResponseAnalyzer` continues using linear entropy for RR intervals (correct for linear domains).
+
+**File:** `EntropyCalculator.swift`, `FlexAIDdSAnalyzer.swift`
+
+### 11.2 Statistical Significance Testing (p-values)
+
+**Problem:** `CrossDomainValidator` declared correlations "significant" when r > 0.5, but at n=5, r=0.5 has p ≈ 0.39 (not significant). The minimum pair count of 3 was too small for meaningful inference.
+
+**Fix:** Added proper p-value computation via t-distribution (t = r × √(n-2) / √(1-r²)) using the regularized incomplete beta function (Lentz's continued fraction). `ValidationResult.isSignificant` now requires p < 0.05 AND n ≥ 5. Minimum pairs raised from 3 to 5.
+
+**File:** `CrossDomainValidator.swift`
+
+### 11.3 Centralized AnalysisConfiguration
+
+**Problem:** 12+ hardcoded thresholds scattered across 5 source files with no central configuration.
+
+**Fix:** Created `AnalysisConfiguration` struct consolidating all thresholds (histogram bins, significance levels, Cohen's d cap, normalization constants). All analyzers accept optional configuration via new `init(configuration:)` with backward-compatible defaults.
+
+**File:** `AnalysisConfiguration.swift` (new), all analyzer files modified
+
+### 11.4 Numerical Robustness
+
+- **NaN/infinity guards:** `EntropyCalculator` filters non-finite values before computation. Pearson correlation in both `CrossDomainValidator` and `DrugResponseAnalyzer` filters non-finite pairs.
+- **Cohen's d cap:** Capped at 10.0 (was `.infinity` when SD = 0). Values above 10 are not meaningfully interpretable.
+
+### 11.5 New Test Coverage
+
+| Test File | Tests Added | Coverage |
+|-----------|------------|----------|
+| `EntropyCalculatorTests.swift` (new) | 10 | Circular wraparound, uniform, NaN filtering, edge cases |
+| `CrossDomainValidatorTests.swift` (new) | 13 | p-value accuracy, minimum pairs, hybrid validation, NaN handling |
+| `FlexAIDdSAnalyzerTests.swift` | +1 | Circular entropy for boundary angles |
+| `DrugResponseAnalyzerTests.swift` | +2 | Cohen's d capping |
+
+**Total test count:** 51 → 77 (26 new tests)
+
+## 12. Summary
 
 PokeDrug bridges computational chemistry and wearable health monitoring through a single
 mathematical principle: Shannon entropy measures the cost of binding — whether a ligand
 locking into a receptor pocket (ΔS_config) or a drug compressing cardiac rhythm variability
-(ΔH_hrv). The implementation is complete: 70+ substance profiles, cross-domain validation,
-FeedbackEngine integration, HealthKit medication tracking, and 51 tests validating every
-layer from raw entropy computation to bilingual summary generation.
+(ΔH_hrv). The implementation includes 70+ substance profiles, cross-domain validation
+with proper p-value significance testing, circular entropy for torsional angles,
+FeedbackEngine integration, HealthKit medication tracking, centralized configuration,
+and 77 tests validating every layer from raw entropy computation to bilingual summary generation.
 
 The framework is ready for real-world validation: collect Apple Watch RR intervals around
 medication doses, run the DrugResponseAnalyzer, and correlate the observed |ΔH_hrv| against
-the published |ΔS_config| via CrossDomainValidator. A significant positive Pearson r will
-constitute independent physiological evidence that entropy collapse is a universal binding
-signature.
+the published |ΔS_config| via CrossDomainValidator. A significant positive Pearson r
+(p < 0.05, n ≥ 5) will constitute independent physiological evidence that entropy collapse
+is a universal binding signature.

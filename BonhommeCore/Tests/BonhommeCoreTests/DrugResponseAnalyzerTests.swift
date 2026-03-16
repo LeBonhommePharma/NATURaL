@@ -956,4 +956,45 @@ final class DrugResponseAnalyzerTests: XCTestCase {
         XCTAssertTrue(summary.en.contains("5 dose events"))
         XCTAssertTrue(summary.en.contains("Cohen's d"))
     }
+
+    // MARK: - Cohen's d Cap
+
+    /// When SD is zero but mean is non-zero, Cohen's d should be capped at 10.0
+    /// (not .infinity, which is scientifically uninterpretable).
+    func testCohensDCappedWhenSdZero() {
+        let aggregate = DrugResponseAggregate(
+            medicationId: "test",
+            medicationName: "Test",
+            n: 3,
+            meanDeltaH: -1.5,
+            sdDeltaH: 0.0,    // Zero variance — all identical
+            meanPeakTime: 60,
+            meanEffectSize: 0.3,
+            detectionRate: 1.0,
+            meanAUC: -50.0
+        )
+
+        XCTAssertEqual(aggregate.cohensD, 10.0,
+            "Cohen's d should be capped at 10.0 when SD = 0")
+        XCTAssertFalse(aggregate.cohensD.isInfinite,
+            "Cohen's d should never be infinity")
+    }
+
+    /// Even with extremely large effect, Cohen's d should be capped.
+    func testCohensDMaxCap() {
+        let aggregate = DrugResponseAggregate(
+            medicationId: "test",
+            medicationName: "Test",
+            n: 3,
+            meanDeltaH: -5.0,
+            sdDeltaH: 0.01,   // Very small variance → very large d
+            meanPeakTime: 60,
+            meanEffectSize: 0.8,
+            detectionRate: 1.0,
+            meanAUC: -100.0
+        )
+
+        XCTAssertEqual(aggregate.cohensD, 10.0,
+            "Cohen's d should be capped at 10.0 for extreme effects")
+    }
 }
