@@ -878,4 +878,114 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
 
         XCTAssertGreaterThan(fp.occupiedCellCount, 0)
     }
+
+    // MARK: - Edge Case Tests (Bug Fix Verification)
+
+    /// Single result auto-degeneracy produces 1 bin with degeneracy 1.
+    func testAutoDegeneracySingleResult() {
+        let calc = PartitionFunctionCalculator()
+        let results = [makeResult(deltaSBits: -3.0, dockingScore: -8.0)]
+        let auto = calc.computeEnsembleWithAutoDegeneracy(results: results, binWidth: 1.0)!
+        XCTAssertEqual(auto.poseCount, 1)
+        XCTAssertEqual(auto.attributions.count, 1)
+        XCTAssertEqual(auto.attributions[0].boltzmannWeight, 1.0, accuracy: 1e-10)
+    }
+
+    /// Absorb with mismatched degeneracy count returns nil.
+    func testAbsorbDegeneracyCountMismatch() {
+        let calc = PartitionFunctionCalculator()
+        let initial = calc.computeEnsemble(results: [
+            makeResult(deltaSBits: -3.0, dockingScore: -8.0),
+        ])!
+
+        let result = calc.absorb(
+            newResults: [makeResult(deltaSBits: -2.0, dockingScore: -6.0)],
+            into: initial,
+            newDegeneracies: [1.0, 2.0]  // 2 degeneracies for 1 result
+        )
+        XCTAssertNil(result)
+    }
+
+    /// Absorb preserves full FlexAIDdSResult metadata (bondResults, totalDeltaSConfig).
+    func testAbsorbPreservesMetadata() {
+        let calc = PartitionFunctionCalculator()
+        let first = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0, bondCount: 4),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0, bondCount: 3),
+        ]
+        let second = [
+            makeResult(deltaSBits: -1.0, dockingScore: -4.0, bondCount: 2),
+        ]
+
+        let initial = calc.computeEnsemble(results: first)!
+        let absorbed = calc.absorb(newResults: second, into: initial)!
+
+        // Verify old poses retain their original deltaSConfigBits (not zeroed out)
+        let sortedByIndex = absorbed.attributions.sorted { $0.poseIndex < $1.poseIndex }
+        // First two poses came from 'first' array with deltaSBits -5.0 and -3.0
+        XCTAssertEqual(sortedByIndex[0].deltaSConfigBits, -5.0, accuracy: 1e-10)
+        XCTAssertEqual(sortedByIndex[1].deltaSConfigBits, -3.0, accuracy: 1e-10)
+        // Third pose from 'second' array with deltaSBits -1.0
+        XCTAssertEqual(sortedByIndex[2].deltaSConfigBits, -1.0, accuracy: 1e-10)
+    }
+
+    /// Single essential pose produces exactly 1 binding mode with 1 pose.
+    func testBindingModesSinglePose() {
+        let calc = PartitionFunctionCalculator()
+        let results = [makeResult(deltaSBits: -3.0, dockingScore: -8.0)]
+        let ensemble = calc.computeEnsemble(results: results)!
+        let modes = ensemble.bindingModes()
+        XCTAssertEqual(modes.count, 1)
+        XCTAssertEqual(modes[0].count, 1)
+    }
+
+    /// Single pose fingerprint produces 1 cell with weight 1.0.
+    func testFingerprintSinglePose() {
+        let calc = PartitionFunctionCalculator()
+        let results = [makeResult(deltaSBits: -3.0, dockingScore: -8.0)]
+        let ensemble = calc.computeEnsemble(results: results)!
+        let fp = ensemble.landscapeFingerprint()
+        XCTAssertEqual(fp.cells.count, 1)
+        XCTAssertEqual(fp.cells[0].totalWeight, 1.0, accuracy: 1e-10)
+        XCTAssertEqual(fp.cells[0].poseCount, 1)
+    }
+
+    /// Zero or negative bin width returns empty fingerprint.
+    func testFingerprintInvalidBinWidth() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -3.0, dockingScore: -8.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
+        ]
+        let ensemble = calc.computeEnsemble(results: results)!
+
+        let fpZero = ensemble.landscapeFingerprint(energyBinWidth: 0.0)
+        XCTAssertTrue(fpZero.cells.isEmpty)
+
+        let fpNeg = ensemble.landscapeFingerprint(entropyBinWidth: -1.0)
+        XCTAssertTrue(fpNeg.cells.isEmpty)
+    }
+
+    /// Default auto-degeneracy bin width equals kT at 298K.
+    func testDefaultAutoDegeneracyBinWidth() {
+        let calc = PartitionFunctionCalculator(temperatureK: 298.15)
+        // kT = 1.987e-3 * 298.15 ≈ 0.5924 kcal/mol
+        let expectedKT = 1.987e-3 * 298.15
+
+        // Two poses separated by less than kT should merge into one bin
+        let close = [
+            makeResult(deltaSBits: -3.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -10.0 + expectedKT * 0.5),
+        ]
+        let closeResult = calc.computeEnsembleWithAutoDegeneracy(results: close)!
+        XCTAssertEqual(closeResult.poseCount, 1)  // merged into 1 bin
+
+        // Two poses separated by more than kT should stay separate
+        let far = [
+            makeResult(deltaSBits: -3.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -10.0 + expectedKT * 1.5),
+        ]
+        let farResult = calc.computeEnsembleWithAutoDegeneracy(results: far)!
+        XCTAssertEqual(farResult.poseCount, 2)  // separate bins
+    }
 }

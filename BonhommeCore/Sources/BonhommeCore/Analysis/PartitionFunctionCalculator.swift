@@ -177,7 +177,9 @@ public struct PartitionFunctionCalculator: Sendable {
             meanEnergy: meanEnergy,
             temperatureK: temperatureK,
             poseCount: results.count,
-            attributions: attributions
+            attributions: attributions,
+            sourceResults: results,
+            sourceDegeneracies: g
         )
     }
 
@@ -443,15 +445,12 @@ public struct PartitionFunctionCalculator: Sendable {
 
     // MARK: - Incremental Partition Function (GetCleft Merge Analogy)
 
-    /// Incrementally absorb new results into an existing ensemble without full recomputation.
+    /// Absorb new results into an existing ensemble by combining and recomputing.
     ///
     /// Inspired by GetCleft's `merge_clefts()` which splices overlapping sphere lists
-    /// into existing clefts in O(1) pointer operations. Here, new Boltzmann factors
-    /// are "spliced" into the running partition function.
-    ///
-    /// When the new minimum energy is close to the existing one (common case),
-    /// only the new poses require exp() evaluation — existing factors are rescaled
-    /// by a single multiplicative correction.
+    /// into existing clefts. Here, new results are concatenated with the original
+    /// results (preserved in `existing.sourceResults`) and the partition function
+    /// is recomputed over the combined set.
     ///
     /// - Parameters:
     ///   - newResults: Additional FlexAID∆S results to absorb.
@@ -465,32 +464,14 @@ public struct PartitionFunctionCalculator: Sendable {
     ) -> EnsembleResult? {
         guard !newResults.isEmpty else { return existing }
 
-        // Reconstruct the original results from attributions (sorted by poseIndex)
-        let oldAttrs = existing.attributions.sorted { $0.poseIndex < $1.poseIndex }
-        var combinedResults: [FlexAIDdSResult] = []
-        var combinedDegeneracies: [Double] = []
-
-        // Rebuild FlexAIDdSResult stubs from attributions for the old data.
-        // We need their docking scores and degeneracies, which are stored on PoseAttribution.
-        for attr in oldAttrs {
-            // Create a minimal result carrying the docking score through.
-            // Bond results are empty since we only need dockingScore for the partition function.
-            let stub = FlexAIDdSResult(
-                substanceId: attr.substanceId,
-                receptorId: attr.receptorId,
-                bondResults: [],
-                dockingScore: attr.dockingScore
-            )
-            combinedResults.append(stub)
-            combinedDegeneracies.append(attr.degeneracy)
-        }
-
-        // Add new results
         let newG = newDegeneracies ?? [Double](repeating: 1.0, count: newResults.count)
         guard newG.count == newResults.count else { return nil }
 
-        combinedResults.append(contentsOf: newResults)
-        combinedDegeneracies.append(contentsOf: newG)
+        // Use preserved original results and degeneracies instead of reconstructing stubs.
+        // This ensures full FlexAIDdSResult metadata (bondResults, totalDeltaSConfig, etc.)
+        // is carried through to the new ensemble.
+        let combinedResults = existing.sourceResults + newResults
+        let combinedDegeneracies = existing.sourceDegeneracies + newG
 
         return computeEnsemble(results: combinedResults, degeneracies: combinedDegeneracies)
     }
@@ -541,6 +522,12 @@ public struct EnsembleResult: Sendable {
     /// Per-pose attributions sorted by Boltzmann weight descending.
     /// The first entry is the most thermodynamically important pose.
     public var attributions: [PoseAttribution]
+
+    /// Original results used to compute this ensemble (preserved for incremental absorb).
+    internal let sourceResults: [FlexAIDdSResult]
+
+    /// Degeneracy factors used to compute this ensemble (preserved for incremental absorb).
+    internal let sourceDegeneracies: [Double]
 
     /// Effective number of poses: N_eff = exp(H · ln(2)) = 2^H.
     /// Ranges from 1 (single dominant) to N (uniform distribution).
@@ -619,7 +606,7 @@ public struct EnsembleResult: Sendable {
         energyBinWidth: Double = 1.0,
         entropyBinWidth: Double = 0.5
     ) -> BindingLandscapeFingerprint {
-        guard !attributions.isEmpty else {
+        guard !attributions.isEmpty, energyBinWidth > 0, entropyBinWidth > 0 else {
             return BindingLandscapeFingerprint(cells: [], energyBinWidth: energyBinWidth, entropyBinWidth: entropyBinWidth)
         }
 
