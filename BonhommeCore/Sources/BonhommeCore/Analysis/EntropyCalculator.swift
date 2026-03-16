@@ -61,6 +61,42 @@ public struct EntropyCalculator: Sendable {
         return 1.0 - (clamped / maxEntropy)
     }
 
+    /// Shannon entropy with fixed bin edges over a known domain.
+    ///
+    /// Unlike the adaptive overload, this uses caller-specified domain bounds so that
+    /// identical distributions always produce identical histograms regardless of sample extremes.
+    /// Use for torsional angles (domainMin: -180, domainMax: 180) or any bounded domain.
+    ///
+    /// Values outside the domain are clamped to the nearest edge.
+    ///
+    /// - Parameters:
+    ///   - values: Array of continuous values.
+    ///   - domainMin: Lower bound of the histogram domain (inclusive).
+    ///   - domainMax: Upper bound of the histogram domain (inclusive).
+    /// - Returns: Entropy in bits.
+    public func shannonEntropy(_ values: [Double], domainMin: Double, domainMax: Double) -> Double {
+        guard values.count >= 2 else { return 0 }
+        let range = domainMax - domainMin
+        guard range > 0 else { return 0 }
+
+        let binWidth = range / Double(binCount)
+        var bins = [Int](repeating: 0, count: binCount)
+
+        for value in values {
+            let clamped = max(domainMin, min(domainMax, value))
+            let idx = min(binCount - 1, Int((clamped - domainMin) / binWidth))
+            bins[idx] += 1
+        }
+
+        let total = Double(values.count)
+        var entropy = 0.0
+        for count in bins where count > 0 {
+            let p = Double(count) / total
+            entropy -= p * log2(p)
+        }
+        return entropy
+    }
+
     /// Compute both entropy and its normalized score in one call.
     ///
     /// - Parameters:
@@ -73,4 +109,70 @@ public struct EntropyCalculator: Sendable {
         let s = entropyToScore(h, maxEntropy: maxEntropy)
         return (entropy: h, score: s)
     }
+}
+
+// MARK: - Shared Statistical Utilities
+
+/// Pearson product-moment correlation coefficient.
+///
+/// - Parameters:
+///   - x: First variable array.
+///   - y: Second variable array (must have same count as x).
+/// - Returns: Pearson r in [-1, 1], or 0 if insufficient data or zero variance.
+public func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
+    let n = Double(x.count)
+    guard n >= 2, x.count == y.count else { return 0 }
+
+    let meanX = x.reduce(0, +) / n
+    let meanY = y.reduce(0, +) / n
+
+    var sumXY = 0.0
+    var sumX2 = 0.0
+    var sumY2 = 0.0
+
+    for i in 0..<x.count {
+        let dx = x[i] - meanX
+        let dy = y[i] - meanY
+        sumXY += dx * dy
+        sumX2 += dx * dx
+        sumY2 += dy * dy
+    }
+
+    let denom = sqrt(sumX2 * sumY2)
+    guard denom > 0 else { return 0 }
+    return sumXY / denom
+}
+
+/// Ordinary least-squares linear regression: y = slope × x + intercept.
+///
+/// - Parameters:
+///   - x: Independent variable array.
+///   - y: Dependent variable array (must have same count as x).
+/// - Returns: Tuple of (slope, intercept, mean absolute error).
+public func linearRegression(x: [Double], y: [Double]) -> (slope: Double, intercept: Double, mae: Double) {
+    let n = Double(x.count)
+    guard n >= 2 else { return (slope: 0, intercept: 0, mae: 0) }
+
+    let meanX = x.reduce(0, +) / n
+    let meanY = y.reduce(0, +) / n
+
+    var sumXY = 0.0
+    var sumX2 = 0.0
+
+    for i in 0..<x.count {
+        sumXY += (x[i] - meanX) * (y[i] - meanY)
+        sumX2 += (x[i] - meanX) * (x[i] - meanX)
+    }
+
+    let slope = sumX2 > 0 ? sumXY / sumX2 : 0
+    let intercept = meanY - slope * meanX
+
+    var totalError = 0.0
+    for i in 0..<x.count {
+        let predicted = slope * x[i] + intercept
+        totalError += abs(y[i] - predicted)
+    }
+    let mae = totalError / n
+
+    return (slope: slope, intercept: intercept, mae: mae)
 }

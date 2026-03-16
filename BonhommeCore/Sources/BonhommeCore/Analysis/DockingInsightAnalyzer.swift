@@ -42,8 +42,8 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
             )
         }
 
-        // Use the most recent docking signal
-        let latest = dockingSignals.sorted { $0.timestamp > $1.timestamp }.first!
+        // Use the most recent docking signal (O(n) instead of O(n log n) sort)
+        let latest = dockingSignals.max(by: { $0.timestamp < $1.timestamp })!
         let deltaSConfig = latest.deltaSConfig
 
         // Normalize to a 0–1 score: larger |ΔS| = stronger binding signal

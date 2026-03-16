@@ -293,6 +293,10 @@ public struct DrugResponseAnalyzer: Sendable {
     /// Minimum |ΔH| in bits to consider a drug response detected.
     /// Calibrated against resting HRV noise floor (~0.3 bits intra-session variation).
     /// Exceeding this threshold with p < 0.05 requires |ΔH| > 2σ of resting noise.
+    /// Set to 0.4 bits — slightly below FlexAIDdSAnalyzer's 0.5-bit threshold because
+    /// physiological RR-interval measurements have a higher noise floor (~0.3 bits from
+    /// measurement artifacts) than molecular torsional distributions, requiring a lower
+    /// detection threshold to capture genuine drug responses.
     public static let significanceThreshold: Double = 0.4
 
     /// Width of each measurement window in seconds.
@@ -608,30 +612,6 @@ public struct DrugResponseAnalyzer: Sendable {
         return best
     }
 
-    // MARK: - Statistics Helpers
-
-    /// Pearson correlation coefficient between two arrays.
-    private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        let n = Double(x.count)
-        guard n >= 2, x.count == y.count else { return 0 }
-
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-        var sumY2 = 0.0
-
-        for i in 0..<x.count {
-            let dx = x[i] - meanX
-            let dy = y[i] - meanY
-            sumXY += dx * dy
-            sumX2 += dx * dx
-            sumY2 += dy * dy
-        }
-
-        let denom = sqrt(sumX2 * sumY2)
-        guard denom > 0 else { return 0 }
-        return sumXY / denom
-    }
+    // Statistics helpers delegated to shared utilities in EntropyCalculator.swift:
+    // pearsonCorrelation(_:_:) and linearRegression(x:y:)
 }

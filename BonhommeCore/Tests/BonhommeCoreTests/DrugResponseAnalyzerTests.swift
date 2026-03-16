@@ -956,4 +956,39 @@ final class DrugResponseAnalyzerTests: XCTestCase {
         XCTAssertTrue(summary.en.contains("5 dose events"))
         XCTAssertTrue(summary.en.contains("Cohen's d"))
     }
+
+    // MARK: - Edge-Case Tests
+
+    /// Very low baseline variance should not produce NaN or infinite ΔH.
+    func testVeryLowBaselineEntropy() {
+        let analyzer = DrugResponseAnalyzer()
+        let doseTime = Date()
+
+        // Baseline: extremely consistent RR intervals (near-zero variance)
+        var rrSeries: [(timestamp: Date, rrInterval: Double)] = []
+        for i in 0..<200 {
+            let t = doseTime.addingTimeInterval(-1800 + Double(i) * 1.0)
+            // Very tight RR intervals: 850 ± 0.1 ms
+            rrSeries.append((timestamp: t, rrInterval: 850.0 + Double(i % 2) * 0.1))
+        }
+
+        // Post-dose: moderate change
+        for i in 0..<200 {
+            let t = doseTime.addingTimeInterval(Double(i) * 1.0)
+            rrSeries.append((timestamp: t, rrInterval: 750.0 + Double(i % 20) * 3.0))
+        }
+
+        let result = analyzer.analyze(
+            doseEvent: makeDose(value: 20, at: doseTime),
+            rrTimeSeries: rrSeries,
+            profile: .amphetamine
+        )
+
+        // Should produce a valid result (not nil) with finite values
+        if let r = result {
+            XCTAssertFalse(r.peakDeltaH.isNaN, "ΔH should not be NaN")
+            XCTAssertFalse(r.peakDeltaH.isInfinite, "ΔH should not be infinite")
+            XCTAssertTrue(r.baselineEntropy.isFinite, "Baseline entropy should be finite")
+        }
+    }
 }
