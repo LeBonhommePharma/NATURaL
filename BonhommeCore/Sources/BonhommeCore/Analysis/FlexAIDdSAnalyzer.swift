@@ -1,5 +1,8 @@
 import Foundation
 
+// MARK: - FlexAID∆S Configurational Entropy Analysis
+// Computes ΔS_config = S_bound − S_free from torsional angle distributions
+
 // MARK: - Domain Types
 
 /// Distribution of torsional angle samples for a single rotatable bond.
