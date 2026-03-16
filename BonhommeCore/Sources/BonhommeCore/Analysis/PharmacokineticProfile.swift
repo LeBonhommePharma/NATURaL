@@ -89,6 +89,22 @@ public struct PharmacokineticProfile: Sendable {
     /// Whether this is a controlled/scheduled substance.
     public let scheduled: Bool
 
+    /// Known configurational entropy penalty of binding (kcal/mol at 298K), if characterized.
+    /// Computed as -TΔS_config from FlexAID∆S or published computational chemistry data.
+    /// Positive values = entropy penalty (unfavorable contribution to binding free energy).
+    /// nil = not yet characterized for this substance.
+    public let bindingEntropyKcal: Double?
+
+    /// Shannon entropy change (ΔS_config) in bits, derived from bindingEntropyKcal.
+    /// Negative = binding constrains conformational freedom.
+    /// Computed via: ΔS_bits = -penalty / (T × R × ln(2)) at 298K.
+    public var bindingEntropySBits: Double? {
+        guard let kcal = bindingEntropyKcal else { return nil }
+        let R: Double = 1.987e-3  // kcal/(mol·K)
+        let T: Double = 298.0
+        return -kcal / (T * R * log(2.0))
+    }
+
     /// Analysis windows (minutes post-dose) for entropy measurement.
     public var analysisWindows: [Double] {
         let windows = [
@@ -112,7 +128,8 @@ public struct PharmacokineticProfile: Sendable {
         expectedDeltaHRange: ClosedRange<Double>,
         mechanism: AutonomicMechanism,
         fdaApproved: Bool = true,
-        scheduled: Bool = false
+        scheduled: Bool = false,
+        bindingEntropyKcal: Double? = nil
     ) {
         self.substanceId = substanceId
         self.name = name
@@ -124,6 +141,7 @@ public struct PharmacokineticProfile: Sendable {
         self.mechanism = mechanism
         self.fdaApproved = fdaApproved
         self.scheduled = scheduled
+        self.bindingEntropyKcal = bindingEntropyKcal
     }
 }
 
@@ -143,7 +161,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 600,
         expectedDeltaHRange: -2.0...(-0.8),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.2  // 2 rotatable bonds, small molecule
     )
 
     /// Lisdexamfetamine (Vyvanse). Prodrug of d-amphetamine.
@@ -158,7 +177,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -1.8...(-0.6),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.8  // Lysine-conjugated amphetamine, 4 rotatable bonds
     )
 
     /// Methylphenidate (Ritalin/Concerta).
@@ -173,7 +193,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 180,
         expectedDeltaHRange: -1.5...(-0.5),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.8  // 3 rotatable bonds, moderate constraint
     )
 
     /// Dextroamphetamine (Dexedrine). Pure d-isomer.
@@ -187,7 +208,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -2.0...(-0.8),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.2  // Same structure as amphetamine, 2 rotatable bonds
     )
 
     /// Methamphetamine (Desoxyn). FDA-approved for ADHD and obesity.
@@ -202,7 +224,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 600,
         expectedDeltaHRange: -2.5...(-1.0),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.3  // N-methyl phenethylamine, 2 rotatable bonds
     )
 
     /// Modafinil (Provigil). Wakefulness-promoting, atypical stimulant.
@@ -217,7 +240,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 900,
         expectedDeltaHRange: -0.8...(-0.2),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.2  // Diphenylmethyl sulfinyl, 4 rotatable bonds
     )
 
     /// Armodafinil (Nuvigil). R-enantiomer of modafinil.
@@ -231,7 +255,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 900,
         expectedDeltaHRange: -0.8...(-0.2),
         mechanism: .sympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.2  // R-enantiomer of modafinil, identical structure
     )
 
     /// Atomoxetine (Strattera). NE reuptake inhibitor (non-stimulant ADHD).
@@ -246,7 +271,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 300,
         expectedDeltaHRange: -1.0...(-0.3),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.5  // Phenoxypropylamine, 4 rotatable bonds
     )
 }
 
@@ -267,7 +293,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.8...(-0.2),
         mechanism: .sympathomimetic,
         fdaApproved: true,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.4  // Rigid planar xanthine, minimal configurational penalty
     )
 
     /// Theophylline. Xanthine bronchodilator.
@@ -282,7 +309,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 480,
         expectedDeltaHRange: -0.6...(-0.1),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.3  // Rigid planar xanthine, similar to caffeine
     )
 }
 
@@ -302,7 +330,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 240,
         expectedDeltaHRange: 0.3...1.5,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.5  // 5 rotatable bonds, flexible chain
     )
 
     /// Metoprolol. Selective β1-blocker.
@@ -316,7 +345,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 300,
         expectedDeltaHRange: 0.2...1.2,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 4.0  // Long flexible chain
     )
 
     /// Atenolol. Selective β1-blocker, hydrophilic.
@@ -330,7 +360,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 390,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.8  // Similar to metoprolol
     )
 
     /// Bisoprolol. Highly selective β1-blocker.
@@ -344,7 +375,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 660,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 4.0  // Isopropylamine ether chain, 7 rotatable bonds
     )
 
     /// Carvedilol. Non-selective β-blocker + α1-blocker.
@@ -358,7 +390,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 510,
         expectedDeltaHRange: 0.2...1.3,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.5  // Carbazole + propanolamine, 6 rotatable bonds
     )
 
     /// Clonidine. α2-adrenergic agonist (central sympatholytic).
@@ -373,7 +406,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 840,
         expectedDeltaHRange: 0.3...1.5,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.6  // Small, rigid imidazoline
     )
 
     /// Guanfacine (Intuniv). α2A-selective agonist.
@@ -387,7 +421,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1020,
         expectedDeltaHRange: 0.2...1.2,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.4  // Dichlorophenylacetylguanidine, 2 rotatable bonds
     )
 
     /// Digoxin. Cardiac glycoside.
@@ -401,7 +436,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 2520,
         expectedDeltaHRange: 0.2...0.8,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 5.0  // Large steroid glycoside, 8+ rotatable bonds in sugar chain
     )
 
     /// Ivabradine (Corlanor). If-channel blocker.
@@ -415,7 +451,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 360,
         expectedDeltaHRange: -0.2...0.3,
         mechanism: .unknown,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.0  // Benzazepinone, 5 rotatable bonds
     )
 }
 
@@ -435,7 +472,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1560,
         expectedDeltaHRange: -0.5...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.2  // 3 rotatable bonds
     )
 
     /// Fluoxetine (Prozac). SSRI. Long t½ including active metabolite.
@@ -449,7 +487,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 2880,
         expectedDeltaHRange: -0.5...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.0  // 5 rotatable bonds
     )
 
     /// Escitalopram (Lexapro). SSRI.
@@ -463,7 +502,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1800,
         expectedDeltaHRange: -0.4...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.5  // Bicyclic phthalane + fluorophenyl, 4 rotatable bonds
     )
 
     /// Paroxetine (Paxil). SSRI + anticholinergic.
@@ -478,7 +518,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1260,
         expectedDeltaHRange: -0.6...0.0,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.0  // Methylenedioxyphenyl piperidine, 3 rotatable bonds
     )
 
     /// Venlafaxine (Effexor). SNRI.
@@ -493,7 +534,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 300,
         expectedDeltaHRange: -0.8...(-0.1),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.8  // 6 rotatable bonds
     )
 
     /// Duloxetine (Cymbalta). SNRI.
@@ -507,7 +549,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -0.7...(-0.1),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.3  // Naphthyl thioether + amine chain, 3 rotatable bonds
     )
 
     /// Bupropion (Wellbutrin). NDRI.
@@ -522,7 +565,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1260,
         expectedDeltaHRange: -0.8...(-0.2),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.8  // Aminoketone, 3 rotatable bonds, chlorophenyl
     )
 
     /// Mirtazapine (Remeron). NaSSA.
@@ -537,7 +581,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1800,
         expectedDeltaHRange: 0.1...0.6,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.2  // Tetracyclic, mostly rigid, 1 rotatable N-methyl piperazine
     )
 
     /// Trazodone. SARI. Serotonin antagonist + reuptake inhibitor.
@@ -551,7 +596,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 420,
         expectedDeltaHRange: 0.0...0.5,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.8  // Triazolopyridine + piperazine + chlorophenyl, 4 rotatable bonds
     )
 
     /// Amitriptyline. TCA. Strong anticholinergic + NE/5-HT reuptake.
@@ -565,7 +611,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1500,
         expectedDeltaHRange: -0.8...(-0.2),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.0  // Tricyclic + dimethylaminopropylidene, 3 rotatable bonds
     )
 
     /// Nortriptyline. TCA (active metabolite of amitriptyline).
@@ -579,7 +626,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1680,
         expectedDeltaHRange: -0.7...(-0.1),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.6  // Tricyclic + methylaminopropylidene, 2 rotatable bonds
     )
 
     /// Phenelzine (Nardil). MAOI.
@@ -594,7 +642,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -0.6...0.0,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.0  // Phenylethylhydrazine, 2 rotatable bonds
     )
 
     /// Tranylcypromine (Parnate). MAOI.
@@ -609,7 +658,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 150,
         expectedDeltaHRange: -1.0...(-0.3),
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.5  // Rigid cyclopropylamine, minimal flexibility
     )
 }
 
@@ -629,7 +679,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 420,
         expectedDeltaHRange: -0.3...0.4,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 4.5  // 7 rotatable bonds, long chain
     )
 
     /// Olanzapine (Zyprexa). Atypical antipsychotic.
@@ -644,7 +695,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1800,
         expectedDeltaHRange: -0.5...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.8  // Thienobenzodiazepine, moderate flexibility
     )
 
     /// Risperidone (Risperdal). Atypical antipsychotic.
@@ -658,7 +710,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1260,
         expectedDeltaHRange: -0.4...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.8  // Benzisoxazole-piperidine chain, 4 rotatable bonds
     )
 
     /// Aripiprazole (Abilify). Atypical antipsychotic / D2 partial agonist.
@@ -672,7 +725,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 4500,
         expectedDeltaHRange: -0.3...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.5  // Dichlorophenyl piperazine + butoxy chain, 6 rotatable bonds
     )
 
     /// Haloperidol (Haldol). Typical antipsychotic.
@@ -686,7 +740,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1440,
         expectedDeltaHRange: -0.4...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.6  // Long chain between ring systems
     )
 
     /// Chlorpromazine (Thorazine). Typical antipsychotic.
@@ -700,7 +755,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1800,
         expectedDeltaHRange: -0.5...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.0  // Phenothiazine + dimethylaminopropyl, 3 rotatable bonds
     )
 
     /// Clozapine (Clozaril). Atypical antipsychotic.
@@ -715,7 +771,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -0.6...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.5  // Dibenzodiazepine, mostly rigid, 2 rotatable N-methyl piperazine
     )
 }
 
@@ -735,7 +792,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 660,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 0.8  // Rigid fused ring system
     )
 
     /// Diazepam (Valium). Long-acting benzodiazepine.
@@ -749,7 +807,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 3600,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.1  // Rigid benzodiazepine
     )
 
     /// Lorazepam (Ativan). Intermediate benzodiazepine.
@@ -763,7 +822,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: 0.2...0.9,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 0.9  // Rigid benzodiazepine
     )
 
     /// Clonazepam (Klonopin). Long-acting benzodiazepine.
@@ -777,7 +837,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 2100,
         expectedDeltaHRange: 0.2...0.9,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 0.9  // Rigid nitrobenzodiazepine, 0 rotatable bonds
     )
 
     /// Buspirone. 5-HT1A partial agonist (non-benzodiazepine anxiolytic).
@@ -791,7 +852,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 150,
         expectedDeltaHRange: -0.2...0.3,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.0  // Azapirone + butyl piperazine chain, 5 rotatable bonds
     )
 
     /// Hydroxyzine (Vistaril). Antihistamine anxiolytic.
@@ -806,7 +868,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1200,
         expectedDeltaHRange: 0.0...0.5,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.2  // Diphenylmethyl piperazine + ethoxy chain, 5 rotatable bonds
     )
 
     /// Zolpidem (Ambien). Non-benzodiazepine hypnotic (Z-drug).
@@ -821,7 +884,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 150,
         expectedDeltaHRange: 0.1...0.6,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.4  // Imidazopyridine, 2 rotatable bonds
     )
 
     /// Suvorexant (Belsomra). Orexin receptor antagonist.
@@ -835,7 +899,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: 0.0...0.4,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.5  // Diazepane + chlorobenzoxazole, 4 rotatable bonds
     )
 }
 
@@ -854,7 +919,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 150,
         expectedDeltaHRange: 0.2...1.2,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.0  // Rigid polycyclic, few rotatable bonds
     )
 
     /// Oxycodone (OxyContin). Semi-synthetic mu-opioid agonist. Schedule II.
@@ -868,7 +934,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 210,
         expectedDeltaHRange: 0.2...1.2,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.2  // Rigid polycyclic, similar to morphine
     )
 
     /// Hydrocodone (Vicodin component). Schedule II.
@@ -882,7 +949,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 240,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.1  // Rigid polycyclic phenanthrene, similar to morphine
     )
 
     /// Fentanyl. Potent synthetic mu-agonist. Schedule II.
@@ -896,7 +964,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 420,
         expectedDeltaHRange: 0.3...1.5,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 4.2  // Multiple rotatable bonds, high flexibility
     )
 
     /// Methadone. Long-acting mu-agonist + NMDA antagonist. Schedule II.
@@ -910,7 +979,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1800,
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 3.2  // Diphenylpropylamine, 5 rotatable bonds
     )
 
     /// Buprenorphine (Subutex/Suboxone). Partial mu-agonist.
@@ -924,7 +994,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 2220,
         expectedDeltaHRange: 0.1...0.7,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.5  // Rigid polycyclic + cyclopropylmethyl, 2 rotatable bonds
     )
 
     /// Tramadol. Weak mu-agonist + SNRI. Schedule IV.
@@ -938,7 +1009,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 360,
         expectedDeltaHRange: -0.2...0.6,
         mechanism: .mixed,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.0  // Cyclohexanol + dimethylaminomethyl, 3 rotatable bonds
     )
 
     /// Naltrexone. Opioid antagonist (used for alcohol/opioid dependence).
@@ -953,7 +1025,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 240,
         expectedDeltaHRange: -0.4...0.1,
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.3  // Rigid polycyclic + cyclopropyl, 2 rotatable bonds
     )
 }
 
@@ -972,7 +1045,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 360,
         expectedDeltaHRange: 0.0...0.5,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.5  // Cyclohexane ring with flexible tail
     )
 
     /// Pregabalin (Lyrica). Calcium channel α2δ ligand. Schedule V.
@@ -986,7 +1060,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 360,
         expectedDeltaHRange: 0.0...0.5,
         mechanism: .parasympathomimetic,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.6  // Isobutyl amino acid, 3 rotatable bonds
     )
 
     /// Lamotrigine (Lamictal). Sodium channel blocker.
@@ -1000,7 +1075,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1500,
         expectedDeltaHRange: -0.2...0.2,
         mechanism: .unknown,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.7  // Rigid dichlorophenyl triazine, 1 rotatable bond
     )
 
     /// Valproate / Valproic acid (Depakote). GABA enhancer / HDAC inhibitor.
@@ -1014,7 +1090,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 750,
         expectedDeltaHRange: -0.2...0.3,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.8  // Branched alkanoic acid, 4 rotatable bonds
     )
 
     /// Lithium. Mood stabilizer.
@@ -1028,7 +1105,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1620,
         expectedDeltaHRange: -0.3...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.0  // Monatomic ion, no rotatable bonds
     )
 
     /// Carbamazepine (Tegretol). Sodium channel blocker.
@@ -1042,7 +1120,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 870,
         expectedDeltaHRange: -0.3...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.8  // Rigid tricyclic iminostilbene, 1 rotatable carboxamide
     )
 
     /// Topiramate (Topamax). Multiple mechanisms (Na+, GABA, glutamate).
@@ -1056,7 +1135,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1260,
         expectedDeltaHRange: -0.2...0.2,
         mechanism: .unknown,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.6  // Sugar-based sulfamate, partially rigid, 3 rotatable bonds
     )
 }
 
@@ -1077,7 +1157,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -1.0...0.5,
         mechanism: .mixed,
         fdaApproved: false,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.1  // Minimal, essentially no rotatable bonds
     )
 
     /// Nicotine. nAChR agonist. Sympathomimetic.
@@ -1092,7 +1173,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -1.0...(-0.3),
         mechanism: .sympathomimetic,
         fdaApproved: true, // NRT products are FDA-approved
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.9  // Small, 1 rotatable bond
     )
 
     /// Δ9-THC (Cannabis). CB1/CB2 agonist.
@@ -1108,7 +1190,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.8...0.3,
         mechanism: .mixed,
         fdaApproved: false,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.2  // Tricyclic terpene + pentyl chain, 4 rotatable bonds
     )
 
     /// Dronabinol (Marinol). Synthetic THC. FDA-approved. Schedule III.
@@ -1123,7 +1206,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.6...0.3,
         mechanism: .mixed,
         fdaApproved: true,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.2  // Synthetic THC, identical structure
     )
 
     /// Cocaine. DAT/NET/SERT inhibitor. Potent sympathomimetic. Schedule II.
@@ -1138,7 +1222,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -2.5...(-1.0),
         mechanism: .sympathomimetic,
         fdaApproved: true, // Schedule II, rare clinical use as local anesthetic
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 2.0  // Moderate flexibility
     )
 
     /// MDMA (3,4-methylenedioxymethamphetamine).
@@ -1154,7 +1239,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -1.8...(-0.5),
         mechanism: .sympathomimetic,
         fdaApproved: false,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.5  // Methylenedioxyphenethylamine, 3 rotatable bonds
     )
 
     /// Psilocybin. 5-HT2A agonist. Psychedelic.
@@ -1169,7 +1255,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.6...0.3,
         mechanism: .mixed,
         fdaApproved: false,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.4  // Tryptamine + phosphate ester, 3 rotatable bonds
     )
 
     /// LSD (lysergic acid diethylamide). 5-HT2A agonist.
@@ -1184,7 +1271,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.5...0.2,
         mechanism: .mixed,
         fdaApproved: false,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 1.0  // Rigid ergoline tetracycle, 1 rotatable diethylamide
     )
 
     /// Ketamine. NMDA antagonist. Dissociative anesthetic.
@@ -1200,7 +1288,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: -0.8...0.4,
         mechanism: .mixed,
         fdaApproved: true,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 0.8  // Cyclohexanone + chloroamine, 1 rotatable bond
     )
 
     /// GHB (gamma-hydroxybutyrate / Xyrem). GABA-B agonist.
@@ -1216,7 +1305,8 @@ extension PharmacokineticProfile {
         expectedDeltaHRange: 0.2...1.0,
         mechanism: .parasympathomimetic,
         fdaApproved: true,
-        scheduled: true
+        scheduled: true,
+        bindingEntropyKcal: 0.6  // Tiny 4-carbon hydroxybutyrate, 2 rotatable bonds
     )
 }
 
@@ -1235,7 +1325,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 360,
         expectedDeltaHRange: -0.4...0.2,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.8  // Diphenylmethoxy + dimethylaminoethyl, 4 rotatable bonds
     )
 
     /// Promethazine (Phenergan). H1-antagonist + anticholinergic + α1-blocker.
@@ -1249,7 +1340,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 720,
         expectedDeltaHRange: -0.3...0.3,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.2  // Phenothiazine + dimethylaminopropyl, 3 rotatable bonds
     )
 
     /// Scopolamine. Muscarinic antagonist.
@@ -1264,7 +1356,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 270,
         expectedDeltaHRange: -0.6...0.0,
         mechanism: .sympathomimetic, // removes vagal brake → sympathetic dominance
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.8  // Tropane ester + epoxytropane, similar to atropine
     )
 
     /// Atropine. Muscarinic antagonist.
@@ -1279,7 +1372,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 240,
         expectedDeltaHRange: -1.2...(-0.4),
         mechanism: .sympathomimetic, // removes vagal brake
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 3.2  // Ester linkage + flexible chain
     )
 }
 
@@ -1298,7 +1392,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 120,
         expectedDeltaHRange: -0.2...0.2,
         mechanism: .unknown,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.6  // Propionic acid + isobutyl phenyl, 3 rotatable bonds
     )
 
     /// Prednisone. Corticosteroid.
@@ -1313,7 +1408,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 210,
         expectedDeltaHRange: -0.5...0.0,
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.2  // Rigid steroid skeleton, 2 rotatable side chain bonds
     )
 
     /// Dexamethasone. Potent corticosteroid.
@@ -1327,7 +1423,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 2700,
         expectedDeltaHRange: -0.5...0.0,
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.5  // Rigid steroid + fluorine, 3 rotatable bonds on side chain
     )
 }
 
@@ -1346,7 +1443,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 330,
         expectedDeltaHRange: -0.2...0.2,
         mechanism: .unknown,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.5  // Benzamide + diethylaminoethyl, 4 rotatable bonds
     )
 
     /// Levothyroxine (Synthroid). Thyroid hormone replacement.
@@ -1360,7 +1458,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 10080,
         expectedDeltaHRange: -0.3...0.1,
         mechanism: .sympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 2.4  // Amino acid + diiodophenoxy ether, 4 rotatable bonds
     )
 
     /// Insulin (rapid-acting, e.g., lispro). Endocrine.
@@ -1395,7 +1494,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 1080,
         expectedDeltaHRange: -0.4...0.1,
         mechanism: .mixed,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.5  // TCA-like tricyclic + dimethylaminopropyl, 2 rotatable bonds
     )
 
     /// Baclofen. GABA-B agonist. Muscle relaxant.
@@ -1409,7 +1509,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 210,
         expectedDeltaHRange: 0.0...0.4,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 1.2  // Chlorophenyl GABA analog, 2 rotatable bonds
     )
 
     /// Tizanidine (Zanaflex). α2-adrenergic agonist. Muscle relaxant.
@@ -1423,7 +1524,8 @@ extension PharmacokineticProfile {
         halfLifeMinutes: 150,
         expectedDeltaHRange: 0.2...0.8,
         mechanism: .parasympathomimetic,
-        scheduled: false
+        scheduled: false,
+        bindingEntropyKcal: 0.7  // Rigid benzothiadiazine, 1 rotatable bond
     )
 }
 
@@ -1494,5 +1596,10 @@ extension PharmacokineticProfile {
     /// All scheduled (controlled) substance profiles.
     public static var scheduledProfiles: [PharmacokineticProfile] {
         knownProfiles.filter(\.scheduled)
+    }
+
+    /// Profiles with characterized binding entropy (for FlexAID∆S cross-domain validation).
+    public static var profilesWithBindingEntropy: [PharmacokineticProfile] {
+        knownProfiles.filter { $0.bindingEntropyKcal != nil }
     }
 }
