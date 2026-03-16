@@ -10,6 +10,39 @@ final class WorkoutPlanTests: XCTestCase {
         XCTAssertEqual(plan.name.fr, "Plan test")
         XCTAssertEqual(plan.poseCount, 2)
         XCTAssertFalse(plan.isFree)
+        XCTAssertEqual(plan.style, .chairYoga) // default style
+    }
+
+    func testWorkoutPlanWithExplicitStyle() {
+        let plan = WorkoutPlan(
+            id: "style-test",
+            name: LocalizedString(en: "Style Test", fr: "Test de style"),
+            description: LocalizedString(en: "Test", fr: "Test"),
+            style: .vinyasa,
+            poses: [makePose()],
+            transitionSeconds: 5,
+            isFree: true
+        )
+        XCTAssertEqual(plan.style, .vinyasa)
+        XCTAssertTrue(plan.isFree)
+    }
+
+    func testYogaStyleLocalizedNames() {
+        for style in YogaStyle.allCases {
+            XCTAssertFalse(style.localizedName.en.isEmpty, "\(style.rawValue) missing English name")
+            XCTAssertFalse(style.localizedName.fr.isEmpty, "\(style.rawValue) missing French name")
+            XCTAssertFalse(style.localizedDescription.en.isEmpty, "\(style.rawValue) missing English description")
+            XCTAssertFalse(style.localizedDescription.fr.isEmpty, "\(style.rawValue) missing French description")
+            XCTAssertFalse(style.symbolName.isEmpty, "\(style.rawValue) missing symbol name")
+        }
+    }
+
+    func testYogaStyleCodable() throws {
+        for style in YogaStyle.allCases {
+            let data = try JSONEncoder().encode(style)
+            let decoded = try JSONDecoder().decode(YogaStyle.self, from: data)
+            XCTAssertEqual(decoded, style)
+        }
     }
 
     func testPoseCount() {

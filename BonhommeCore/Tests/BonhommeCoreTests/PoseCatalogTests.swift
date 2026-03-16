@@ -7,7 +7,8 @@ final class PoseCatalogTests: XCTestCase {
 
     func testAllPosesNotEmpty() {
         XCTAssertFalse(PoseCatalog.allPoses.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.allPoses.count, 16)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPoses.count, 200,
+            "Expected 200+ poses across all styles, got \(PoseCatalog.allPoses.count)")
     }
 
     func testAllPoseIdsAreUnique() {
@@ -68,11 +69,14 @@ final class PoseCatalogTests: XCTestCase {
 
     func testFreePosesExist() {
         XCTAssertFalse(PoseCatalog.freePoses.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.freePoses.count, 5)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.freePoses.count, 50,
+            "Expected 50+ free poses across all styles, got \(PoseCatalog.freePoses.count)")
     }
 
     func testPremiumPosesExist() {
         XCTAssertFalse(PoseCatalog.premiumPoses.isEmpty)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.premiumPoses.count, 100,
+            "Expected 100+ premium poses, got \(PoseCatalog.premiumPoses.count)")
     }
 
     func testFreePlusAndPremiumEqualsAll() {
@@ -118,13 +122,102 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertTrue(categories.contains(.shoulders), "No shoulder poses")
         XCTAssertTrue(categories.contains(.neck), "No neck poses")
         XCTAssertTrue(categories.contains(.breathing), "No breathing poses")
+        XCTAssertTrue(categories.contains(.core), "No core poses")
+        XCTAssertTrue(categories.contains(.arms), "No arms poses")
+        XCTAssertTrue(categories.contains(.legs), "No legs poses")
+        XCTAssertTrue(categories.contains(.chest), "No chest poses")
+        XCTAssertTrue(categories.contains(.back), "No back poses")
+        XCTAssertTrue(categories.contains(.relaxation), "No relaxation poses")
+        XCTAssertTrue(categories.contains(.balance), "No balance poses")
+    }
+
+    // MARK: - Position Coverage
+
+    func testAllPositionTypesRepresented() {
+        let positions = Set(PoseCatalog.allPoses.map(\.position))
+        for position in PosePosition.allCases {
+            XCTAssertTrue(positions.contains(position), "No poses with position \(position.rawValue)")
+        }
+    }
+
+    // MARK: - Style Coverage
+
+    func testAllStylesHaveAtLeastOnePlan() {
+        for style in YogaStyle.allCases {
+            let plans = PoseCatalog.plans(for: style)
+            XCTAssertFalse(plans.isEmpty, "Style \(style.rawValue) has no plans")
+        }
+    }
+
+    func testAllStylesHaveFreePlan() {
+        for style in YogaStyle.allCases {
+            let freePlans = PoseCatalog.plans(for: style).filter(\.isFree)
+            XCTAssertFalse(freePlans.isEmpty, "Style \(style.rawValue) has no free plan")
+        }
+    }
+
+    func testStyleFilterReturnsCorrectPlans() {
+        for style in YogaStyle.allCases {
+            let plans = PoseCatalog.plans(for: style)
+            for plan in plans {
+                XCTAssertEqual(plan.style, style,
+                    "Plan \(plan.id) has style \(plan.style.rawValue) but was returned for \(style.rawValue)")
+            }
+        }
+    }
+
+    func testNoDuplicatePoseIdsAcrossStyles() {
+        var seenIds = Set<String>()
+        for pose in PoseCatalog.allPoses {
+            XCTAssertFalse(seenIds.contains(pose.id), "Duplicate pose ID: \(pose.id)")
+            seenIds.insert(pose.id)
+        }
+    }
+
+    // MARK: - Per-Style Pose Counts
+
+    func testChairYogaPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.chairYogaPoses.count, 20)
+    }
+
+    func testVinyasaPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.vinyasaPoses.count, 20)
+    }
+
+    func testHathaPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPoses.count, 20)
+    }
+
+    func testYinPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.yinPoses.count, 15)
+    }
+
+    func testRestorativePosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.restorativePoses.count, 15)
+    }
+
+    func testPowerPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.powerPoses.count, 20)
+    }
+
+    func testStandingBalancePosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.standingBalancePoses.count, 15)
+    }
+
+    func testPrenatalPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.prenatalPoses.count, 15)
+    }
+
+    func testPranayamaPosesExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.pranayamaPoses.count, 10)
     }
 
     // MARK: - Workout Plans
 
     func testAllPlansNotEmpty() {
         XCTAssertFalse(PoseCatalog.allPlans.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 4)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 20,
+            "Expected 20+ plans across all styles, got \(PoseCatalog.allPlans.count)")
     }
 
     func testAllPlanIdsAreUnique() {
@@ -171,8 +264,8 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertEqual(plan.totalDuration, poseDuration + transitions)
     }
 
-    func testFullBodyPlanContainsAllPoses() {
-        XCTAssertEqual(PoseCatalog.fullBody.poses.count, PoseCatalog.allPoses.count)
+    func testFullBodyPlanContainsAllChairYogaPoses() {
+        XCTAssertEqual(PoseCatalog.fullBody.poses.count, PoseCatalog.chairYogaPoses.count)
     }
 
     // MARK: - Specific Poses

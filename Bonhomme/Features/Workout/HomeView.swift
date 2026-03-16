@@ -9,6 +9,7 @@ struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showingHealthKitAuth = false
     @State private var selectedPlan: WorkoutPlan?
+    @State private var selectedStyle: YogaStyle?
 
     var body: some View {
         if sizeClass == .regular {
@@ -22,41 +23,45 @@ struct HomeView: View {
 
     private var iPadLayout: some View {
         NavigationSplitView {
-            List(selection: $selectedPlan) {
+            List(selection: $selectedStyle) {
                 // CareKit prescribed section
                 if appState.careKitBridge.hasPrescriptions {
                     prescribedSection
                 }
 
-                // Free session
-                Section {
-                    planRow(plan: PoseCatalog.beginnerFlow, isPremium: false)
-                } header: {
-                    Text(LocalizedString(en: "Free", fr: "Gratuit").localized)
-                }
+                // Style sections
+                ForEach(YogaStyle.allCases, id: \.self) { style in
+                    NavigationLink(value: style) {
+                        HStack {
+                            Image(systemName: style.symbolName)
+                                .font(.system(size: 20))
+                                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.6, brightness: 0.8))
+                                .frame(width: 32)
 
-                // Premium plans
-                Section {
-                    ForEach(PoseCatalog.allPlans.filter { !$0.isFree }) { plan in
-                        planRow(plan: plan, isPremium: !appState.isPremium)
+                            VStack(alignment: .leading) {
+                                Text(style.localizedName.localized)
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: "plans", fr: "programmes").localized)")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                } header: {
-                    Text(LocalizedString(en: "All Plans", fr: "Tous les programmes").localized)
                 }
             }
             .navigationTitle("NATURaL")
             .listStyle(.sidebar)
         } detail: {
-            if let plan = selectedPlan {
-                planDetailView(plan: plan)
+            if let style = selectedStyle {
+                StyleDetailView(style: style)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "figure.yoga")
                         .font(.system(size: 64))
                         .foregroundStyle(.cyan.opacity(0.5))
                     Text(LocalizedString(
-                        en: "Select a workout plan",
-                        fr: "Sélectionnez un programme"
+                        en: "Select a yoga style",
+                        fr: "Sélectionnez un style de yoga"
                     ).localized)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -76,7 +81,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("NATURaL")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text(LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise").localized)
+                    Text(LocalizedString(en: "Yoga & Wellness", fr: "Yoga et bien-être").localized)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -98,19 +103,8 @@ struct HomeView: View {
                     .padding(.horizontal)
                 }
 
-                // Free session
-                workoutCard(
-                    plan: PoseCatalog.beginnerFlow,
-                    isPremium: false
-                )
-
-                // All plans
-                ForEach(PoseCatalog.allPlans.filter { !$0.isFree }) { plan in
-                    workoutCard(
-                        plan: plan,
-                        isPremium: !appState.isPremium
-                    )
-                }
+                // Style card grid
+                styleCardGrid
 
                 // TV connection status
                 tvStatusSection
@@ -119,6 +113,59 @@ struct HomeView: View {
         }
         .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
+    }
+
+    // MARK: - Style Card Grid
+
+    private var styleCardGrid: some View {
+        let columns = [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+
+        return LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(YogaStyle.allCases, id: \.self) { style in
+                NavigationLink {
+                    StyleDetailView(style: style)
+                } label: {
+                    styleCard(style: style)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private func styleCard(style: YogaStyle) -> some View {
+        let planCount = PoseCatalog.planCount(for: style)
+        let accentColor = Color(hue: style.accentHue, saturation: 0.6, brightness: 0.85)
+
+        return VStack(spacing: 12) {
+            Image(systemName: style.symbolName)
+                .font(.system(size: 32))
+                .foregroundStyle(accentColor)
+
+            Text(style.localizedName.localized)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+
+            Text("\(planCount) \(LocalizedString(en: "plans", fr: "programmes").localized)")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(
+            Color(hue: style.accentHue, saturation: 0.1, brightness: 0.95),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(accentColor.opacity(0.3), lineWidth: 1)
+        )
     }
 
     // MARK: - CareKit Prescribed Section
