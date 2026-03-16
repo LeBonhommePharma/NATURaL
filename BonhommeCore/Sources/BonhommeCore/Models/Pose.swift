@@ -1,6 +1,6 @@
 import Foundation
 
-/// Difficulty levels for chair yoga poses.
+/// Difficulty levels for yoga poses.
 public enum PoseDifficulty: String, Codable, Sendable, CaseIterable {
     case beginner
     case intermediate
@@ -27,6 +27,38 @@ public enum PoseDifficulty: String, Codable, Sendable, CaseIterable {
     }
 }
 
+/// Body position required by the pose.
+public enum PosePosition: String, Codable, Sendable, CaseIterable {
+    case seated       // Chair yoga, seated meditation
+    case standing     // Vinyasa, hatha standing, power
+    case supine       // Lying on back — yin, restorative, savasana
+    case prone        // Lying face down — cobra, locust, bow
+    case kneeling     // Tabletop, low lunge, camel
+    case inversion    // Downward dog, legs-up-the-wall, headstand prep
+
+    public var localizedName: LocalizedString {
+        switch self {
+        case .seated:    return LocalizedString(en: "Seated", fr: "Assis")
+        case .standing:  return LocalizedString(en: "Standing", fr: "Debout")
+        case .supine:    return LocalizedString(en: "Supine", fr: "Couché sur le dos")
+        case .prone:     return LocalizedString(en: "Prone", fr: "Couché sur le ventre")
+        case .kneeling:  return LocalizedString(en: "Kneeling", fr: "À genoux")
+        case .inversion: return LocalizedString(en: "Inversion", fr: "Inversion")
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .seated:    return "figure.seated.side"
+        case .standing:  return "figure.stand"
+        case .supine:    return "figure.roll"
+        case .prone:     return "figure.roll"
+        case .kneeling:  return "figure.flexibility"
+        case .inversion: return "figure.yoga"
+        }
+    }
+}
+
 /// Target body area for filtering and categorization.
 public enum PoseCategory: String, Codable, Sendable, CaseIterable {
     case spine
@@ -36,47 +68,75 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
     case fullBody
     case breathing
     case balance
+    case core
+    case arms
+    case legs
+    case chest
+    case back
+    case relaxation
+    case inversion
 
     public var localizedName: LocalizedString {
         switch self {
-        case .spine:     return LocalizedString(en: "Spine", fr: "Colonne vertébrale")
-        case .hips:      return LocalizedString(en: "Hips", fr: "Hanches")
-        case .shoulders: return LocalizedString(en: "Shoulders", fr: "Épaules")
-        case .neck:      return LocalizedString(en: "Neck", fr: "Cou")
-        case .fullBody:  return LocalizedString(en: "Full Body", fr: "Corps complet")
-        case .breathing: return LocalizedString(en: "Breathing", fr: "Respiration")
-        case .balance:   return LocalizedString(en: "Balance", fr: "Équilibre")
+        case .spine:       return LocalizedString(en: "Spine", fr: "Colonne vertébrale")
+        case .hips:        return LocalizedString(en: "Hips", fr: "Hanches")
+        case .shoulders:   return LocalizedString(en: "Shoulders", fr: "Épaules")
+        case .neck:        return LocalizedString(en: "Neck", fr: "Cou")
+        case .fullBody:    return LocalizedString(en: "Full Body", fr: "Corps complet")
+        case .breathing:   return LocalizedString(en: "Breathing", fr: "Respiration")
+        case .balance:     return LocalizedString(en: "Balance", fr: "Équilibre")
+        case .core:        return LocalizedString(en: "Core", fr: "Abdominaux")
+        case .arms:        return LocalizedString(en: "Arms", fr: "Bras")
+        case .legs:        return LocalizedString(en: "Legs", fr: "Jambes")
+        case .chest:       return LocalizedString(en: "Chest", fr: "Poitrine")
+        case .back:        return LocalizedString(en: "Back", fr: "Dos")
+        case .relaxation:  return LocalizedString(en: "Relaxation", fr: "Relaxation")
+        case .inversion:   return LocalizedString(en: "Inversion", fr: "Inversion")
         }
     }
 
     /// SF Symbol name representing this body category.
     public var symbolName: String {
         switch self {
-        case .spine:     return "figure.flexibility"
-        case .hips:      return "figure.walk"
-        case .shoulders: return "figure.arms.open"
-        case .neck:      return "head.profile"
-        case .fullBody:  return "figure.yoga"
-        case .breathing: return "wind"
-        case .balance:   return "figure.stand"
+        case .spine:       return "figure.flexibility"
+        case .hips:        return "figure.walk"
+        case .shoulders:   return "figure.arms.open"
+        case .neck:        return "head.profile"
+        case .fullBody:    return "figure.yoga"
+        case .breathing:   return "wind"
+        case .balance:     return "figure.stand"
+        case .core:        return "figure.core.training"
+        case .arms:        return "figure.arms.open"
+        case .legs:        return "figure.run"
+        case .chest:       return "figure.arms.open"
+        case .back:        return "figure.flexibility"
+        case .relaxation:  return "moon.zzz"
+        case .inversion:   return "figure.yoga"
         }
     }
 
     /// Accent color tint for this category.
     public var accentHue: Double {
         switch self {
-        case .spine:     return 0.52   // cyan-blue
-        case .hips:      return 0.75   // purple
-        case .shoulders: return 0.58   // teal
-        case .neck:      return 0.45   // cyan
-        case .fullBody:  return 0.55   // blue-cyan
-        case .breathing: return 0.33   // green
-        case .balance:   return 0.65   // indigo
+        case .spine:       return 0.52   // cyan-blue
+        case .hips:        return 0.75   // purple
+        case .shoulders:   return 0.58   // teal
+        case .neck:        return 0.45   // cyan
+        case .fullBody:    return 0.55   // blue-cyan
+        case .breathing:   return 0.33   // green
+        case .balance:     return 0.65   // indigo
+        case .core:        return 0.08   // orange
+        case .arms:        return 0.60   // blue
+        case .legs:        return 0.70   // violet
+        case .chest:       return 0.10   // red-orange
+        case .back:        return 0.50   // cyan
+        case .relaxation:  return 0.80   // lavender
+        case .inversion:   return 0.15   // red
         }
     }
 }
 
-/// A single chair yoga pose with bilingual metadata for guided instruction.
+/// A single yoga pose with bilingual metadata for guided instruction.
 public struct Pose: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let name: LocalizedString
@@ -84,6 +144,7 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
     public let durationSeconds: TimeInterval
     public let difficulty: PoseDifficulty
     public let category: PoseCategory
+    public let position: PosePosition
     public let imageName: String
     public let voiceCueText: LocalizedString
     public let modifications: LocalizedStringArray
@@ -98,6 +159,7 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
         durationSeconds: TimeInterval,
         difficulty: PoseDifficulty,
         category: PoseCategory,
+        position: PosePosition = .seated,
         imageName: String,
         voiceCueText: LocalizedString,
         modifications: LocalizedStringArray,
@@ -111,6 +173,7 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
         self.durationSeconds = durationSeconds
         self.difficulty = difficulty
         self.category = category
+        self.position = position
         self.imageName = imageName
         self.voiceCueText = voiceCueText
         self.modifications = modifications
