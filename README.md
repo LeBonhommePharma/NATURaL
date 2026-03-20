@@ -22,16 +22,18 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/🔥_TYPE-FIRE_%2F_SWIFT_5.9-FF6B35?style=for-the-badge&labelColor=FF4500" alt="Swift">
-  <img src="https://img.shields.io/badge/🌿_TYPE-GRASS_%2F_iOS_17%2B-2ECC40?style=for-the-badge&labelColor=27AE60" alt="iOS">
-  <img src="https://img.shields.io/badge/💧_TYPE-WATER_%2F_watchOS_10%2B-0074D9?style=for-the-badge&labelColor=2980B9" alt="watchOS">
-  <img src="https://img.shields.io/badge/🔮_TYPE-PSYCHIC_%2F_visionOS_1%2B-B10DC9?style=for-the-badge&labelColor=8E44AD" alt="visionOS">
-  <img src="https://img.shields.io/badge/⚡_TYPE-ELECTRIC_%2F_tvOS_17%2B-FFDC00?style=for-the-badge&labelColor=F1C40F" alt="tvOS">
-  <img src="https://img.shields.io/badge/🛡️_LICENSE-PROPRIETARY-95A5A6?style=for-the-badge&labelColor=7F8C8D" alt="License">
+  <img src="https://img.shields.io/badge/🔥_FIRE-Swift_5.9_%2F_Xcode_15%2B-FF4500?style=for-the-badge&labelColor=CC3700" alt="Swift">
+  <img src="https://img.shields.io/badge/🧚_FAIRY-iOS_17%2B_%2F_iPadOS-FF69B4?style=for-the-badge&labelColor=CC5490" alt="iOS">
+  <img src="https://img.shields.io/badge/🧊_ICE-watchOS_10%2B_%2F_HRV-00BFFF?style=for-the-badge&labelColor=0099CC" alt="watchOS">
+  <img src="https://img.shields.io/badge/🔮_PSYCHIC-visionOS_1%2B_%2F_Spatial-9B59B6?style=for-the-badge&labelColor=7A4490" alt="visionOS">
+  <img src="https://img.shields.io/badge/⚡_ELECTRIC-tvOS_17%2B_%2F_Display-FFD700?style=for-the-badge&labelColor=CCAC00" alt="tvOS">
+  <img src="https://img.shields.io/badge/⚙️_STEEL-Proprietary-B8B8D0?style=for-the-badge&labelColor=9090A8" alt="License">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/docking_poses-60+-AB47BC?style=flat-square" alt="Docking Poses">
+  <img src="https://img.shields.io/badge/docking_poses-84-AB47BC?style=flat-square" alt="Docking Poses">
+  <img src="https://img.shields.io/badge/yoga_poses-26_bilingual-FF6B6B?style=flat-square" alt="Yoga Poses">
+  <img src="https://img.shields.io/badge/PokeDrug_TYPEs-10-7B2FFE?style=flat-square" alt="Types">
   <img src="https://img.shields.io/badge/plans-6_guided-FFA726?style=flat-square" alt="Plans">
   <img src="https://img.shields.io/badge/biofeedback-real--time-FFEE58?style=flat-square" alt="Biofeedback">
   <img src="https://img.shields.io/badge/CareKit-clinical-66BB6A?style=flat-square" alt="CareKit">
@@ -49,8 +51,8 @@
    ║  Press START to begin  ║    ║ NAME: Bonhomme        ║
    ║                        ║    ║ REGION: Apple          ║
    ║   ◄ NEW GAME ►        ║    ║ BADGES: 13             ║
-   ║     CONTINUE           ║    ║ CODEX: 26/26           ║
-   ║     OPTIONS            ║    ║ TIME: ∞                ║
+   ║     CONTINUE           ║    ║ YOGA: 26/26            ║
+   ║     OPTIONS            ║    ║ POKEDRUG: 84/84        ║
    ╚════════════════════════╝    ╚═══════════════════════╝
 ```
 
