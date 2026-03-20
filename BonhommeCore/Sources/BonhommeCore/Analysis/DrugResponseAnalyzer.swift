@@ -322,6 +322,10 @@ public struct DrugResponseAnalyzer: Sendable {
     /// Minimum |ΔH| in bits to consider a drug response detected.
     /// Calibrated against resting HRV noise floor (~0.3 bits intra-session variation).
     /// Exceeding this threshold with p < 0.05 requires |ΔH| > 2σ of resting noise.
+    /// Set to 0.4 bits — slightly below FlexAIDdSAnalyzer's 0.5-bit threshold because
+    /// physiological RR-interval measurements have a higher noise floor (~0.3 bits from
+    /// measurement artifacts) than molecular torsional distributions, requiring a lower
+    /// detection threshold to capture genuine drug responses.
     public static let significanceThreshold: Double = 0.4
 
     /// Width of each measurement window in seconds.
