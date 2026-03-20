@@ -475,164 +475,184 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🔥 FIRE — Sympathomimetics (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 1 | amphetamine | 2 | -2.9 | 1.2 | 🟢 |
-| 2 | dextroamphetamine | 2 | -2.9 | 1.2 | 🟢 |
-| 3 | methamphetamine | 2 | -3.2 | 1.3 | 🟡 |
-| 4 | lisdexamfetamine | 4 | -4.4 | 1.8 | 🟡 |
-| 5 | methylphenidate | 3 | -6.8 | 2.8 | 🟡 |
-| 6 | cocaine | 4 | -4.9 | 2.0 | 🟡 |
-| 7 | caffeine | 0 | -1.0 | 0.4 | 🟢 |
-| 8 | theophylline | 0 | -0.7 | 0.3 | 🟢 |
-| 9 | nicotine | 1 | -2.2 | 0.9 | 🟢 |
-| 10 | mdma | 3 | -3.7 | 1.5 | 🟡 |
+> Stimulates fight-or-flight via catecholamine release or reuptake inhibition. Detected by HR ↑ and HRV entropy **collapse** (ΔH < 0).
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 1 | amphetamine | Stimulant (DAT/NET) | 2 | -2.9 | 1.2 | 3h | 10h | -2.0 to -0.8 | C-II | 🟢 |
+| 2 | dextroamphetamine | Stimulant (DAT/NET) | 2 | -2.9 | 1.2 | 3h | 12h | -2.0 to -0.8 | C-II | 🟢 |
+| 3 | methamphetamine | Stimulant (DAT/NET) | 2 | -3.2 | 1.3 | 3h | 10h | -2.5 to -1.0 | C-II | 🟡 |
+| 4 | lisdexamfetamine | Prodrug → d-amph | 4 | -4.4 | 1.8 | 3.5h | 12h | -1.8 to -0.6 | C-II | 🟡 |
+| 5 | methylphenidate | Stimulant (DAT) | 3 | -6.8 | 2.8 | 2h | 3h | -1.5 to -0.5 | C-II | 🟡 |
+| 6 | cocaine | DAT/NET/SERT blocker | 4 | -4.9 | 2.0 | 30m | 1h | -2.5 to -1.0 | C-II | 🟡 |
+| 7 | caffeine | Xanthine (A₂ₐ antag) | 0 | -1.0 | 0.4 | 45m | 5h | -0.8 to -0.2 | — | 🟢 |
+| 8 | theophylline | Xanthine (PDE inhib) | 0 | -0.7 | 0.3 | 1.5h | 8h | -0.6 to -0.1 | Rx | 🟢 |
+| 9 | nicotine | nAChR agonist | 1 | -2.2 | 0.9 | 10m | 2h | -1.0 to -0.3 | — | 🟢 |
+| 10 | mdma | Monoamine releaser | 3 | -3.7 | 1.5 | 2h | 8h | -1.8 to -0.5 | C-I | 🟡 |
 
 </details>
 
 <details>
 <summary><strong>⚡ ELECTRIC — Dopaminergic / Noradrenergic (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 11 | modafinil | 4 | -5.3 | 2.2 | 🟡 |
-| 12 | armodafinil | 4 | -5.3 | 2.2 | 🟡 |
-| 13 | atomoxetine | 4 | -6.1 | 2.5 | 🟡 |
-| 14 | bupropion | 3 | -4.4 | 1.8 | 🟡 |
-| 15 | phenelzine | 2 | -2.4 | 1.0 | 🟢 |
-| 16 | tranylcypromine | 0 | -1.2 | 0.5 | 🟢 |
+> Targets the reward pathway via dopamine/norepinephrine reuptake inhibition or MAO inhibition. Detected by activity ring spike, acute HRV compression → rebound.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 11 | modafinil | Wakefulness (DAT) | 4 | -5.3 | 2.2 | 3h | 15h | -0.8 to -0.2 | C-IV | 🟡 |
+| 12 | armodafinil | Wakefulness (R-mod) | 4 | -5.3 | 2.2 | 2h | 15h | -0.8 to -0.2 | C-IV | 🟡 |
+| 13 | atomoxetine | NRI (non-stimulant) | 4 | -6.1 | 2.5 | 1.5h | 5h | -1.0 to -0.3 | Rx | 🟡 |
+| 14 | bupropion | NDRI | 3 | -4.4 | 1.8 | 2h | 21h | -0.8 to -0.2 | Rx | 🟡 |
+| 15 | phenelzine | MAOI (irreversible) | 2 | -2.4 | 1.0 | 2h | 12h | -0.6 to 0.0 | Rx | 🟢 |
+| 16 | tranylcypromine | MAOI (irreversible) | 0 | -1.2 | 0.5 | 1.5h | 2.5h | -1.0 to -0.3 | Rx | 🟢 |
 
 </details>
 
 <details>
 <summary><strong>🧊 ICE — Parasympathomimetics (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 17 | propranolol | 5 | -8.5 | 3.5 | 🟡 |
-| 18 | metoprolol | 7 | -9.7 | 4.0 | 🔴 |
-| 19 | atenolol | 6 | -9.3 | 3.8 | 🔴 |
-| 20 | bisoprolol | 7 | -9.7 | 4.0 | 🔴 |
-| 21 | carvedilol | 6 | -8.5 | 3.5 | 🔴 |
-| 22 | clonidine | 1 | -1.5 | 0.6 | 🟢 |
-| 23 | guanfacine | 2 | -3.4 | 1.4 | 🟡 |
-| 24 | digoxin | 8 | -12.2 | 5.0 | 🔴 |
-| 25 | ivabradine | 5 | -7.3 | 3.0 | 🟡 |
+> Calms the autonomic system via β-adrenergic blockade or α₂-agonism. Detected by HR ↓ and HRV entropy **expansion** (ΔH > 0).
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 17 | propranolol | β-blocker (non-sel) | 5 | -8.5 | 3.5 | 1.5h | 4h | +0.3 to +1.5 | Rx | 🟡 |
+| 18 | metoprolol | β₁-blocker (sel) | 7 | -9.7 | 4.0 | 1.5h | 4h | +0.2 to +1.2 | Rx | 🔴 |
+| 19 | atenolol | β₁-blocker (hydro) | 6 | -9.3 | 3.8 | 3h | 7h | +0.2 to +1.0 | Rx | 🔴 |
+| 20 | bisoprolol | β₁-blocker (hi-sel) | 7 | -9.7 | 4.0 | 2h | 11h | +0.2 to +1.0 | Rx | 🔴 |
+| 21 | carvedilol | β+α₁-blocker | 6 | -8.5 | 3.5 | 1.5h | 7h | +0.2 to +1.3 | Rx | 🔴 |
+| 22 | clonidine | α₂-agonist (central) | 1 | -1.5 | 0.6 | 2h | 12h | +0.3 to +1.5 | Rx | 🟢 |
+| 23 | guanfacine | α₂A-agonist (sel) | 2 | -3.4 | 1.4 | 4h | 17h | +0.2 to +1.2 | Rx | 🟡 |
+| 24 | digoxin | Cardiac glycoside | 8 | -12.2 | 5.0 | 2h | 42h | +0.2 to +0.8 | Rx | 🔴 |
+| 25 | ivabradine | If-channel blocker | 5 | -7.3 | 3.0 | 1h | 6h | -0.2 to +0.3 | Rx | 🟡 |
 
 </details>
 
 <details>
 <summary><strong>🧚 FAIRY — Serotonergic (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 26 | sertraline | 3 | -5.4 | 2.2 | 🟡 |
-| 27 | fluoxetine | 5 | -7.3 | 3.0 | 🟡 |
-| 28 | escitalopram | 4 | -6.1 | 2.5 | 🟡 |
-| 29 | paroxetine | 3 | -4.9 | 2.0 | 🟡 |
-| 30 | venlafaxine | 6 | -9.3 | 3.8 | 🔴 |
-| 31 | duloxetine | 3 | -5.6 | 2.3 | 🟡 |
-| 32 | trazodone | 4 | -6.8 | 2.8 | 🟡 |
-| 33 | buspirone | 5 | -7.3 | 3.0 | 🟡 |
-| 34 | psilocybin | 3 | -3.4 | 1.4 | 🟡 |
-| 35 | lsd | 1 | -2.4 | 1.0 | 🟢 |
+> Modulates 5-HT receptors via reuptake inhibition (SSRIs/SNRIs), partial agonism, or direct agonism (psychedelics). Detected by slow HRV modulation over days and sleep architecture Δ.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 26 | sertraline | SSRI | 3 | -5.4 | 2.2 | 6.5h | 26h | -0.5 to +0.1 | Rx | 🟡 |
+| 27 | fluoxetine | SSRI | 5 | -7.3 | 3.0 | 7h | 48h | -0.5 to +0.1 | Rx | 🟡 |
+| 28 | escitalopram | SSRI | 4 | -6.1 | 2.5 | 5h | 30h | -0.4 to +0.1 | Rx | 🟡 |
+| 29 | paroxetine | SSRI + ACh | 3 | -4.9 | 2.0 | 5h | 21h | -0.6 to 0.0 | Rx | 🟡 |
+| 30 | venlafaxine | SNRI | 6 | -9.3 | 3.8 | 2h | 5h | -0.8 to -0.1 | Rx | 🔴 |
+| 31 | duloxetine | SNRI | 3 | -5.6 | 2.3 | 6h | 12h | -0.7 to -0.1 | Rx | 🟡 |
+| 32 | trazodone | SARI | 4 | -6.8 | 2.8 | 1h | 7h | 0.0 to +0.5 | Rx | 🟡 |
+| 33 | buspirone | 5-HT₁A agonist | 5 | -7.3 | 3.0 | 1h | 2.5h | -0.2 to +0.3 | Rx | 🟡 |
+| 34 | psilocybin | 5-HT₂A agonist | 3 | -3.4 | 1.4 | 1.5h | 3h | -0.6 to +0.3 | C-I | 🟡 |
+| 35 | lsd | 5-HT₂A agonist | 1 | -2.4 | 1.0 | 2h | 3.5h | -0.5 to +0.2 | C-I | 🟢 |
 
 </details>
 
 <details>
 <summary><strong>🐉 DRAGON — Mixed / Biphasic (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 36 | quetiapine | 7 | -11.0 | 4.5 | 🔴 |
-| 37 | olanzapine | 2 | -4.4 | 1.8 | 🟡 |
-| 38 | risperidone | 4 | -6.8 | 2.8 | 🟡 |
-| 39 | haloperidol | 6 | -8.8 | 3.6 | 🔴 |
-| 40 | chlorpromazine | 3 | -4.9 | 2.0 | 🟡 |
-| 41 | clozapine | 2 | -3.7 | 1.5 | 🟡 |
-| 42 | aripiprazole | 6 | -8.5 | 3.5 | 🔴 |
-| 43 | ethanol | 0 | -0.2 | 0.1 | 🟢 |
-| 44 | mirtazapine | 1 | -2.9 | 1.2 | 🟢 |
-| 45 | hydroxyzine | 5 | -7.8 | 3.2 | 🟡 |
+> Dual-branch autonomic agents (antipsychotics, alcohol) with multi-receptor affinity. Detected by biphasic ΔH — initial collapse then expansion.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 36 | quetiapine | Atypical AP (D₂/5-HT₂) | 7 | -11.0 | 4.5 | 1.5h | 7h | -0.3 to +0.4 | Rx | 🔴 |
+| 37 | olanzapine | Atypical AP (D₂/5-HT₂) | 2 | -4.4 | 1.8 | 6.5h | 30h | -0.5 to +0.2 | Rx | 🟡 |
+| 38 | risperidone | Atypical AP (D₂/5-HT₂) | 4 | -6.8 | 2.8 | 1h | 21h | -0.4 to +0.2 | Rx | 🟡 |
+| 39 | haloperidol | Typical AP (D₂) | 6 | -8.8 | 3.6 | 4h | 24h | -0.4 to +0.1 | Rx | 🔴 |
+| 40 | chlorpromazine | Typical AP (D₂/ACh) | 3 | -4.9 | 2.0 | 3h | 30h | -0.5 to +0.2 | Rx | 🟡 |
+| 41 | clozapine | Atypical AP (multi) | 2 | -3.7 | 1.5 | 2.5h | 12h | -0.6 to +0.1 | Rx | 🟡 |
+| 42 | aripiprazole | AP (D₂ partial ag) | 6 | -8.5 | 3.5 | 4h | 75h | -0.3 to +0.2 | Rx | 🔴 |
+| 43 | ethanol | GABA-A / NMDA | 0 | -0.2 | 0.1 | 1h | 1.5h | -1.0 to +0.5 | — | 🟢 |
+| 44 | mirtazapine | NaSSA (α₂/5-HT₂/H₁) | 1 | -2.9 | 1.2 | 2h | 30h | +0.1 to +0.6 | Rx | 🟢 |
+| 45 | hydroxyzine | Antihistamine (H₁) | 5 | -7.8 | 3.2 | 2h | 20h | 0.0 to +0.5 | Rx | 🟡 |
 
 </details>
 
 <details>
 <summary><strong>👻 GHOST — GABAergic / Sedative (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 46 | alprazolam | 0 | -2.0 | 0.8 | 🟢 |
-| 47 | diazepam | 1 | -2.7 | 1.1 | 🟢 |
-| 48 | lorazepam | 0 | -2.2 | 0.9 | 🟢 |
-| 49 | clonazepam | 0 | -2.2 | 0.9 | 🟢 |
-| 50 | zolpidem | 2 | -3.4 | 1.4 | 🟡 |
-| 51 | suvorexant | 4 | -6.1 | 2.5 | 🟡 |
-| 52 | ghb | 2 | -1.5 | 0.6 | 🟢 |
+> Enhances GABA-A inhibition (benzodiazepines), blocks orexin (suvorexant), or activates GABA-B (GHB). Detected by respiratory rate ↓ and sleep entropy shift.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 46 | alprazolam | BZD (short-acting) | 0 | -2.0 | 0.8 | 1.5h | 11h | +0.2 to +1.0 | C-IV | 🟢 |
+| 47 | diazepam | BZD (long-acting) | 1 | -2.7 | 1.1 | 1.25h | 60h | +0.2 to +1.0 | C-IV | 🟢 |
+| 48 | lorazepam | BZD (intermediate) | 0 | -2.2 | 0.9 | 2h | 12h | +0.2 to +0.9 | C-IV | 🟢 |
+| 49 | clonazepam | BZD (long-acting) | 0 | -2.2 | 0.9 | 2.5h | 35h | +0.2 to +0.9 | C-IV | 🟢 |
+| 50 | zolpidem | Z-drug (ω₁ sel) | 2 | -3.4 | 1.4 | 1.6h | 2.5h | +0.1 to +0.6 | C-IV | 🟡 |
+| 51 | suvorexant | Orexin antagonist | 4 | -6.1 | 2.5 | 2h | 12h | 0.0 to +0.4 | C-IV | 🟡 |
+| 52 | ghb | GABA-B agonist | 2 | -1.5 | 0.6 | 35m | 45m | +0.2 to +1.0 | C-I/III | 🟢 |
 
 </details>
 
 <details>
 <summary><strong>🔮 PSYCHIC — Opioidergic (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 53 | morphine | 1 | -2.4 | 1.0 | 🟢 |
-| 54 | oxycodone | 1 | -2.9 | 1.2 | 🟢 |
-| 55 | hydrocodone | 1 | -2.7 | 1.1 | 🟢 |
-| 56 | fentanyl | 7 | -10.2 | 4.2 | 🔴 |
-| 57 | methadone | 5 | -7.8 | 3.2 | 🟡 |
-| 58 | buprenorphine | 2 | -3.7 | 1.5 | 🟡 |
-| 59 | tramadol | 3 | -4.9 | 2.0 | 🟡 |
-| 60 | naltrexone | 2 | -3.2 | 1.3 | 🟢 |
+> Binds μ/κ/δ opioid receptors as full agonists, partial agonists, or antagonists. Detected by deep parasympathetic shift and respiratory entropy collapse.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 53 | morphine | μ-agonist (full) | 1 | -2.4 | 1.0 | 1h | 2.5h | +0.2 to +1.2 | C-II | 🟢 |
+| 54 | oxycodone | μ-agonist (full) | 1 | -2.9 | 1.2 | 1.5h | 3.5h | +0.2 to +1.2 | C-II | 🟢 |
+| 55 | hydrocodone | μ-agonist (full) | 1 | -2.7 | 1.1 | 1.3h | 4h | +0.2 to +1.0 | C-II | 🟢 |
+| 56 | fentanyl | μ-agonist (potent) | 7 | -10.2 | 4.2 | 25m | 7h | +0.3 to +1.5 | C-II | 🔴 |
+| 57 | methadone | μ-agonist (long) | 5 | -7.8 | 3.2 | 3.25h | 30h | +0.2 to +1.0 | C-II | 🟡 |
+| 58 | buprenorphine | μ-partial agonist | 2 | -3.7 | 1.5 | 1h | 37h | +0.1 to +0.7 | C-III | 🟡 |
+| 59 | tramadol | μ-weak + SNRI | 3 | -4.9 | 2.0 | 2h | 6h | -0.2 to +0.6 | C-IV | 🟡 |
+| 60 | naltrexone | μ-antagonist | 2 | -3.2 | 1.3 | 1h | 4h | -0.4 to +0.1 | Rx | 🟢 |
 
 </details>
 
 <details>
 <summary><strong>☠️ POISON — Anticholinergic (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 61 | atropine | 4 | -7.8 | 3.2 | 🟡 |
-| 62 | scopolamine | 4 | -6.8 | 2.8 | 🟡 |
-| 63 | diphenhydramine | 4 | -6.8 | 2.8 | 🟡 |
-| 64 | promethazine | 3 | -5.3 | 2.2 | 🟡 |
+> Blocks muscarinic acetylcholine receptors, removing the vagal brake. Detected by paradoxical sympathetic ↑ (HR rises despite no catecholamine release).
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 61 | atropine | mAChR antagonist | 4 | -7.8 | 3.2 | 1h | 4h | -1.2 to -0.4 | Rx | 🟡 |
+| 62 | scopolamine | mAChR antagonist | 4 | -6.8 | 2.8 | 1h | 4.5h | -0.6 to 0.0 | Rx | 🟡 |
+| 63 | diphenhydramine | H₁-antag + mAChR | 4 | -6.8 | 2.8 | 2h | 6h | -0.4 to +0.2 | OTC | 🟡 |
+| 64 | promethazine | H₁-antag + mAChR | 3 | -5.3 | 2.2 | 2.5h | 12h | -0.3 to +0.3 | Rx | 🟡 |
 
 </details>
 
 <details>
 <summary><strong>🌿 GRASS — Cannabinoid (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 65 | thc | 4 | -5.3 | 2.2 | 🟡 |
-| 66 | dronabinol | 4 | -5.3 | 2.2 | 🟡 |
+> CB1/CB2 receptor agonism with mixed autonomic effects. Detected by mixed HR response and altered HRV spectral balance (LF/HF ratio shift).
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 65 | thc | CB1/CB2 agonist | 4 | -5.3 | 2.2 | 10m (inh) | 30h | -0.8 to +0.3 | C-I | 🟡 |
+| 66 | dronabinol | Synthetic THC | 4 | -5.3 | 2.2 | 3h (oral) | 30h | -0.6 to +0.3 | C-III | 🟡 |
 
 </details>
 
 <details>
 <summary><strong>⚙️ STEEL — Structural / Rigid Agents (click to expand)</strong></summary>
 
-| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
-|---|-----------|-------|-----------|-----------------|------|
-| 67 | lithium | 0 | 0.0 | 0.0 | 🟢 |
-| 68 | gabapentin | 3 | -3.7 | 1.5 | 🟡 |
-| 69 | pregabalin | 3 | -3.9 | 1.6 | 🟡 |
-| 70 | lamotrigine | 1 | -1.7 | 0.7 | 🟢 |
-| 71 | valproate | 4 | -4.4 | 1.8 | 🟡 |
-| 72 | carbamazepine | 1 | -2.0 | 0.8 | 🟢 |
-| 73 | topiramate | 3 | -3.9 | 1.6 | 🟡 |
-| 74 | ibuprofen | 3 | -3.9 | 1.6 | 🟡 |
-| 75 | prednisone | 2 | -2.9 | 1.2 | 🟢 |
-| 76 | dexamethasone | 3 | -3.7 | 1.5 | 🟡 |
-| 77 | metoclopramide | 4 | -6.1 | 2.5 | 🟡 |
-| 78 | levothyroxine | 4 | -5.9 | 2.4 | 🟡 |
-| 79 | cyclobenzaprine | 2 | -3.7 | 1.5 | 🟡 |
-| 80 | baclofen | 2 | -2.9 | 1.2 | 🟢 |
-| 81 | tizanidine | 1 | -1.7 | 0.7 | 🟢 |
-| 82 | ketamine | 1 | -2.0 | 0.8 | 🟢 |
-| 83 | amitriptyline | 3 | -4.9 | 2.0 | 🟡 |
-| 84 | nortriptyline | 2 | -3.9 | 1.6 | 🟡 |
+> Rigid molecules that bind cleanly with minimal conformational penalty (low |ΔS|). Includes mood stabilizers, anticonvulsants, NSAIDs, corticosteroids, muscle relaxants, and TCAs.
+
+| # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
+|---|-----------|-------|-------|-----------|------|------|-----|---------------|----------|------|
+| 67 | lithium | Mood stab (monatomic) | 0 | 0.0 | 0.0 | 3h | 27h | -0.3 to +0.2 | Rx | 🟢 |
+| 68 | gabapentin | Ca²⁺-channel ligand | 3 | -3.7 | 1.5 | 2.5h | 6h | 0.0 to +0.5 | Rx | 🟡 |
+| 69 | pregabalin | Ca²⁺-channel ligand | 3 | -3.9 | 1.6 | 1.5h | 6h | 0.0 to +0.5 | C-V | 🟡 |
+| 70 | lamotrigine | Na⁺-channel blocker | 1 | -1.7 | 0.7 | 2.5h | 25h | -0.2 to +0.2 | Rx | 🟢 |
+| 71 | valproate | GABA enhancer (multi) | 4 | -4.4 | 1.8 | 4h | 12.5h | -0.2 to +0.3 | Rx | 🟡 |
+| 72 | carbamazepine | Na⁺-channel blocker | 1 | -2.0 | 0.8 | 4.5h | 14.5h | -0.3 to +0.1 | Rx | 🟢 |
+| 73 | topiramate | Multi-mechanism AED | 3 | -3.9 | 1.6 | 2h | 21h | -0.2 to +0.2 | Rx | 🟡 |
+| 74 | ibuprofen | NSAID (COX inhib) | 3 | -3.9 | 1.6 | 1.5h | 2h | -0.2 to +0.2 | OTC | 🟡 |
+| 75 | prednisone | Corticosteroid | 2 | -2.9 | 1.2 | 2h | 3.5h | -0.5 to 0.0 | Rx | 🟢 |
+| 76 | dexamethasone | Corticosteroid (potent) | 3 | -3.7 | 1.5 | 2h | 45h | -0.5 to 0.0 | Rx | 🟡 |
+| 77 | metoclopramide | D₂ antagonist (prokinetic) | 4 | -6.1 | 2.5 | 1.5h | 5.5h | -0.2 to +0.2 | Rx | 🟡 |
+| 78 | levothyroxine | Thyroid hormone (T₄) | 4 | -5.9 | 2.4 | 3h | 7d | -0.3 to +0.1 | Rx | 🟡 |
+| 79 | cyclobenzaprine | Muscle relax (TCA-like) | 2 | -3.7 | 1.5 | 5.5h | 18h | -0.4 to +0.1 | Rx | 🟡 |
+| 80 | baclofen | GABA-B agonist | 2 | -2.9 | 1.2 | 2.5h | 3.5h | 0.0 to +0.4 | Rx | 🟢 |
+| 81 | tizanidine | α₂-agonist (central) | 1 | -1.7 | 0.7 | 1h | 2.5h | +0.2 to +0.8 | Rx | 🟢 |
+| 82 | ketamine | NMDA antagonist | 1 | -2.0 | 0.8 | 20m | 2.5h | -0.8 to +0.4 | C-III | 🟢 |
+| 83 | amitriptyline | TCA (NE/5-HT + ACh) | 3 | -4.9 | 2.0 | 4h | 25h | -0.8 to -0.2 | Rx | 🟡 |
+| 84 | nortriptyline | TCA (NE > 5-HT) | 2 | -3.9 | 1.6 | 5h | 28h | -0.7 to -0.1 | Rx | 🟡 |
 
 </details>
 
