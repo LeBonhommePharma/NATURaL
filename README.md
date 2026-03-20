@@ -31,7 +31,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/poses-26_bilingual-FF6B6B?style=flat-square" alt="Poses">
+  <img src="https://img.shields.io/badge/docking_poses-60+-AB47BC?style=flat-square" alt="Docking Poses">
   <img src="https://img.shields.io/badge/plans-6_guided-FFA726?style=flat-square" alt="Plans">
   <img src="https://img.shields.io/badge/biofeedback-real--time-FFEE58?style=flat-square" alt="Biofeedback">
   <img src="https://img.shields.io/badge/CareKit-clinical-66BB6A?style=flat-square" alt="CareKit">
@@ -368,20 +368,9 @@ If the app is killed mid-workout, the session resumes seamlessly:
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
 </p>
 
-## 📚 Codex — Pose Catalog
+## 🧘 Chair Yoga — Workout Plans
 
-> *🎯 Collect every pose! 🎯*
-
-### 🎲 Difficulty Distribution
-
-| Level | Caught | Access | Categories |
-|-------|--------|--------|------------|
-| 🟢 Beginner | 10 | 🆓 Free | Spine, Hip, Shoulder, Neck, Breathing |
-| 🟡 Intermediate | 11 | ⭐ Premium | Balance, Full-body, Hip, Shoulder |
-| 🔴 Advanced | 5 | ⭐ Premium | Balance, Full-body, Spine |
-| **✨ Total** | **26** | | **7 categories** |
-
-### 🗺️ Workout Plans
+> *🎮 Select your training regimen! 🎮*
 
 | Plan | Poses | Duration | Level | Access |
 |------|-------|----------|-------|--------|
@@ -392,42 +381,262 @@ If the app is killed mid-workout, the session resumes seamlessly:
 | 💪 Strength & Balance | 6 | ~5 min | 🟡 Intermediate | ⭐ Premium |
 | 🔥 Advanced Chair Yoga | 8 | ~6 min | 🔴 Advanced | ⭐ Premium |
 
+26 bilingual chair yoga poses (EN/FR-CA) across 3 difficulty tiers — see MOVE 1 above.
+
+<p align="center">
+🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
+</p>
+
+## 🧬 PokeDrug TYPE Chart
+
+> *⚡ Every substance has a TYPE. Every TYPE has a signature. ⚡*
+
+A **Pose** in PokeDrug is not a yoga posture — it's a **molecular docking pose**: a drug (ligand) bound to its receptor (target) in a specific binding geometry. Each pose has a conformational entropy cost (ΔS_config) measured in bits, and a detectable autonomic signature measured via Apple Watch HRV.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/🔥_FIRE-Sympathomimetic-FF4500?style=for-the-badge&labelColor=CC3700" alt="FIRE">
+  <img src="https://img.shields.io/badge/🧊_ICE-Parasympathomimetic-00BFFF?style=for-the-badge&labelColor=0099CC" alt="ICE">
+  <img src="https://img.shields.io/badge/🐉_DRAGON-Mixed%2FBiphasic-7B2FFE?style=for-the-badge&labelColor=5A1FBF" alt="DRAGON">
+  <img src="https://img.shields.io/badge/👻_GHOST-GABAergic-705898?style=for-the-badge&labelColor=574270" alt="GHOST">
+  <img src="https://img.shields.io/badge/⚡_ELECTRIC-Dopaminergic-FFD700?style=for-the-badge&labelColor=CCAC00" alt="ELECTRIC">
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/☠️_POISON-Anticholinergic-A040A0?style=for-the-badge&labelColor=7A307A" alt="POISON">
+  <img src="https://img.shields.io/badge/🧚_FAIRY-Serotonergic-FF69B4?style=for-the-badge&labelColor=CC5490" alt="FAIRY">
+  <img src="https://img.shields.io/badge/🔮_PSYCHIC-Opioidergic-9B59B6?style=for-the-badge&labelColor=7A4490" alt="PSYCHIC">
+  <img src="https://img.shields.io/badge/🌿_GRASS-Cannabinoid-2ECC40?style=for-the-badge&labelColor=25A233" alt="GRASS">
+  <img src="https://img.shields.io/badge/⚙️_STEEL-Rigid%2FStructural-B8B8D0?style=for-the-badge&labelColor=9090A8" alt="STEEL">
+</p>
+
+### 🎯 TYPE → Signal Detection
+
+Each TYPE maps to a **real physiological event** detected through HealthKit or molecular docking:
+
+| TYPE | Pharmacological Basis | HealthKit / Docking Signal |
+|------|----------------------|---------------------------|
+| 🔥 **FIRE** | Stimulates fight-or-flight (amphetamine, cocaine, caffeine) | HR ↑, HRV entropy **collapse** (ΔH < 0) |
+| 🧊 **ICE** | Calms autonomic system (beta-blockers, clonidine) | HR ↓, HRV entropy **expansion** (ΔH > 0) |
+| 🐉 **DRAGON** | Dual-branch / biphasic (antipsychotics, alcohol) | Biphasic ΔH — initial collapse then expansion |
+| 👻 **GHOST** | Enhances GABA inhibition (benzodiazepines, zolpidem) | Respiratory rate ↓, sleep entropy shift |
+| ⚡ **ELECTRIC** | Targets reward pathway (bupropion, modafinil) | Activity ring spike, acute HRV compression → rebound |
+| ☠️ **POISON** | Blocks acetylcholine (atropine, scopolamine) | Vagal brake removed → paradoxical sympathetic ↑ |
+| 🧚 **FAIRY** | Modulates 5-HT receptors (SSRIs, psychedelics) | Slow HRV modulation over days, sleep architecture Δ |
+| 🔮 **PSYCHIC** | Binds μ/κ/δ opioid receptors (morphine, fentanyl) | Deep parasympathetic shift, respiratory entropy collapse |
+| 🌿 **GRASS** | CB1/CB2 agonism (THC, CBD) | Mixed HR response, altered HRV spectral balance |
+| ⚙️ **STEEL** | Rigid molecules / structural agents (lithium, lamotrigine) | Minimal ΔS_config, subtle ΔH_hrv |
+
+### ⚔️ TYPE Effectiveness — Cross-Signal Interactions
+
+> *💥 When two TYPEs collide, the entropy tells the story! 💥*
+
+| Matchup | Interaction | Entropy Signature |
+|---------|------------|-------------------|
+| 🔥 FIRE vs 🧊 ICE | Sympathomimetic + beta-blocker | Mutual cancellation — ΔH → 0 |
+| 👻 GHOST vs ⚡ ELECTRIC | Sedative dampens stimulant rebound | Entropy stays collapsed longer |
+| ☠️ POISON vs 🧚 FAIRY | Anticholinergic blocks serotonergic GI | Blunted ΔH time-course |
+| 🔮 PSYCHIC vs 🔥 FIRE | Opioid + stimulant (speedball) | Dangerous mixed signal — chaotic ΔH |
+| 🐉 DRAGON vs any | Mixed agents resist classification | Biphasic ΔH curves, type-resistant |
+| 🌿 GRASS vs 👻 GHOST | Cannabinoid + GABAergic | Additive sedation, entropy expansion |
+| ⚙️ STEEL vs all | Rigid molecules bind cleanly | Minimal conformational penalty (low |ΔS|) |
+
+```
+Code mapping (PharmacokineticProfile.swift):
+
+AutonomicMechanism.sympathomimetic  ──→  🔥 FIRE
+AutonomicMechanism.parasympathomimetic ──→  🧊 ICE
+AutonomicMechanism.mixed            ──→  🐉 DRAGON
+TherapeuticClass.anxiolytic/.sedativeHypnotic ──→  👻 GHOST
+TherapeuticClass.stimulant (NDRI)   ──→  ⚡ ELECTRIC
+TherapeuticClass.anticholinergic    ──→  ☠️ POISON
+TherapeuticClass.antidepressant (SSRI/SNRI) ──→  🧚 FAIRY
+TherapeuticClass.opioidAnalgesic    ──→  🔮 PSYCHIC
+TherapeuticClass.cannabinoid        ──→  🌿 GRASS
+(rigid molecules, |ΔS| < 2 bits)   ──→  ⚙️ STEEL
+```
+
+<p align="center">
+🔥🧊🐉👻⚡☠️🧚🔮🌿⚙️🔥🧊🐉👻⚡☠️🧚🔮🌿⚙️🔥🧊🐉👻⚡☠️🧚🔮🌿⚙️🔥🧊🐉👻⚡☠️🧚🔮🌿⚙️
+</p>
+
+## 🧬 PokeDrug Codex — Docking Poses
+
+> *🎯 Gotta dock 'em all! 🎯*
+
+### 🎲 Flexibility Distribution
+
+| Tier | Rotatable Bonds | |ΔS_config| | Docking Difficulty |
+|------|----------------|------------|-------------------|
+| 🟢 Rigid | 0–2 | < 3 bits | Easy — molecule snaps into pocket |
+| 🟡 Flexible | 3–5 | 3–8 bits | Medium — conformational search needed |
+| 🔴 Highly Flexible | 6+ | > 8 bits | Hard — massive entropy penalty on binding |
+
 <details>
-<summary><strong>📖 Full Codex (click to expand) 📖</strong></summary>
+<summary><strong>🔥 FIRE — Sympathomimetics (click to expand)</strong></summary>
 
-**🟢 COMMON — Beginner (Free)**
-1. 🏔️ Seated Mountain — *Montagne assise*
-2. 🐱 Seated Cat-Cow — *Chat-Vache assis*
-3. 🙇 Seated Forward Fold — *Flexion avant assise*
-4. 🌀 Seated Twist — *Torsion assise*
-5. 🌙 Seated Side Bend — *Flexion latérale assise*
-6. 🔄 Neck Rolls — *Roulements du cou*
-7. 💆 Shoulder Rolls — *Roulements des épaules*
-8. 🦶 Ankle Circles — *Cercles de chevilles*
-9. 🤲 Wrist Stretches — *Étirements des poignets*
-10. 🦵 Knee Lifts — *Levées de genoux*
-
-**🟡 UNCOMMON — Intermediate (Premium)**
-11. 🐦 Seated Pigeon — *Pigeon assis*
-12. 🦅 Seated Eagle Arms — *Bras d'aigle assis*
-13. ⚔️ Seated Warrior I — *Guerrier I assis*
-14. 🪑 Chair Pose (standing) — *Posture de la chaise*
-15. 🔄 Seated Hip Circles — *Cercles de hanches assis*
-16. 4️⃣ Seated Figure Four — *Quatre assis*
-17. 👑 Goddess — *Déesse*
-18. ⚔️ Reverse Warrior — *Guerrier inversé*
-19. 🌙 Crescent Moon — *Croissant de lune*
-20. 💨 Chest Expansion — *Expansion thoracique*
-21. 🧵 Thread the Needle — *Enfiler l'aiguille*
-
-**🔴 RARE — Advanced (Premium)**
-22. 💃 Seated Dancer — *Danseur assis*
-23. 🐦‍⬛ Seated Crow Prep — *Préparation corbeau assis*
-24. 😄 Breath of Joy — *Souffle de joie*
-25. 🌗 Half Moon Balance — *Demi-lune en équilibre*
-26. 🚣 Seated Boat — *Bateau assis*
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 1 | amphetamine | 2 | -2.9 | 1.2 | 🟢 |
+| 2 | dextroamphetamine | 2 | -2.9 | 1.2 | 🟢 |
+| 3 | methamphetamine | 2 | -3.2 | 1.3 | 🟡 |
+| 4 | lisdexamfetamine | 4 | -4.4 | 1.8 | 🟡 |
+| 5 | methylphenidate | 3 | -6.8 | 2.8 | 🟡 |
+| 6 | cocaine | 4 | -4.9 | 2.0 | 🟡 |
+| 7 | caffeine | 0 | -1.0 | 0.4 | 🟢 |
+| 8 | theophylline | 0 | -0.7 | 0.3 | 🟢 |
+| 9 | nicotine | 1 | -2.2 | 0.9 | 🟢 |
+| 10 | mdma | 3 | -3.7 | 1.5 | 🟡 |
 
 </details>
+
+<details>
+<summary><strong>⚡ ELECTRIC — Dopaminergic / Noradrenergic (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 11 | modafinil | 4 | -5.3 | 2.2 | 🟡 |
+| 12 | armodafinil | 4 | -5.3 | 2.2 | 🟡 |
+| 13 | atomoxetine | 4 | -6.1 | 2.5 | 🟡 |
+| 14 | bupropion | 3 | -4.4 | 1.8 | 🟡 |
+| 15 | phenelzine | 2 | -2.4 | 1.0 | 🟢 |
+| 16 | tranylcypromine | 0 | -1.2 | 0.5 | 🟢 |
+
+</details>
+
+<details>
+<summary><strong>🧊 ICE — Parasympathomimetics (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 17 | propranolol | 5 | -8.5 | 3.5 | 🟡 |
+| 18 | metoprolol | 7 | -9.7 | 4.0 | 🔴 |
+| 19 | atenolol | 6 | -9.3 | 3.8 | 🔴 |
+| 20 | bisoprolol | 7 | -9.7 | 4.0 | 🔴 |
+| 21 | carvedilol | 6 | -8.5 | 3.5 | 🔴 |
+| 22 | clonidine | 1 | -1.5 | 0.6 | 🟢 |
+| 23 | guanfacine | 2 | -3.4 | 1.4 | 🟡 |
+| 24 | digoxin | 8 | -12.2 | 5.0 | 🔴 |
+| 25 | ivabradine | 5 | -7.3 | 3.0 | 🟡 |
+
+</details>
+
+<details>
+<summary><strong>🧚 FAIRY — Serotonergic (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 26 | sertraline | 3 | -5.4 | 2.2 | 🟡 |
+| 27 | fluoxetine | 5 | -7.3 | 3.0 | 🟡 |
+| 28 | escitalopram | 4 | -6.1 | 2.5 | 🟡 |
+| 29 | paroxetine | 3 | -4.9 | 2.0 | 🟡 |
+| 30 | venlafaxine | 6 | -9.3 | 3.8 | 🔴 |
+| 31 | duloxetine | 3 | -5.6 | 2.3 | 🟡 |
+| 32 | trazodone | 4 | -6.8 | 2.8 | 🟡 |
+| 33 | buspirone | 5 | -7.3 | 3.0 | 🟡 |
+| 34 | psilocybin | 3 | -3.4 | 1.4 | 🟡 |
+| 35 | lsd | 1 | -2.4 | 1.0 | 🟢 |
+
+</details>
+
+<details>
+<summary><strong>🐉 DRAGON — Mixed / Biphasic (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 36 | quetiapine | 7 | -11.0 | 4.5 | 🔴 |
+| 37 | olanzapine | 2 | -4.4 | 1.8 | 🟡 |
+| 38 | risperidone | 4 | -6.8 | 2.8 | 🟡 |
+| 39 | haloperidol | 6 | -8.8 | 3.6 | 🔴 |
+| 40 | chlorpromazine | 3 | -4.9 | 2.0 | 🟡 |
+| 41 | clozapine | 2 | -3.7 | 1.5 | 🟡 |
+| 42 | aripiprazole | 6 | -8.5 | 3.5 | 🔴 |
+| 43 | ethanol | 0 | -0.2 | 0.1 | 🟢 |
+| 44 | mirtazapine | 1 | -2.9 | 1.2 | 🟢 |
+| 45 | hydroxyzine | 5 | -7.8 | 3.2 | 🟡 |
+
+</details>
+
+<details>
+<summary><strong>👻 GHOST — GABAergic / Sedative (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 46 | alprazolam | 0 | -2.0 | 0.8 | 🟢 |
+| 47 | diazepam | 1 | -2.7 | 1.1 | 🟢 |
+| 48 | lorazepam | 0 | -2.2 | 0.9 | 🟢 |
+| 49 | clonazepam | 0 | -2.2 | 0.9 | 🟢 |
+| 50 | zolpidem | 2 | -3.4 | 1.4 | 🟡 |
+| 51 | suvorexant | 4 | -6.1 | 2.5 | 🟡 |
+| 52 | ghb | 2 | -1.5 | 0.6 | 🟢 |
+
+</details>
+
+<details>
+<summary><strong>🔮 PSYCHIC — Opioidergic (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 53 | morphine | 1 | -2.4 | 1.0 | 🟢 |
+| 54 | oxycodone | 1 | -2.9 | 1.2 | 🟢 |
+| 55 | hydrocodone | 1 | -2.7 | 1.1 | 🟢 |
+| 56 | fentanyl | 7 | -10.2 | 4.2 | 🔴 |
+| 57 | methadone | 5 | -7.8 | 3.2 | 🟡 |
+| 58 | buprenorphine | 2 | -3.7 | 1.5 | 🟡 |
+| 59 | tramadol | 3 | -4.9 | 2.0 | 🟡 |
+| 60 | naltrexone | 2 | -3.2 | 1.3 | 🟢 |
+
+</details>
+
+<details>
+<summary><strong>☠️ POISON — Anticholinergic (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 61 | atropine | 4 | -7.8 | 3.2 | 🟡 |
+| 62 | scopolamine | 4 | -6.8 | 2.8 | 🟡 |
+| 63 | diphenhydramine | 4 | -6.8 | 2.8 | 🟡 |
+| 64 | promethazine | 3 | -5.3 | 2.2 | 🟡 |
+
+</details>
+
+<details>
+<summary><strong>🌿 GRASS — Cannabinoid (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 65 | thc | 4 | -5.3 | 2.2 | 🟡 |
+| 66 | dronabinol | 4 | -5.3 | 2.2 | 🟡 |
+
+</details>
+
+<details>
+<summary><strong>⚙️ STEEL — Structural / Rigid Agents (click to expand)</strong></summary>
+
+| # | Substance | Bonds | ΔS (bits) | -TΔS (kcal/mol) | Tier |
+|---|-----------|-------|-----------|-----------------|------|
+| 67 | lithium | 0 | 0.0 | 0.0 | 🟢 |
+| 68 | gabapentin | 3 | -3.7 | 1.5 | 🟡 |
+| 69 | pregabalin | 3 | -3.9 | 1.6 | 🟡 |
+| 70 | lamotrigine | 1 | -1.7 | 0.7 | 🟢 |
+| 71 | valproate | 4 | -4.4 | 1.8 | 🟡 |
+| 72 | carbamazepine | 1 | -2.0 | 0.8 | 🟢 |
+| 73 | topiramate | 3 | -3.9 | 1.6 | 🟡 |
+| 74 | ibuprofen | 3 | -3.9 | 1.6 | 🟡 |
+| 75 | prednisone | 2 | -2.9 | 1.2 | 🟢 |
+| 76 | dexamethasone | 3 | -3.7 | 1.5 | 🟡 |
+| 77 | metoclopramide | 4 | -6.1 | 2.5 | 🟡 |
+| 78 | levothyroxine | 4 | -5.9 | 2.4 | 🟡 |
+| 79 | cyclobenzaprine | 2 | -3.7 | 1.5 | 🟡 |
+| 80 | baclofen | 2 | -2.9 | 1.2 | 🟢 |
+| 81 | tizanidine | 1 | -1.7 | 0.7 | 🟢 |
+| 82 | ketamine | 1 | -2.0 | 0.8 | 🟢 |
+| 83 | amitriptyline | 3 | -4.9 | 2.0 | 🟡 |
+| 84 | nortriptyline | 2 | -3.9 | 1.6 | 🟡 |
+
+</details>
+
+<p align="center">
+  <b>84 docking poses catalogued</b> · <b>10 pharmacological TYPEs</b> · <b>3 flexibility tiers</b>
+</p>
 
 <p align="center">
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
@@ -669,5 +878,5 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 ```
 
 <p align="center">
-  <img src="https://img.shields.io/badge/🔥-GOTTA_STRETCH_'EM_ALL-FF6B35?style=for-the-badge&labelColor=FF4500" alt="Gotta Stretch 'Em All">
+  <img src="https://img.shields.io/badge/🧬-GOTTA_DOCK_'EM_ALL-AB47BC?style=for-the-badge&labelColor=7B2FFE" alt="Gotta Dock 'Em All">
 </p>
