@@ -18,9 +18,16 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
     public let primarySignalType: SignalType = .molecularDocking
 
     private let dockingAnalyzer: FlexAIDdSAnalyzer
+    private let configuration: AnalysisConfiguration
 
     public init(binCount: Int = 32) {
         self.dockingAnalyzer = FlexAIDdSAnalyzer(binCount: binCount)
+        self.configuration = .default
+    }
+
+    public init(configuration: AnalysisConfiguration) {
+        self.dockingAnalyzer = FlexAIDdSAnalyzer(configuration: configuration)
+        self.configuration = configuration
     }
 
     public func analyze(
@@ -47,16 +54,15 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
         let deltaSConfig = latest.deltaSConfig
 
         // Normalize to a 0–1 score: larger |ΔS| = stronger binding signal
-        // 5.0 bits as practical maximum for normalization
-        let score = min(1.0, abs(deltaSConfig) / 5.0)
+        let score = min(1.0, abs(deltaSConfig) / configuration.dockingNormalizationMax)
 
         let trend = computeTrend(signals: dockingSignals)
 
         // Status based on binding entropy magnitude
         let status: InsightStatus
-        if abs(deltaSConfig) > 3.0 {
+        if abs(deltaSConfig) > configuration.dockingAlertThreshold {
             status = .alert       // Very strong binding entropy penalty
-        } else if abs(deltaSConfig) > 1.5 {
+        } else if abs(deltaSConfig) > configuration.dockingAdvisoryThreshold {
             status = .advisory    // Moderate binding
         } else {
             status = .normal
@@ -101,8 +107,8 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
         let avgSecond = secondHalf.reduce(0, +) / Double(secondHalf.count)
         let delta = avgSecond - avgFirst
 
-        if delta > 0.3 { return .declining }   // Increasing entropy penalty
-        if delta < -0.3 { return .improving }  // Decreasing entropy penalty
+        if delta > configuration.dockingTrendThreshold { return .declining }   // Increasing entropy penalty
+        if delta < -configuration.dockingTrendThreshold { return .improving }  // Decreasing entropy penalty
         return .stable
     }
 

@@ -185,6 +185,15 @@ final class InsightEngine: ObservableObject {
             )
         }
 
+        if let docking = insights[.molecularDocking] {
+            let scoreText = docking.score.map { String(format: "%.0f%%", $0 * 100) } ?? "unavailable"
+            sections.append(
+                "Molecular Docking Entropy: binding signal = \(scoreText), "
+                + "trend: \(docking.trend.rawValue), "
+                + "status: \(docking.status.rawValue). \(docking.summary.en)"
+            )
+        }
+
         return sections.joined(separator: "\n\n")
     }
 
@@ -266,6 +275,10 @@ final class InsightEngine: ObservableObject {
             parts.append(survey.summary.localized)
         }
 
+        if let docking = insights[.molecularDocking], docking.score != nil {
+            parts.append(docking.summary.localized)
+        }
+
         // Cross-signal correlation note
         if let hrvScore = insights[.heartRateVariability]?.score,
            let medScore = insights[.medication]?.score {
@@ -280,6 +293,17 @@ final class InsightEngine: ObservableObject {
                     fr: "Pensez à revoir votre horaire de médicaments et à essayer un exercice de respiration."
                 ).localized)
             }
+        }
+
+        // Drug response correlation note
+        if let dockingScore = insights[.molecularDocking]?.score,
+           let hrvScore = insights[.heartRateVariability]?.score,
+           dockingScore > 0.3 {
+            let hrvPct = Int(hrvScore * 100)
+            parts.append(LocalizedString(
+                en: "Molecular binding entropy detected — correlating with HRV coherence (\(hrvPct)%).",
+                fr: "Entropie de liaison moléculaire détectée — corrélation avec la cohérence VFC (\(hrvPct) %)."
+            ).localized)
         }
 
         return parts.joined(separator: " ")

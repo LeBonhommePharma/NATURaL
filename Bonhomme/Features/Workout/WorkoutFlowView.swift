@@ -8,8 +8,8 @@ struct WorkoutFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    init(plan: WorkoutPlan) {
-        _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan))
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+        _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine))
     }
 
     /// Initializer for restoring a killed-app workout session.

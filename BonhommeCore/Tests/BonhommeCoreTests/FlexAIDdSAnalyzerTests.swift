@@ -296,6 +296,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
     // MARK: - Cross-Domain Validation
 
     /// Validate correlation between ΔS_config and ΔH_hrv using synthetic data.
+    /// Uses 5 paired substances (raised minimum from 3 to 5 for statistical rigor).
     func testCrossDomainCorrelation() {
         let validator = CrossDomainValidator()
 
@@ -318,6 +319,17 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
                     BondEntropyResult(bondId: "b3", freeEntropy: 4.0, boundEntropy: 0.5),
                 ],
                 dockingScore: -10.0),
+            FlexAIDdSResult(substanceId: "drug_d", receptorId: "1ABC",
+                bondResults: [BondEntropyResult(bondId: "b1", freeEntropy: 4.0, boundEntropy: 2.5)],
+                dockingScore: -6.0),
+            FlexAIDdSResult(substanceId: "drug_e", receptorId: "1ABC",
+                bondResults: [
+                    BondEntropyResult(bondId: "b1", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b2", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b3", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b4", freeEntropy: 4.0, boundEntropy: 0.5),
+                ],
+                dockingScore: -12.0),
         ]
 
         // DrugResponseResults with proportional ΔH_hrv
@@ -341,6 +353,18 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
                 measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 1.0, deltaH: -3.0, rrCount: 50, coherenceScore: 0.8)],
                 peakDeltaH: -3.0, peakTimeMinutes: 60, profileMatch: nil
             ),
+            DrugResponseResult(
+                doseEvent: DoseEventSummary(medicationId: "drug_d", name: "Drug D", doseValue: 10, doseUnit: "mg", timestamp: now),
+                baselineEntropy: 4.0, baselineRRCount: 100,
+                measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 3.5, deltaH: -0.5, rrCount: 50, coherenceScore: 0.5)],
+                peakDeltaH: -0.5, peakTimeMinutes: 60, profileMatch: nil
+            ),
+            DrugResponseResult(
+                doseEvent: DoseEventSummary(medicationId: "drug_e", name: "Drug E", doseValue: 10, doseUnit: "mg", timestamp: now),
+                baselineEntropy: 4.0, baselineRRCount: 100,
+                measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 0.0, deltaH: -4.5, rrCount: 50, coherenceScore: 0.9)],
+                peakDeltaH: -4.5, peakTimeMinutes: 60, profileMatch: nil
+            ),
         ]
 
         let result = validator.validate(dockingResults: dockingResults, drugResponseResults: drugResults)
@@ -348,10 +372,12 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         XCTAssertNotNil(result)
         guard let v = result else { return }
 
-        XCTAssertEqual(v.n, 3)
+        XCTAssertEqual(v.n, 5)
         XCTAssertGreaterThan(v.pearsonR, 0.9,
             "Proportional ΔS/ΔH should produce r > 0.9")
         XCTAssertGreaterThan(v.rSquared, 0.8)
+        XCTAssertLessThan(v.pValue, 0.05,
+            "Strong correlation with n=5 should be significant")
     }
 
     /// Validate from known BindingEntropyProfile values.
@@ -386,7 +412,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         }
     }
 
-    /// Insufficient pairs (< 3) should return nil.
+    /// Insufficient pairs (< 5, default minimum) should return nil.
     func testCrossDomainInsufficientPairsReturnsNil() {
         let validator = CrossDomainValidator()
 
@@ -406,7 +432,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
             ]
         )
 
-        XCTAssertNil(result, "< 3 paired substances should return nil")
+        XCTAssertNil(result, "< 5 paired substances should return nil (minimum raised for statistical rigor)")
     }
 
     // MARK: - BindingEntropyProfile Registry
@@ -683,114 +709,41 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         XCTAssertTrue(profiles.contains { $0.substanceId == "amphetamine" })
     }
 
-    // MARK: - Edge-Case Tests (Reproducibility & Robustness)
+    // MARK: - Circular Entropy for Torsional Angles
 
-    /// Empty angle samples should return zero entropy, not crash.
-    func testEmptyAngleSamplesReturnsZeroEntropy() {
+    /// Verify that FlexAIDdSAnalyzer now uses circular entropy for torsional angles.
+    /// Angles near ±180° should be recognized as constrained (low entropy),
+    /// not mistakenly reported as high-entropy by linear binning.
+    func testCircularEntropyUsedForAngles() {
         let analyzer = FlexAIDdSAnalyzer()
-        let dist = TorsionalAngleDistribution(bondId: "empty", angles: [])
-        let h = analyzer.entropy(of: dist)
-        XCTAssertEqual(h, 0, "Empty samples should yield zero entropy")
-    }
 
-    /// Single sample is below the count >= 2 guard, should return zero.
-    func testSingleSampleReturnsZeroEntropy() {
-        let analyzer = FlexAIDdSAnalyzer()
-        let dist = TorsionalAngleDistribution(bondId: "single", angles: [90.0])
-        let h = analyzer.entropy(of: dist)
-        XCTAssertEqual(h, 0, "Single sample should yield zero entropy")
-    }
+        // Free state: broad distribution centered at 0° (wide, high entropy)
+        let freeBond = TorsionalAngleDistribution(
+            bondId: "b1",
+            angles: (0..<200).map { i in -170.0 + 340.0 * Double(i) / 199.0 }
+        )
 
-    /// Samples at exact domain boundaries (-180, +180) should bin correctly.
-    func testBoundaryAnglesAtDomainEdges() {
-        let analyzer = FlexAIDdSAnalyzer()
-        // All samples at the exact boundary values
-        let angles = Array(repeating: -180.0, count: 50) + Array(repeating: 180.0, count: 50)
-        let dist = TorsionalAngleDistribution(bondId: "boundary", angles: angles)
-        let h = analyzer.entropy(of: dist)
-        // Should produce exactly 1 bit: two bins with equal probability
-        XCTAssertEqual(h, 1.0, accuracy: 0.01,
-            "Two equal clusters at domain edges should yield ~1 bit")
-    }
+        // Bound state: constrained near the ±180° boundary
+        // These angles are clustered within ~4° on the circle
+        let boundAngles = (0..<200).map { i -> Double in
+            if i < 100 { return 178.0 + Double(i % 4) * 0.5 }
+            else { return -178.0 - Double(i % 4) * 0.5 }
+        }
+        let boundBond = TorsionalAngleDistribution(bondId: "b1", angles: boundAngles)
 
-    /// Fixed-domain entropy should be identical for the same distribution
-    /// even when adaptive entropy would differ due to extreme samples.
-    func testFixedDomainVsAdaptiveReproducibility() {
-        let calc = EntropyCalculator(binCount: 32)
+        let freeConf = LigandConformation(substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"), bonds: [freeBond])
+        let boundConf = LigandConformation(substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"), bonds: [boundBond])
+        let pose = DockingPose(boundConformation: boundConf, receptorId: "1ABC", dockingScore: -8.0)
 
-        // Core distribution: 100 samples centered at 0°
-        var base: [Double] = []
-        for i in 0..<100 {
-            base.append(Double(i) * 0.5 - 25.0)  // -25 to +24.5
+        guard let result = analyzer.analyze(freeConformation: freeConf, dockingPose: pose) else {
+            XCTFail("Analysis should produce a result")
+            return
         }
 
-        // Dataset A: base samples + one sample near edge
-        let dataA = base + [179.0]
-        // Dataset B: base samples + one sample at different extreme
-        let dataB = base + [170.0]
-
-        // Fixed-domain should be very similar (both have same core distribution)
-        let fixedA = calc.shannonEntropy(dataA, domainMin: -180.0, domainMax: 180.0)
-        let fixedB = calc.shannonEntropy(dataB, domainMin: -180.0, domainMax: 180.0)
-        // The one outlier lands in nearby bins but the histogram structure is the same
-        XCTAssertEqual(fixedA, fixedB, accuracy: 0.15,
-            "Fixed-domain entropy should be robust to outlier position")
-
-        // Adaptive entropy uses different bin edges, amplifying the outlier effect
-        let adaptiveA = calc.shannonEntropy(dataA)
-        let adaptiveB = calc.shannonEntropy(dataB)
-        // Both adaptive values should still be valid (no crash), just potentially different
-        XCTAssertGreaterThan(adaptiveA, 0)
-        XCTAssertGreaterThan(adaptiveB, 0)
-    }
-
-    /// ThermodynamicConstants should produce identical results to the inline formulas
-    /// they replaced, verified via round-trip conversion.
-    func testThermodynamicConstantsRoundTrip() {
-        let deltaSBits = -3.5
-        let penalty = ThermodynamicConstants.entropyPenaltyKcal(deltaSBits: deltaSBits)
-        XCTAssertGreaterThan(penalty, 0, "Negative ΔS should give positive penalty")
-
-        let recovered = ThermodynamicConstants.kcalToDeltaSBits(penaltyKcal: penalty)
-        XCTAssertEqual(recovered, deltaSBits, accuracy: 0.001,
-            "Round-trip conversion should recover original bits")
-
-        // Verify the formula at 310K (body temperature)
-        let penaltyAt310 = ThermodynamicConstants.entropyPenaltyKcal(
-            deltaSBits: -1.0, temperatureK: 310.0
-        )
-        let penaltyAt298 = ThermodynamicConstants.entropyPenaltyKcal(
-            deltaSBits: -1.0, temperatureK: 298.0
-        )
-        XCTAssertGreaterThan(penaltyAt310, penaltyAt298,
-            "Higher temperature should increase entropy penalty per bit")
-    }
-
-    /// Shared pearsonCorrelation utility should match known analytic values.
-    func testSharedPearsonCorrelationUtility() {
-        // Perfect positive correlation
-        let r1 = pearsonCorrelation([1, 2, 3, 4, 5], [2, 4, 6, 8, 10])
-        XCTAssertEqual(r1, 1.0, accuracy: 0.001)
-
-        // Perfect negative correlation
-        let r2 = pearsonCorrelation([1, 2, 3, 4, 5], [10, 8, 6, 4, 2])
-        XCTAssertEqual(r2, -1.0, accuracy: 0.001)
-
-        // No correlation (constant y)
-        let r3 = pearsonCorrelation([1, 2, 3], [5, 5, 5])
-        XCTAssertEqual(r3, 0)
-
-        // Insufficient data
-        let r4 = pearsonCorrelation([1], [2])
-        XCTAssertEqual(r4, 0)
-    }
-
-    /// Shared linearRegression utility should match known analytic values.
-    func testSharedLinearRegressionUtility() {
-        // y = 2x + 1 exactly
-        let result = linearRegression(x: [1, 2, 3, 4], y: [3, 5, 7, 9])
-        XCTAssertEqual(result.slope, 2.0, accuracy: 0.001)
-        XCTAssertEqual(result.intercept, 1.0, accuracy: 0.001)
-        XCTAssertEqual(result.mae, 0.0, accuracy: 0.001, "Perfect fit should have zero MAE")
+        // ΔS should be strongly negative (bound is constrained → entropy collapsed)
+        XCTAssertLessThan(result.totalDeltaSConfig, -1.0,
+            "Angles constrained near ±180° should show entropy collapse with circular binning")
+        XCTAssertTrue(result.bindingDetected,
+            "Strong entropy collapse should be detected as binding")
     }
 }

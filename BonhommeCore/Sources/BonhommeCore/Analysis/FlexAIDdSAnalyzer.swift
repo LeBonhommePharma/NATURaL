@@ -261,30 +261,35 @@ public struct FlexAIDdSResult: Sendable {
 public struct FlexAIDdSAnalyzer: Sendable {
 
     /// Minimum |ΔS_config| (bits) to consider a binding entropy penalty significant.
-    /// Set to 0.5 bits (vs. DrugResponseAnalyzer's 0.4 bits for HRV) because molecular
-    /// torsional distributions have a lower noise floor than physiological RR-interval
-    /// measurements (~0.3 bits intra-session variation).
-    public static let significanceThreshold: Double = 0.5
+    public static let significanceThreshold: Double = AnalysisConfiguration.default.dockingSignificanceThreshold
 
     /// Shared entropy calculator (same bin count as HRVAnalyzer/DrugResponseAnalyzer default).
     private let entropyCalc: EntropyCalculator
 
+    /// Configuration for thresholds and parameters.
+    private let configuration: AnalysisConfiguration
+
     public init(binCount: Int = 32) {
         self.entropyCalc = EntropyCalculator(binCount: binCount)
+        self.configuration = .default
+    }
+
+    public init(configuration: AnalysisConfiguration) {
+        self.entropyCalc = EntropyCalculator(binCount: configuration.histogramBinCount)
+        self.configuration = configuration
     }
 
     // MARK: - Single Bond Analysis
 
     /// Compute Shannon entropy for a single torsional angle distribution.
     ///
-    /// Uses fixed-domain binning over [-180, 180] degrees to ensure reproducible
-    /// histograms regardless of sample extremes. This guarantees identical entropy
-    /// for identical distributions across platforms and dataset variations.
+    /// Uses circular entropy (fixed [-180°, +180°) bins) because torsional angles
+    /// are periodic: -179° and +179° are only 2° apart on the circle.
     ///
     /// - Parameter distribution: Torsional angle samples for one rotatable bond.
     /// - Returns: Entropy in bits. Higher = more conformational freedom.
     public func entropy(of distribution: TorsionalAngleDistribution) -> Double {
-        entropyCalc.shannonEntropy(distribution.angles, domainMin: -180.0, domainMax: 180.0)
+        entropyCalc.circularShannonEntropy(distribution.angles)
     }
 
     // MARK: - Full Ligand Analysis
@@ -310,8 +315,8 @@ public struct FlexAIDdSAnalyzer: Sendable {
         var bondResults: [BondEntropyResult] = []
 
         for (freeBond, boundBond) in zip(freeConformation.bonds, boundConf.bonds) {
-            let hFree = entropyCalc.shannonEntropy(freeBond.angles, domainMin: -180.0, domainMax: 180.0)
-            let hBound = entropyCalc.shannonEntropy(boundBond.angles, domainMin: -180.0, domainMax: 180.0)
+            let hFree = entropyCalc.circularShannonEntropy(freeBond.angles)
+            let hBound = entropyCalc.circularShannonEntropy(boundBond.angles)
             bondResults.append(BondEntropyResult(
                 bondId: freeBond.bondId,
                 freeEntropy: hFree,
