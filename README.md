@@ -439,6 +439,9 @@ Each TYPE maps to a **real physiological event** detected through HealthKit or m
 | 🔮 PSYCHIC vs 🔥 FIRE | Opioid + stimulant (speedball) | Dangerous mixed signal — chaotic ΔH |
 | 🐉 DRAGON vs any | Mixed agents resist classification | Biphasic ΔH curves, type-resistant |
 | 🌿 GRASS vs 👻 GHOST | Cannabinoid + GABAergic | Additive sedation, entropy expansion |
+| 🧚 FAIRY vs 🔮 PSYCHIC | SSRI + opioid (serotonin syndrome risk) | Erratic ΔH — irregular spikes |
+| 👻 GHOST vs 🔮 PSYCHIC | BZD + opioid (respiratory depression) | Deep entropy collapse — resp rate ↓↓ |
+| ⚡ ELECTRIC vs 🧚 FAIRY | Stimulant + SSRI (5-HT/DA cross-talk) | Mixed ΔH — unpredictable rebound |
 | ⚙️ STEEL vs all | Rigid molecules bind cleanly | Minimal conformational penalty (low |ΔS|) |
 
 ```
@@ -475,6 +478,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🔥 FIRE — Sympathomimetics (click to expand)</strong></summary>
 
+> **Targets:** DAT / NET (catecholamine transporters), A₂ₐ (adenosine), nAChR.
 > Stimulates fight-or-flight via catecholamine release or reuptake inhibition. Detected by HR ↑ and HRV entropy **collapse** (ΔH < 0).
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -495,6 +499,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>⚡ ELECTRIC — Dopaminergic / Noradrenergic (click to expand)</strong></summary>
 
+> **Targets:** DAT, D₂ (dopamine system), MAO-A/B.
 > Targets the reward pathway via dopamine/norepinephrine reuptake inhibition or MAO inhibition. Detected by activity ring spike, acute HRV compression → rebound.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -511,6 +516,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🧊 ICE — Parasympathomimetics (click to expand)</strong></summary>
 
+> **Targets:** β₁/β₂-AR, α₂-AR (adrenergic receptors), If channels, Na⁺/K⁺-ATPase.
 > Calms the autonomic system via β-adrenergic blockade or α₂-agonism. Detected by HR ↓ and HRV entropy **expansion** (ΔH > 0).
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -530,6 +536,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🧚 FAIRY — Serotonergic (click to expand)</strong></summary>
 
+> **Targets:** SERT, 5-HT₁A / 5-HT₂A (serotonin system).
 > Modulates 5-HT receptors via reuptake inhibition (SSRIs/SNRIs), partial agonism, or direct agonism (psychedelics). Detected by slow HRV modulation over days and sleep architecture Δ.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -550,6 +557,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🐉 DRAGON — Mixed / Biphasic (click to expand)</strong></summary>
 
+> **Targets:** D₂ / 5-HT₂A / H₁ / α₁-AR (multi-receptor), GABA-A / NMDA (ethanol).
 > Dual-branch autonomic agents (antipsychotics, alcohol) with multi-receptor affinity. Detected by biphasic ΔH — initial collapse then expansion.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -570,6 +578,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>👻 GHOST — GABAergic / Sedative (click to expand)</strong></summary>
 
+> **Targets:** GABA-A (BZD site), OX₁/OX₂ (orexin receptors), GABA-B.
 > Enhances GABA-A inhibition (benzodiazepines), blocks orexin (suvorexant), or activates GABA-B (GHB). Detected by respiratory rate ↓ and sleep entropy shift.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -587,6 +596,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🔮 PSYCHIC — Opioidergic (click to expand)</strong></summary>
 
+> **Targets:** μ-OR / κ-OR / δ-OR (opioid receptors), SERT (tramadol dual action).
 > Binds μ/κ/δ opioid receptors as full agonists, partial agonists, or antagonists. Detected by deep parasympathetic shift and respiratory entropy collapse.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -605,6 +615,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>☠️ POISON — Anticholinergic (click to expand)</strong></summary>
 
+> **Targets:** mAChR M₁–M₅ (muscarinic receptors), H₁ (histamine).
 > Blocks muscarinic acetylcholine receptors, removing the vagal brake. Detected by paradoxical sympathetic ↑ (HR rises despite no catecholamine release).
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -619,6 +630,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>🌿 GRASS — Cannabinoid (click to expand)</strong></summary>
 
+> **Targets:** CB₁ (CNS) / CB₂ (peripheral) cannabinoid receptors.
 > CB1/CB2 receptor agonism with mixed autonomic effects. Detected by mixed HR response and altered HRV spectral balance (LF/HF ratio shift).
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -631,6 +643,7 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <details>
 <summary><strong>⚙️ STEEL — Structural / Rigid Agents (click to expand)</strong></summary>
 
+> **Targets:** Varies — Na⁺/Ca²⁺ channels, COX, GR (glucocorticoid), GABA-B, α₂-AR, NMDA, NET/SERT (TCAs).
 > Rigid molecules that bind cleanly with minimal conformational penalty (low |ΔS|). Includes mood stabilizers, anticonvulsants, NSAIDs, corticosteroids, muscle relaxants, and TCAs.
 
 | # | Substance | Class | Bonds | ΔS (bits) | -TΔS | Tmax | t½ | ΔH_hrv (bits) | Schedule | Tier |
@@ -659,6 +672,8 @@ TherapeuticClass.cannabinoid        ──→  🌿 GRASS
 <p align="center">
   <b>84 docking poses catalogued</b> · <b>10 pharmacological TYPEs</b> · <b>3 flexibility tiers</b>
 </p>
+
+> **Column key:** Bonds = rotatable bonds · ΔS = configurational entropy loss on binding (bits) · -TΔS = entropic penalty at 298 K (kcal/mol) · Tmax = time to peak plasma concentration · t½ = elimination half-life · ΔH_hrv = expected HRV entropy shift (bits) · Schedule = DEA classification
 
 <p align="center">
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
