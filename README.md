@@ -50,7 +50,7 @@
    ╔════════════════════════╗    ╔═══════════════════════╗
    ║  Press START to begin  ║    ║ NAME: Bonhomme        ║
    ║                        ║    ║ REGION: Apple          ║
-   ║   ◄ NEW GAME ►        ║    ║ BADGES: 13             ║
+   ║   ◄ NEW GAME ►        ║    ║ BADGES: 15             ║
    ║     CONTINUE           ║    ║ YOGA: 26/26            ║
    ║     OPTIONS            ║    ║ POKEDRUG: 84/84        ║
    ╚════════════════════════╝    ╚═══════════════════════╝
@@ -169,7 +169,7 @@ The `EntropyCalculator` — extracted as a shared utility — enables entropy-ba
 ### ☠️ MOVE 3 — Drug Response Analysis (PokeDrug) `POISON`
 
 <table>
-<tr><td>💪 <b>Power</b></td><td>70+ pharmacokinetic profiles</td></tr>
+<tr><td>💪 <b>Power</b></td><td>82 pharmacokinetic profiles</td></tr>
 <tr><td>🎯 <b>Accuracy</b></td><td>p < 0.05 validated</td></tr>
 <tr><td>🔋 <b>PP</b></td><td>Per-dose event</td></tr>
 </table>
@@ -187,8 +187,8 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
 ```
 
 - 📈 **DrugResponseAnalyzer** — Computes baseline entropy (30 min pre-dose), measures ΔH at post-dose windows (15–360 min), detects entropy collapse (sympathomimetic) or expansion (parasympathomimetic)
-- 💊 **70+ pharmacokinetic profiles** — Substance database with autonomic mechanism, Tmax, expected ΔH range, therapeutic class, and FDA status
-- 🧬 **60+ binding entropy profiles** — Published ΔS_config values (bits) and -TΔS (kcal/mol) from computational chemistry literature
+- 💊 **82 pharmacokinetic profiles** — Substance database with autonomic mechanism, Tmax, t½, expected ΔH range, therapeutic class, DEA schedule, and FDA status
+- 🧬 **70+ binding entropy profiles** — Published ΔS_config values (bits) and -TΔS (kcal/mol) from computational chemistry literature
 - 🔬 **CrossDomainValidator** — Correlates |ΔS_config| (molecular) with |ΔH_hrv| (physiological) via Pearson r to validate the entropy-collapse framework across domains
 - 🔩 **FlexAIDdSAnalyzer** — Computes configurational entropy from torsional angle distributions using the same EntropyCalculator
 - 📋 **MedicationTracker** — HealthKit FHIR medication import, manual dose logging, automatic drug response analysis
@@ -414,18 +414,18 @@ A **Pose** in PokeDrug is not a yoga posture — it's a **molecular docking pose
 
 Each TYPE maps to a **real physiological event** detected through HealthKit or molecular docking:
 
-| TYPE | Pharmacological Basis | HealthKit / Docking Signal |
-|------|----------------------|---------------------------|
-| 🔥 **FIRE** | Stimulates fight-or-flight (amphetamine, cocaine, caffeine) | HR ↑, HRV entropy **collapse** (ΔH < 0) |
-| 🧊 **ICE** | Calms autonomic system (beta-blockers, clonidine) | HR ↓, HRV entropy **expansion** (ΔH > 0) |
-| 🐉 **DRAGON** | Dual-branch / biphasic (antipsychotics, alcohol) | Biphasic ΔH — initial collapse then expansion |
-| 👻 **GHOST** | Enhances GABA inhibition (benzodiazepines, zolpidem) | Respiratory rate ↓, sleep entropy shift |
-| ⚡ **ELECTRIC** | Targets reward pathway (bupropion, modafinil) | Activity ring spike, acute HRV compression → rebound |
-| ☠️ **POISON** | Blocks acetylcholine (atropine, scopolamine) | Vagal brake removed → paradoxical sympathetic ↑ |
-| 🧚 **FAIRY** | Modulates 5-HT receptors (SSRIs, psychedelics) | Slow HRV modulation over days, sleep architecture Δ |
-| 🔮 **PSYCHIC** | Binds μ/κ/δ opioid receptors (morphine, fentanyl) | Deep parasympathetic shift, respiratory entropy collapse |
-| 🌿 **GRASS** | CB1/CB2 agonism (THC, CBD) | Mixed HR response, altered HRV spectral balance |
-| ⚙️ **STEEL** | Rigid molecules / structural agents (lithium, lamotrigine) | Minimal ΔS_config, subtle ΔH_hrv |
+| TYPE | Primary Targets | Pharmacological Basis | ΔH Direction | HealthKit / Docking Signal |
+|------|----------------|----------------------|--------------|---------------------------|
+| 🔥 **FIRE** | DAT / NET, A₂ₐ, nAChR | Stimulates fight-or-flight (amphetamine, cocaine, caffeine) | ΔH < 0 | HR ↑, HRV entropy **collapse** |
+| ⚡ **ELECTRIC** | DAT, D₂, MAO-A/B | Targets reward pathway (bupropion, modafinil) | ΔH < 0 | Activity ring spike, HRV compression → rebound |
+| 🧊 **ICE** | β₁/β₂-AR, α₂-AR, If | Calms autonomic system (beta-blockers, clonidine) | ΔH > 0 | HR ↓, HRV entropy **expansion** |
+| 🧚 **FAIRY** | SERT, 5-HT₁A/₂A | Modulates 5-HT receptors (SSRIs, psychedelics) | Mixed | Slow HRV modulation over days, sleep architecture Δ |
+| 🐉 **DRAGON** | D₂/5-HT₂A/H₁/α₁-AR | Dual-branch / biphasic (antipsychotics, alcohol) | Biphasic | Biphasic ΔH — initial collapse then expansion |
+| 👻 **GHOST** | GABA-A, OX₁/OX₂, GABA-B | Enhances GABA inhibition (benzodiazepines, zolpidem) | ΔH > 0 | Respiratory rate ↓, sleep entropy shift |
+| 🔮 **PSYCHIC** | μ/κ/δ-OR | Binds opioid receptors (morphine, fentanyl) | ΔH > 0 | Deep parasympathetic shift, respiratory entropy collapse |
+| ☠️ **POISON** | mAChR M₁–M₅, H₁ | Blocks acetylcholine (atropine, scopolamine) | ΔH < 0 | Vagal brake removed → paradoxical sympathetic ↑ |
+| 🌿 **GRASS** | CB₁ / CB₂ | CB1/CB2 agonism (THC, dronabinol) | Mixed | Mixed HR response, altered HRV spectral balance (LF/HF) |
+| ⚙️ **STEEL** | Na⁺/Ca²⁺ ch, COX, GR | Rigid molecules / structural agents (lithium, lamotrigine) | Subtle | Minimal ΔS_config, subtle ΔH_hrv |
 
 ### ⚔️ TYPE Effectiveness — Cross-Signal Interactions
 
@@ -705,8 +705,9 @@ All models, analysis engine, and TV display views live in `BonhommeCore`, a plat
     │   ├── 💊 MedicationAnalyzer.swift  # Adherence scoring with HRV correlation
     │   ├── ⚙️ FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
     │   ├── 📈 DrugResponseAnalyzer.swift # ΔH detection around medication dose events
-    │   ├── 🧪 PharmacokineticProfile.swift # 70+ substance PK/autonomic profiles
-    │   ├── 🧬 BindingEntropyProfile.swift # 60+ molecular ΔS_config reference values
+    │   ├── ⚙️ AnalysisConfiguration.swift  # Centralized thresholds for all analyzers
+    │   ├── 🧪 PharmacokineticProfile.swift # 82 substance PK/autonomic profiles
+    │   ├── 🧬 BindingEntropyProfile.swift # 70+ molecular ΔS_config reference values
     │   ├── 🔩 FlexAIDdSAnalyzer.swift   # Torsional ΔS_config computation
     │   ├── 🔬 CrossDomainValidator.swift # |ΔS_config| ↔ |ΔH_hrv| correlation
     │   └── 🔗 DockingInsightAnalyzer.swift # SignalAnalyzer adapter for FeedbackEngine
@@ -859,8 +860,10 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 | 🟢 `TVDisplayPayloadTests` | 4 | Codable roundtrip, nil biofeedback, SCI trend |
 | 🟢 `WorkoutResultTests` | 3 | Result codable, nil heart rate |
 | 🟡 `AnalyzerTests` | 17 | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal, EntropyCalculator edge cases + parity |
-| 🟡 `DrugResponseAnalyzerTests` | 24 | Sympathomimetic/parasympathomimetic detection, dose-response curves, profile matching, batch aggregation, Cohen's d, AUC |
-| 🔴 `FlexAIDdSAnalyzerTests` | 27 | Torsional entropy, ΔS_config, kcal/mol conversion, cross-domain validation, BindingEntropyProfile registry, DockingInsightAnalyzer pipeline |
+| 🟡 `EntropyCalculatorTests` | 10 | Circular wraparound, uniform distribution, NaN filtering, linear vs circular parity, edge cases |
+| 🟡 `DrugResponseAnalyzerTests` | 26 | Sympathomimetic/parasympathomimetic detection, dose-response curves, profile matching, batch aggregation, Cohen's d cap, AUC |
+| 🔴 `FlexAIDdSAnalyzerTests` | 28 | Torsional entropy, ΔS_config, kcal/mol conversion, cross-domain validation, BindingEntropyProfile registry, circular boundary angles |
+| 🔴 `CrossDomainValidatorTests` | 13 | p-value accuracy, minimum pairs (n≥5), hybrid validation, NaN handling, significance threshold (p<0.05) |
 | 🟢 `WorkoutFlowViewModelTests` | 3 | Plan structure, TV payload, localization |
 | 🟢 `TVDisplayCoordinatorTests` | 3 | Payload size <10KB, framing, Bonjour type |
 | 🟣 `WorkoutFlowUITests` | 5 | Home screen, navigation, countdown, a11y |
