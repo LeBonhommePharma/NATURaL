@@ -37,8 +37,8 @@ BonhommeCore/Sources/BonhommeCore/Analysis/
 ├── HRVAnalyzer.swift                # SCI from RR intervals
 ├── MedicationAnalyzer.swift         # Adherence scoring
 ├── DrugResponseAnalyzer.swift       # ΔH detection around dose events
-├── PharmacokineticProfile.swift     # 70+ substance PK/autonomic profiles
-├── BindingEntropyProfile.swift      # 60+ molecular ΔS_config reference values
+├── PharmacokineticProfile.swift     # 82 substance PK/autonomic profiles
+├── BindingEntropyProfile.swift      # 70+ molecular ΔS_config reference values
 ├── FlexAIDdSAnalyzer.swift          # Torsional ΔS_config computation
 ├── CrossDomainValidator.swift       # |ΔS_config| ↔ |ΔH_hrv| correlation
 └── DockingInsightAnalyzer.swift     # SignalAnalyzer adapter for FeedbackEngine
@@ -147,7 +147,7 @@ DrugResponseResult
 
 ### 3.3 PharmacokineticProfile — Substance Database
 
-**File:** `PharmacokineticProfile.swift` (~70+ entries)
+**File:** `PharmacokineticProfile.swift` (82 entries)
 
 Each profile contains:
 
@@ -166,29 +166,26 @@ Each profile contains:
 
 **Coverage by therapeutic class:**
 
-| Class | Count | Examples |
-|-------|-------|---------|
-| Stimulants | 8 | amphetamine, methylphenidate, cocaine, caffeine, modafinil |
-| Antidepressants | 12 | SSRIs, SNRIs, TCAs, MAOIs, atypicals |
-| Antipsychotics | 7 | quetiapine, olanzapine, risperidone, haloperidol, clozapine |
-| Anxiolytics / Sedatives | 7 | benzodiazepines, buspirone, zolpidem, suvorexant |
-| Opioids | 6 | morphine, oxycodone, fentanyl, buprenorphine, tramadol |
-| Beta-blockers | 5 | propranolol, metoprolol, atenolol, bisoprolol, carvedilol |
-| Alpha agonists | 2 | clonidine, guanfacine |
-| Anticholinergics | 4 | atropine, scopolamine, diphenhydramine, promethazine |
-| Anticonvulsants | 6 | gabapentin, pregabalin, lamotrigine, valproate, lithium |
-| Cardiovascular | 2 | digoxin, ivabradine |
-| NSAIDs / Corticosteroids | 3 | ibuprofen, prednisone, dexamethasone |
-| Psychoactive | 7 | ethanol, nicotine, THC, MDMA, psilocybin, LSD, ketamine, GHB |
-| Muscle relaxants | 3 | cyclobenzaprine, baclofen, tizanidine |
-| GI / Endocrine | 2 | metoclopramide, levothyroxine |
-| **Total** | **70+** | |
+| Class | Count | PokeDrug TYPE | Examples |
+|-------|-------|---------------|---------|
+| Stimulants & ADHD | 8 | 🔥 FIRE | amphetamine, methylphenidate, cocaine, caffeine |
+| Xanthines | 2 | 🔥 FIRE | caffeine, theophylline |
+| Wakefulness / NDRI / MAOI | 6 | ⚡ ELECTRIC | modafinil, bupropion, phenelzine |
+| Beta-blockers & CV | 9 | 🧊 ICE | propranolol, metoprolol, digoxin, ivabradine |
+| SSRIs / SNRIs / SARIs | 10 | 🧚 FAIRY | sertraline, fluoxetine, venlafaxine, psilocybin, LSD |
+| Antipsychotics & Mixed | 10 | 🐉 DRAGON | quetiapine, olanzapine, haloperidol, ethanol |
+| Benzodiazepines & Sedatives | 7 | 👻 GHOST | alprazolam, diazepam, zolpidem, suvorexant, GHB |
+| Opioids | 8 | 🔮 PSYCHIC | morphine, fentanyl, buprenorphine, naltrexone |
+| Anticholinergics | 4 | ☠️ POISON | atropine, scopolamine, diphenhydramine |
+| Cannabinoids | 2 | 🌿 GRASS | THC, dronabinol |
+| Structural / Rigid | 18 | ⚙️ STEEL | lithium, gabapentin, lamotrigine, ketamine, TCAs |
+| **Total** | **84** | **10 TYPEs** | |
 
 ### 3.4 BindingEntropyProfile — Molecular Reference Database
 
 **File:** `BindingEntropyProfile.swift` (732 lines)
 
-Published and computed configurational entropy values for 60+ substances:
+Published and computed configurational entropy values for 70+ substances:
 
 | Field | Purpose |
 |-------|---------|
@@ -402,9 +399,51 @@ At T = 298K, R = 1.987 × 10⁻³ kcal/(mol·K):
 
 ---
 
-## 7. Substance Coverage Matrix
+## 7. PokeDrug TYPE System
 
-### 7.1 Full Coverage (PK + binding entropy + expected ΔH)
+The 10-TYPE classification maps each substance to a pharmacological archetype based on
+its primary receptor target, autonomic mechanism, and HealthKit detection signature.
+
+| TYPE | Pharmacological Basis | Primary Targets | HealthKit Signal | ΔH Direction |
+|------|----------------------|-----------------|------------------|--------------|
+| 🔥 FIRE | Sympathomimetic | DAT / NET, A₂ₐ, nAChR | HR ↑, HRV entropy collapse | ΔH < 0 |
+| ⚡ ELECTRIC | Dopaminergic / Noradrenergic | DAT, D₂, MAO-A/B | Activity spike, HRV compression → rebound | ΔH < 0 |
+| 🧊 ICE | Parasympathomimetic | β₁/β₂-AR, α₂-AR, If channels | HR ↓, HRV entropy expansion | ΔH > 0 |
+| 🧚 FAIRY | Serotonergic | SERT, 5-HT₁A / 5-HT₂A | Slow HRV modulation, sleep Δ | Mixed |
+| 🐉 DRAGON | Mixed / Biphasic | D₂/5-HT₂A/H₁/α₁-AR | Biphasic ΔH — collapse then expansion | Biphasic |
+| 👻 GHOST | GABAergic / Sedative | GABA-A (BZD site), OX₁/OX₂, GABA-B | Resp rate ↓, sleep entropy shift | ΔH > 0 |
+| 🔮 PSYCHIC | Opioidergic | μ-OR / κ-OR / δ-OR | Deep parasympathetic shift, resp collapse | ΔH > 0 |
+| ☠️ POISON | Anticholinergic | mAChR M₁–M₅, H₁ | Paradoxical sympathetic ↑ (vagal brake off) | ΔH < 0 |
+| 🌿 GRASS | Cannabinoid | CB₁ (CNS) / CB₂ (peripheral) | Mixed HR, LF/HF ratio shift | Mixed |
+| ⚙️ STEEL | Structural / Rigid | Varies (Na⁺/Ca²⁺ channels, COX, GR) | Minimal ΔS_config, subtle ΔH_hrv | Subtle |
+
+**Code mapping:**
+```
+AutonomicMechanism.sympathomimetic       → 🔥 FIRE
+AutonomicMechanism.parasympathomimetic   → 🧊 ICE
+AutonomicMechanism.mixed                 → 🐉 DRAGON
+TherapeuticClass.anxiolytic/sedative     → 👻 GHOST
+TherapeuticClass.stimulant (NDRI/wake)   → ⚡ ELECTRIC
+TherapeuticClass.anticholinergic         → ☠️ POISON
+TherapeuticClass.antidepressant (5-HT)   → 🧚 FAIRY
+TherapeuticClass.opioidAnalgesic         → 🔮 PSYCHIC
+TherapeuticClass.cannabinoid             → 🌿 GRASS
+(rigid molecules, ≤2 rotatable bonds)    → ⚙️ STEEL
+```
+
+**Flexibility tiers (docking difficulty):**
+
+| Tier | Rotatable Bonds | |ΔS| (bits) | Examples |
+|------|----------------|-------------|----------|
+| 🟢 Rigid | 0–2 | < 3 | caffeine, lithium, ethanol, LSD |
+| 🟡 Flexible | 3–5 | 3–8 | amphetamine, sertraline, morphine |
+| 🔴 Highly Flexible | 6+ | > 8 | fentanyl, quetiapine, metoprolol, digoxin |
+
+---
+
+## 8. Substance Coverage Matrix
+
+### 8.1 Full Coverage (PK + binding entropy + expected ΔH)
 
 Amphetamine, methylphenidate, cocaine, modafinil, caffeine, theophylline,
 propranolol, metoprolol, atenolol, clonidine, sertraline, fluoxetine,
@@ -423,7 +462,7 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 ---
 
-## 8. Related Projects
+## 9. Related Projects
 
 | Project | Relationship |
 |---------|-------------|
@@ -433,7 +472,7 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 ---
 
-## 9. Design Principles
+## 10. Design Principles
 
 1. **One EntropyCalculator, two domains.** The same 32-bin Shannon engine computes
    entropy for molecular torsional angles and cardiac RR intervals. No domain-specific
@@ -456,12 +495,12 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 ---
 
-## 10. Gaps & Roadmap
+## 11. Gaps & Roadmap
 
 The analysis engine is fully implemented and tested. The following integration layers
 remain unbuilt and represent the path from "working library" to "shipping feature."
 
-### 10.1 Persistence
+### 11.1 Persistence
 
 **Status:** Not implemented.
 
@@ -472,7 +511,7 @@ app restart, preventing historical trend tracking and multi-session dose-respons
 **Required:** Add `DrugResponseRecord` to `PersistentModels.swift` and register it in
 `PersistenceConfiguration.makeContainer()`.
 
-### 10.2 App Lifecycle
+### 11.2 App Lifecycle
 
 **Status:** Partially wired.
 
@@ -485,7 +524,7 @@ app restart, preventing historical trend tracking and multi-session dose-respons
 **Required:** Lift `FeedbackEngine` and `MedicationTracker` to `AppState` as app-wide
 singletons. Register all three analyzers (HRV, Medication, Docking) at init time.
 
-### 10.3 UI / Visualization
+### 11.3 UI / Visualization
 
 **Status:** Not implemented.
 
@@ -497,7 +536,7 @@ No SwiftUI views exist to display drug response data:
 
 The `SummaryView` shows HR chart but has no drug response correlation card.
 
-### 10.4 InsightEngine (Apple Intelligence)
+### 11.4 InsightEngine (Apple Intelligence)
 
 **Status:** Not integrated.
 
@@ -507,7 +546,7 @@ The `SummaryView` shows HR chart but has no drug response correlation card.
 - Missing drug-HRV cross-correlation narrative (e.g., "Your focus score dropped
   30 minutes after your dose, consistent with the expected sympathomimetic profile")
 
-### 10.5 Siri / App Intents
+### 11.5 Siri / App Intents
 
 **Status:** Not implemented.
 
@@ -518,21 +557,25 @@ No intents exist for:
 
 Only `GetAdherenceIntent` exists for medication, and it's a stub.
 
-### 10.6 README
+### 11.6 README
 
-**Status:** Not documented.
+**Status:** ✅ Fully documented.
 
-The main `README.md` describes the full platform (poses, HRV, SCI, CareKit, CloudKit,
-Apple Intelligence, multi-screen) but does not mention drug response analysis,
-FlexAID∆S integration, substance profiles, or cross-domain validation.
+The main `README.md` now includes the complete **PokeDrug Codex** with:
+- 10-TYPE pharmacological classification system (FIRE, ICE, DRAGON, GHOST, ELECTRIC, POISON, FAIRY, PSYCHIC, GRASS, STEEL)
+- 84 docking poses across 3 flexibility tiers with full metadata (class, rotatable bonds, ΔS, -TΔS, Tmax, t½, ΔH_hrv, DEA schedule)
+- TYPE Effectiveness cross-signal interaction table (10 matchups)
+- Primary receptor targets for each TYPE
+- Column legend and tier definitions
+- TYPE → Signal Detection mapping table linked to HealthKit observables
 
 ---
 
-## 11. Research Quality Enhancements
+## 12. Research Quality Enhancements
 
 Enhancements to improve scientific rigor and numerical robustness.
 
-### 11.1 Circular Entropy for Torsional Angles
+### 12.1 Circular Entropy for Torsional Angles
 
 **Problem:** Torsional angles are circular [-180°, +180°], but `EntropyCalculator.shannonEntropy` used data-adaptive linear binning. Angles -179° and +179° (2° apart physically) were histogram-binned ~358° apart, underestimating entropy for wrapped distributions.
 
@@ -540,7 +583,7 @@ Enhancements to improve scientific rigor and numerical robustness.
 
 **File:** `EntropyCalculator.swift`, `FlexAIDdSAnalyzer.swift`
 
-### 11.2 Statistical Significance Testing (p-values)
+### 12.2 Statistical Significance Testing (p-values)
 
 **Problem:** `CrossDomainValidator` declared correlations "significant" when r > 0.5, but at n=5, r=0.5 has p ≈ 0.39 (not significant). The minimum pair count of 3 was too small for meaningful inference.
 
@@ -548,7 +591,7 @@ Enhancements to improve scientific rigor and numerical robustness.
 
 **File:** `CrossDomainValidator.swift`
 
-### 11.3 Centralized AnalysisConfiguration
+### 12.3 Centralized AnalysisConfiguration
 
 **Problem:** 12+ hardcoded thresholds scattered across 5 source files with no central configuration.
 
@@ -556,12 +599,12 @@ Enhancements to improve scientific rigor and numerical robustness.
 
 **File:** `AnalysisConfiguration.swift` (new), all analyzer files modified
 
-### 11.4 Numerical Robustness
+### 12.4 Numerical Robustness
 
 - **NaN/infinity guards:** `EntropyCalculator` filters non-finite values before computation. Pearson correlation in both `CrossDomainValidator` and `DrugResponseAnalyzer` filters non-finite pairs.
 - **Cohen's d cap:** Capped at 10.0 (was `.infinity` when SD = 0). Values above 10 are not meaningfully interpretable.
 
-### 11.5 New Test Coverage
+### 12.5 New Test Coverage
 
 | Test File | Tests Added | Coverage |
 |-----------|------------|----------|
@@ -572,12 +615,13 @@ Enhancements to improve scientific rigor and numerical robustness.
 
 **Total test count:** 51 → 77 (26 new tests)
 
-## 12. Summary
+## 13. Summary
 
 PokeDrug bridges computational chemistry and wearable health monitoring through a single
 mathematical principle: Shannon entropy measures the cost of binding — whether a ligand
 locking into a receptor pocket (ΔS_config) or a drug compressing cardiac rhythm variability
-(ΔH_hrv). The implementation includes 70+ substance profiles, cross-domain validation
+(ΔH_hrv). The implementation includes 82 substance pharmacokinetic profiles organized into
+a 10-TYPE pharmacological classification system (84 codex entries), cross-domain validation
 with proper p-value significance testing, circular entropy for torsional angles,
 FeedbackEngine integration, HealthKit medication tracking, centralized configuration,
 and 77 tests validating every layer from raw entropy computation to bilingual summary generation.
