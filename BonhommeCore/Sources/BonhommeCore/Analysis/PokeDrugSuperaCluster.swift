@@ -162,15 +162,14 @@ extension PokeDrugSuperaCluster {
         }
     }
 
-    /// Hex color for the cluster itself (midpoint of its color family).
-    /// Individual member type colors should be chosen within this family.
+    /// Hex color for the cluster (anchor WoW class color from the cluster).
     public var color: String {
         switch self {
-        case .serotonergic:      return "#7B68EE"  // Violet (placeholder — you choose)
-        case .opioidergic:       return "#DC143C"  // Crimson (placeholder — you choose)
-        case .catecholaminergic: return "#FF8C00"  // Orange (placeholder — you choose)
-        case .inhibitory:        return "#4682B4"  // Blue (placeholder — you choose)
-        case .cholinergic:       return "#CD853F"  // Brown (placeholder — you choose)
+        case .serotonergic:      return "#8788EE"  // Warlock (serotonin anchor)
+        case .opioidergic:       return "#C41E3A"  // Death Knight (opioid anchor)
+        case .catecholaminergic: return "#FF7C0A"  // Druid (dopamine anchor)
+        case .inhibitory:        return "#3FC7EB"  // Mage (dissociative anchor)
+        case .cholinergic:       return "#C69B6D"  // Warrior (cholinergic anchor)
         }
     }
 }

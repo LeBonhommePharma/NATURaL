@@ -319,21 +319,21 @@ extension PokeDrugType {
         }
     }
 
-    /// Hex color code for UI rendering.
+    /// Hex color code for UI rendering (World of Warcraft class palette).
     public var color: String {
         switch self {
-        case .serotonin:    return "#7B68EE"  // Medium slate blue
-        case .opioid:       return "#DC143C"  // Crimson
-        case .dopamine:     return "#FF8C00"  // Dark orange
-        case .empathogen:   return "#FF69B4"  // Hot pink
-        case .dissociative: return "#4682B4"  // Steel blue
-        case .cannabinoid:  return "#228B22"  // Forest green
-        case .kappa:        return "#8B008B"  // Dark magenta
-        case .stimulant:    return "#FFD700"  // Gold
-        case .sedative:     return "#6B8E23"  // Olive drab
-        case .cholinergic:  return "#CD853F"  // Peru
-        case .adenosine:    return "#8B4513"  // Saddle brown
-        case .sigma:        return "#708090"  // Slate gray
+        case .serotonin:    return "#8788EE"  // Warlock
+        case .opioid:       return "#C41E3A"  // Death Knight
+        case .dopamine:     return "#FF7C0A"  // Druid
+        case .empathogen:   return "#F48CBA"  // Paladin
+        case .dissociative: return "#3FC7EB"  // Mage
+        case .cannabinoid:  return "#AAD372"  // Hunter
+        case .kappa:        return "#A330C9"  // Demon Hunter
+        case .stimulant:    return "#FFF468"  // Rogue
+        case .sedative:     return "#00FF98"  // Monk
+        case .cholinergic:  return "#C69B6D"  // Warrior
+        case .adenosine:    return "#33937F"  // Evoker
+        case .sigma:        return "#0070DD"  // Shaman
         }
     }
 }
