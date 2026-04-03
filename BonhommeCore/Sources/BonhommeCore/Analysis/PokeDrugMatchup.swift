@@ -217,5 +217,53 @@ public enum PokeDrugMatchup {
             .sedative:      .notEffective,
             .adenosine:     .notEffective,
         ],
+
+        // Benzodiazepine: 1,4-BZD ring system is a PAM at GABA-A BZD site
+        .benzodiazepine: [
+            .sedative:      .superEffective,  // Diazepam Ki ~3-20 nM at BZD site
+            .opioid:        .notEffective,
+            .serotonin:     .notEffective,
+            .dopamine:      .notEffective,
+            .empathogen:    .notEffective,
+            .dissociative:  .notEffective,
+            .cannabinoid:   .notEffective,
+            .kappa:         .notEffective,
+            .stimulant:     .notEffective,
+            .cholinergic:   .notEffective,
+            .adenosine:     .notEffective,
+            .sigma:         .notEffective,
+        ],
+
+        // Beta-carboline: tricyclic indole → 5-HT2A + potent MAO-A inhibition
+        .betaCarboline: [
+            .serotonin:     .superEffective,  // Harmine 5-HT2A Ki ~300 nM + MAO-A Ki ~5 nM
+            .sigma:         .weaklyEffective,  // Some sigma affinity
+            .opioid:        .notEffective,
+            .dopamine:      .weaklyEffective,  // Indirect via MAO-A inhibition
+            .empathogen:    .weaklyEffective,  // MAO-A block potentiates SERT release
+            .dissociative:  .notEffective,
+            .cannabinoid:   .notEffective,
+            .kappa:         .notEffective,
+            .stimulant:     .notEffective,
+            .sedative:      .notEffective,
+            .cholinergic:   .notEffective,
+            .adenosine:     .notEffective,
+        ],
+
+        // Isoxazole: GABA bioisostere → orthosteric GABA-A agonist
+        .isoxazole: [
+            .sedative:      .superEffective,  // Muscimol Ki ~6-10 nM at GABA-A orthosteric
+            .opioid:        .notEffective,
+            .serotonin:     .notEffective,
+            .dopamine:      .notEffective,
+            .empathogen:    .notEffective,
+            .dissociative:  .notEffective,
+            .cannabinoid:   .notEffective,
+            .kappa:         .notEffective,
+            .stimulant:     .notEffective,
+            .cholinergic:   .notEffective,
+            .adenosine:     .notEffective,
+            .sigma:         .notEffective,
+        ],
     ]
 }

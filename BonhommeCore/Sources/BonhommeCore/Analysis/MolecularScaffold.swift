@@ -46,6 +46,19 @@ public enum MolecularScaffold: String, Codable, Sendable, CaseIterable {
     /// Hits alpha3beta4 nAChR (Ki ~20 nM), NMDA (~10-50 nM), sigma-2 (~90-200 nM),
     /// SERT (~500 nM), MOR (~130 nM), KOR (~2-4 uM).
     case iboga
+
+    /// 1,4-Benzodiazepine fused ring system. Positive allosteric modulator of GABA-A
+    /// at a site distinct from GABA binding. Diazepam Ki ~3-20 nM at BZD site.
+    case benzodiazepine
+
+    /// Tricyclic beta-carboline (pyrido[3,4-b]indole). Reversible MAO-A inhibitor
+    /// and 5-HT2A ligand. Harmine Ki ~5 nM at MAO-A, ~300 nM at 5-HT2A.
+    case betaCarboline
+
+    /// Isoxazole-containing amino acid from Amanita muscaria.
+    /// Direct GABA-A orthosteric agonist (binds the GABA site, not the BZD site).
+    /// Muscimol Ki ~6-10 nM at GABA-A. Distinct from benzodiazepine modulation.
+    case isoxazole
 }
 
 // MARK: - Metadata
@@ -65,6 +78,9 @@ extension MolecularScaffold {
         case .benzodioxole:     return [.empathogen]
         case .xanthine:         return [.adenosine]
         case .iboga:            return [.opioid, .dissociative, .empathogen]
+        case .benzodiazepine:   return [.sedative]
+        case .betaCarboline:    return [.serotonin]
+        case .isoxazole:        return [.sedative]
         }
     }
 
@@ -141,6 +157,27 @@ extension MolecularScaffold {
                 zh: "伊博加生物碱", ko: "이보가 알칼로이드",
                 ru: "Алкалоид ибоги", de: "Iboga-Alkaloid",
                 ar: "قلويد إيبوغا")
+        case .benzodiazepine:
+            return LocalizedString(
+                en: "Benzodiazepine", fr: "Benzodiazepine",
+                es: "Benzodiazepina", ja: "ベンゾジアゼピン",
+                zh: "苯二氮卓", ko: "벤조디아제핀",
+                ru: "Бензодиазепин", de: "Benzodiazepin",
+                ar: "بنزوديازيبين")
+        case .betaCarboline:
+            return LocalizedString(
+                en: "Beta-Carboline", fr: "Beta-Carboline",
+                es: "Beta-Carbolina", ja: "β-カルボリン",
+                zh: "β-咔啉", ko: "베타-카르볼린",
+                ru: "Бета-карболин", de: "Beta-Carbolin",
+                ar: "بيتا كاربولين")
+        case .isoxazole:
+            return LocalizedString(
+                en: "Isoxazole", fr: "Isoxazole",
+                es: "Isoxazol", ja: "イソオキサゾール",
+                zh: "异噁唑", ko: "이속사졸",
+                ru: "Изоксазол", de: "Isoxazol",
+                ar: "إيزوكسازول")
         }
     }
 
@@ -257,6 +294,39 @@ extension MolecularScaffold {
                 ru: "Полициклический изохинуклидин со встроенным индолом",
                 de: "Polycyclisches Isochinuclidin mit eingebettetem Indol",
                 ar: "إيزوكينوكليدين متعدد الحلقات مع إندول مدمج")
+        case .benzodiazepine:
+            return LocalizedString(
+                en: "1,4-Benzodiazepine fused ring (benzene + 7-membered diazepine)",
+                fr: "Anneau fusionne 1,4-benzodiazepine (benzene + diazepine a 7 chainons)",
+                es: "Anillo fusionado 1,4-benzodiazepina (benceno + diazepina de 7 miembros)",
+                ja: "1,4-ベンゾジアゼピン縮合環（ベンゼン + 7員ジアゼピン）",
+                zh: "1,4-苯二氮卓稠合环（苯环 + 7元二氮杂环）",
+                ko: "1,4-벤조디아제핀 융합 고리 (벤젠 + 7원 디아제핀)",
+                ru: "Конденсированное кольцо 1,4-бензодиазепина (бензол + 7-членный диазепин)",
+                de: "1,4-Benzodiazepin-Ringfusion (Benzol + 7-gliedriges Diazepin)",
+                ar: "حلقة 1,4-بنزوديازيبين مندمجة (بنزين + ديازيبين سباعي الأعضاء)")
+        case .betaCarboline:
+            return LocalizedString(
+                en: "Pyrido[3,4-b]indole tricyclic system",
+                fr: "Systeme tricyclique pyrido[3,4-b]indole",
+                es: "Sistema tricíclico pirido[3,4-b]indol",
+                ja: "ピリド[3,4-b]インドール三環系",
+                zh: "吡啶并[3,4-b]吲哚三环体系",
+                ko: "피리도[3,4-b]인돌 삼환계",
+                ru: "Трициклическая система пиридо[3,4-b]индола",
+                de: "Pyrido[3,4-b]indol-Trizyklus",
+                ar: "نظام ثلاثي الحلقات بيريدو[3,4-ب]إندول")
+        case .isoxazole:
+            return LocalizedString(
+                en: "3-Hydroxy-5-aminomethylisoxazole (GABA bioisostere)",
+                fr: "3-Hydroxy-5-aminomethylisoxazole (bioisostere du GABA)",
+                es: "3-Hidroxi-5-aminometilisoxazol (bioisóstero del GABA)",
+                ja: "3-ヒドロキシ-5-アミノメチルイソオキサゾール（GABAバイオアイソスター）",
+                zh: "3-羟基-5-氨甲基异噁唑（GABA生物等排体）",
+                ko: "3-하이드록시-5-아미노메틸이속사졸 (GABA 생물동등체)",
+                ru: "3-Гидрокси-5-аминометилизоксазол (биоизостер ГАМК)",
+                de: "3-Hydroxy-5-aminomethylisoxazol (GABA-Bioisoster)",
+                ar: "3-هيدروكسي-5-أمينوميثيل إيزوكسازول (بديل حيوي متساوي لـ GABA)")
         }
     }
 }

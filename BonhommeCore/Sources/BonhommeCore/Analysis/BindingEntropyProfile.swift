@@ -762,6 +762,58 @@ extension BindingEntropyProfile {
             expectedEntropyPenaltyKcal: 1.0,
             reference: "Rigid flavone scaffold, 1 rotatable bond. Mobley & Gilson 2017."
         ),
+
+        // MARK: PokeDrug Expansion Species
+
+        BindingEntropyProfile(
+            substanceId: "psilocin",
+            rotatableBondCount: 2,
+            expectedDeltaSBits: -2.6,
+            expectedEntropyPenaltyKcal: 0.9,
+            reference: "4-HO-DMT, 2 rotatable bonds (dimethylamine + hydroxyl). Similar to DMT."
+        ),
+        BindingEntropyProfile(
+            substanceId: "mda",
+            rotatableBondCount: 3,
+            expectedDeltaSBits: -4.5,
+            expectedEntropyPenaltyKcal: 1.5,
+            reference: "Methylenedioxyamphetamine, 3 rotatable bonds. Slightly less than MDMA."
+        ),
+        BindingEntropyProfile(
+            substanceId: "muscimol",
+            rotatableBondCount: 1,
+            expectedDeltaSBits: -1.8,
+            expectedEntropyPenaltyKcal: 0.8,
+            reference: "Rigid isoxazole amino acid, 1 rotatable bond. Krogsgaard-Larsen 1977."
+        ),
+        BindingEntropyProfile(
+            substanceId: "ephedrine",
+            rotatableBondCount: 3,
+            expectedDeltaSBits: -3.5,
+            expectedEntropyPenaltyKcal: 1.1,
+            reference: "Phenylpropanolamine, 3 rotatable bonds. Similar to amphetamine + hydroxyl."
+        ),
+        BindingEntropyProfile(
+            substanceId: "mitragynine",
+            rotatableBondCount: 5,
+            expectedDeltaSBits: -6.0,
+            expectedEntropyPenaltyKcal: 2.0,
+            reference: "Corynanthe indole alkaloid, 5 rotatable bonds. Kruegel et al. 2016."
+        ),
+        BindingEntropyProfile(
+            substanceId: "cbd",
+            rotatableBondCount: 6,
+            expectedDeltaSBits: -5.4,
+            expectedEntropyPenaltyKcal: 1.8,
+            reference: "Open-ring terpenophenolic, 6 rotatable bonds (more flexible than THC). Pertwee 2008."
+        ),
+        BindingEntropyProfile(
+            substanceId: "harmine",
+            rotatableBondCount: 1,
+            expectedDeltaSBits: -3.4,
+            expectedEntropyPenaltyKcal: 1.4,
+            reference: "Rigid beta-carboline tricycle, 1 rotatable bond (methoxy). Buckholtz & Boggan 1977."
+        ),
     ]
 
     /// Look up a binding entropy profile by substance ID (case-insensitive).

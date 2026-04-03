@@ -218,6 +218,127 @@ extension PharmacokineticProfile {
         scheduled: false,
         bindingEntropyKcal: 1.0
     )
+
+    /// Psilocin (4-HO-DMT). Active metabolite of psilocybin. Direct 5-HT2A agonist.
+    /// Oral onset 20-40 min (from psilocybin prodrug), t1/2 ~2.5-3h.
+    /// Passie et al. 2002, Brown et al. 2017.
+    public static let psilocin = PharmacokineticProfile(
+        substanceId: "psilocin",
+        name: LocalizedString(en: "Psilocin", fr: "Psilocine", es: "Psilocina", ja: "サイロシン", zh: "裸盖菇辛", ko: "실로신", ru: "Псилоцин", de: "Psilocin", ar: "سيلوسين"),
+        therapeuticClass: .psychedelic,
+        onsetMinutes: 20,
+        tmaxMinutes: 80,
+        halfLifeMinutes: 165,
+        expectedDeltaHRange: -0.5...0.4,
+        mechanism: .mixed,
+        fdaApproved: false,
+        scheduled: true,
+        bindingEntropyKcal: 0.9
+    )
+
+    /// MDA (3,4-methylenedioxyamphetamine). Empathogen + psychedelic.
+    /// Oral onset 30-60 min, t1/2 ~8-12h. SERT releaser + 5-HT2A agonist.
+    /// Nichols 1986, Baumann et al. 2007.
+    public static let mda = PharmacokineticProfile(
+        substanceId: "mda",
+        name: LocalizedString(en: "MDA", fr: "MDA", es: "MDA", ja: "MDA", zh: "MDA", ko: "MDA", ru: "МДА", de: "MDA", ar: "إم دي إيه"),
+        therapeuticClass: .psychedelic,
+        onsetMinutes: 30,
+        tmaxMinutes: 90,
+        halfLifeMinutes: 600,
+        expectedDeltaHRange: -0.6...0.3,
+        mechanism: .mixed,
+        fdaApproved: false,
+        scheduled: true,
+        bindingEntropyKcal: 1.5
+    )
+
+    /// Muscimol. GABA-A orthosteric agonist from Amanita muscaria.
+    /// Oral onset 30-90 min, t1/2 ~4-6h. Ki ~6-10 nM at GABA-A.
+    /// Johnston et al. 1968, Krogsgaard-Larsen 1977.
+    public static let muscimol = PharmacokineticProfile(
+        substanceId: "muscimol",
+        name: LocalizedString(en: "Muscimol", fr: "Muscimol", es: "Muscimol", ja: "ムシモール", zh: "蝇蕈醇", ko: "무시몰", ru: "Мусцимол", de: "Muscimol", ar: "موسيمول"),
+        therapeuticClass: .sedativeHypnotic,
+        onsetMinutes: 30,
+        tmaxMinutes: 120,
+        halfLifeMinutes: 300,
+        expectedDeltaHRange: 0.2...0.8,
+        mechanism: .parasympathomimetic,
+        fdaApproved: false,
+        scheduled: false,
+        bindingEntropyKcal: 0.8
+    )
+
+    /// Ephedrine. Sympathomimetic alkaloid from Ephedra sinica.
+    /// Oral onset 15-30 min, t1/2 ~3-6h. Indirect NET/DAT release + direct alpha/beta agonism.
+    /// Weiner 1980, Andraws et al. 2005.
+    public static let ephedrine = PharmacokineticProfile(
+        substanceId: "ephedrine",
+        name: LocalizedString(en: "Ephedrine", fr: "Ephedrine", es: "Efedrina", ja: "エフェドリン", zh: "麻黄碱", ko: "에페드린", ru: "Эфедрин", de: "Ephedrin", ar: "إيفيدرين"),
+        therapeuticClass: .stimulant,
+        onsetMinutes: 15,
+        tmaxMinutes: 60,
+        halfLifeMinutes: 300,
+        expectedDeltaHRange: -1.0...(-0.3),
+        mechanism: .sympathomimetic,
+        fdaApproved: true,
+        scheduled: false,
+        bindingEntropyKcal: 1.1
+    )
+
+    /// Mitragynine. Primary alkaloid from Mitragyna speciosa (kratom).
+    /// Oral onset 15-30 min, t1/2 ~3.5h (parent), metabolite 7-OH-mitragynine active.
+    /// MOR partial agonist Ki ~230 nM + 5-HT2A, alpha-2 adrenergic.
+    /// Kruegel et al. 2016, Hemby et al. 2019.
+    public static let mitragynine = PharmacokineticProfile(
+        substanceId: "mitragynine",
+        name: LocalizedString(en: "Mitragynine", fr: "Mitragynine", es: "Mitraginina", ja: "ミトラギニン", zh: "帽柱木碱", ko: "미트라기닌", ru: "Митрагинин", de: "Mitragynin", ar: "ميتراجينين"),
+        therapeuticClass: .opioidAnalgesic,
+        onsetMinutes: 15,
+        tmaxMinutes: 60,
+        halfLifeMinutes: 210,
+        expectedDeltaHRange: -0.4...0.2,
+        mechanism: .mixed,
+        fdaApproved: false,
+        scheduled: false,
+        bindingEntropyKcal: 2.0
+    )
+
+    /// CBD (Cannabidiol). Non-psychoactive phytocannabinoid from Cannabis sativa.
+    /// Oral onset 30-90 min, t1/2 ~18-32h. Low CB1 affinity but modulates multiple targets.
+    /// FDA-approved as Epidiolex for epilepsy.
+    /// Pertwee 2008, Devinsky et al. 2017.
+    public static let cbd = PharmacokineticProfile(
+        substanceId: "cbd",
+        name: LocalizedString(en: "CBD", fr: "CBD", es: "CBD", ja: "CBD", zh: "CBD", ko: "CBD", ru: "КБД", de: "CBD", ar: "سي بي دي"),
+        therapeuticClass: .cannabinoid,
+        onsetMinutes: 30,
+        tmaxMinutes: 150,
+        halfLifeMinutes: 1500,
+        expectedDeltaHRange: 0.0...0.3,
+        mechanism: .mixed,
+        fdaApproved: true,
+        scheduled: false,
+        bindingEntropyKcal: 1.8
+    )
+
+    /// Harmine. Beta-carboline MAO-A inhibitor from Banisteriopsis caapi (ayahuasca vine).
+    /// Oral onset 20-40 min, t1/2 ~1-3h. MAO-A Ki ~5 nM + 5-HT2A Ki ~300 nM.
+    /// Buckholtz & Boggan 1977, Brierley & Davidson 2012.
+    public static let harmine = PharmacokineticProfile(
+        substanceId: "harmine",
+        name: LocalizedString(en: "Harmine", fr: "Harmine", es: "Harmina", ja: "ハルミン", zh: "骆驼蓬碱", ko: "하르민", ru: "Гармин", de: "Harmin", ar: "هارمين"),
+        therapeuticClass: .psychedelic,
+        onsetMinutes: 20,
+        tmaxMinutes: 60,
+        halfLifeMinutes: 120,
+        expectedDeltaHRange: -0.3...0.3,
+        mechanism: .mixed,
+        fdaApproved: false,
+        scheduled: false,
+        bindingEntropyKcal: 1.4
+    )
 }
 
 

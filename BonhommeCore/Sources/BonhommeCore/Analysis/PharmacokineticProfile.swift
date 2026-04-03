@@ -2423,6 +2423,7 @@ extension PharmacokineticProfile {
         .cyclobenzaprine, .baclofen, .tizanidine,
         // PokeDrug Natural Product Scaffolds
         .dmt, .mescaline, .salvinorinA, .ibogaine, .cathinone, .apigenin,
+        .psilocin, .mda, .muscimol, .ephedrine, .mitragynine, .cbd, .harmine,
     ]
 
     /// Look up a profile by substance ID (case-insensitive).

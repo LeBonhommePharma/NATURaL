@@ -185,8 +185,8 @@ extension PokeDrugHabitat {
     /// Molecular scaffolds found in this habitat.
     public var scaffoldsFound: [MolecularScaffold] {
         switch self {
-        case .fungalForest:         return [.tryptamine, .ergoline]
-        case .tropicalJungle:       return [.tryptamine, .tropane]
+        case .fungalForest:         return [.tryptamine, .ergoline, .isoxazole]
+        case .tropicalJungle:       return [.tryptamine, .tropane, .betaCarboline]
         case .desertMesa:           return [.phenethylamine]
         case .asianHighlands:       return [.morphinan, .isoquinoline, .xanthine, .phenethylamine]
         case .africanRainforest:    return [.iboga, .phenethylamine]
