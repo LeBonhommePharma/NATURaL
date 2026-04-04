@@ -13,7 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `NATURaLWidgetsBundle` entry point for WidgetKit extensions
 - Comprehensive Xcode project (`NATURaL.xcodeproj`) with all 8 platform targets
 - 3 new molecular scaffolds: benzodiazepine, beta-carboline, isoxazole
-- CI/CD pipeline via GitHub Actions (build, test, SwiftLint)
+- CI/CD pipeline via GitHub Actions (build, test, SwiftLint) with SPM/DerivedData caching and code coverage
+- Release automation workflow (`.github/workflows/release.yml`) triggered on `v*` tags
+- `SECURITY.md` with vulnerability reporting policy, response timelines, and scope definitions
+- `CODE_OF_CONDUCT.md` adapted from Contributor Covenant for health/pharmacology domain
+- `.github/dependabot.yml` for automated GitHub Actions and SPM dependency updates
+- `.github/ISSUE_TEMPLATE/` with structured bug report and feature request templates
+- `.gitattributes` for Swift-aware diffs and Xcode project merge strategy
+- `Makefile` with convenience targets (build, test, lint, coverage, clean)
 - `.gitignore`, `.swiftlint.yml`, `CLAUDE.md`, `CONTRIBUTING.md`, `LICENSE`
 - PR template for standardized reviews
 

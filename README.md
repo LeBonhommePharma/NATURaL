@@ -8,7 +8,7 @@
 ![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20iPadOS%20|%20watchOS%20|%20tvOS%20|%20visionOS-blue)
 ![iOS](https://img.shields.io/badge/iOS-17%2B-green)
 ![watchOS](https://img.shields.io/badge/watchOS-10%2B-green)
-![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF)
+![CI](https://github.com/lmorency/NATURaL/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
 > 26 bilingual poses (EN / FR-CA) | 6 guided workout plans | Real-time biofeedback | CareKit clinical integration | CloudKit sync | PokeDrug pharmacology framework | Zero external dependencies
@@ -475,10 +475,16 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 
 ---
 
-## License
+## Security
 
-Proprietary. All rights reserved.
+To report a vulnerability, see [SECURITY.md](SECURITY.md). **Do not open a public issue for security concerns.**
 
 ## Contributing
 
-This project is currently in private development. Contact the maintainer for collaboration inquiries.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and PR guidelines.
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Proprietary. All rights reserved. See [LICENSE](LICENSE) for details.
