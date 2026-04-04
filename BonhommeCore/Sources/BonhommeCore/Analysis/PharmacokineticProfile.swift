@@ -152,7 +152,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3h oral IR, t½ ~10h. Pronounced HRV entropy collapse.
     public static let amphetamine = PharmacokineticProfile(
         substanceId: "amphetamine",
-        name: LocalizedString(en: "Amphetamine", fr: "Amphétamine"),
+        name: LocalizedString(
+            en: "Amphetamine",
+            fr: "Amphétamine",
+            es: "Anfetamina",
+            ja: "アンフェタミン",
+            zh: "苯丙胺",
+            ko: "암페타민",
+            ru: "Амфетамин",
+            de: "Amphetamin",
+            ar: "أمفيتامين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 30,
         tmaxMinutes: 180,
@@ -168,7 +178,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3.5h, t½ ~12h (includes prodrug conversion).
     public static let lisdexamfetamine = PharmacokineticProfile(
         substanceId: "lisdexamfetamine",
-        name: LocalizedString(en: "Lisdexamfetamine", fr: "Lisdexamfétamine"),
+        name: LocalizedString(
+            en: "Lisdexamfetamine",
+            fr: "Lisdexamfétamine",
+            es: "Lisdexanfetamina",
+            ja: "リスデキサンフェタミン",
+            zh: "赖右苯丙胺",
+            ko: "리스덱스암페타민",
+            ru: "Лисдексамфетамин",
+            de: "Lisdexamfetamin",
+            ar: "ليسديكسامفيتامين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 60,
         tmaxMinutes: 210,
@@ -184,7 +204,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h IR, t½ ~3h.
     public static let methylphenidate = PharmacokineticProfile(
         substanceId: "methylphenidate",
-        name: LocalizedString(en: "Methylphenidate", fr: "Méthylphénidate"),
+        name: LocalizedString(
+            en: "Methylphenidate",
+            fr: "Méthylphénidate",
+            es: "Metilfenidato",
+            ja: "メチルフェニデート",
+            zh: "哌甲酯",
+            ko: "메틸페니데이트",
+            ru: "Метилфенидат",
+            de: "Methylphenidat",
+            ar: "ميثيلفينيدات"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 20,
         tmaxMinutes: 120,
@@ -199,7 +229,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3h, t½ ~12h. Schedule II.
     public static let dextroamphetamine = PharmacokineticProfile(
         substanceId: "dextroamphetamine",
-        name: LocalizedString(en: "Dextroamphetamine", fr: "Dextroamphétamine"),
+        name: LocalizedString(
+            en: "Dextroamphetamine",
+            fr: "Dextroamphétamine",
+            es: "Dextroanfetamina",
+            ja: "デキストロアンフェタミン",
+            zh: "右旋苯丙胺",
+            ko: "덱스트로암페타민",
+            ru: "Декстроамфетамин",
+            de: "Dextroamphetamin",
+            ar: "ديكستروأمفيتامين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 30,
         tmaxMinutes: 180,
@@ -215,7 +255,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3h, t½ ~10h. Strongest HRV entropy collapse in class.
     public static let methamphetamine = PharmacokineticProfile(
         substanceId: "methamphetamine",
-        name: LocalizedString(en: "Methamphetamine", fr: "Méthamphétamine"),
+        name: LocalizedString(
+            en: "Methamphetamine",
+            fr: "Méthamphétamine",
+            es: "Metanfetamina",
+            ja: "メタンフェタミン",
+            zh: "甲基苯丙胺",
+            ko: "메스암페타민",
+            ru: "Метамфетамин",
+            de: "Methamphetamin",
+            ar: "ميثامفيتامين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 20,
         tmaxMinutes: 180,
@@ -231,7 +281,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-4h, t½ ~15h. Mild sympathomimetic effect.
     public static let modafinil = PharmacokineticProfile(
         substanceId: "modafinil",
-        name: LocalizedString(en: "Modafinil", fr: "Modafinil"),
+        name: LocalizedString(
+            en: "Modafinil",
+            fr: "Modafinil",
+            es: "Modafinilo",
+            ja: "モダフィニル",
+            zh: "莫达非尼",
+            ko: "모다피닐",
+            ru: "Модафинил",
+            de: "Modafinil",
+            ar: "مودافينيل"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 60,
         tmaxMinutes: 180,
@@ -246,7 +306,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~15h. Schedule IV.
     public static let armodafinil = PharmacokineticProfile(
         substanceId: "armodafinil",
-        name: LocalizedString(en: "Armodafinil", fr: "Armodafinil"),
+        name: LocalizedString(
+            en: "Armodafinil",
+            fr: "Armodafinil",
+            es: "Armodafinilo",
+            ja: "アルモダフィニル",
+            zh: "阿莫达非尼",
+            ko: "아르모다피닐",
+            ru: "Армодафинил",
+            de: "Armodafinil",
+            ar: "أرمودافينيل"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -262,7 +332,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~5h. Moderate sympathomimetic.
     public static let atomoxetine = PharmacokineticProfile(
         substanceId: "atomoxetine",
-        name: LocalizedString(en: "Atomoxetine", fr: "Atomoxétine"),
+        name: LocalizedString(
+            en: "Atomoxetine",
+            fr: "Atomoxétine",
+            es: "Atomoxetina",
+            ja: "アトモキセチン",
+            zh: "托莫西汀",
+            ko: "아토목세틴",
+            ru: "Атомоксетин",
+            de: "Atomoxetin",
+            ar: "أتوموكسيتين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 60,
         tmaxMinutes: 90,
@@ -283,7 +363,17 @@ extension PharmacokineticProfile {
     /// Tmax ~45min, t½ ~5h.
     public static let caffeine = PharmacokineticProfile(
         substanceId: "caffeine",
-        name: LocalizedString(en: "Caffeine", fr: "Caféine"),
+        name: LocalizedString(
+            en: "Caffeine",
+            fr: "Caféine",
+            es: "Cafeína",
+            ja: "カフェイン",
+            zh: "咖啡因",
+            ko: "카페인",
+            ru: "Кофеин",
+            de: "Koffein",
+            ar: "كافيين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 15,
         tmaxMinutes: 45,
@@ -300,7 +390,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~8h.
     public static let theophylline = PharmacokineticProfile(
         substanceId: "theophylline",
-        name: LocalizedString(en: "Theophylline", fr: "Théophylline"),
+        name: LocalizedString(
+            en: "Theophylline",
+            fr: "Théophylline",
+            es: "Teofilina",
+            ja: "テオフィリン",
+            zh: "茶碱",
+            ko: "테오필린",
+            ru: "Теофиллин",
+            de: "Theophyllin",
+            ar: "ثيوفيلين"
+        ),
         therapeuticClass: .other,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -321,7 +421,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h, t½ ~4h.
     public static let propranolol = PharmacokineticProfile(
         substanceId: "propranolol",
-        name: LocalizedString(en: "Propranolol", fr: "Propranolol"),
+        name: LocalizedString(
+            en: "Propranolol",
+            fr: "Propranolol",
+            es: "Propranolol",
+            ja: "プロプラノロール",
+            zh: "普萘洛尔",
+            ko: "프로프라놀롤",
+            ru: "Пропранолол",
+            de: "Propranolol",
+            ar: "بروبرانولول"
+        ),
         therapeuticClass: .betaBlocker,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -336,7 +446,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h, t½ ~3-7h. Milder vagal effect than propranolol.
     public static let metoprolol = PharmacokineticProfile(
         substanceId: "metoprolol",
-        name: LocalizedString(en: "Metoprolol", fr: "Métoprolol"),
+        name: LocalizedString(
+            en: "Metoprolol",
+            fr: "Métoprolol",
+            es: "Metoprolol",
+            ja: "メトプロロール",
+            zh: "美托洛尔",
+            ko: "메토프롤롤",
+            ru: "Метопролол",
+            de: "Metoprolol",
+            ar: "ميتوبرولول"
+        ),
         therapeuticClass: .betaBlocker,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -351,7 +471,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-4h, t½ ~6-7h.
     public static let atenolol = PharmacokineticProfile(
         substanceId: "atenolol",
-        name: LocalizedString(en: "Atenolol", fr: "Aténolol"),
+        name: LocalizedString(
+            en: "Atenolol",
+            fr: "Aténolol",
+            es: "Atenolol",
+            ja: "アテノロール",
+            zh: "阿替洛尔",
+            ko: "아테놀롤",
+            ru: "Атенолол",
+            de: "Atenolol",
+            ar: "أتينولول"
+        ),
         therapeuticClass: .betaBlocker,
         onsetMinutes: 60,
         tmaxMinutes: 180,
@@ -366,7 +496,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-3h, t½ ~10-12h.
     public static let bisoprolol = PharmacokineticProfile(
         substanceId: "bisoprolol",
-        name: LocalizedString(en: "Bisoprolol", fr: "Bisoprolol"),
+        name: LocalizedString(
+            en: "Bisoprolol",
+            fr: "Bisoprolol",
+            es: "Bisoprolol",
+            ja: "ビソプロロール",
+            zh: "比索洛尔",
+            ko: "비소프롤롤",
+            ru: "Бисопролол",
+            de: "Bisoprolol",
+            ar: "بيسوبرولول"
+        ),
         therapeuticClass: .betaBlocker,
         onsetMinutes: 60,
         tmaxMinutes: 150,
@@ -381,7 +521,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h, t½ ~7-10h.
     public static let carvedilol = PharmacokineticProfile(
         substanceId: "carvedilol",
-        name: LocalizedString(en: "Carvedilol", fr: "Carvédilol"),
+        name: LocalizedString(
+            en: "Carvedilol",
+            fr: "Carvédilol",
+            es: "Carvedilol",
+            ja: "カルベジロール",
+            zh: "卡维地洛",
+            ko: "카르베딜롤",
+            ru: "Карведилол",
+            de: "Carvedilol",
+            ar: "كارفيديلول"
+        ),
         therapeuticClass: .betaBlocker,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -397,7 +547,17 @@ extension PharmacokineticProfile {
     /// Also used for ADHD, opioid withdrawal.
     public static let clonidine = PharmacokineticProfile(
         substanceId: "clonidine",
-        name: LocalizedString(en: "Clonidine", fr: "Clonidine"),
+        name: LocalizedString(
+            en: "Clonidine",
+            fr: "Clonidine",
+            es: "Clonidina",
+            ja: "クロニジン",
+            zh: "可乐定",
+            ko: "클로니딘",
+            ru: "Клонидин",
+            de: "Clonidin",
+            ar: "كلونيدين"
+        ),
         therapeuticClass: .alphaAgonist,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -412,7 +572,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4h, t½ ~17h.
     public static let guanfacine = PharmacokineticProfile(
         substanceId: "guanfacine",
-        name: LocalizedString(en: "Guanfacine", fr: "Guanfacine"),
+        name: LocalizedString(
+            en: "Guanfacine",
+            fr: "Guanfacine",
+            es: "Guanfacina",
+            ja: "グアンファシン",
+            zh: "胍法辛",
+            ko: "구안파신",
+            ru: "Гуанфацин",
+            de: "Guanfacin",
+            ar: "غوانفاسين"
+        ),
         therapeuticClass: .alphaAgonist,
         onsetMinutes: 60,
         tmaxMinutes: 240,
@@ -427,7 +597,17 @@ extension PharmacokineticProfile {
     /// Enhances vagal tone. Tmax ~1-3h oral, t½ ~36-48h.
     public static let digoxin = PharmacokineticProfile(
         substanceId: "digoxin",
-        name: LocalizedString(en: "Digoxin", fr: "Digoxine"),
+        name: LocalizedString(
+            en: "Digoxin",
+            fr: "Digoxine",
+            es: "Digoxina",
+            ja: "ジゴキシン",
+            zh: "地高辛",
+            ko: "디곡신",
+            ru: "Дигоксин",
+            de: "Digoxin",
+            ar: "ديجوكسين"
+        ),
         therapeuticClass: .cardiovascular,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -442,7 +622,17 @@ extension PharmacokineticProfile {
     /// Reduces HR without affecting HRV pattern. Tmax ~1h, t½ ~6h.
     public static let ivabradine = PharmacokineticProfile(
         substanceId: "ivabradine",
-        name: LocalizedString(en: "Ivabradine", fr: "Ivabradine"),
+        name: LocalizedString(
+            en: "Ivabradine",
+            fr: "Ivabradine",
+            es: "Ivabradina",
+            ja: "イバブラジン",
+            zh: "伊伐布雷定",
+            ko: "이바브라딘",
+            ru: "Ивабрадин",
+            de: "Ivabradin",
+            ar: "إيفابرادين"
+        ),
         therapeuticClass: .cardiovascular,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -463,7 +653,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4.5-8h, t½ ~26h.
     public static let sertraline = PharmacokineticProfile(
         substanceId: "sertraline",
-        name: LocalizedString(en: "Sertraline", fr: "Sertraline"),
+        name: LocalizedString(
+            en: "Sertraline",
+            fr: "Sertraline",
+            es: "Sertralina",
+            ja: "セルトラリン",
+            zh: "舍曲林",
+            ko: "설트랄린",
+            ru: "Сертралин",
+            de: "Sertralin",
+            ar: "سيرترالين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 120,
         tmaxMinutes: 390,
@@ -478,7 +678,17 @@ extension PharmacokineticProfile {
     /// Tmax ~6-8h, t½ ~1-3 days (norfluoxetine: 4-16 days).
     public static let fluoxetine = PharmacokineticProfile(
         substanceId: "fluoxetine",
-        name: LocalizedString(en: "Fluoxetine", fr: "Fluoxétine"),
+        name: LocalizedString(
+            en: "Fluoxetine",
+            fr: "Fluoxétine",
+            es: "Fluoxetina",
+            ja: "フルオキセチン",
+            zh: "氟西汀",
+            ko: "플루옥세틴",
+            ru: "Флуоксетин",
+            de: "Fluoxetin",
+            ar: "فلوكسيتين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 120,
         tmaxMinutes: 420,
@@ -493,7 +703,17 @@ extension PharmacokineticProfile {
     /// Tmax ~5h, t½ ~27-32h.
     public static let escitalopram = PharmacokineticProfile(
         substanceId: "escitalopram",
-        name: LocalizedString(en: "Escitalopram", fr: "Escitalopram"),
+        name: LocalizedString(
+            en: "Escitalopram",
+            fr: "Escitalopram",
+            es: "Escitalopram",
+            ja: "エスシタロプラム",
+            zh: "艾司西酞普兰",
+            ko: "에스시탈로프람",
+            ru: "Эсциталопрам",
+            de: "Escitalopram",
+            ar: "إسيتالوبرام"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 120,
         tmaxMinutes: 300,
@@ -509,7 +729,17 @@ extension PharmacokineticProfile {
     /// Tmax ~5h, t½ ~21h.
     public static let paroxetine = PharmacokineticProfile(
         substanceId: "paroxetine",
-        name: LocalizedString(en: "Paroxetine", fr: "Paroxétine"),
+        name: LocalizedString(
+            en: "Paroxetine",
+            fr: "Paroxétine",
+            es: "Paroxetina",
+            ja: "パロキセチン",
+            zh: "帕罗西汀",
+            ko: "파록세틴",
+            ru: "Пароксетин",
+            de: "Paroxetin",
+            ar: "باروكسيتين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 120,
         tmaxMinutes: 300,
@@ -525,7 +755,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h IR, t½ ~5h.
     public static let venlafaxine = PharmacokineticProfile(
         substanceId: "venlafaxine",
-        name: LocalizedString(en: "Venlafaxine", fr: "Venlafaxine"),
+        name: LocalizedString(
+            en: "Venlafaxine",
+            fr: "Venlafaxine",
+            es: "Venlafaxina",
+            ja: "ベンラファキシン",
+            zh: "文拉法辛",
+            ko: "벤라팍신",
+            ru: "Венлафаксин",
+            de: "Venlafaxin",
+            ar: "فينلافاكسين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -540,7 +780,17 @@ extension PharmacokineticProfile {
     /// Tmax ~6h, t½ ~12h.
     public static let duloxetine = PharmacokineticProfile(
         substanceId: "duloxetine",
-        name: LocalizedString(en: "Duloxetine", fr: "Duloxétine"),
+        name: LocalizedString(
+            en: "Duloxetine",
+            fr: "Duloxétine",
+            es: "Duloxetina",
+            ja: "デュロキセチン",
+            zh: "度洛西汀",
+            ko: "둘록세틴",
+            ru: "Дулоксетин",
+            de: "Duloxetin",
+            ar: "دولوكسيتين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 120,
         tmaxMinutes: 360,
@@ -556,7 +806,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h IR, t½ ~21h.
     public static let bupropion = PharmacokineticProfile(
         substanceId: "bupropion",
-        name: LocalizedString(en: "Bupropion", fr: "Bupropion"),
+        name: LocalizedString(
+            en: "Bupropion",
+            fr: "Bupropion",
+            es: "Bupropión",
+            ja: "ブプロピオン",
+            zh: "安非他酮",
+            ko: "부프로피온",
+            ru: "Бупропион",
+            de: "Bupropion",
+            ar: "بوبروبيون"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -572,7 +832,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~20-40h.
     public static let mirtazapine = PharmacokineticProfile(
         substanceId: "mirtazapine",
-        name: LocalizedString(en: "Mirtazapine", fr: "Mirtazapine"),
+        name: LocalizedString(
+            en: "Mirtazapine",
+            fr: "Mirtazapine",
+            es: "Mirtazapina",
+            ja: "ミルタザピン",
+            zh: "米氮平",
+            ko: "미르타자핀",
+            ru: "Миртазапин",
+            de: "Mirtazapin",
+            ar: "ميرتازابين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -587,7 +857,17 @@ extension PharmacokineticProfile {
     /// Sedating, α1-antagonist. Tmax ~1h, t½ ~5-9h.
     public static let trazodone = PharmacokineticProfile(
         substanceId: "trazodone",
-        name: LocalizedString(en: "Trazodone", fr: "Trazodone"),
+        name: LocalizedString(
+            en: "Trazodone",
+            fr: "Trazodone",
+            es: "Trazodona",
+            ja: "トラゾドン",
+            zh: "曲唑酮",
+            ko: "트라조돈",
+            ru: "Тразодон",
+            de: "Trazodon",
+            ar: "ترازودون"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -602,7 +882,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4h, t½ ~25h.
     public static let amitriptyline = PharmacokineticProfile(
         substanceId: "amitriptyline",
-        name: LocalizedString(en: "Amitriptyline", fr: "Amitriptyline"),
+        name: LocalizedString(
+            en: "Amitriptyline",
+            fr: "Amitriptyline",
+            es: "Amitriptilina",
+            ja: "アミトリプチリン",
+            zh: "阿米替林",
+            ko: "아미트리프틸린",
+            ru: "Амитриптилин",
+            de: "Amitriptylin",
+            ar: "أميتريبتيلين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 240,
@@ -617,7 +907,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4-6h, t½ ~28h.
     public static let nortriptyline = PharmacokineticProfile(
         substanceId: "nortriptyline",
-        name: LocalizedString(en: "Nortriptyline", fr: "Nortriptyline"),
+        name: LocalizedString(
+            en: "Nortriptyline",
+            fr: "Nortriptyline",
+            es: "Nortriptilina",
+            ja: "ノルトリプチリン",
+            zh: "去甲替林",
+            ko: "노르트리프틸린",
+            ru: "Нортриптилин",
+            de: "Nortriptylin",
+            ar: "نورتريبتيلين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 300,
@@ -633,7 +933,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~12h (but MAO regeneration takes weeks).
     public static let phenelzine = PharmacokineticProfile(
         substanceId: "phenelzine",
-        name: LocalizedString(en: "Phenelzine", fr: "Phénelzine"),
+        name: LocalizedString(
+            en: "Phenelzine",
+            fr: "Phénelzine",
+            es: "Fenelzina",
+            ja: "フェネルジン",
+            zh: "苯乙肼",
+            ko: "페넬진",
+            ru: "Фенелзин",
+            de: "Phenelzin",
+            ar: "فينيلزين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -649,7 +959,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~2.5h.
     public static let tranylcypromine = PharmacokineticProfile(
         substanceId: "tranylcypromine",
-        name: LocalizedString(en: "Tranylcypromine", fr: "Tranylcypromine"),
+        name: LocalizedString(
+            en: "Tranylcypromine",
+            fr: "Tranylcypromine",
+            es: "Tranilcipromina",
+            ja: "トラニルシプロミン",
+            zh: "反苯环丙胺",
+            ko: "트라닐시프로민",
+            ru: "Транилципромин",
+            de: "Tranylcypromin",
+            ar: "ترانيلسيبرومين"
+        ),
         therapeuticClass: .antidepressant,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -670,7 +990,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h, t½ ~7h.
     public static let quetiapine = PharmacokineticProfile(
         substanceId: "quetiapine",
-        name: LocalizedString(en: "Quetiapine", fr: "Quétiapine"),
+        name: LocalizedString(
+            en: "Quetiapine",
+            fr: "Quétiapine",
+            es: "Quetiapina",
+            ja: "クエチアピン",
+            zh: "喹硫平",
+            ko: "쿠에티아핀",
+            ru: "Кветиапин",
+            de: "Quetiapin",
+            ar: "كويتيابين"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -686,7 +1016,17 @@ extension PharmacokineticProfile {
     /// Tmax ~5-8h, t½ ~30h.
     public static let olanzapine = PharmacokineticProfile(
         substanceId: "olanzapine",
-        name: LocalizedString(en: "Olanzapine", fr: "Olanzapine"),
+        name: LocalizedString(
+            en: "Olanzapine",
+            fr: "Olanzapine",
+            es: "Olanzapina",
+            ja: "オランザピン",
+            zh: "奥氮平",
+            ko: "올란자핀",
+            ru: "Оланзапин",
+            de: "Olanzapin",
+            ar: "أولانزابين"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 120,
         tmaxMinutes: 390,
@@ -701,7 +1041,17 @@ extension PharmacokineticProfile {
     /// D2/5-HT2A antagonist. Tmax ~1h, t½ ~3h (active metabolite ~21h).
     public static let risperidone = PharmacokineticProfile(
         substanceId: "risperidone",
-        name: LocalizedString(en: "Risperidone", fr: "Rispéridone"),
+        name: LocalizedString(
+            en: "Risperidone",
+            fr: "Rispéridone",
+            es: "Risperidona",
+            ja: "リスペリドン",
+            zh: "利培酮",
+            ko: "리스페리돈",
+            ru: "Рисперидон",
+            de: "Risperidon",
+            ar: "ريسبيريدون"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -716,7 +1066,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3-5h, t½ ~75h.
     public static let aripiprazole = PharmacokineticProfile(
         substanceId: "aripiprazole",
-        name: LocalizedString(en: "Aripiprazole", fr: "Aripiprazole"),
+        name: LocalizedString(
+            en: "Aripiprazole",
+            fr: "Aripiprazole",
+            es: "Aripiprazol",
+            ja: "アリピプラゾール",
+            zh: "阿立哌唑",
+            ko: "아리피프라졸",
+            ru: "Арипипразол",
+            de: "Aripiprazol",
+            ar: "أريبيبرازول"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 120,
         tmaxMinutes: 240,
@@ -731,7 +1091,17 @@ extension PharmacokineticProfile {
     /// Potent D2 antagonist. Tmax ~2-6h oral, t½ ~12-36h.
     public static let haloperidol = PharmacokineticProfile(
         substanceId: "haloperidol",
-        name: LocalizedString(en: "Haloperidol", fr: "Halopéridol"),
+        name: LocalizedString(
+            en: "Haloperidol",
+            fr: "Halopéridol",
+            es: "Haloperidol",
+            ja: "ハロペリドール",
+            zh: "氟哌啶醇",
+            ko: "할로페리돌",
+            ru: "Галоперидол",
+            de: "Haloperidol",
+            ar: "هالوبيريدول"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 60,
         tmaxMinutes: 240,
@@ -746,7 +1116,17 @@ extension PharmacokineticProfile {
     /// Strong α1-antagonist + anticholinergic. Tmax ~2-4h, t½ ~30h.
     public static let chlorpromazine = PharmacokineticProfile(
         substanceId: "chlorpromazine",
-        name: LocalizedString(en: "Chlorpromazine", fr: "Chlorpromazine"),
+        name: LocalizedString(
+            en: "Chlorpromazine",
+            fr: "Chlorpromazine",
+            es: "Clorpromazina",
+            ja: "クロルプロマジン",
+            zh: "氯丙嗪",
+            ko: "클로르프로마진",
+            ru: "Хлорпромазин",
+            de: "Chlorpromazin",
+            ar: "كلوربرومازين"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 30,
         tmaxMinutes: 180,
@@ -762,7 +1142,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2.5h, t½ ~12h.
     public static let clozapine = PharmacokineticProfile(
         substanceId: "clozapine",
-        name: LocalizedString(en: "Clozapine", fr: "Clozapine"),
+        name: LocalizedString(
+            en: "Clozapine",
+            fr: "Clozapine",
+            es: "Clozapina",
+            ja: "クロザピン",
+            zh: "氯氮平",
+            ko: "클로자핀",
+            ru: "Клозапин",
+            de: "Clozapin",
+            ar: "كلوزابين"
+        ),
         therapeuticClass: .antipsychotic,
         onsetMinutes: 60,
         tmaxMinutes: 150,
@@ -783,7 +1173,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~11h.
     public static let alprazolam = PharmacokineticProfile(
         substanceId: "alprazolam",
-        name: LocalizedString(en: "Alprazolam", fr: "Alprazolam"),
+        name: LocalizedString(
+            en: "Alprazolam",
+            fr: "Alprazolam",
+            es: "Alprazolam",
+            ja: "アルプラゾラム",
+            zh: "阿普唑仑",
+            ko: "알프라졸람",
+            ru: "Алпразолам",
+            de: "Alprazolam",
+            ar: "ألبرازولام"
+        ),
         therapeuticClass: .anxiolytic,
         onsetMinutes: 15,
         tmaxMinutes: 90,
@@ -798,7 +1198,17 @@ extension PharmacokineticProfile {
     /// Tmax ~0.5-2h, t½ ~20-100h (with active metabolites).
     public static let diazepam = PharmacokineticProfile(
         substanceId: "diazepam",
-        name: LocalizedString(en: "Diazepam", fr: "Diazépam"),
+        name: LocalizedString(
+            en: "Diazepam",
+            fr: "Diazépam",
+            es: "Diazepam",
+            ja: "ジアゼパム",
+            zh: "地西泮",
+            ko: "디아제팜",
+            ru: "Диазепам",
+            de: "Diazepam",
+            ar: "ديازيبام"
+        ),
         therapeuticClass: .anxiolytic,
         onsetMinutes: 15,
         tmaxMinutes: 75,
@@ -813,7 +1223,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~12h.
     public static let lorazepam = PharmacokineticProfile(
         substanceId: "lorazepam",
-        name: LocalizedString(en: "Lorazepam", fr: "Lorazépam"),
+        name: LocalizedString(
+            en: "Lorazepam",
+            fr: "Lorazépam",
+            es: "Lorazepam",
+            ja: "ロラゼパム",
+            zh: "劳拉西泮",
+            ko: "로라제팜",
+            ru: "Лоразепам",
+            de: "Lorazepam",
+            ar: "لورازيبام"
+        ),
         therapeuticClass: .anxiolytic,
         onsetMinutes: 20,
         tmaxMinutes: 120,
@@ -828,7 +1248,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-4h, t½ ~30-40h.
     public static let clonazepam = PharmacokineticProfile(
         substanceId: "clonazepam",
-        name: LocalizedString(en: "Clonazepam", fr: "Clonazépam"),
+        name: LocalizedString(
+            en: "Clonazepam",
+            fr: "Clonazépam",
+            es: "Clonazepam",
+            ja: "クロナゼパム",
+            zh: "氯硝西泮",
+            ko: "클로나제팜",
+            ru: "Клоназепам",
+            de: "Clonazepam",
+            ar: "كلونازيبام"
+        ),
         therapeuticClass: .anxiolytic,
         onsetMinutes: 20,
         tmaxMinutes: 150,
@@ -843,7 +1273,17 @@ extension PharmacokineticProfile {
     /// Not scheduled. Tmax ~0.5-1.5h, t½ ~2-3h.
     public static let buspirone = PharmacokineticProfile(
         substanceId: "buspirone",
-        name: LocalizedString(en: "Buspirone", fr: "Buspirone"),
+        name: LocalizedString(
+            en: "Buspirone",
+            fr: "Buspirone",
+            es: "Buspirona",
+            ja: "ブスピロン",
+            zh: "丁螺环酮",
+            ko: "부스피론",
+            ru: "Буспирон",
+            de: "Buspiron",
+            ar: "بوسبيرون"
+        ),
         therapeuticClass: .anxiolytic,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -859,7 +1299,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~20h.
     public static let hydroxyzine = PharmacokineticProfile(
         substanceId: "hydroxyzine",
-        name: LocalizedString(en: "Hydroxyzine", fr: "Hydroxyzine"),
+        name: LocalizedString(
+            en: "Hydroxyzine",
+            fr: "Hydroxyzine",
+            es: "Hidroxicina",
+            ja: "ヒドロキシジン",
+            zh: "羟嗪",
+            ko: "히드록시진",
+            ru: "Гидроксизин",
+            de: "Hydroxyzin",
+            ar: "هيدروكسيزين"
+        ),
         therapeuticClass: .antihistamine,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -875,7 +1325,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.6h, t½ ~2.5h.
     public static let zolpidem = PharmacokineticProfile(
         substanceId: "zolpidem",
-        name: LocalizedString(en: "Zolpidem", fr: "Zolpidem"),
+        name: LocalizedString(
+            en: "Zolpidem",
+            fr: "Zolpidem",
+            es: "Zolpidem",
+            ja: "ゾルピデム",
+            zh: "唑吡坦",
+            ko: "졸피뎀",
+            ru: "Золпидем",
+            de: "Zolpidem",
+            ar: "زولبيديم"
+        ),
         therapeuticClass: .sedativeHypnotic,
         onsetMinutes: 15,
         tmaxMinutes: 96,
@@ -890,7 +1350,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~12h.
     public static let suvorexant = PharmacokineticProfile(
         substanceId: "suvorexant",
-        name: LocalizedString(en: "Suvorexant", fr: "Suvorexant"),
+        name: LocalizedString(
+            en: "Suvorexant",
+            fr: "Suvorexant",
+            es: "Suvorexant",
+            ja: "スボレキサント",
+            zh: "苏沃雷生",
+            ko: "수보렉산트",
+            ru: "Суворексант",
+            de: "Suvorexant",
+            ar: "سوفوريكسانت"
+        ),
         therapeuticClass: .sedativeHypnotic,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -910,7 +1380,17 @@ extension PharmacokineticProfile {
     /// Vagotonic (increases parasympathetic tone). Tmax ~1h oral, t½ ~2-3h.
     public static let morphine = PharmacokineticProfile(
         substanceId: "morphine",
-        name: LocalizedString(en: "Morphine", fr: "Morphine"),
+        name: LocalizedString(
+            en: "Morphine",
+            fr: "Morphine",
+            es: "Morfina",
+            ja: "モルヒネ",
+            zh: "吗啡",
+            ko: "모르핀",
+            ru: "Морфин",
+            de: "Morphin",
+            ar: "مورفين"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -925,7 +1405,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h IR, t½ ~3.5h.
     public static let oxycodone = PharmacokineticProfile(
         substanceId: "oxycodone",
-        name: LocalizedString(en: "Oxycodone", fr: "Oxycodone"),
+        name: LocalizedString(
+            en: "Oxycodone",
+            fr: "Oxycodone",
+            es: "Oxicodona",
+            ja: "オキシコドン",
+            zh: "羟考酮",
+            ko: "옥시코돈",
+            ru: "Оксикодон",
+            de: "Oxycodon",
+            ar: "أوكسيكودون"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 15,
         tmaxMinutes: 90,
@@ -940,7 +1430,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.3h, t½ ~4h.
     public static let hydrocodone = PharmacokineticProfile(
         substanceId: "hydrocodone",
-        name: LocalizedString(en: "Hydrocodone", fr: "Hydrocodone"),
+        name: LocalizedString(
+            en: "Hydrocodone",
+            fr: "Hydrocodone",
+            es: "Hidrocodona",
+            ja: "ヒドロコドン",
+            zh: "氢可酮",
+            ko: "히드로코돈",
+            ru: "Гидрокодон",
+            de: "Hydrocodon",
+            ar: "هيدروكودون"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 20,
         tmaxMinutes: 78,
@@ -955,7 +1455,17 @@ extension PharmacokineticProfile {
     /// Tmax varies by route. Oral transmucosal ~25min, t½ ~7h.
     public static let fentanyl = PharmacokineticProfile(
         substanceId: "fentanyl",
-        name: LocalizedString(en: "Fentanyl", fr: "Fentanyl"),
+        name: LocalizedString(
+            en: "Fentanyl",
+            fr: "Fentanyl",
+            es: "Fentanilo",
+            ja: "フェンタニル",
+            zh: "芬太尼",
+            ko: "펜타닐",
+            ru: "Фентанил",
+            de: "Fentanyl",
+            ar: "فنتانيل"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 5,
         tmaxMinutes: 25,
@@ -970,7 +1480,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2.5-4h, t½ ~24-36h. Known for QTc prolongation.
     public static let methadone = PharmacokineticProfile(
         substanceId: "methadone",
-        name: LocalizedString(en: "Methadone", fr: "Méthadone"),
+        name: LocalizedString(
+            en: "Methadone",
+            fr: "Méthadone",
+            es: "Metadona",
+            ja: "メサドン",
+            zh: "美沙酮",
+            ko: "메사돈",
+            ru: "Метадон",
+            de: "Methadon",
+            ar: "ميثادون"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 30,
         tmaxMinutes: 195,
@@ -985,7 +1505,17 @@ extension PharmacokineticProfile {
     /// Schedule III. Tmax ~1h sublingual, t½ ~37h.
     public static let buprenorphine = PharmacokineticProfile(
         substanceId: "buprenorphine",
-        name: LocalizedString(en: "Buprenorphine", fr: "Buprénorphine"),
+        name: LocalizedString(
+            en: "Buprenorphine",
+            fr: "Buprénorphine",
+            es: "Buprenorfina",
+            ja: "ブプレノルフィン",
+            zh: "丁丙诺啡",
+            ko: "부프레노르핀",
+            ru: "Бупренорфин",
+            de: "Buprenorphin",
+            ar: "بوبرينورفين"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -1000,7 +1530,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~6h.
     public static let tramadol = PharmacokineticProfile(
         substanceId: "tramadol",
-        name: LocalizedString(en: "Tramadol", fr: "Tramadol"),
+        name: LocalizedString(
+            en: "Tramadol",
+            fr: "Tramadol",
+            es: "Tramadol",
+            ja: "トラマドール",
+            zh: "曲马多",
+            ko: "트라마돌",
+            ru: "Трамадол",
+            de: "Tramadol",
+            ar: "ترامادول"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -1016,7 +1556,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1h, t½ ~4h (6β-naltrexol: ~12h).
     public static let naltrexone = PharmacokineticProfile(
         substanceId: "naltrexone",
-        name: LocalizedString(en: "Naltrexone", fr: "Naltrexone"),
+        name: LocalizedString(
+            en: "Naltrexone",
+            fr: "Naltrexone",
+            es: "Naltrexona",
+            ja: "ナルトレキソン",
+            zh: "纳曲酮",
+            ko: "날트렉손",
+            ru: "Налтрексон",
+            de: "Naltrexon",
+            ar: "نالتريكسون"
+        ),
         therapeuticClass: .opioidAnalgesic,
         onsetMinutes: 15,
         tmaxMinutes: 60,
@@ -1036,7 +1586,17 @@ extension PharmacokineticProfile {
     /// Anxiolytic / anticonvulsant. Tmax ~2-3h, t½ ~5-7h.
     public static let gabapentin = PharmacokineticProfile(
         substanceId: "gabapentin",
-        name: LocalizedString(en: "Gabapentin", fr: "Gabapentine"),
+        name: LocalizedString(
+            en: "Gabapentin",
+            fr: "Gabapentine",
+            es: "Gabapentina",
+            ja: "ガバペンチン",
+            zh: "加巴喷丁",
+            ko: "가바펜틴",
+            ru: "Габапентин",
+            de: "Gabapentin",
+            ar: "غابابنتين"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 150,
@@ -1051,7 +1611,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1.5h, t½ ~6h.
     public static let pregabalin = PharmacokineticProfile(
         substanceId: "pregabalin",
-        name: LocalizedString(en: "Pregabalin", fr: "Prégabaline"),
+        name: LocalizedString(
+            en: "Pregabalin",
+            fr: "Prégabaline",
+            es: "Pregabalina",
+            ja: "プレガバリン",
+            zh: "普瑞巴林",
+            ko: "프레가발린",
+            ru: "Прегабалин",
+            de: "Pregabalin",
+            ar: "بريغابالين"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -1066,7 +1636,17 @@ extension PharmacokineticProfile {
     /// Mood stabilizer. Tmax ~2.5h, t½ ~25h.
     public static let lamotrigine = PharmacokineticProfile(
         substanceId: "lamotrigine",
-        name: LocalizedString(en: "Lamotrigine", fr: "Lamotrigine"),
+        name: LocalizedString(
+            en: "Lamotrigine",
+            fr: "Lamotrigine",
+            es: "Lamotrigina",
+            ja: "ラモトリギン",
+            zh: "拉莫三嗪",
+            ko: "라모트리진",
+            ru: "Ламотриджин",
+            de: "Lamotrigin",
+            ar: "لاموتريجين"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 150,
@@ -1081,7 +1661,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4h, t½ ~9-16h.
     public static let valproate = PharmacokineticProfile(
         substanceId: "valproate",
-        name: LocalizedString(en: "Valproate", fr: "Valproate"),
+        name: LocalizedString(
+            en: "Valproate",
+            fr: "Valproate",
+            es: "Valproato",
+            ja: "バルプロ酸",
+            zh: "丙戊酸",
+            ko: "발프로산",
+            ru: "Вальпроат",
+            de: "Valproat",
+            ar: "فالبروات"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 240,
@@ -1096,7 +1686,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-4h IR, t½ ~18-36h. Can affect sinus node.
     public static let lithium = PharmacokineticProfile(
         substanceId: "lithium",
-        name: LocalizedString(en: "Lithium", fr: "Lithium"),
+        name: LocalizedString(
+            en: "Lithium",
+            fr: "Lithium",
+            es: "Litio",
+            ja: "リチウム",
+            zh: "锂",
+            ko: "리튬",
+            ru: "Литий",
+            de: "Lithium",
+            ar: "ليثيوم"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 180,
@@ -1111,7 +1711,17 @@ extension PharmacokineticProfile {
     /// Tmax ~4-5h, t½ ~12-17h (auto-induction to ~8h).
     public static let carbamazepine = PharmacokineticProfile(
         substanceId: "carbamazepine",
-        name: LocalizedString(en: "Carbamazepine", fr: "Carbamazépine"),
+        name: LocalizedString(
+            en: "Carbamazepine",
+            fr: "Carbamazépine",
+            es: "Carbamazepina",
+            ja: "カルバマゼピン",
+            zh: "卡马西平",
+            ko: "카르바마제핀",
+            ru: "Карбамазепин",
+            de: "Carbamazepin",
+            ar: "كاربامازيبين"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 270,
@@ -1126,7 +1736,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~21h.
     public static let topiramate = PharmacokineticProfile(
         substanceId: "topiramate",
-        name: LocalizedString(en: "Topiramate", fr: "Topiramate"),
+        name: LocalizedString(
+            en: "Topiramate",
+            fr: "Topiramate",
+            es: "Topiramato",
+            ja: "トピラマート",
+            zh: "托吡酯",
+            ko: "토피라메이트",
+            ru: "Топирамат",
+            de: "Topiramat",
+            ar: "توبيراميت"
+        ),
         therapeuticClass: .anticonvulsant,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -1147,7 +1767,17 @@ extension PharmacokineticProfile {
     /// Tmax ~60min empty stomach, t½ ~60-90min per standard drink.
     public static let ethanol = PharmacokineticProfile(
         substanceId: "ethanol",
-        name: LocalizedString(en: "Alcohol (Ethanol)", fr: "Alcool (Éthanol)"),
+        name: LocalizedString(
+            en: "Alcohol (Ethanol)",
+            fr: "Alcool (Éthanol)",
+            es: "Alcohol (Etanol)",
+            ja: "アルコール（エタノール）",
+            zh: "酒精（乙醇）",
+            ko: "알코올 (에탄올)",
+            ru: "Алкоголь (этанол)",
+            de: "Alkohol (Ethanol)",
+            ar: "كحول (إيثانول)"
+        ),
         therapeuticClass: .alcohol,
         onsetMinutes: 15,
         tmaxMinutes: 60,
@@ -1163,7 +1793,17 @@ extension PharmacokineticProfile {
     /// Tmax ~10min (inhaled), t½ ~2h.
     public static let nicotine = PharmacokineticProfile(
         substanceId: "nicotine",
-        name: LocalizedString(en: "Nicotine", fr: "Nicotine"),
+        name: LocalizedString(
+            en: "Nicotine",
+            fr: "Nicotine",
+            es: "Nicotina",
+            ja: "ニコチン",
+            zh: "尼古丁",
+            ko: "니코틴",
+            ru: "Никотин",
+            de: "Nikotin",
+            ar: "نيكوتين"
+        ),
         therapeuticClass: .nicotinic,
         onsetMinutes: 1,
         tmaxMinutes: 10,
@@ -1180,7 +1820,17 @@ extension PharmacokineticProfile {
     /// Tmax ~10min (inhaled) / ~2h (oral), t½ ~25-36h (lipophilic).
     public static let thc = PharmacokineticProfile(
         substanceId: "thc",
-        name: LocalizedString(en: "THC (Cannabis)", fr: "THC (Cannabis)"),
+        name: LocalizedString(
+            en: "THC (Cannabis)",
+            fr: "THC (Cannabis)",
+            es: "THC (Cannabis)",
+            ja: "THC（大麻）",
+            zh: "THC（大麻）",
+            ko: "THC (대마)",
+            ru: "ТГК (каннабис)",
+            de: "THC (Cannabis)",
+            ar: "THC (قنب)"
+        ),
         therapeuticClass: .cannabinoid,
         onsetMinutes: 5,
         tmaxMinutes: 10,
@@ -1196,7 +1846,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-4h oral, t½ ~25-36h.
     public static let dronabinol = PharmacokineticProfile(
         substanceId: "dronabinol",
-        name: LocalizedString(en: "Dronabinol", fr: "Dronabinol"),
+        name: LocalizedString(
+            en: "Dronabinol",
+            fr: "Dronabinol",
+            es: "Dronabinol",
+            ja: "ドロナビノール",
+            zh: "屈大麻酚",
+            ko: "드로나비놀",
+            ru: "Дронабинол",
+            de: "Dronabinol",
+            ar: "درونابينول"
+        ),
         therapeuticClass: .cannabinoid,
         onsetMinutes: 30,
         tmaxMinutes: 180,
@@ -1212,7 +1872,17 @@ extension PharmacokineticProfile {
     /// Tmax ~30min (intranasal), t½ ~1h.
     public static let cocaine = PharmacokineticProfile(
         substanceId: "cocaine",
-        name: LocalizedString(en: "Cocaine", fr: "Cocaïne"),
+        name: LocalizedString(
+            en: "Cocaine",
+            fr: "Cocaïne",
+            es: "Cocaína",
+            ja: "コカイン",
+            zh: "可卡因",
+            ko: "코카인",
+            ru: "Кокаин",
+            de: "Kokain",
+            ar: "كوكايين"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 3,
         tmaxMinutes: 30,
@@ -1229,7 +1899,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~8h.
     public static let mdma = PharmacokineticProfile(
         substanceId: "mdma",
-        name: LocalizedString(en: "MDMA", fr: "MDMA"),
+        name: LocalizedString(
+            en: "MDMA",
+            fr: "MDMA",
+            es: "MDMA",
+            ja: "MDMA",
+            zh: "MDMA",
+            ko: "MDMA",
+            ru: "МДМА",
+            de: "MDMA",
+            ar: "MDMA"
+        ),
         therapeuticClass: .stimulant,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -1245,7 +1925,17 @@ extension PharmacokineticProfile {
     /// Mild sympathomimetic. Tmax ~1.5h, t½ ~3h.
     public static let psilocybin = PharmacokineticProfile(
         substanceId: "psilocybin",
-        name: LocalizedString(en: "Psilocybin", fr: "Psilocybine"),
+        name: LocalizedString(
+            en: "Psilocybin",
+            fr: "Psilocybine",
+            es: "Psilocibina",
+            ja: "シロシビン",
+            zh: "赛洛西宾",
+            ko: "실로시빈",
+            ru: "Псилоцибин",
+            de: "Psilocybin",
+            ar: "سيلوسيبين"
+        ),
         therapeuticClass: .psychedelic,
         onsetMinutes: 20,
         tmaxMinutes: 90,
@@ -1261,7 +1951,17 @@ extension PharmacokineticProfile {
     /// Mild sympathomimetic. Tmax ~1.5-2.5h, t½ ~3.5h.
     public static let lsd = PharmacokineticProfile(
         substanceId: "lsd",
-        name: LocalizedString(en: "LSD", fr: "LSD"),
+        name: LocalizedString(
+            en: "LSD",
+            fr: "LSD",
+            es: "LSD",
+            ja: "LSD",
+            zh: "LSD",
+            ko: "LSD",
+            ru: "ЛСД",
+            de: "LSD",
+            ar: "LSD"
+        ),
         therapeuticClass: .psychedelic,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -1278,7 +1978,17 @@ extension PharmacokineticProfile {
     /// Tmax ~20min (intranasal), t½ ~2.5h.
     public static let ketamine = PharmacokineticProfile(
         substanceId: "ketamine",
-        name: LocalizedString(en: "Ketamine", fr: "Kétamine"),
+        name: LocalizedString(
+            en: "Ketamine",
+            fr: "Kétamine",
+            es: "Ketamina",
+            ja: "ケタミン",
+            zh: "氯胺酮",
+            ko: "케타민",
+            ru: "Кетамин",
+            de: "Ketamin",
+            ar: "كيتامين"
+        ),
         therapeuticClass: .dissociative,
         onsetMinutes: 5,
         tmaxMinutes: 20,
@@ -1295,7 +2005,17 @@ extension PharmacokineticProfile {
     /// Tmax ~25-45min, t½ ~30-60min.
     public static let ghb = PharmacokineticProfile(
         substanceId: "ghb",
-        name: LocalizedString(en: "GHB (Sodium Oxybate)", fr: "GHB (Oxybate de sodium)"),
+        name: LocalizedString(
+            en: "GHB (Sodium Oxybate)",
+            fr: "GHB (Oxybate de sodium)",
+            es: "GHB (Oxibato de sodio)",
+            ja: "GHB（オキシバ酸ナトリウム）",
+            zh: "GHB（羟丁酸钠）",
+            ko: "GHB (옥시베이트나트륨)",
+            ru: "ГОМК (оксибат натрия)",
+            de: "GHB (Natriumoxybat)",
+            ar: "GHB (أوكسيبات الصوديوم)"
+        ),
         therapeuticClass: .sedativeHypnotic,
         onsetMinutes: 15,
         tmaxMinutes: 35,
@@ -1316,7 +2036,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2h, t½ ~4-8h.
     public static let diphenhydramine = PharmacokineticProfile(
         substanceId: "diphenhydramine",
-        name: LocalizedString(en: "Diphenhydramine", fr: "Diphenhydramine"),
+        name: LocalizedString(
+            en: "Diphenhydramine",
+            fr: "Diphenhydramine",
+            es: "Difenhidramina",
+            ja: "ジフェンヒドラミン",
+            zh: "苯海拉明",
+            ko: "디펜히드라민",
+            ru: "Дифенгидрамин",
+            de: "Diphenhydramin",
+            ar: "ديفينهيدرامين"
+        ),
         therapeuticClass: .antihistamine,
         onsetMinutes: 30,
         tmaxMinutes: 120,
@@ -1331,7 +2061,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-3h, t½ ~10-14h.
     public static let promethazine = PharmacokineticProfile(
         substanceId: "promethazine",
-        name: LocalizedString(en: "Promethazine", fr: "Prométhazine"),
+        name: LocalizedString(
+            en: "Promethazine",
+            fr: "Prométhazine",
+            es: "Prometazina",
+            ja: "プロメタジン",
+            zh: "异丙嗪",
+            ko: "프로메타진",
+            ru: "Прометазин",
+            de: "Promethazin",
+            ar: "بروميثازين"
+        ),
         therapeuticClass: .antihistamine,
         onsetMinutes: 30,
         tmaxMinutes: 150,
@@ -1347,7 +2087,17 @@ extension PharmacokineticProfile {
     /// increases at high doses. Tmax ~1h oral, t½ ~4.5h.
     public static let scopolamine = PharmacokineticProfile(
         substanceId: "scopolamine",
-        name: LocalizedString(en: "Scopolamine", fr: "Scopolamine"),
+        name: LocalizedString(
+            en: "Scopolamine",
+            fr: "Scopolamine",
+            es: "Escopolamina",
+            ja: "スコポラミン",
+            zh: "东莨菪碱",
+            ko: "스코폴라민",
+            ru: "Скополамин",
+            de: "Scopolamin",
+            ar: "سكوبولامين"
+        ),
         therapeuticClass: .anticholinergic,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -1363,7 +2113,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1h oral, t½ ~4h.
     public static let atropine = PharmacokineticProfile(
         substanceId: "atropine",
-        name: LocalizedString(en: "Atropine", fr: "Atropine"),
+        name: LocalizedString(
+            en: "Atropine",
+            fr: "Atropine",
+            es: "Atropina",
+            ja: "アトロピン",
+            zh: "阿托品",
+            ko: "아트로핀",
+            ru: "Атропин",
+            de: "Atropin",
+            ar: "أتروبين"
+        ),
         therapeuticClass: .anticholinergic,
         onsetMinutes: 15,
         tmaxMinutes: 60,
@@ -1383,7 +2143,17 @@ extension PharmacokineticProfile {
     /// Minimal direct autonomic effect. Tmax ~1-2h, t½ ~2h.
     public static let ibuprofen = PharmacokineticProfile(
         substanceId: "ibuprofen",
-        name: LocalizedString(en: "Ibuprofen", fr: "Ibuprofène"),
+        name: LocalizedString(
+            en: "Ibuprofen",
+            fr: "Ibuprofène",
+            es: "Ibuprofeno",
+            ja: "イブプロフェン",
+            zh: "布洛芬",
+            ko: "이부프로펜",
+            ru: "Ибупрофен",
+            de: "Ibuprofen",
+            ar: "إيبوبروفين"
+        ),
         therapeuticClass: .nsaid,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -1399,7 +2169,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~3.5h (but biologic t½ ~18-36h).
     public static let prednisone = PharmacokineticProfile(
         substanceId: "prednisone",
-        name: LocalizedString(en: "Prednisone", fr: "Prednisone"),
+        name: LocalizedString(
+            en: "Prednisone",
+            fr: "Prednisone",
+            es: "Prednisona",
+            ja: "プレドニゾン",
+            zh: "泼尼松",
+            ko: "프레드니손",
+            ru: "Преднизон",
+            de: "Prednison",
+            ar: "بريدنيزون"
+        ),
         therapeuticClass: .corticosteroid,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -1414,7 +2194,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1-2h, t½ ~36-54h.
     public static let dexamethasone = PharmacokineticProfile(
         substanceId: "dexamethasone",
-        name: LocalizedString(en: "Dexamethasone", fr: "Dexaméthasone"),
+        name: LocalizedString(
+            en: "Dexamethasone",
+            fr: "Dexaméthasone",
+            es: "Dexametasona",
+            ja: "デキサメタゾン",
+            zh: "地塞米松",
+            ko: "덱사메타손",
+            ru: "Дексаметазон",
+            de: "Dexamethason",
+            ar: "ديكساميثازون"
+        ),
         therapeuticClass: .corticosteroid,
         onsetMinutes: 60,
         tmaxMinutes: 120,
@@ -1434,7 +2224,17 @@ extension PharmacokineticProfile {
     /// Prokinetic. Tmax ~1-2h, t½ ~5-6h.
     public static let metoclopramide = PharmacokineticProfile(
         substanceId: "metoclopramide",
-        name: LocalizedString(en: "Metoclopramide", fr: "Métoclopramide"),
+        name: LocalizedString(
+            en: "Metoclopramide",
+            fr: "Métoclopramide",
+            es: "Metoclopramida",
+            ja: "メトクロプラミド",
+            zh: "甲氧氯普胺",
+            ko: "메토클로프라미드",
+            ru: "Метоклопрамид",
+            de: "Metoclopramid",
+            ar: "ميتوكلوبراميد"
+        ),
         therapeuticClass: .gastrointestinal,
         onsetMinutes: 30,
         tmaxMinutes: 90,
@@ -1449,7 +2249,17 @@ extension PharmacokineticProfile {
     /// Sympathomimetic when supratherapeutic. Tmax ~2-4h, t½ ~7 days.
     public static let levothyroxine = PharmacokineticProfile(
         substanceId: "levothyroxine",
-        name: LocalizedString(en: "Levothyroxine", fr: "Lévothyroxine"),
+        name: LocalizedString(
+            en: "Levothyroxine",
+            fr: "Lévothyroxine",
+            es: "Levotiroxina",
+            ja: "レボチロキシン",
+            zh: "左甲状腺素",
+            ko: "레보티록신",
+            ru: "Левотироксин",
+            de: "Levothyroxin",
+            ar: "ليفوثيروكسين"
+        ),
         therapeuticClass: .endocrine,
         onsetMinutes: 120,
         tmaxMinutes: 180,
@@ -1465,7 +2275,17 @@ extension PharmacokineticProfile {
     /// Tmax ~1h subcutaneous, duration ~3-5h.
     public static let insulinRapid = PharmacokineticProfile(
         substanceId: "insulin-rapid",
-        name: LocalizedString(en: "Insulin (Rapid)", fr: "Insuline (rapide)"),
+        name: LocalizedString(
+            en: "Insulin (Rapid)",
+            fr: "Insuline (rapide)",
+            es: "Insulina (rápida)",
+            ja: "インスリン（速効型）",
+            zh: "胰岛素（速效）",
+            ko: "인슐린 (속효성)",
+            ru: "Инсулин (быстрого действия)",
+            de: "Insulin (schnellwirkend)",
+            ar: "إنسولين (سريع المفعول)"
+        ),
         therapeuticClass: .endocrine,
         onsetMinutes: 15,
         tmaxMinutes: 60,
@@ -1485,7 +2305,17 @@ extension PharmacokineticProfile {
     /// Tmax ~3-8h, t½ ~18h.
     public static let cyclobenzaprine = PharmacokineticProfile(
         substanceId: "cyclobenzaprine",
-        name: LocalizedString(en: "Cyclobenzaprine", fr: "Cyclobenzaprine"),
+        name: LocalizedString(
+            en: "Cyclobenzaprine",
+            fr: "Cyclobenzaprine",
+            es: "Ciclobenzaprina",
+            ja: "シクロベンザプリン",
+            zh: "环苯扎林",
+            ko: "시클로벤자프린",
+            ru: "Циклобензаприн",
+            de: "Cyclobenzaprin",
+            ar: "سيكلوبنزابرين"
+        ),
         therapeuticClass: .other,
         onsetMinutes: 60,
         tmaxMinutes: 330,
@@ -1500,7 +2330,17 @@ extension PharmacokineticProfile {
     /// Tmax ~2-3h, t½ ~3-4h.
     public static let baclofen = PharmacokineticProfile(
         substanceId: "baclofen",
-        name: LocalizedString(en: "Baclofen", fr: "Baclofène"),
+        name: LocalizedString(
+            en: "Baclofen",
+            fr: "Baclofène",
+            es: "Baclofeno",
+            ja: "バクロフェン",
+            zh: "巴氯芬",
+            ko: "바클로펜",
+            ru: "Баклофен",
+            de: "Baclofen",
+            ar: "باكلوفين"
+        ),
         therapeuticClass: .other,
         onsetMinutes: 30,
         tmaxMinutes: 150,
@@ -1515,7 +2355,17 @@ extension PharmacokineticProfile {
     /// Reduces sympathetic tone. Tmax ~1h, t½ ~2.5h.
     public static let tizanidine = PharmacokineticProfile(
         substanceId: "tizanidine",
-        name: LocalizedString(en: "Tizanidine", fr: "Tizanidine"),
+        name: LocalizedString(
+            en: "Tizanidine",
+            fr: "Tizanidine",
+            es: "Tizanidina",
+            ja: "チザニジン",
+            zh: "替扎尼定",
+            ko: "티자니딘",
+            ru: "Тизанидин",
+            de: "Tizanidin",
+            ar: "تيزانيدين"
+        ),
         therapeuticClass: .other,
         onsetMinutes: 30,
         tmaxMinutes: 60,
@@ -1569,6 +2419,9 @@ extension PharmacokineticProfile {
         .metoclopramide, .levothyroxine, .insulinRapid,
         // Muscle Relaxants & Other
         .cyclobenzaprine, .baclofen, .tizanidine,
+        // PokeDrug Natural Product Scaffolds
+        .dmt, .mescaline, .salvinorinA, .ibogaine, .cathinone, .apigenin,
+        .psilocin, .mda, .muscimol, .ephedrine, .mitragynine, .cbd, .harmine,
     ]
 
     /// Cached dictionary for O(1) lookup by substance ID.

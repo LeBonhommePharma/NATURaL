@@ -105,11 +105,65 @@ public struct DrugResponseResult: Sendable {
                 fr += " Profil : \(match.profile.name.localized) (\(conf) % confiance)."
             }
 
-            return LocalizedString(en: en, fr: fr)
+            let directionEs = peakDeltaH < 0 ? "colapso" : "expansión"
+            let directionJa = peakDeltaH < 0 ? "崩壊" : "拡張"
+            let directionZh = peakDeltaH < 0 ? "坍缩" : "扩展"
+            let directionKo = peakDeltaH < 0 ? "붕괴" : "확장"
+            let directionRu = peakDeltaH < 0 ? "коллапс" : "расширение"
+            let directionDe = peakDeltaH < 0 ? "Kollaps" : "Expansion"
+            let directionAr = peakDeltaH < 0 ? "انهيار" : "توسع"
+
+            var es = "\(directionEs.capitalized) de entropía detectado: ΔH = \(deltaText) bits a +\(timeText) min "
+            es += "(tamaño del efecto: \(effectText) %). "
+            es += "Línea base: \(baseText) bits (\(baselineRRCount) intervalos)."
+
+            var ja = "エントロピー\(directionJa)を検出：ΔH = \(deltaText) ビット（+\(timeText)分）"
+            ja += "（効果量：\(effectText)%）。"
+            ja += "ベースライン：\(baseText) ビット（\(baselineRRCount) 区間）。"
+
+            var zh = "检测到熵\(directionZh)：ΔH = \(deltaText) 比特，+\(timeText) 分钟"
+            zh += "（效应量：\(effectText)%）。"
+            zh += "基线：\(baseText) 比特（\(baselineRRCount) 个区间）。"
+
+            var ko = "엔트로피 \(directionKo) 감지: ΔH = \(deltaText) 비트, +\(timeText)분 "
+            ko += "(효과 크기: \(effectText)%). "
+            ko += "기준선: \(baseText) 비트 (\(baselineRRCount)개 구간)."
+
+            var ru = "\(directionRu.capitalized) энтропии обнаружен: ΔH = \(deltaText) бит на +\(timeText) мин "
+            ru += "(размер эффекта: \(effectText) %). "
+            ru += "Базовый уровень: \(baseText) бит (\(baselineRRCount) интервалов)."
+
+            var de = "Entropie-\(directionDe) erkannt: ΔH = \(deltaText) Bits bei +\(timeText) Min. "
+            de += "(Effektstärke: \(effectText) %). "
+            de += "Basislinie: \(baseText) Bits (\(baselineRRCount) Intervalle)."
+
+            var ar = "تم اكتشاف \(directionAr) في الإنتروبيا: ΔH = \(deltaText) بت عند +\(timeText) دقيقة "
+            ar += "(حجم التأثير: \(effectText)٪). "
+            ar += "خط الأساس: \(baseText) بت (\(baselineRRCount) فاصل زمني)."
+
+            if let match = profileMatch {
+                let conf = String(format: "%.0f", match.confidence * 100)
+                es += " Perfil: \(match.profile.name.localized) (\(conf) % confianza)."
+                ja += " プロファイル一致：\(match.profile.name.localized)（\(conf)% 信頼度）。"
+                zh += " 药动学匹配：\(match.profile.name.localized)（\(conf)% 置信度）。"
+                ko += " 프로파일 일치: \(match.profile.name.localized) (\(conf)% 신뢰도)."
+                ru += " Профиль: \(match.profile.name.localized) (\(conf) % уверенности)."
+                de += " Profil: \(match.profile.name.localized) (\(conf) % Konfidenz)."
+                ar += " الملف الدوائي: \(match.profile.name.localized) (\(conf)٪ ثقة)."
+            }
+
+            return LocalizedString(en: en, fr: fr, es: es, ja: ja, zh: zh, ko: ko, ru: ru, de: de, ar: ar)
         } else {
             return LocalizedString(
                 en: "No significant entropy change: ΔH = \(deltaText) bits. Baseline: \(baseText) bits.",
-                fr: "Aucun changement significatif : ΔH = \(deltaText) bits. Base : \(baseText) bits."
+                fr: "Aucun changement significatif : ΔH = \(deltaText) bits. Base : \(baseText) bits.",
+                es: "Sin cambio significativo de entropía: ΔH = \(deltaText) bits. Línea base: \(baseText) bits.",
+                ja: "有意なエントロピー変化なし：ΔH = \(deltaText) ビット。ベースライン：\(baseText) ビット。",
+                zh: "无显著熵变化：ΔH = \(deltaText) 比特。基线：\(baseText) 比特。",
+                ko: "유의미한 엔트로피 변화 없음: ΔH = \(deltaText) 비트. 기준선: \(baseText) 비트.",
+                ru: "Значимых изменений энтропии нет: ΔH = \(deltaText) бит. Базовый уровень: \(baseText) бит.",
+                de: "Keine signifikante Entropieänderung: ΔH = \(deltaText) Bits. Basislinie: \(baseText) Bits.",
+                ar: "لا تغيّر ملحوظ في الإنتروبيا: ΔH = \(deltaText) بت. خط الأساس: \(baseText) بت."
             )
         }
     }
@@ -289,7 +343,14 @@ public struct DrugResponseAggregate: Sendable {
 
         return LocalizedString(
             en: "\(n) dose events: mean ΔH = \(meanText) ± \(sdText) bits, Cohen's d = \(dText), detection rate = \(rateText)%.",
-            fr: "\(n) événements : ΔH moyen = \(meanText) ± \(sdText) bits, d de Cohen = \(dText), taux de détection = \(rateText) %."
+            fr: "\(n) événements : ΔH moyen = \(meanText) ± \(sdText) bits, d de Cohen = \(dText), taux de détection = \(rateText) %.",
+            es: "\(n) eventos de dosis: ΔH medio = \(meanText) ± \(sdText) bits, d de Cohen = \(dText), tasa de detección = \(rateText) %.",
+            ja: "\(n) 回の投与イベント：平均 ΔH = \(meanText) ± \(sdText) ビット、コーエンの d = \(dText)、検出率 = \(rateText)%。",
+            zh: "\(n) 次给药事件：平均 ΔH = \(meanText) ± \(sdText) 比特，Cohen's d = \(dText)，检出率 = \(rateText)%。",
+            ko: "\(n)회 투약 이벤트: 평균 ΔH = \(meanText) ± \(sdText) 비트, Cohen's d = \(dText), 검출률 = \(rateText)%.",
+            ru: "\(n) событий дозирования: среднее ΔH = \(meanText) ± \(sdText) бит, d Коэна = \(dText), частота обнаружения = \(rateText) %.",
+            de: "\(n) Dosierungsereignisse: mittleres ΔH = \(meanText) ± \(sdText) Bits, Cohens d = \(dText), Detektionsrate = \(rateText) %.",
+            ar: "\(n) أحداث جرعات: متوسط ΔH = \(meanText) ± \(sdText) بت، d كوهين = \(dText)، معدل الاكتشاف = \(rateText)٪."
         )
     }
 }

@@ -72,13 +72,13 @@ public struct HeartRateGaugeView: View {
 
     private var zoneName: String {
         guard let bpm else {
-            return LocalizedString(en: "No Signal", fr: "Aucun signal").localized
+            return LocalizedString(en: "No Signal", fr: "Aucun signal", es: "Sin señal", ja: "信号なし", zh: "无信号", ko: "신호 없음", ru: "Нет сигнала", de: "Kein Signal", ar: "لا توجد إشارة").localized
         }
         switch bpm {
-        case ..<100: return LocalizedString(en: "Recovery", fr: "Récupération").localized
-        case 100..<130: return LocalizedString(en: "Fat Burn", fr: "Brûle-graisse").localized
-        case 130..<160: return LocalizedString(en: "Cardio", fr: "Cardio").localized
-        default: return LocalizedString(en: "Peak", fr: "Pointe").localized
+        case ..<100: return LocalizedString(en: "Recovery", fr: "Récupération", es: "Recuperación", ja: "回復", zh: "恢复", ko: "회복", ru: "Восстановление", de: "Erholung", ar: "تعافٍ").localized
+        case 100..<130: return LocalizedString(en: "Fat Burn", fr: "Brûle-graisse", es: "Quema de grasa", ja: "脂肪燃焼", zh: "燃脂", ko: "지방 연소", ru: "Жиросжигание", de: "Fettverbrennung", ar: "حرق الدهون").localized
+        case 130..<160: return LocalizedString(en: "Cardio", fr: "Cardio", es: "Cardio", ja: "有酸素", zh: "有氧", ko: "유산소", ru: "Кардио", de: "Kardio", ar: "تمارين القلب").localized
+        default: return LocalizedString(en: "Peak", fr: "Pointe", es: "Máximo", ja: "ピーク", zh: "峰值", ko: "최고", ru: "Пик", de: "Spitze", ar: "الذروة").localized
         }
     }
 }

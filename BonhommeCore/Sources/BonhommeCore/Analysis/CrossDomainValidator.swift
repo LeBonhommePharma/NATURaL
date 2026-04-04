@@ -95,9 +95,24 @@ public struct CrossDomainValidator: Sendable {
             let sigText = isSignificant ? "significant" : "not significant"
             let sigFr = isSignificant ? "significative" : "non significative"
 
+            let sigEs = isSignificant ? "significativa" : "no significativa"
+            let sigJa = isSignificant ? "有意" : "非有意"
+            let sigZh = isSignificant ? "显著" : "不显著"
+            let sigKo = isSignificant ? "유의미함" : "유의미하지 않음"
+            let sigRu = isSignificant ? "значимая" : "незначимая"
+            let sigDe = isSignificant ? "signifikant" : "nicht signifikant"
+            let sigAr = isSignificant ? "ذات دلالة إحصائية" : "غير ذات دلالة إحصائية"
+
             return LocalizedString(
-                en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Correlation is \(sigText).",
-                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Corrélation \(sigFr)."
+                en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlation is \(sigText).",
+                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Corrélation \(sigFr).",
+                es: "Validación interdominio (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlación \(sigEs).",
+                ja: "クロスドメイン検証（n=\(n)）：r = \(rText)、R² = \(r2Text)、MAE = \(maeText) ビット。相関は\(sigJa)。",
+                zh: "跨域验证（n=\(n)）：r = \(rText)，R² = \(r2Text)，MAE = \(maeText) 比特。相关性\(sigZh)。",
+                ko: "교차 도메인 검증 (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) 비트. 상관관계 \(sigKo).",
+                ru: "Кросс-доменная валидация (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) бит. Корреляция \(sigRu).",
+                de: "Domänenübergreifende Validierung (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) Bits. Korrelation \(sigDe).",
+                ar: "التحقق عبر المجالات (n=\(n)): r = \(rText)، R² = \(r2Text)، MAE = \(maeText) بت. الارتباط \(sigAr)."
             )
         }
 
@@ -249,6 +264,153 @@ public struct CrossDomainValidator: Sendable {
         }
 
         return buildResult(from: pairs)
+    }
+
+    // MARK: - Three-Way Validation
+
+    /// A three-way paired observation: computational (FlexAID∆S) vs ITC-measured (SCORPIO)
+    /// vs in-vivo (NATURaL HRV) entropy for the same substance.
+    public struct ThreeWayObservation: Sendable {
+        /// Substance identifier.
+        public let substanceId: String
+
+        /// ΔS_config from FlexAID∆S or BindingEntropyProfile (bits).
+        public let flexAIDDeltaSBits: Double
+
+        /// -TΔS from SCORPIO ITC (kcal/mol).
+        public let scorpioMinusTDeltaSKcal: Double
+
+        /// ΔH_hrv from NATURaL DrugResponseAnalyzer (bits).
+        public let naturalDeltaHHRV: Double
+
+        public init(
+            substanceId: String,
+            flexAIDDeltaSBits: Double,
+            scorpioMinusTDeltaSKcal: Double,
+            naturalDeltaHHRV: Double
+        ) {
+            self.substanceId = substanceId
+            self.flexAIDDeltaSBits = flexAIDDeltaSBits
+            self.scorpioMinusTDeltaSKcal = scorpioMinusTDeltaSKcal
+            self.naturalDeltaHHRV = naturalDeltaHHRV
+        }
+    }
+
+    /// Result of three-way validation with pairwise Pearson correlations.
+    public struct ThreeWayValidationResult: Sendable {
+        /// Three-way paired observations.
+        public let observations: [ThreeWayObservation]
+
+        /// Pearson r: FlexAID∆S (computational) vs SCORPIO (ITC).
+        public let flexAIDvsScorpio: Double
+
+        /// Pearson r: FlexAID∆S (computational) vs NATURaL (HRV).
+        public let flexAIDvsNatural: Double
+
+        /// Pearson r: SCORPIO (ITC) vs NATURaL (HRV).
+        public let scorpioVsNatural: Double
+
+        /// Number of substances in the three-way analysis.
+        public var n: Int { observations.count }
+
+        /// Bilingual summary of pairwise correlations.
+        public var summary: LocalizedString {
+            let fs = String(format: "%.3f", flexAIDvsScorpio)
+            let fn = String(format: "%.3f", flexAIDvsNatural)
+            let sn = String(format: "%.3f", scorpioVsNatural)
+
+            return LocalizedString(
+                en: "Three-way validation (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                fr: "Validation tripartite (n=\(n)) : FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                es: "Validación tripartita (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ja: "三者間検証（n=\(n)）：FlexAID↔SCORPIO r=\(fs)、FlexAID↔NATURaL r=\(fn)、SCORPIO↔NATURaL r=\(sn)。",
+                zh: "三方验证（n=\(n)）：FlexAID↔SCORPIO r=\(fs)，FlexAID↔NATURaL r=\(fn)，SCORPIO↔NATURaL r=\(sn)。",
+                ko: "삼자 검증 (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ru: "Трёхсторонняя валидация (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                de: "Drei-Wege-Validierung (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
+                ar: "التحقق الثلاثي (n=\(n)): FlexAID↔SCORPIO r=\(fs)، FlexAID↔NATURaL r=\(fn)، SCORPIO↔NATURaL r=\(sn)."
+            )
+        }
+
+        public init(
+            observations: [ThreeWayObservation],
+            flexAIDvsScorpio: Double,
+            flexAIDvsNatural: Double,
+            scorpioVsNatural: Double
+        ) {
+            self.observations = observations
+            self.flexAIDvsScorpio = flexAIDvsScorpio
+            self.flexAIDvsNatural = flexAIDvsNatural
+            self.scorpioVsNatural = scorpioVsNatural
+        }
+    }
+
+    /// Validate three-way correlation: FlexAID∆S (computational) vs SCORPIO ITC (measured)
+    /// vs NATURaL HRV (in-vivo).
+    ///
+    /// Only includes substances that have data in all three domains:
+    /// 1. FlexAID∆S / BindingEntropyProfile for computational ΔS
+    /// 2. ThermodynamicBindingProfile with ITC decomposition for SCORPIO -TΔS
+    /// 3. DrugResponseResult for in-vivo ΔH_hrv
+    ///
+    /// - Parameters:
+    ///   - dockingResults: In-silico FlexAID∆S results (optional, falls back to BindingEntropyProfile).
+    ///   - drugResponseResults: In-vivo DrugResponseAnalyzer results.
+    /// - Returns: ThreeWayValidationResult, or nil if fewer than 3 substances have all three.
+    public func validateThreeWay(
+        dockingResults: [FlexAIDdSResult] = [],
+        drugResponseResults: [DrugResponseResult]
+    ) -> ThreeWayValidationResult? {
+        // Build FlexAID data map (prefer actual docking, fall back to profiles)
+        var flexAIDBySubstance: [String: Double] = [:]
+        for r in dockingResults {
+            flexAIDBySubstance[r.substanceId] = r.totalDeltaSConfig
+        }
+        for profile in BindingEntropyProfile.knownProfiles {
+            if flexAIDBySubstance[profile.substanceId] == nil {
+                flexAIDBySubstance[profile.substanceId] = profile.expectedDeltaSBits
+            }
+        }
+
+        // Build SCORPIO ITC data map (only primary targets with ITC decomposition)
+        var scorpioBySubstance: [String: Double] = [:]
+        for profile in ThermodynamicBindingProfile.knownProfiles {
+            guard profile.isPrimaryTarget,
+                  let thermo = profile.thermodynamics else { continue }
+            scorpioBySubstance[profile.substanceId] = thermo.minusTDeltaSKcal
+        }
+
+        // Build NATURaL HRV data map
+        var hrvBySubstance: [String: Double] = [:]
+        for r in drugResponseResults {
+            hrvBySubstance[r.doseEvent.medicationId] = r.peakDeltaH
+        }
+
+        // Find substances with all three data sources
+        var observations: [ThreeWayObservation] = []
+        for (substanceId, flexAID) in flexAIDBySubstance {
+            guard let scorpio = scorpioBySubstance[substanceId],
+                  let hrv = hrvBySubstance[substanceId] else { continue }
+            observations.append(ThreeWayObservation(
+                substanceId: substanceId,
+                flexAIDDeltaSBits: flexAID,
+                scorpioMinusTDeltaSKcal: scorpio,
+                naturalDeltaHHRV: hrv
+            ))
+        }
+
+        guard observations.count >= 3 else { return nil }
+
+        let flexAIDValues = observations.map { abs($0.flexAIDDeltaSBits) }
+        let scorpioValues = observations.map { abs($0.scorpioMinusTDeltaSKcal) }
+        let naturalValues = observations.map { abs($0.naturalDeltaHHRV) }
+
+        return ThreeWayValidationResult(
+            observations: observations,
+            flexAIDvsScorpio: pearsonCorrelation(flexAIDValues, scorpioValues),
+            flexAIDvsNatural: pearsonCorrelation(flexAIDValues, naturalValues),
+            scorpioVsNatural: pearsonCorrelation(scorpioValues, naturalValues)
+        )
     }
 
     // MARK: - Private

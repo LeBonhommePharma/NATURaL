@@ -717,6 +717,103 @@ extension BindingEntropyProfile {
             expectedEntropyPenaltyKcal: 0.6,
             reference: "Tiny 4-carbon hydroxybutyrate, 2 rotatable bonds."
         ),
+
+        // MARK: PokeDrug Natural Product Scaffolds
+
+        BindingEntropyProfile(
+            substanceId: "dmt",
+            rotatableBondCount: 2,
+            expectedDeltaSBits: -2.4,
+            expectedEntropyPenaltyKcal: 1.0,
+            reference: "N,N-dimethyltryptamine, 2 rotatable bonds (dimethylamine). FlexAID∆S."
+        ),
+        BindingEntropyProfile(
+            substanceId: "mescaline",
+            rotatableBondCount: 5,
+            expectedDeltaSBits: -7.3,
+            expectedEntropyPenaltyKcal: 3.0,
+            reference: "3,4,5-Trimethoxyphenethylamine, 5 rotatable bonds. Chang & Gilson 2004."
+        ),
+        BindingEntropyProfile(
+            substanceId: "salvinorin-a",
+            rotatableBondCount: 5,
+            expectedDeltaSBits: -6.1,
+            expectedEntropyPenaltyKcal: 2.5,
+            reference: "Neoclerodane diterpene, 5 rotatable bonds (ester + acetyl). Ruvinsky 2007."
+        ),
+        BindingEntropyProfile(
+            substanceId: "ibogaine",
+            rotatableBondCount: 4,
+            expectedDeltaSBits: -6.8,
+            expectedEntropyPenaltyKcal: 2.8,
+            reference: "Polycyclic indole alkaloid, 4 rotatable bonds. FlexAID∆S."
+        ),
+        BindingEntropyProfile(
+            substanceId: "cathinone",
+            rotatableBondCount: 2,
+            expectedDeltaSBits: -3.2,
+            expectedEntropyPenaltyKcal: 1.3,
+            reference: "Beta-keto amphetamine, 2 rotatable bonds. Similar to amphetamine."
+        ),
+        BindingEntropyProfile(
+            substanceId: "apigenin",
+            rotatableBondCount: 1,
+            expectedDeltaSBits: -2.4,
+            expectedEntropyPenaltyKcal: 1.0,
+            reference: "Rigid flavone scaffold, 1 rotatable bond. Mobley & Gilson 2017."
+        ),
+
+        // MARK: PokeDrug Expansion Species
+
+        BindingEntropyProfile(
+            substanceId: "psilocin",
+            rotatableBondCount: 2,
+            expectedDeltaSBits: -2.6,
+            expectedEntropyPenaltyKcal: 0.9,
+            reference: "4-HO-DMT, 2 rotatable bonds (dimethylamine + hydroxyl). Similar to DMT."
+        ),
+        BindingEntropyProfile(
+            substanceId: "mda",
+            rotatableBondCount: 3,
+            expectedDeltaSBits: -4.5,
+            expectedEntropyPenaltyKcal: 1.5,
+            reference: "Methylenedioxyamphetamine, 3 rotatable bonds. Slightly less than MDMA."
+        ),
+        BindingEntropyProfile(
+            substanceId: "muscimol",
+            rotatableBondCount: 1,
+            expectedDeltaSBits: -1.8,
+            expectedEntropyPenaltyKcal: 0.8,
+            reference: "Rigid isoxazole amino acid, 1 rotatable bond. Krogsgaard-Larsen 1977."
+        ),
+        BindingEntropyProfile(
+            substanceId: "ephedrine",
+            rotatableBondCount: 3,
+            expectedDeltaSBits: -3.5,
+            expectedEntropyPenaltyKcal: 1.1,
+            reference: "Phenylpropanolamine, 3 rotatable bonds. Similar to amphetamine + hydroxyl."
+        ),
+        BindingEntropyProfile(
+            substanceId: "mitragynine",
+            rotatableBondCount: 5,
+            expectedDeltaSBits: -6.0,
+            expectedEntropyPenaltyKcal: 2.0,
+            reference: "Corynanthe indole alkaloid, 5 rotatable bonds. Kruegel et al. 2016."
+        ),
+        BindingEntropyProfile(
+            substanceId: "cbd",
+            rotatableBondCount: 6,
+            expectedDeltaSBits: -5.4,
+            expectedEntropyPenaltyKcal: 1.8,
+            reference: "Open-ring terpenophenolic, 6 rotatable bonds (more flexible than THC). Pertwee 2008."
+        ),
+        BindingEntropyProfile(
+            substanceId: "harmine",
+            rotatableBondCount: 1,
+            expectedDeltaSBits: -3.4,
+            expectedEntropyPenaltyKcal: 1.4,
+            reference: "Rigid beta-carboline tricycle, 1 rotatable bond (methoxy). Buckholtz & Boggan 1977."
+        ),
     ]
 
     /// Cached dictionary for O(1) lookup by substance ID.
