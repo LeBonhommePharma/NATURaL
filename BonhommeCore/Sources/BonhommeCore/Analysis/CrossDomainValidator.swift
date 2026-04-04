@@ -12,9 +12,10 @@ import Foundation
 /// 1. Pairing substances that have both in-silico (FlexAIDdSResult or BindingEntropyProfile)
 ///    and in-vivo (DrugResponseResult) entropy measurements
 /// 2. Computing Pearson correlation between |ΔS_config| and |ΔH_hrv|
-/// 3. Reporting R², mean absolute error, and statistical significance
+/// 3. Computing a proper p-value via the t-distribution
+/// 4. Reporting R², mean absolute error, and statistical significance
 ///
-/// A significant positive correlation (r > 0.5, p < 0.05) constitutes independent
+/// A significant positive correlation (p < 0.05, n ≥ 5) constitutes independent
 /// validation that the entropy-collapse framework generalizes from molecular torsional
 /// angles to physiological cardiac intervals.
 public struct CrossDomainValidator: Sendable {
@@ -59,6 +60,10 @@ public struct CrossDomainValidator: Sendable {
         /// Pearson r between |ΔS_config| and |ΔH_hrv|.
         public let pearsonR: Double
 
+        /// Two-tailed p-value for the Pearson correlation.
+        /// Computed via t-distribution: t = r × √(n-2) / √(1-r²).
+        public let pValue: Double
+
         /// R-squared (coefficient of determination).
         /// Fraction of in-vivo variance explained by in-silico entropy.
         public var rSquared: Double { pearsonR * pearsonR }
@@ -67,8 +72,8 @@ public struct CrossDomainValidator: Sendable {
         public var n: Int { observations.count }
 
         /// Whether the correlation is statistically significant.
-        /// Requires r > 0.5 and n >= 5 for meaningful inference.
-        public var isSignificant: Bool { abs(pearsonR) > 0.5 && n >= 5 }
+        /// Uses proper p-value testing instead of arbitrary r threshold.
+        public var isSignificant: Bool { pValue < 0.05 && n >= 5 }
 
         /// Mean absolute prediction error (bits).
         /// How well |ΔS_config| predicts |ΔH_hrv| via linear regression.
@@ -85,6 +90,7 @@ public struct CrossDomainValidator: Sendable {
         public var summary: LocalizedString {
             let rText = String(format: "%.3f", pearsonR)
             let r2Text = String(format: "%.3f", rSquared)
+            let pText = String(format: "%.4f", pValue)
             let maeText = String(format: "%.2f", meanAbsError)
             let sigText = isSignificant ? "significant" : "not significant"
             let sigFr = isSignificant ? "significative" : "non significative"
@@ -113,12 +119,14 @@ public struct CrossDomainValidator: Sendable {
         public init(
             observations: [PairedObservation],
             pearsonR: Double,
+            pValue: Double,
             meanAbsError: Double,
             regressionSlope: Double,
             regressionIntercept: Double
         ) {
             self.observations = observations
             self.pearsonR = pearsonR
+            self.pValue = pValue
             self.meanAbsError = meanAbsError
             self.regressionSlope = regressionSlope
             self.regressionIntercept = regressionIntercept
@@ -126,9 +134,16 @@ public struct CrossDomainValidator: Sendable {
     }
 
     private let dockingAnalyzer: FlexAIDdSAnalyzer
+    private let configuration: AnalysisConfiguration
 
     public init(dockingAnalyzer: FlexAIDdSAnalyzer = FlexAIDdSAnalyzer()) {
         self.dockingAnalyzer = dockingAnalyzer
+        self.configuration = .default
+    }
+
+    public init(configuration: AnalysisConfiguration, dockingAnalyzer: FlexAIDdSAnalyzer = FlexAIDdSAnalyzer()) {
+        self.dockingAnalyzer = dockingAnalyzer
+        self.configuration = configuration
     }
 
     // MARK: - Validation from Raw Results
@@ -141,7 +156,7 @@ public struct CrossDomainValidator: Sendable {
     /// - Parameters:
     ///   - dockingResults: In-silico FlexAID∆S results.
     ///   - drugResponseResults: In-vivo DrugResponseAnalyzer results.
-    /// - Returns: ValidationResult, or nil if fewer than 3 paired substances.
+    /// - Returns: ValidationResult, or nil if fewer than `crossDomainMinPairs` paired substances.
     public func validate(
         dockingResults: [FlexAIDdSResult],
         drugResponseResults: [DrugResponseResult]
@@ -181,7 +196,7 @@ public struct CrossDomainValidator: Sendable {
     /// ΔS_config values exist for the substances.
     ///
     /// - Parameter drugResponseResults: In-vivo DrugResponseAnalyzer results.
-    /// - Returns: ValidationResult, or nil if fewer than 3 paired substances.
+    /// - Returns: ValidationResult, or nil if fewer than `crossDomainMinPairs` paired substances.
     public func validateFromProfiles(
         drugResponseResults: [DrugResponseResult]
     ) -> ValidationResult? {
@@ -401,17 +416,25 @@ public struct CrossDomainValidator: Sendable {
     // MARK: - Private
 
     private func buildResult(from pairs: [PairedObservation]) -> ValidationResult? {
-        guard pairs.count >= 3 else { return nil }
+        guard pairs.count >= configuration.crossDomainMinPairs else { return nil }
 
-        let x = pairs.map { abs($0.deltaSConfig) }
-        let y = pairs.map { abs($0.deltaHHRV) }
+        // Filter out non-finite values
+        let cleanPairs = pairs.filter {
+            $0.deltaSConfig.isFinite && $0.deltaHHRV.isFinite
+        }
+        guard cleanPairs.count >= configuration.crossDomainMinPairs else { return nil }
+
+        let x = cleanPairs.map { abs($0.deltaSConfig) }
+        let y = cleanPairs.map { abs($0.deltaHHRV) }
 
         let r = pearsonCorrelation(x, y)
+        let p = Self.computePValue(r: r, n: cleanPairs.count)
         let regression = linearRegression(x: x, y: y)
 
         return ValidationResult(
-            observations: pairs,
+            observations: cleanPairs,
             pearsonR: r,
+            pValue: p,
             meanAbsError: regression.mae,
             regressionSlope: regression.slope,
             regressionIntercept: regression.intercept
@@ -419,20 +442,33 @@ public struct CrossDomainValidator: Sendable {
     }
 
     /// Pearson correlation coefficient between two arrays.
+    /// Filters out non-finite values before computation.
     private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        let n = Double(x.count)
-        guard n >= 2, x.count == y.count else { return 0 }
+        guard x.count >= 2, x.count == y.count else { return 0 }
 
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
+        // Filter pairs where both values are finite
+        var cleanX: [Double] = []
+        var cleanY: [Double] = []
+        for i in 0..<x.count {
+            if x[i].isFinite && y[i].isFinite {
+                cleanX.append(x[i])
+                cleanY.append(y[i])
+            }
+        }
+
+        let n = Double(cleanX.count)
+        guard n >= 2 else { return 0 }
+
+        let meanX = cleanX.reduce(0, +) / n
+        let meanY = cleanY.reduce(0, +) / n
 
         var sumXY = 0.0
         var sumX2 = 0.0
         var sumY2 = 0.0
 
-        for i in 0..<x.count {
-            let dx = x[i] - meanX
-            let dy = y[i] - meanY
+        for i in 0..<cleanX.count {
+            let dx = cleanX[i] - meanX
+            let dy = cleanY[i] - meanY
             sumXY += dx * dy
             sumX2 += dx * dx
             sumY2 += dy * dy
@@ -473,5 +509,86 @@ public struct CrossDomainValidator: Sendable {
         let mae = totalError / n
 
         return (slope: slope, intercept: intercept, mae: mae)
+    }
+
+    // MARK: - Statistical Significance
+
+    /// Compute two-tailed p-value for Pearson r using the t-distribution.
+    ///
+    /// t = r × √(n-2) / √(1-r²), df = n-2.
+    /// p-value computed via the regularized incomplete beta function.
+    static func computePValue(r: Double, n: Int) -> Double {
+        guard n > 2 else { return 1.0 }
+        let absR = abs(r)
+        guard absR < 1.0 else { return absR >= 1.0 ? 0.0 : 1.0 }
+
+        let df = Double(n - 2)
+        let t = absR * sqrt(df) / sqrt(1.0 - absR * absR)
+
+        // Two-tailed p = 2 × (1 - CDF_t(|t|, df))
+        // Using the relationship: CDF_t(t, df) = 1 - 0.5 × I_{df/(df+t²)}(df/2, 1/2)
+        let x = df / (df + t * t)
+        let ibeta = regularizedIncompleteBeta(x: x, a: df / 2.0, b: 0.5)
+        return ibeta  // This is already the two-tailed p-value
+    }
+
+    /// Regularized incomplete beta function I_x(a, b) using Lentz's continued fraction.
+    ///
+    /// This is a standard numerical method (Numerical Recipes, Press et al.)
+    /// for computing the cumulative distribution function of the beta distribution.
+    /// Used here to convert t-statistics to p-values without external dependencies.
+    private static func regularizedIncompleteBeta(x: Double, a: Double, b: Double) -> Double {
+        guard x > 0 else { return 0.0 }
+        guard x < 1 else { return 1.0 }
+
+        // Use the symmetry relation if x > (a+1)/(a+b+2) for better convergence
+        if x > (a + 1.0) / (a + b + 2.0) {
+            return 1.0 - regularizedIncompleteBeta(x: 1.0 - x, a: b, b: a)
+        }
+
+        // Log of the beta function prefactor: x^a (1-x)^b / (a B(a,b))
+        let lnPrefactor = a * log(x) + b * log(1.0 - x)
+            - log(a)
+            - lnBeta(a: a, b: b)
+
+        let prefactor = exp(lnPrefactor)
+
+        // Lentz's continued fraction for I_x(a, b)
+        let maxIterations = 200
+        let epsilon = 1.0e-10
+        let tiny = 1.0e-30
+
+        var c = 1.0
+        var d = 1.0 / max(tiny, 1.0 - (a + b) * x / (a + 1.0))
+        var h = d
+
+        for m in 1...maxIterations {
+            let dm = Double(m)
+
+            // Even step: a_{2m}
+            var numerator = dm * (b - dm) * x / ((a + 2.0 * dm - 1.0) * (a + 2.0 * dm))
+            d = 1.0 / max(tiny, 1.0 + numerator * d)
+            c = max(tiny, 1.0 + numerator / c)
+            h *= d * c
+
+            // Odd step: a_{2m+1}
+            numerator = -(a + dm) * (a + b + dm) * x / ((a + 2.0 * dm) * (a + 2.0 * dm + 1.0))
+            d = 1.0 / max(tiny, 1.0 + numerator * d)
+            c = max(tiny, 1.0 + numerator / c)
+            let delta = d * c
+            h *= delta
+
+            if abs(delta - 1.0) < epsilon {
+                break
+            }
+        }
+
+        return prefactor * h
+    }
+
+    /// Log of the beta function: ln B(a, b) = ln Γ(a) + ln Γ(b) - ln Γ(a+b).
+    /// Uses the Lanczos approximation for ln Γ.
+    private static func lnBeta(a: Double, b: Double) -> Double {
+        return lgamma(a) + lgamma(b) - lgamma(a + b)
     }
 }

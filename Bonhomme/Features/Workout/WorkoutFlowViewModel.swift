@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import ActivityKit
 import BonhommeCore
 
 /// State machine driving the guided pose-by-pose workout experience.
@@ -27,10 +28,8 @@ final class WorkoutFlowViewModel {
 
     let plan: WorkoutPlan
     let recorder = WorkoutRecorder()
-    let feedbackEngine = FeedbackEngine()
+    let feedbackEngine: FeedbackEngine
     let musicService = MusicService()
-    private let hrvAnalyzer = HRVAnalyzer()
-    private let medicationAnalyzer = MedicationAnalyzer()
     private let stateStore = WorkoutStateStore()
 
     /// Tracks whether this session was restored from a killed app.
@@ -58,25 +57,25 @@ final class WorkoutFlowViewModel {
     private var sessionStartDate: Date?
     private var persistenceCounter: Int = 0
     private var lastMusicAdaptation: Date = .distantPast
+    private var liveActivity: Activity<WorkoutActivityAttributes>?
 
-    init(plan: WorkoutPlan) {
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
         self.plan = plan
-        feedbackEngine.register(hrvAnalyzer)
-        feedbackEngine.register(medicationAnalyzer)
+        self.feedbackEngine = feedbackEngine
     }
 
     // MARK: - State Restoration
 
     /// Attempt to restore a killed-app workout session.
     /// Returns a configured ViewModel if recoverable state exists, nil otherwise.
-    static func restoreIfAvailable() -> WorkoutFlowViewModel? {
+    static func restoreIfAvailable(feedbackEngine: FeedbackEngine = FeedbackEngine()) -> WorkoutFlowViewModel? {
         let store = WorkoutStateStore()
         guard let persisted = store.load(),
               let plan = persisted.resolvePlan() else {
             return nil
         }
 
-        let vm = WorkoutFlowViewModel(plan: plan)
+        let vm = WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine)
         vm.isRestoredSession = true
         vm.sessionStartDate = persisted.sessionStartDate
         vm.elapsedTime = persisted.elapsedTime
@@ -180,7 +179,7 @@ final class WorkoutFlowViewModel {
 
     func resume() {
         recorder.resume()
-        Task { await musicService.playWorkoutMusic(mood: musicService.adaptiveMood) }
+        Task { await musicService.playWorkoutMusic(mood: musicService.adaptiveMood, style: plan.style) }
         if case .active(let idx) = phase {
             startPoseTimer(for: idx)
         }
@@ -191,8 +190,11 @@ final class WorkoutFlowViewModel {
         phase = .complete
         stateStore.clear()
         musicService.stop()
+        endLiveActivity()
         Task {
-            try? await recorder.end()
+            let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
+            let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
+            try? await recorder.end(metadata: metadata)
         }
     }
 
@@ -245,8 +247,87 @@ final class WorkoutFlowViewModel {
             activeCalories: recorder.activeCalories,
             averageHeartRate: recorder.averageHeartRate,
             maxHeartRate: recorder.heartRateSamples.map(\.bpm).max(),
-            heartRateSamples: recorder.heartRateSamples
+            heartRateSamples: recorder.heartRateSamples,
+            yogaStyle: plan.style,
+            yogaStyleName: plan.style.localizedName.localized
         )
+    }
+
+    /// Builds metadata for enriching the HKWorkout record.
+    func buildWorkoutMetadata(sciScore: Double?) -> WorkoutMetadata {
+        WorkoutMetadata(
+            planId: plan.id,
+            planName: plan.name.localized,
+            styleName: plan.style.localizedName.localized,
+            sciScore: sciScore
+        )
+    }
+
+    // MARK: - Live Activity
+
+    private func startLiveActivity() {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        let attributes = WorkoutActivityAttributes(
+            planName: plan.name.localized,
+            styleName: plan.style.localizedName.localized,
+            styleSymbol: plan.style.symbolName,
+            totalPoses: plan.poseCount,
+            accentHue: plan.style.accentHue
+        )
+
+        let initialState = WorkoutActivityAttributes.ContentState(
+            currentPoseName: plan.poses.first?.name.localized ?? "",
+            poseIndex: 0,
+            poseTimeRemaining: Int(plan.poses.first?.durationSeconds ?? 0),
+            elapsedTime: 0,
+            heartRate: nil,
+            calories: 0
+        )
+
+        do {
+            liveActivity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: initialState, staleDate: nil)
+            )
+        } catch {
+            // Live Activity not available; continue without it
+        }
+    }
+
+    private func updateLiveActivity() {
+        guard let liveActivity else { return }
+
+        let state = WorkoutActivityAttributes.ContentState(
+            currentPoseName: currentPose?.name.localized ?? "",
+            poseIndex: currentPoseIndex,
+            poseTimeRemaining: Int(poseTimeRemaining),
+            elapsedTime: elapsedTime,
+            heartRate: recorder.currentHeartRate.map { Int($0) },
+            calories: Int(recorder.activeCalories)
+        )
+
+        Task {
+            await liveActivity.update(.init(state: state, staleDate: nil))
+        }
+    }
+
+    private func endLiveActivity() {
+        guard let liveActivity else { return }
+
+        let finalState = WorkoutActivityAttributes.ContentState(
+            currentPoseName: "Complete",
+            poseIndex: plan.poseCount - 1,
+            poseTimeRemaining: 0,
+            elapsedTime: elapsedTime,
+            heartRate: recorder.currentHeartRate.map { Int($0) },
+            calories: Int(recorder.activeCalories)
+        )
+
+        Task {
+            await liveActivity.end(.init(state: finalState, staleDate: nil), dismissalPolicy: .after(.now + 10))
+        }
+        self.liveActivity = nil
     }
 
     // MARK: - Timer Logic
@@ -260,12 +341,15 @@ final class WorkoutFlowViewModel {
                 guard !Task.isCancelled else { return }
             }
 
-            // Start HealthKit recording
-            try? await recorder.start()
+            // Start HealthKit recording with style-aware activity type
+            try? await recorder.start(style: plan.style)
 
-            // Start adaptive music
+            // Start adaptive music with style-aware playlists
             await musicService.requestAuthorization()
-            await musicService.playWorkoutMusic(mood: .calm)
+            await musicService.playWorkoutMusic(mood: .calm, style: plan.style)
+
+            // Start Live Activity for Dynamic Island
+            startLiveActivity()
 
             // Begin first pose
             beginPose(at: 0)
@@ -295,6 +379,9 @@ final class WorkoutFlowViewModel {
                 if let start = sessionStartDate {
                     elapsedTime = Date().timeIntervalSince(start)
                 }
+
+                // Update Live Activity every tick
+                updateLiveActivity()
 
                 // Periodic state persistence (every 5 seconds)
                 persistenceCounter += 1
@@ -333,8 +420,14 @@ final class WorkoutFlowViewModel {
         timerTask = Task {
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
-            try? await recorder.end()
+
+            // Build metadata with latest SCI score for HKWorkout enrichment
+            let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
+            let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
+            try? await recorder.end(metadata: metadata)
+
             musicService.stop()
+            endLiveActivity()
             stateStore.clear()
             phase = .complete
         }
@@ -349,7 +442,7 @@ final class WorkoutFlowViewModel {
         guard now.timeIntervalSince(lastMusicAdaptation) >= 30 else { return }
 
         let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
-        await musicService.adaptToSCI(score: insight?.score, trend: insight?.trend ?? .stable)
+        await musicService.adaptToSCI(score: insight?.score, trend: insight?.trend ?? .stable, style: plan.style)
         lastMusicAdaptation = now
     }
 }

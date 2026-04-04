@@ -19,6 +19,7 @@ final class WorkoutRecord {
     var averageHeartRate: Double?
     var maxHeartRate: Double?
     var sciScore: Double?
+    var yogaStyleRaw: String?
 
     init(
         planId: String,
@@ -31,7 +32,8 @@ final class WorkoutRecord {
         activeCalories: Double,
         averageHeartRate: Double?,
         maxHeartRate: Double?,
-        sciScore: Double?
+        sciScore: Double?,
+        yogaStyleRaw: String? = nil
     ) {
         self.planId = planId
         self.planName = planName
@@ -44,6 +46,7 @@ final class WorkoutRecord {
         self.averageHeartRate = averageHeartRate
         self.maxHeartRate = maxHeartRate
         self.sciScore = sciScore
+        self.yogaStyleRaw = yogaStyleRaw
     }
 
     /// Creates a WorkoutRecord from a WorkoutResult and optional final SCI score.
@@ -59,8 +62,15 @@ final class WorkoutRecord {
             activeCalories: result.activeCalories,
             averageHeartRate: result.averageHeartRate,
             maxHeartRate: result.maxHeartRate,
-            sciScore: sciScore
+            sciScore: sciScore,
+            yogaStyleRaw: result.yogaStyle.rawValue
         )
+    }
+
+    /// Resolved YogaStyle from the persisted raw string.
+    var yogaStyle: YogaStyle? {
+        guard let raw = yogaStyleRaw else { return nil }
+        return YogaStyle(rawValue: raw)
     }
 
     /// Formatted duration string (e.g., "12m 30s").
@@ -231,6 +241,70 @@ final class MedicationSchedule {
     }
 }
 
+// MARK: - Drug Response Record
+
+/// Persisted result from DrugResponseAnalyzer analysis around a medication dose event.
+/// Stores the key metrics for historical trend tracking and dose-response curves.
+@Model
+final class DrugResponseRecord {
+    var medicationId: String
+    var medicationName: String
+    var doseValue: Double
+    var doseUnit: String
+    var doseTimestamp: Date
+    var baselineEntropy: Double
+    var peakDeltaH: Double
+    var peakTimeMinutes: Double
+    /// ResponseDirection raw value (CloudKit requires primitive types).
+    var responseDirection: String
+    var effectSize: Double
+    var deltaHAUC: Double
+    var bindingDetected: Bool
+    var profileMatchId: String?
+    var profileMatchConfidence: Double?
+    var analysisDate: Date
+
+    init(
+        medicationId: String,
+        medicationName: String,
+        doseValue: Double,
+        doseUnit: String,
+        doseTimestamp: Date,
+        baselineEntropy: Double,
+        peakDeltaH: Double,
+        peakTimeMinutes: Double,
+        responseDirection: String,
+        effectSize: Double,
+        deltaHAUC: Double,
+        bindingDetected: Bool,
+        profileMatchId: String? = nil,
+        profileMatchConfidence: Double? = nil,
+        analysisDate: Date = Date()
+    ) {
+        self.medicationId = medicationId
+        self.medicationName = medicationName
+        self.doseValue = doseValue
+        self.doseUnit = doseUnit
+        self.doseTimestamp = doseTimestamp
+        self.baselineEntropy = baselineEntropy
+        self.peakDeltaH = peakDeltaH
+        self.peakTimeMinutes = peakTimeMinutes
+        self.responseDirection = responseDirection
+        self.effectSize = effectSize
+        self.deltaHAUC = deltaHAUC
+        self.bindingDetected = bindingDetected
+        self.profileMatchId = profileMatchId
+        self.profileMatchConfidence = profileMatchConfidence
+        self.analysisDate = analysisDate
+    }
+
+    /// Human-readable ΔH string with direction indicator.
+    var formattedDeltaH: String {
+        let arrow = peakDeltaH < 0 ? "↓" : (peakDeltaH > 0 ? "↑" : "→")
+        return String(format: "%+.2f bits %@", peakDeltaH, arrow)
+    }
+}
+
 // MARK: - Model Container Configuration
 
 /// Creates the shared ModelContainer with CloudKit sync for the NATURaL app.
@@ -242,6 +316,7 @@ enum PersistenceConfiguration {
             UserPreferences.self,
             SessionStreak.self,
             MedicationSchedule.self,
+            DrugResponseRecord.self,
         ])
 
         let config = ModelConfiguration(

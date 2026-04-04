@@ -277,6 +277,12 @@ public struct ProfileMatchResult: Sendable {
 
 /// Aggregate statistics from multiple dose-response analyses.
 public struct DrugResponseAggregate: Sendable {
+    /// Medication identifier.
+    public let medicationId: String
+
+    /// Medication display name.
+    public let medicationName: String
+
     /// Number of dose events analyzed.
     public let n: Int
 
@@ -298,11 +304,34 @@ public struct DrugResponseAggregate: Sendable {
     /// Mean ΔH AUC (bits·minutes).
     public let meanAUC: Double
 
+    public init(
+        medicationId: String = "",
+        medicationName: String = "",
+        n: Int,
+        meanDeltaH: Double,
+        sdDeltaH: Double,
+        meanPeakTime: Double,
+        meanEffectSize: Double,
+        detectionRate: Double,
+        meanAUC: Double
+    ) {
+        self.medicationId = medicationId
+        self.medicationName = medicationName
+        self.n = n
+        self.meanDeltaH = meanDeltaH
+        self.sdDeltaH = sdDeltaH
+        self.meanPeakTime = meanPeakTime
+        self.meanEffectSize = meanEffectSize
+        self.detectionRate = detectionRate
+        self.meanAUC = meanAUC
+    }
+
     /// Cohen's d effect size: |mean(ΔH)| / SD(ΔH).
     /// Measures how reliably the drug produces an entropy shift.
+    /// Capped at 10.0 (values above this are not meaningfully interpretable).
     public var cohensD: Double {
-        guard sdDeltaH > 0 else { return abs(meanDeltaH) > 0 ? .infinity : 0 }
-        return abs(meanDeltaH) / sdDeltaH
+        guard sdDeltaH > 0 else { return abs(meanDeltaH) > 0 ? AnalysisConfiguration.default.maxCohensD : 0 }
+        return min(AnalysisConfiguration.default.maxCohensD, abs(meanDeltaH) / sdDeltaH)
     }
 
     /// Bilingual summary.
@@ -354,6 +383,10 @@ public struct DrugResponseAnalyzer: Sendable {
     /// Minimum |ΔH| in bits to consider a drug response detected.
     /// Calibrated against resting HRV noise floor (~0.3 bits intra-session variation).
     /// Exceeding this threshold with p < 0.05 requires |ΔH| > 2σ of resting noise.
+    /// Set to 0.4 bits — slightly below FlexAIDdSAnalyzer's 0.5-bit threshold because
+    /// physiological RR-interval measurements have a higher noise floor (~0.3 bits from
+    /// measurement artifacts) than molecular torsional distributions, requiring a lower
+    /// detection threshold to capture genuine drug responses.
     public static let significanceThreshold: Double = 0.4
 
     /// Width of each measurement window in seconds.
@@ -537,6 +570,8 @@ public struct DrugResponseAnalyzer: Sendable {
         let meanAUC = aucs.reduce(0, +) / Double(n)
 
         return DrugResponseAggregate(
+            medicationId: results.first?.doseEvent.medicationId ?? "",
+            medicationName: results.first?.doseEvent.name.en ?? "",
             n: n,
             meanDeltaH: meanDelta,
             sdDeltaH: sqrt(variance),
@@ -672,20 +707,33 @@ public struct DrugResponseAnalyzer: Sendable {
     // MARK: - Statistics Helpers
 
     /// Pearson correlation coefficient between two arrays.
+    /// Filters out non-finite value pairs before computation.
     private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        let n = Double(x.count)
-        guard n >= 2, x.count == y.count else { return 0 }
+        guard x.count >= 2, x.count == y.count else { return 0 }
 
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
+        // Filter pairs where both values are finite
+        var cleanX: [Double] = []
+        var cleanY: [Double] = []
+        for i in 0..<x.count {
+            if x[i].isFinite && y[i].isFinite {
+                cleanX.append(x[i])
+                cleanY.append(y[i])
+            }
+        }
+
+        let n = Double(cleanX.count)
+        guard n >= 2 else { return 0 }
+
+        let meanX = cleanX.reduce(0, +) / n
+        let meanY = cleanY.reduce(0, +) / n
 
         var sumXY = 0.0
         var sumX2 = 0.0
         var sumY2 = 0.0
 
-        for i in 0..<x.count {
-            let dx = x[i] - meanX
-            let dy = y[i] - meanY
+        for i in 0..<cleanX.count {
+            let dx = cleanX[i] - meanX
+            let dy = cleanY[i] - meanY
             sumXY += dx * dy
             sumX2 += dx * dx
             sumY2 += dy * dy

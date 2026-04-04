@@ -100,9 +100,7 @@ public struct PharmacokineticProfile: Sendable {
     /// Computed via: ΔS_bits = -penalty / (T × R × ln(2)) at 298K.
     public var bindingEntropySBits: Double? {
         guard let kcal = bindingEntropyKcal else { return nil }
-        let R: Double = 1.987e-3  // kcal/(mol·K)
-        let T: Double = 298.0
-        return -kcal / (T * R * log(2.0))
+        return ThermodynamicConstants.kcalToDeltaSBits(penaltyKcal: kcal)
     }
 
     /// Analysis windows (minutes post-dose) for entropy measurement.
@@ -2426,9 +2424,14 @@ extension PharmacokineticProfile {
         .psilocin, .mda, .muscimol, .ephedrine, .mitragynine, .cbd, .harmine,
     ]
 
+    /// Cached dictionary for O(1) lookup by substance ID.
+    private static let profileIndex: [String: PharmacokineticProfile] = {
+        Dictionary(uniqueKeysWithValues: knownProfiles.map { ($0.substanceId, $0) })
+    }()
+
     /// Look up a profile by substance ID (case-insensitive).
     public static func profile(for substanceId: String) -> PharmacokineticProfile? {
-        knownProfiles.first { $0.substanceId == substanceId.lowercased() }
+        profileIndex[substanceId.lowercased()]
     }
 
     /// Look up profiles by therapeutic class.
@@ -2452,7 +2455,6 @@ extension PharmacokineticProfile {
     }
 
     /// Profiles with characterized binding entropy (for FlexAID∆S cross-domain validation).
-    public static var profilesWithBindingEntropy: [PharmacokineticProfile] {
+    public static let profilesWithBindingEntropy: [PharmacokineticProfile] =
         knownProfiles.filter { $0.bindingEntropyKcal != nil }
-    }
 }

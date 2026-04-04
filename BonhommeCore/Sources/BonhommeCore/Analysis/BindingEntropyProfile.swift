@@ -816,13 +816,17 @@ extension BindingEntropyProfile {
         ),
     ]
 
+    /// Cached dictionary for O(1) lookup by substance ID.
+    private static let profileIndex: [String: BindingEntropyProfile] = {
+        Dictionary(uniqueKeysWithValues: knownProfiles.map { ($0.substanceId, $0) })
+    }()
+
     /// Look up a binding entropy profile by substance ID (case-insensitive).
     public static func profile(for substanceId: String) -> BindingEntropyProfile? {
-        knownProfiles.first { $0.substanceId == substanceId.lowercased() }
+        profileIndex[substanceId.lowercased()]
     }
 
     /// All substance IDs with known binding entropy data.
-    public static var knownSubstanceIds: Set<String> {
+    public static let knownSubstanceIds: Set<String> =
         Set(knownProfiles.map(\.substanceId))
-    }
 }

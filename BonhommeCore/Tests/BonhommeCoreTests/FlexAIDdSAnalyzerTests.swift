@@ -296,6 +296,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
     // MARK: - Cross-Domain Validation
 
     /// Validate correlation between ΔS_config and ΔH_hrv using synthetic data.
+    /// Uses 5 paired substances (raised minimum from 3 to 5 for statistical rigor).
     func testCrossDomainCorrelation() {
         let validator = CrossDomainValidator()
 
@@ -318,6 +319,17 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
                     BondEntropyResult(bondId: "b3", freeEntropy: 4.0, boundEntropy: 0.5),
                 ],
                 dockingScore: -10.0),
+            FlexAIDdSResult(substanceId: "drug_d", receptorId: "1ABC",
+                bondResults: [BondEntropyResult(bondId: "b1", freeEntropy: 4.0, boundEntropy: 2.5)],
+                dockingScore: -6.0),
+            FlexAIDdSResult(substanceId: "drug_e", receptorId: "1ABC",
+                bondResults: [
+                    BondEntropyResult(bondId: "b1", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b2", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b3", freeEntropy: 4.0, boundEntropy: 0.5),
+                    BondEntropyResult(bondId: "b4", freeEntropy: 4.0, boundEntropy: 0.5),
+                ],
+                dockingScore: -12.0),
         ]
 
         // DrugResponseResults with proportional ΔH_hrv
@@ -341,6 +353,18 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
                 measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 1.0, deltaH: -3.0, rrCount: 50, coherenceScore: 0.8)],
                 peakDeltaH: -3.0, peakTimeMinutes: 60, profileMatch: nil
             ),
+            DrugResponseResult(
+                doseEvent: DoseEventSummary(medicationId: "drug_d", name: "Drug D", doseValue: 10, doseUnit: "mg", timestamp: now),
+                baselineEntropy: 4.0, baselineRRCount: 100,
+                measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 3.5, deltaH: -0.5, rrCount: 50, coherenceScore: 0.5)],
+                peakDeltaH: -0.5, peakTimeMinutes: 60, profileMatch: nil
+            ),
+            DrugResponseResult(
+                doseEvent: DoseEventSummary(medicationId: "drug_e", name: "Drug E", doseValue: 10, doseUnit: "mg", timestamp: now),
+                baselineEntropy: 4.0, baselineRRCount: 100,
+                measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: 0.0, deltaH: -4.5, rrCount: 50, coherenceScore: 0.9)],
+                peakDeltaH: -4.5, peakTimeMinutes: 60, profileMatch: nil
+            ),
         ]
 
         let result = validator.validate(dockingResults: dockingResults, drugResponseResults: drugResults)
@@ -348,10 +372,12 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         XCTAssertNotNil(result)
         guard let v = result else { return }
 
-        XCTAssertEqual(v.n, 3)
+        XCTAssertEqual(v.n, 5)
         XCTAssertGreaterThan(v.pearsonR, 0.9,
             "Proportional ΔS/ΔH should produce r > 0.9")
         XCTAssertGreaterThan(v.rSquared, 0.8)
+        XCTAssertLessThan(v.pValue, 0.05,
+            "Strong correlation with n=5 should be significant")
     }
 
     /// Validate from known BindingEntropyProfile values.
@@ -386,7 +412,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         }
     }
 
-    /// Insufficient pairs (< 3) should return nil.
+    /// Insufficient pairs (< 5, default minimum) should return nil.
     func testCrossDomainInsufficientPairsReturnsNil() {
         let validator = CrossDomainValidator()
 
@@ -406,7 +432,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
             ]
         )
 
-        XCTAssertNil(result, "< 3 paired substances should return nil")
+        XCTAssertNil(result, "< 5 paired substances should return nil (minimum raised for statistical rigor)")
     }
 
     // MARK: - BindingEntropyProfile Registry
@@ -681,5 +707,43 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
 
         // Amphetamine should be in the list
         XCTAssertTrue(profiles.contains { $0.substanceId == "amphetamine" })
+    }
+
+    // MARK: - Circular Entropy for Torsional Angles
+
+    /// Verify that FlexAIDdSAnalyzer now uses circular entropy for torsional angles.
+    /// Angles near ±180° should be recognized as constrained (low entropy),
+    /// not mistakenly reported as high-entropy by linear binning.
+    func testCircularEntropyUsedForAngles() {
+        let analyzer = FlexAIDdSAnalyzer()
+
+        // Free state: broad distribution centered at 0° (wide, high entropy)
+        let freeBond = TorsionalAngleDistribution(
+            bondId: "b1",
+            angles: (0..<200).map { i in -170.0 + 340.0 * Double(i) / 199.0 }
+        )
+
+        // Bound state: constrained near the ±180° boundary
+        // These angles are clustered within ~4° on the circle
+        let boundAngles = (0..<200).map { i -> Double in
+            if i < 100 { return 178.0 + Double(i % 4) * 0.5 }
+            else { return -178.0 - Double(i % 4) * 0.5 }
+        }
+        let boundBond = TorsionalAngleDistribution(bondId: "b1", angles: boundAngles)
+
+        let freeConf = LigandConformation(substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"), bonds: [freeBond])
+        let boundConf = LigandConformation(substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"), bonds: [boundBond])
+        let pose = DockingPose(boundConformation: boundConf, receptorId: "1ABC", dockingScore: -8.0)
+
+        guard let result = analyzer.analyze(freeConformation: freeConf, dockingPose: pose) else {
+            XCTFail("Analysis should produce a result")
+            return
+        }
+
+        // ΔS should be strongly negative (bound is constrained → entropy collapsed)
+        XCTAssertLessThan(result.totalDeltaSConfig, -1.0,
+            "Angles constrained near ±180° should show entropy collapse with circular binning")
+        XCTAssertTrue(result.bindingDetected,
+            "Strong entropy collapse should be detected as binding")
     }
 }

@@ -1,10 +1,12 @@
 import Foundation
 
-/// Built-in chair yoga pose library with bilingual content (EN / FR-CA).
-/// Poses are refined for accuracy, safety, and accessibility.
+/// Central pose and workout plan registry aggregating all yoga styles.
+///
+/// Each style contributes its poses and plans via extensions in dedicated files
+/// (PoseCatalog+ChairYoga.swift, PoseCatalog+Vinyasa.swift, etc.).
 public enum PoseCatalog {
 
-    // MARK: - Beginner Poses (Free)
+    // MARK: - Aggregated Collections
 
     public static let seatedMountain = Pose(
         id: "seated-mountain",
@@ -2369,12 +2371,8 @@ public enum PoseCatalog {
         isFree: false
     )
 
-    public static let allPlans: [WorkoutPlan] = [
-        beginnerFlow,
-        deskBreak,
-        morningWakeUp,
-        hipOpener,
-        fullBody,
-        advancedFlow,
-    ]
+    /// Number of plans for a given style.
+    public static func planCount(for style: YogaStyle) -> Int {
+        plans(for: style).count
+    }
 }
