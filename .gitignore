@@ -1,0 +1,61 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods (if ever added)
+Pods/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code coverage
+*.gcda
+*.gcno
+*.gcov
+codecov/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Secrets and credentials
+*.p12
+*.mobileprovision
+*.cer
+.env
+.env.*
+
+# Archives and distributions
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.app
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+/tmp/

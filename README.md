@@ -8,9 +8,10 @@
 ![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20iPadOS%20|%20watchOS%20|%20tvOS%20|%20visionOS-blue)
 ![iOS](https://img.shields.io/badge/iOS-17%2B-green)
 ![watchOS](https://img.shields.io/badge/watchOS-10%2B-green)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
-> 26 bilingual poses (EN / FR-CA) | 6 guided workout plans | Real-time biofeedback | CareKit clinical integration | CloudKit sync | Zero external dependencies
+> 26 bilingual poses (EN / FR-CA) | 6 guided workout plans | Real-time biofeedback | CareKit clinical integration | CloudKit sync | PokeDrug pharmacology framework | Zero external dependencies
 
 ---
 
@@ -152,6 +153,31 @@ On-device insight generation via the FoundationModels framework:
                                        └──────────────────┘
 ```
 
+### PokeDrug Pharmacology Framework
+
+A comprehensive pharmacology classification system mapping real-world psychoactive compounds to a structured, game-inspired data model:
+
+- **30 species** across 13 molecular scaffolds and 12 pharmacological target types
+- **6 base stats** per species derived from published Ki values, therapeutic indices, and clinical PK data
+- **Type matchup chart** encoding scaffold-to-target effectiveness from crystal structure data (Roth/Kobilka labs)
+- **7 natural habitats** mapping species to biome origins
+- **Evolution chains** modeling biosynthetic pathways between related compounds
+- **Super-clusters** grouping types into pharmacological families
+- **9-language localization** for all names, descriptions, and flavor text
+
+#### Analysis Modules
+
+| Module | Purpose |
+|--------|---------|
+| `PolypharmacologyAnalyzer` | Cross-reactivity analysis, synergy pair discovery, polypharmacy risk scoring |
+| `PokeDrugStatComparator` | Head-to-head comparison, ranking, radar profiles, archetype classification |
+| `LigandEfficiencyCalculator` | LE, LLE, LELP, BEI, SEI metrics for medicinal chemistry |
+| `SelectivityEntropyAnalyzer` | Receptor selectivity quantified via Shannon entropy |
+| `PopulationPKAnalyzer` | Population pharmacokinetics with inter-individual variability |
+| `ThermodynamicBindingProfile` | Enthalpy-entropy decomposition of binding free energy |
+| `EnthalpyEntropyCompensation` | Compensation analysis across compound series |
+| `FlexAIDdSAnalyzer` | Cross-domain validation with FlexAID entropy scoring |
+
 ### Platform Integration
 
 | Feature | Framework | Platform |
@@ -258,13 +284,29 @@ BonhommeCore/
     │   ├── TVDisplayPayload.swift    # Codable message: iPhone → TV surface
     │   ├── BiofeedbackSnapshot.swift # HR, HRV, SCI, calories + multi-signal insights
     │   └── WorkoutResult.swift       # Post-session summary with HR samples
-    ├── Analysis/
+    ├── Analysis/                        # 29 modules — biofeedback + pharmacology
     │   ├── EntropyCalculator.swift   # Shared Shannon entropy utility (reusable)
     │   ├── HealthSignal.swift        # Protocol + HRVSignal, MedicationSignal, SurveySignal
     │   ├── SignalAnalyzer.swift      # Protocol + AnalysisInsight, AnalysisContext
     │   ├── HRVAnalyzer.swift         # Shannon Collapse Index from R-R intervals
     │   ├── MedicationAnalyzer.swift  # Adherence scoring with HRV correlation
-    │   └── FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
+    │   ├── FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
+    │   ├── PharmacokineticProfile.swift  # PK data catalog (onset, tmax, t1/2, mechanism)
+    │   ├── BindingEntropyProfile.swift   # Conformational entropy data
+    │   ├── PokeDrugType.swift        # 12 pharmacological target types
+    │   ├── PokeDrugSpecies.swift     # 30-species Pokedex with localized flavor text
+    │   ├── PokeDrugStats.swift       # 6 base stats derived from Ki, TI, selectivity
+    │   ├── MolecularScaffold.swift   # 13 structural scaffolds with type affinities
+    │   ├── PokeDrugMatchup.swift     # Type effectiveness chart (scaffold vs. target)
+    │   ├── PokeDrugHabitat.swift     # 7 natural habitats with scaffold associations
+    │   ├── PokeDrugEvolution.swift   # Evolution chains (biosynthetic pathways)
+    │   ├── PokeDrugSuperaCluster.swift   # Meta-grouping of types into families
+    │   ├── PolypharmacologyAnalyzer.swift # Cross-reactivity and drug interaction analysis
+    │   ├── PokeDrugStatComparator.swift  # Stat comparison, ranking, and similarity
+    │   ├── LigandEfficiencyCalculator.swift  # LE, LLE, LELP metrics
+    │   ├── SelectivityEntropyAnalyzer.swift  # Receptor selectivity entropy
+    │   ├── PopulationPKAnalyzer.swift    # Population pharmacokinetics
+    │   └── ...                       # + 8 more thermodynamic/validation modules
     └── TVDisplay/
         ├── TVDisplayView.swift       # Shared layout: 60% pose + 40% biofeedback
         ├── PoseCountdownView.swift   # Circular countdown timer with category color
@@ -312,8 +354,8 @@ NATURaL/
 │   ├── TVRelay/                     # Coordinator, AirPlay, native companion
 │   └── Shared/Components/           # Activity rings, reusable views
 ├── BonhommeCore/                    # Shared Swift Package (all platforms)
-│   ├── Sources/BonhommeCore/        # Models + Analysis + TV display views
-│   └── Tests/BonhommeCoreTests/     # Unit tests (entropy, analyzers, codable)
+│   ├── Sources/BonhommeCore/        # Models + Analysis (29 modules) + TV display views
+│   └── Tests/BonhommeCoreTests/     # 19 test suites (pharmacology, entropy, codable)
 ├── BonhommeTV/                      # tvOS companion app
 │   ├── App/                         # @main entry
 │   ├── Networking/                  # NWListener Bonjour service
@@ -325,7 +367,8 @@ NATURaL/
 │   └── App/                         # VisionApp, SpatialPoseView, ImmersivePoseSpace,
 │                                    # SpatialBiofeedbackView (ornament gauges)
 ├── NATURaLLiveActivity/             # ActivityKit Dynamic Island
-├── NATURaLWidgets/                  # Streak + Activity Rings widgets
+├── NATURaLWidgets/                  # Streak + Activity Rings widgets (WidgetBundle)
+├── .github/workflows/               # CI/CD (build + test on push/PR)
 └── Tests/
     ├── BonhommeTests/               # iOS app unit tests
     └── BonhommeUITests/             # Xcode UI test suites
@@ -355,7 +398,7 @@ git clone https://github.com/lmorency/NATURaL.git
 cd NATURaL
 
 # Open in Xcode
-open Bonhomme.xcodeproj    # or .xcworkspace
+open NATURaL.xcodeproj
 
 # Select scheme → Bonhomme, destination → iPhone 15 Pro
 # ⌘R to build and run
@@ -397,19 +440,29 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 
 ### Test Coverage
 
-| Suite | Tests | Scope |
-|-------|-------|-------|
-| `LocalizedStringTests` | 5 | Codable, hashable, EN/FR resolution |
-| `PoseTests` | 5 | Init, codable, difficulty/category enums |
-| `PoseCatalogTests` | 10 | Unique IDs, bilingual coverage, distribution |
-| `WorkoutPlanTests` | 4 | Duration calc, codable, edge cases |
-| `TVDisplayPayloadTests` | 4 | Codable roundtrip, nil biofeedback, SCI trend |
-| `WorkoutResultTests` | 3 | Result codable, nil heart rate |
-| `AnalyzerTests` | 17 | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal, EntropyCalculator edge cases + parity |
-| `WorkoutFlowViewModelTests` | 3 | Plan structure, TV payload, localization |
-| `TVDisplayCoordinatorTests` | 3 | Payload size <10KB, framing, Bonjour type |
-| `WorkoutFlowUITests` | 5 | Home screen, navigation, countdown, a11y |
-| `AirPlayFallbackUITests` | 3 | TV section, connection prompt, stability |
+**19 test suites** across BonhommeCore, iOS app, and UI tests:
+
+| Suite | Scope |
+|-------|-------|
+| `LocalizedStringTests` | Codable, hashable, EN/FR resolution |
+| `PoseTests` | Init, codable, difficulty/category enums |
+| `PoseCatalogTests` | Unique IDs, bilingual coverage, distribution |
+| `WorkoutPlanTests` | Duration calc, codable, edge cases |
+| `TVDisplayPayloadTests` | Codable roundtrip, nil biofeedback, SCI trend |
+| `WorkoutResultTests` | Result codable, nil heart rate |
+| `AnalyzerTests` | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal |
+| `PokeDrugSpeciesTests` | 30-species catalog integrity, cross-references, stat validation, lookups, evolution chains, polypharmacology analyzer, stat comparator |
+| `PokeDrugTypeTests` | Type enum coverage, display names, localization |
+| `DrugResponseAnalyzerTests` | Drug response classification and PK integration |
+| `ThermodynamicBindingProfileTests` | Enthalpy-entropy decomposition validation |
+| `EnthalpyEntropyCompensationTests` | Compensation analysis across series |
+| `FlexAIDdSAnalyzerTests` | Cross-domain entropy scoring |
+| `LigandEfficiencyCalculatorTests` | LE/LLE/LELP metric calculations |
+| `SelectivityEntropyAnalyzerTests` | Receptor selectivity entropy |
+| `PopulationPKAnalyzerTests` | Population PK parameter estimation |
+| `ProfileConsistencyValidatorTests` | Cross-profile data integrity |
+| `HealthSignalTests` | Protocol conformance, signal types |
+| `EvolutionThermodynamicsTests` | Evolution chain thermodynamic validation |
 
 ---
 
