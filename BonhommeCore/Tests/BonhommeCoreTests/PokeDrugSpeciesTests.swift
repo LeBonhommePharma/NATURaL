@@ -6,7 +6,7 @@ final class PokeDrugSpeciesTests: XCTestCase {
     // MARK: - Catalog Integrity
 
     func testSpeciesCount() {
-        XCTAssertEqual(PokeDrugSpecies.knownSpecies.count, 21, "PokeDrug Pokedex has 21 species")
+        XCTAssertEqual(PokeDrugSpecies.knownSpecies.count, 30, "PokeDrug Pokedex has 30 species")
     }
 
     func testUniqueSubstanceIds() {
@@ -209,5 +209,176 @@ final class PokeDrugSpeciesTests: XCTestCase {
 
         let psi = PokeDrugSpecies.species(for: "psilocybin")!
         XCTAssertEqual(psi.types, [.serotonin])
+    }
+
+    // MARK: - New Species (#022-#030) Validation
+
+    func testNewSpeciesLookup() {
+        let newIds = [
+            "diazepam", "psilocin", "mda", "scopolamine",
+            "muscimol", "ephedrine", "mitragynine", "cbd", "harmine"
+        ]
+        for id in newIds {
+            let species = PokeDrugSpecies.species(for: id)
+            XCTAssertNotNil(species, "\(id) should be in knownSpecies")
+        }
+    }
+
+    func testDiazepamIsLongActingSedative() {
+        let dia = PokeDrugSpecies.species(for: "diazepam")
+        XCTAssertNotNil(dia)
+        XCTAssertEqual(dia?.primaryType, .sedative)
+        XCTAssertEqual(dia?.scaffold, .benzodiazepine)
+        XCTAssertEqual(dia?.stats.defense, 5, "Diazepam defense should be 5 (t1/2 20-100h)")
+        XCTAssertEqual(dia?.stats.specialDefense, 1, "Diazepam should have min Sp.Def (rapid tolerance)")
+        XCTAssertEqual(dia?.dexNumber, 22)
+    }
+
+    func testCBDMaxSafety() {
+        let cbd = PokeDrugSpecies.species(for: "cbd")
+        XCTAssertNotNil(cbd)
+        XCTAssertEqual(cbd?.primaryType, .cannabinoid)
+        XCTAssertEqual(cbd?.stats.hp, 5, "CBD should have max HP (no LD50 established)")
+        XCTAssertEqual(cbd?.stats.attack, 1, "CBD should have min Attack (Ki >1 uM at CB1)")
+        XCTAssertEqual(cbd?.stats.specialAttack, 5, "CBD should have max Sp.Atk (multi-target)")
+        XCTAssertEqual(cbd?.dexNumber, 29)
+    }
+
+    func testMitragynineIsDualType() {
+        let mit = PokeDrugSpecies.species(for: "mitragynine")
+        XCTAssertNotNil(mit)
+        XCTAssertEqual(mit?.primaryType, .opioid)
+        XCTAssertEqual(mit?.secondaryType, .serotonin)
+        XCTAssertEqual(mit?.types.count, 2)
+    }
+
+    func testNewSpeciesScaffoldLookup() {
+        let benzos = PokeDrugSpecies.species(withScaffold: .benzodiazepine)
+        XCTAssertTrue(benzos.contains { $0.substanceId == "diazepam" })
+
+        let isoxazoles = PokeDrugSpecies.species(withScaffold: .isoxazole)
+        XCTAssertTrue(isoxazoles.contains { $0.substanceId == "muscimol" })
+
+        let betaCarbolines = PokeDrugSpecies.species(withScaffold: .betaCarboline)
+        XCTAssertTrue(betaCarbolines.contains { $0.substanceId == "harmine" })
+    }
+
+    func testNewSpeciesHabitatLookup() {
+        let fungal = PokeDrugSpecies.species(inHabitat: .fungalForest)
+        XCTAssertTrue(fungal.contains { $0.substanceId == "muscimol" })
+        XCTAssertTrue(fungal.contains { $0.substanceId == "psilocin" })
+
+        let jungle = PokeDrugSpecies.species(inHabitat: .tropicalJungle)
+        XCTAssertTrue(jungle.contains { $0.substanceId == "harmine" })
+        XCTAssertTrue(jungle.contains { $0.substanceId == "mitragynine" })
+    }
+
+    // MARK: - PolypharmacologyAnalyzer Tests
+
+    func testPolypharmacologyAnalyzerInteraction() {
+        let analyzer = PolypharmacologyAnalyzer()
+        let lsd = PokeDrugSpecies.species(for: "lsd")!
+        let psilocybin = PokeDrugSpecies.species(for: "psilocybin")!
+
+        let result = analyzer.analyzeInteraction(lsd, psilocybin)
+        // Both are serotonergic — should show synergy or competition
+        XCTAssertTrue(
+            result.classification == .synergy || result.classification == .competition,
+            "Two serotonergics should synergize or compete, got \(result.classification)"
+        )
+        XCTAssertGreaterThan(result.synergyScore, 0, "Serotonergic pair should have positive synergy")
+    }
+
+    func testPolypharmacologyAnalyzerAntagonism() {
+        let analyzer = PolypharmacologyAnalyzer()
+        let diazepam = PokeDrugSpecies.species(for: "diazepam")!
+        let ephedrine = PokeDrugSpecies.species(for: "ephedrine")!
+
+        let result = analyzer.analyzeInteraction(diazepam, ephedrine)
+        // Sedative vs stimulant — should not be synergy
+        XCTAssertNotEqual(result.classification, .synergy,
+            "Sedative + stimulant should not be classified as synergy")
+    }
+
+    func testPolypharmacologyRiskScore() {
+        let analyzer = PolypharmacologyAnalyzer()
+        let safe = [
+            PokeDrugSpecies.species(for: "cbd")!,
+            PokeDrugSpecies.species(for: "caffeine")!
+        ]
+        let riskSafe = analyzer.riskScore(for: safe)
+
+        let risky = [
+            PokeDrugSpecies.species(for: "fentanyl")!,
+            PokeDrugSpecies.species(for: "diazepam")!
+        ]
+        let riskDangerous = analyzer.riskScore(for: risky)
+
+        XCTAssertGreaterThanOrEqual(riskDangerous, 0.0)
+        XCTAssertLessThanOrEqual(riskDangerous, 1.0)
+        XCTAssertGreaterThanOrEqual(riskSafe, 0.0)
+        XCTAssertLessThanOrEqual(riskSafe, 1.0)
+    }
+
+    func testSynergyPairsNonEmpty() {
+        let analyzer = PolypharmacologyAnalyzer()
+        let pairs = analyzer.findSynergyPairs(in: PokeDrugSpecies.knownSpecies)
+        XCTAssertFalse(pairs.isEmpty, "Should find at least one synergy pair among 30 species")
+    }
+
+    // MARK: - PokeDrugStatComparator Tests
+
+    func testStatComparatorCompare() {
+        let comparator = PokeDrugStatComparator()
+        let lsd = PokeDrugSpecies.species(for: "lsd")!
+        let fen = PokeDrugSpecies.species(for: "fentanyl")!
+
+        let result = comparator.compare(lsd, fen)
+        XCTAssertGreaterThan(result.hpDiff, 0, "LSD should have higher HP than fentanyl")
+        XCTAssertEqual(result.species1Wins + result.species2Wins + result.ties, 6)
+    }
+
+    func testStatComparatorRanking() {
+        let comparator = PokeDrugStatComparator()
+        let ranked = comparator.rankBy(stat: .hp, in: PokeDrugSpecies.knownSpecies)
+        XCTAssertEqual(ranked.count, 30)
+        // First entry should have HP >= last entry
+        XCTAssertGreaterThanOrEqual(ranked.first!.stats.hp, ranked.last!.stats.hp)
+    }
+
+    func testStatComparatorRadarProfile() {
+        let comparator = PokeDrugStatComparator()
+        let lsd = PokeDrugSpecies.species(for: "lsd")!
+        let radar = comparator.radarProfile(for: lsd)
+        XCTAssertEqual(radar.count, 6)
+        XCTAssertEqual(radar["HP"], 5)
+        XCTAssertEqual(radar["Attack"], 5)
+    }
+
+    func testStatComparatorOverallPower() {
+        let comparator = PokeDrugStatComparator()
+        let lsd = PokeDrugSpecies.species(for: "lsd")!
+        let score = comparator.overallPowerScore(for: lsd)
+        // HP(5)*2 + ATK(5) + DEF(4) + SpA(2) + SpD(2) + SPD(3) = 26
+        XCTAssertEqual(score, 26.0)
+    }
+
+    func testStatComparatorSimilarSpecies() {
+        let comparator = PokeDrugStatComparator()
+        let psilocybin = PokeDrugSpecies.species(for: "psilocybin")!
+        let similar = comparator.similarSpecies(to: psilocybin, in: PokeDrugSpecies.knownSpecies, topN: 3)
+        XCTAssertEqual(similar.count, 3)
+        // Should not include self
+        XCTAssertFalse(similar.contains { $0.substanceId == "psilocybin" })
+    }
+
+    func testStatComparatorArchetype() {
+        let comparator = PokeDrugStatComparator()
+
+        let cbd = PokeDrugSpecies.species(for: "cbd")!
+        XCTAssertEqual(comparator.archetype(for: cbd), "Tank", "CBD (HP=5) should be Tank")
+
+        let dia = PokeDrugSpecies.species(for: "diazepam")!
+        XCTAssertEqual(comparator.archetype(for: dia), "Wall", "Diazepam (DEF=5) should be Wall")
     }
 }

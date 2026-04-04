@@ -988,6 +988,277 @@ extension PokeDrugSpecies {
             ),
             dexNumber: 21
         ),
+        // MARK: #022 - Diazepam (Benzodiazepine)
+
+        PokeDrugSpecies(
+            substanceId: "diazepam",
+            name: LocalizedString(en: "Diazepam", fr: "Diazepam", es: "Diazepam", ja: "ジアゼパム", zh: "地西泮", ko: "디아제팜", ru: "Диазепам", de: "Diazepam", ar: "ديازيبام"),
+            primaryType: .sedative,
+            scaffold: .benzodiazepine,
+            stats: PokeDrugStats(
+                hp: 3,      // TI ~10-20; lethal in combination
+                attack: 4,  // Ki ~10-20 nM at GABA-A BZD site
+                defense: 5, // t1/2 20-100h (+ active metabolite desmethyldiazepam)
+                specialAttack: 3, // GABA-A selective PAM, some muscle relaxant
+                specialDefense: 1, // Rapid tolerance, severe dependence
+                speed: 4    // Oral onset 15-30 min, rapid absorption
+            ),
+            habitat: nil,
+            flavorText: LocalizedString(
+                en: "The archetypal 1,4-benzodiazepine. Allosteric potentiation of GABA-A chloride flux via the benzodiazepine binding site between alpha and gamma subunits. Long-acting due to active metabolite desmethyldiazepam (t1/2 ~100h).",
+                fr: "La 1,4-benzodiazepine archetypale. Potentialisation allosterique du flux de chlorure GABA-A via le site de liaison des benzodiazepines entre les sous-unites alpha et gamma. Action prolongee due au metabolite actif desmethyldiazepam (t1/2 ~100h).",
+                es: "La 1,4-benzodiazepina arquetipica. Potenciacion alosterica del flujo de cloruro GABA-A a traves del sitio de union de benzodiazepinas entre las subunidades alfa y gamma. Accion prolongada debido al metabolito activo desmetildiazepam (t1/2 ~100h).",
+                ja: "典型的な1,4-ベンゾジアゼピン。アルファとガンマサブユニット間のベンゾジアゼピン結合部位を介したGABA-A塩素イオン流のアロステリック増強。活性代謝物デスメチルジアゼパム（t1/2 ~100h）により長時間作用。",
+                zh: "典型的1,4-苯二氮卓。通过α和γ亚基之间的苯二氮卓结合位点对GABA-A氯离子通量进行变构增强。由于活性代谢物去甲西泮（t1/2 ~100h）而长效。",
+                ko: "전형적인 1,4-벤조디아제핀. 알파와 감마 소단위 사이의 벤조디아제핀 결합 부위를 통한 GABA-A 염소 이온 플럭스의 알로스테릭 강화. 활성 대사체 데스메틸디아제팜(t1/2 ~100h)으로 인해 장시간 작용.",
+                ru: "Архетипический 1,4-бензодиазепин. Аллостерическая потенциация хлоридного потока ГАМК-А через сайт связывания бензодиазепинов между альфа- и гамма-субъединицами. Длительное действие благодаря активному метаболиту десметилдиазепаму (t1/2 ~100ч).",
+                de: "Das archetypische 1,4-Benzodiazepin. Allosterische Potenzierung des GABA-A-Chloridflusses uber die Benzodiazepin-Bindungsstelle zwischen Alpha- und Gamma-Untereinheiten. Langwirkend durch aktiven Metaboliten Desmethyldiazepam (t1/2 ~100h).",
+                ar: "البنزوديازيبين 1,4 النموذجي. تعزيز تفارغي لتدفق كلوريد GABA-A عبر موقع ربط البنزوديازيبين بين الوحدات الفرعية ألفا وغاما. طويل المفعول بسبب المستقلب النشط ديسميثيل ديازيبام (t1/2 ~100 ساعة)."
+            ),
+            dexNumber: 22
+        ),
+
+        // MARK: #023 - Psilocin (Tryptamine)
+
+        PokeDrugSpecies(
+            substanceId: "psilocin",
+            name: LocalizedString(en: "Psilocin", fr: "Psilocine", es: "Psilocina", ja: "サイロシン", zh: "脱磷酸裸盖菇素", ko: "실로신", ru: "Псилоцин", de: "Psilocin", ar: "سيلوسين"),
+            primaryType: .serotonin,
+            scaffold: .tryptamine,
+            stats: PokeDrugStats(
+                hp: 5,      // TI ~1000; no confirmed deaths from psilocin alone
+                attack: 5,  // Ki 6-10 nM at 5-HT2A (dephosphorylated active form)
+                defense: 2, // t1/2 ~2.5h; rapid glucuronidation
+                specialAttack: 3, // 5-HT2A/2B/1A; narrower than LSD
+                specialDefense: 2, // Full tolerance in 3 days
+                speed: 4    // Onset 15-30 min oral (no prodrug delay vs psilocybin)
+            ),
+            habitat: .fungalForest,
+            flavorText: LocalizedString(
+                en: "The active metabolite of psilocybin, formed by alkaline phosphatase dephosphorylation. Direct 5-HT2A agonist with Ki 6-10 nM. Faster onset than the prodrug but identical receptor pharmacology. Unstable in solution due to oxidation of the 4-hydroxyindole.",
+                fr: "Le metabolite actif de la psilocybine, forme par dephosphorylation par la phosphatase alcaline. Agoniste direct du 5-HT2A avec Ki 6-10 nM. Debut plus rapide que le prodrogue mais pharmacologie receptorielle identique. Instable en solution en raison de l'oxydation du 4-hydroxyindole.",
+                es: "El metabolito activo de la psilocibina, formado por desfosforilacion por fosfatasa alcalina. Agonista directo de 5-HT2A con Ki 6-10 nM. Inicio mas rapido que el profarmaco pero farmacologia receptorial identica. Inestable en solucion debido a la oxidacion del 4-hidroxiindol.",
+                ja: "アルカリホスファターゼ脱リン酸化により生成されるシロシビンの活性代謝物。Ki 6-10 nMの直接的5-HT2Aアゴニスト。プロドラッグより速い発現だが受容体薬理学は同一。4-ヒドロキシインドールの酸化により溶液中で不安定。",
+                zh: "由碱性磷酸酶脱磷酸形成的赛洛西宾活性代谢物。直接5-HT2A激动剂，Ki 6-10 nM。比前药起效更快但受体药理学相同。由于4-羟基吲哚氧化而在溶液中不稳定。",
+                ko: "알칼리 포스파타아제 탈인산화로 형성되는 실로시빈의 활성 대사체. Ki 6-10 nM의 직접적 5-HT2A 작용제. 전구약물보다 빠른 발현이지만 동일한 수용체 약리학. 4-하이드록시인돌 산화로 용액에서 불안정.",
+                ru: "Активный метаболит псилоцибина, образующийся при дефосфорилировании щелочной фосфатазой. Прямой агонист 5-HT2A с Ki 6-10 нМ. Более быстрое начало действия, чем у пролекарства, но идентичная рецепторная фармакология. Нестабилен в растворе из-за окисления 4-гидроксииндола.",
+                de: "Der aktive Metabolit von Psilocybin, gebildet durch alkalische Phosphatase-Dephosphorylierung. Direkter 5-HT2A-Agonist mit Ki 6-10 nM. Schnellerer Wirkungseintritt als das Prodrug, aber identische Rezeptorpharmakologie. Instabil in Losung aufgrund der Oxidation des 4-Hydroxyindols.",
+                ar: "المستقلب النشط للسيلوسيبين، يتكون عن طريق إزالة الفسفرة بالفوسفاتاز القلوية. ناهض مباشر لـ 5-HT2A مع Ki 6-10 نانومول. بداية أسرع من الدواء الأولي لكن بنفس الحركية الدوائية المستقبلية. غير مستقر في المحلول بسبب أكسدة 4-هيدروكسي إندول."
+            ),
+            dexNumber: 23
+        ),
+
+        // MARK: #024 - MDA (Benzodioxole)
+
+        PokeDrugSpecies(
+            substanceId: "mda",
+            name: LocalizedString(en: "MDA", fr: "MDA", es: "MDA", ja: "MDA", zh: "MDA", ko: "MDA", ru: "МДА", de: "MDA", ar: "إم دي إيه"),
+            primaryType: .empathogen,
+            secondaryType: .serotonin,
+            scaffold: .benzodioxole,
+            stats: PokeDrugStats(
+                hp: 2,      // TI ~10; serotonergic neurotoxicity at high doses
+                attack: 4,  // EC50 ~100 nM SERT release + 5-HT2A Ki ~300 nM
+                defense: 4, // t1/2 ~8-12h; N-demethylation to HHA
+                specialAttack: 4, // Dual: SERT releaser + 5-HT2A agonist
+                specialDefense: 1, // Serotonin depletion; 3+ week recovery
+                speed: 3    // Oral onset 30-60 min
+            ),
+            habitat: nil,
+            flavorText: LocalizedString(
+                en: "The parent compound of MDMA, lacking the N-methyl group. Dual mechanism: monoamine release via SERT/DAT/NET plus direct 5-HT2A agonism producing more psychedelic character than MDMA. Nichols 1986 established the structure-empathogenesis relationship.",
+                fr: "Le compose parent du MDMA, depourvu du groupe N-methyle. Double mecanisme: liberation de monoamines via SERT/DAT/NET plus agonisme direct du 5-HT2A produisant un caractere plus psychedelique que le MDMA. Nichols 1986 a etabli la relation structure-empathogenese.",
+                es: "El compuesto madre del MDMA, sin el grupo N-metilo. Doble mecanismo: liberacion de monoaminas via SERT/DAT/NET mas agonismo directo de 5-HT2A produciendo un caracter mas psicodelico que el MDMA. Nichols 1986 establecio la relacion estructura-empatogenesis.",
+                ja: "N-メチル基を欠くMDMAの親化合物。二重機構：SERT/DAT/NETを介したモノアミン放出と直接的5-HT2Aアゴニズムにより、MDMAよりサイケデリックな性質を生む。Nichols 1986が構造-共感発生関係を確立。",
+                zh: "MDMA的母体化合物，缺少N-甲基。双重机制：通过SERT/DAT/NET释放单胺加上直接5-HT2A激动作用，产生比MDMA更强的致幻特性。Nichols 1986建立了结构-共情发生关系。",
+                ko: "N-메틸기가 없는 MDMA의 모체 화합물. 이중 기전: SERT/DAT/NET을 통한 모노아민 방출과 직접적 5-HT2A 작용으로 MDMA보다 더 환각적 특성 생성. Nichols 1986이 구조-공감발생 관계 확립.",
+                ru: "Родительское соединение МДМА без N-метильной группы. Двойной механизм: высвобождение моноаминов через СЕРТ/ДАТ/НЭТ плюс прямой агонизм 5-HT2A, создающий более психоделический характер, чем у МДМА. Николс 1986 установил связь структура-эмпатогенез.",
+                de: "Die Muttersubstanz von MDMA ohne N-Methylgruppe. Doppelmechanismus: Monoamin-Freisetzung uber SERT/DAT/NET plus direkter 5-HT2A-Agonismus mit starkerem psychedelischem Charakter als MDMA. Nichols 1986 etablierte die Struktur-Empathogenese-Beziehung.",
+                ar: "المركب الأم لـ MDMA، بدون مجموعة N-ميثيل. آلية مزدوجة: إطلاق أحادي الأمين عبر SERT/DAT/NET بالإضافة إلى ناهض مباشر لـ 5-HT2A مما ينتج طابعاً أكثر نفسانية من MDMA. أسس نيكولز 1986 علاقة البنية-التعاطف."
+            ),
+            dexNumber: 24
+        ),
+
+        // MARK: #025 - Scopolamine (Tropane)
+
+        PokeDrugSpecies(
+            substanceId: "scopolamine",
+            name: LocalizedString(en: "Scopolamine", fr: "Scopolamine", es: "Escopolamina", ja: "スコポラミン", zh: "东莨菪碱", ko: "스코폴라민", ru: "Скополамин", de: "Scopolamin", ar: "سكوبولامين"),
+            primaryType: .cholinergic,
+            scaffold: .tropane,
+            stats: PokeDrugStats(
+                hp: 2,      // TI ~10; anticholinergic toxidrome lethal
+                attack: 3,  // Ki ~0.3-1 nM at mAChR (sub-nM but nonselective)
+                defense: 3, // t1/2 ~4-5h; hepatic CYP3A4
+                specialAttack: 2, // Nonselective across M1-M5 subtypes
+                specialDefense: 3, // Moderate tolerance development
+                speed: 3    // Transdermal slow; oral 20-30 min
+            ),
+            habitat: .tropicalJungle,
+            flavorText: LocalizedString(
+                en: "Tropane alkaloid anticholinergic from Brugmansia and Datura species. Sub-nanomolar muscarinic antagonist (Ki ~0.3 nM) blocking all five mAChR subtypes. Used clinically as a transdermal patch for motion sickness. Deliriant at high doses via central M1 blockade.",
+                fr: "Anticholinergique alcaloide tropane de Brugmansia et Datura. Antagoniste muscarinique sub-nanomolaire (Ki ~0,3 nM) bloquant les cinq sous-types mAChR. Utilise cliniquement en patch transdermique contre le mal des transports. Deliriant a hautes doses via le blocage central M1.",
+                es: "Alcaloide tropano anticolinergico de Brugmansia y Datura. Antagonista muscarinico sub-nanomolar (Ki ~0,3 nM) que bloquea los cinco subtipos mAChR. Usado clinicamente como parche transdermico para mareo. Delirante a dosis altas via bloqueo central M1.",
+                ja: "ブルグマンシアとダチュラ由来のトロパンアルカロイド抗コリン薬。サブナノモル濃度のムスカリン拮抗薬（Ki ~0.3 nM）で5つ全てのmAChRサブタイプを遮断。経皮パッチとして乗り物酔いに臨床使用。高用量で中枢M1遮断によるせん妄。",
+                zh: "来自曼陀罗属植物的托烷生物碱抗胆碱药。亚纳摩尔级毒蕈碱拮抗剂（Ki ~0.3 nM）阻断全部五种mAChR亚型。临床用作透皮贴剂治疗晕动病。高剂量时通过中枢M1阻断产生谵妄。",
+                ko: "브루그만시아와 다투라 종에서 유래한 트로판 알칼로이드 항콜린제. 서브나노몰 무스카린 길항제(Ki ~0.3 nM)로 5가지 모든 mAChR 하위 유형 차단. 멀미용 경피 패치로 임상 사용. 고용량에서 중추 M1 차단을 통한 섬망.",
+                ru: "Тропановый алкалоид-антихолинергик из Бругмансии и Датуры. Субнаномолярный мускариновый антагонист (Ki ~0,3 нМ), блокирующий все пять подтипов мАХР. Клинически используется как трансдермальный пластырь от укачивания. Делириант в высоких дозах через центральную блокаду М1.",
+                de: "Tropanalkaloid-Anticholinergikum aus Brugmansia und Datura. Subnanomolarer Muskarinantagonist (Ki ~0,3 nM), der alle funf mAChR-Subtypen blockiert. Klinisch als transdermales Pflaster gegen Reisekrankheit. Deliriant in hohen Dosen uber zentrale M1-Blockade.",
+                ar: "قلويد تروبان مضاد للكولين من البروغمانسيا والداتورا. مضاد موسكاريني دون نانومولي (Ki ~0.3 نانومول) يحجب جميع الأنواع الفرعية الخمسة لـ mAChR. يُستخدم سريرياً كلصقة عبر الجلد لدوار الحركة. مُهلِّس بجرعات عالية عبر حصار M1 المركزي."
+            ),
+            dexNumber: 25
+        ),
+
+        // MARK: #026 - Muscimol (Isoxazole)
+
+        PokeDrugSpecies(
+            substanceId: "muscimol",
+            name: LocalizedString(en: "Muscimol", fr: "Muscimol", es: "Muscimol", ja: "ムシモール", zh: "蝇蕈醇", ko: "무시몰", ru: "Мусцимол", de: "Muscimol", ar: "موسيمول"),
+            primaryType: .sedative,
+            scaffold: .isoxazole,
+            stats: PokeDrugStats(
+                hp: 3,      // TI ~15-20; Amanita muscaria rarely lethal
+                attack: 4,  // Ki ~6-10 nM at GABA-A orthosteric site
+                defense: 3, // t1/2 ~4-6h
+                specialAttack: 1, // Orthosteric GABA-A agonist; hits all subtypes
+                specialDefense: 3, // Moderate tolerance development
+                speed: 2    // Oral onset 30-90 min (variable absorption)
+            ),
+            habitat: .fungalForest,
+            flavorText: LocalizedString(
+                en: "Isoxazole amino acid from Amanita muscaria, acting as a direct GABA-A orthosteric agonist (Ki ~6 nM). Unlike benzodiazepines which are allosteric, muscimol binds the GABA site itself. Produces a unique dreamy delirium distinct from GABAergic sedation. Krogsgaard-Larsen 1977.",
+                fr: "Acide amine isoxazole d'Amanita muscaria, agissant comme agoniste orthosterique direct du GABA-A (Ki ~6 nM). Contrairement aux benzodiazepines allosteriques, le muscimol se lie au site GABA lui-meme. Produit un delire onirique unique distinct de la sedation GABAergique. Krogsgaard-Larsen 1977.",
+                es: "Aminoacido isoxazol de Amanita muscaria, actuando como agonista ortosterico directo de GABA-A (Ki ~6 nM). A diferencia de las benzodiazepinas alostericas, el muscimol se une al sitio GABA mismo. Produce un delirio onirico unico distinto de la sedacion GABAergica. Krogsgaard-Larsen 1977.",
+                ja: "テングタケ由来のイソキサゾールアミノ酸。直接的GABA-Aオルソステリックアゴニスト（Ki ~6 nM）として作用。アロステリックなベンゾジアゼピンとは異なり、ムシモールはGABA部位自体に結合。GABA作動性鎮静とは異なる独特の夢見心地のせん妄を生じる。Krogsgaard-Larsen 1977。",
+                zh: "来自毒蝇伞的异恶唑氨基酸，作为直接GABA-A正位激动剂（Ki ~6 nM）发挥作用。与变构的苯二氮卓不同，蝇蕈醇结合GABA位点本身。产生独特的梦幻谵妄，与GABA能镇静不同。Krogsgaard-Larsen 1977。",
+                ko: "독우산광대버섯의 이소옥사졸 아미노산. 직접적 GABA-A 정위 작용제(Ki ~6 nM)로 작용. 알로스테릭인 벤조디아제핀과 달리 무시몰은 GABA 부위 자체에 결합. GABA성 진정과 다른 독특한 몽환적 섬망 생성. Krogsgaard-Larsen 1977.",
+                ru: "Изоксазольная аминокислота из Мухомора красного, действующая как прямой ортостерический агонист ГАМК-А (Ki ~6 нМ). В отличие от аллостерических бензодиазепинов, мусцимол связывается непосредственно с сайтом ГАМК. Вызывает уникальный сноподобный делирий, отличный от ГАМКергической седации. Krogsgaard-Larsen 1977.",
+                de: "Isoxazol-Aminosaure aus Amanita muscaria, die als direkter GABA-A-orthosterischer Agonist (Ki ~6 nM) wirkt. Anders als allosterische Benzodiazepine bindet Muscimol an die GABA-Stelle selbst. Erzeugt ein einzigartiges traumartiges Delirium, verschieden von GABAerger Sedierung. Krogsgaard-Larsen 1977.",
+                ar: "حمض أميني إيزوكسازولي من فطر أمانيتا موسكاريا، يعمل كناهض موضعي مباشر لـ GABA-A (Ki ~6 نانومول). على عكس البنزوديازيبينات التفارغية، يرتبط الموسيمول بموقع GABA نفسه. ينتج هذياناً حالماً فريداً مختلفاً عن التهدئة GABAergic. Krogsgaard-Larsen 1977."
+            ),
+            dexNumber: 26
+        ),
+
+        // MARK: #027 - Ephedrine (Phenethylamine)
+
+        PokeDrugSpecies(
+            substanceId: "ephedrine",
+            name: LocalizedString(en: "Ephedrine", fr: "Ephedrine", es: "Efedrina", ja: "エフェドリン", zh: "麻黄碱", ko: "에페드린", ru: "Эфедрин", de: "Ephedrin", ar: "إيفيدرين"),
+            primaryType: .stimulant,
+            scaffold: .phenethylamine,
+            stats: PokeDrugStats(
+                hp: 3,      // TI ~20-30; cardiovascular risk at high doses
+                attack: 3,  // Indirect sympathomimetic; EC50 ~1-5 uM NET/DAT
+                defense: 3, // t1/2 ~3-6h
+                specialAttack: 2, // Nonselective: alpha + beta adrenergic + monoamine release
+                specialDefense: 3, // Moderate tachyphylaxis
+                speed: 4    // Oral onset 15-30 min; rapid absorption
+            ),
+            habitat: .asianHighlands,
+            flavorText: LocalizedString(
+                en: "Phenylpropanoid alkaloid from Ephedra sinica (ma huang). Mixed indirect + direct sympathomimetic: displaces NE from vesicles via NET reversal plus direct alpha/beta adrenoceptor agonism. 4000-year history in traditional Chinese medicine. FDA OTC bronchodilator.",
+                fr: "Alcaloide phenylpropanoide d'Ephedra sinica (ma huang). Sympathomimetique mixte indirect + direct: deplace la NE des vesicules via l'inversion du NET plus agonisme direct des adrenorecepteurs alpha/beta. 4000 ans d'histoire en medecine traditionnelle chinoise. Bronchodilatateur OTC FDA.",
+                es: "Alcaloide fenilpropanoide de Ephedra sinica (ma huang). Simpaticomimetico mixto indirecto + directo: desplaza NE de vesiculas via reversion NET mas agonismo directo de adrenorreceptores alfa/beta. 4000 anos de historia en medicina tradicional china. Broncodilatador OTC FDA.",
+                ja: "マオウ（Ephedra sinica）由来のフェニルプロパノイドアルカロイド。混合型間接＋直接交感神経作用薬：NET逆転による小胞からのNE放出とアルファ/ベータアドレナリン受容体直接作用。漢方医学で4000年の歴史。FDA OTC気管支拡張薬。",
+                zh: "来自麻黄（Ephedra sinica）的苯丙烷类生物碱。混合间接+直接拟交感神经药：通过NET逆转从囊泡中置换NE加上直接α/β肾上腺素受体激动。中医药4000年历史。FDA非处方支气管扩张剂。",
+                ko: "마황(Ephedra sinica)에서 유래한 페닐프로파노이드 알칼로이드. 혼합 간접+직접 교감신경흥분제: NET 역전을 통한 소포에서의 NE 방출과 직접적 알파/베타 아드레날린 수용체 작용. 전통 중의학에서 4000년 역사. FDA OTC 기관지확장제.",
+                ru: "Фенилпропаноидный алкалоид из Эфедры хвощевой (ма хуан). Смешанный непрямой + прямой симпатомиметик: вытесняет НЭ из везикул через реверсию НЭТ плюс прямой агонизм альфа/бета-адренорецепторов. 4000 лет истории в традиционной китайской медицине. Безрецептурный бронходилататор FDA.",
+                de: "Phenylpropanoid-Alkaloid aus Ephedra sinica (Ma Huang). Gemischtes indirektes + direktes Sympathomimetikum: verdrangt NE aus Vesikeln uber NET-Umkehr plus direkten Alpha/Beta-Adrenozeptor-Agonismus. 4000 Jahre Geschichte in der traditionellen chinesischen Medizin. FDA OTC-Bronchodilatator.",
+                ar: "قلويد فينيل بروبانويد من الإيفيدرا سينيكا (ما هوانغ). محاكي ودي مختلط غير مباشر + مباشر: يزيح النورإبينفرين من الحويصلات عبر انعكاس NET بالإضافة إلى ناهض مباشر لمستقبلات ألفا/بيتا الأدرينالية. 4000 عام من التاريخ في الطب الصيني التقليدي. موسع قصبي FDA بدون وصفة."
+            ),
+            dexNumber: 27
+        ),
+
+        // MARK: #028 - Mitragynine (Isoquinoline)
+
+        PokeDrugSpecies(
+            substanceId: "mitragynine",
+            name: LocalizedString(en: "Mitragynine", fr: "Mitragynine", es: "Mitraginina", ja: "ミトラギニン", zh: "帽柱木碱", ko: "미트라기닌", ru: "Митрагинин", de: "Mitragynin", ar: "ميتراجينين"),
+            primaryType: .opioid,
+            secondaryType: .serotonin,
+            scaffold: .isoquinoline,
+            stats: PokeDrugStats(
+                hp: 3,      // TI ~20; respiratory depression lower than classical opioids
+                attack: 3,  // MOR Ki ~230 nM (partial agonist); 7-OH metabolite more potent
+                defense: 3, // t1/2 ~3.5h (parent); active metabolites extend
+                specialAttack: 4, // MOR + 5-HT2A + alpha-2 + delta opioid
+                specialDefense: 2, // Cross-tolerance with classical opioids
+                speed: 3    // Oral onset 15-30 min
+            ),
+            habitat: .tropicalJungle,
+            flavorText: LocalizedString(
+                en: "Indole alkaloid from Mitragyna speciosa (kratom). Partial mu-opioid agonist (Ki ~230 nM) with biased signaling — preferentially activates G-protein over beta-arrestin, potentially reducing respiratory depression. CYP3A4 converts to 7-OH-mitragynine (Ki ~50 nM). Kruegel et al. 2016.",
+                fr: "Alcaloide indolique de Mitragyna speciosa (kratom). Agoniste partiel mu-opioide (Ki ~230 nM) avec signalisation biaisee — active preferentiellement la proteine G par rapport a la beta-arrestine, reduisant potentiellement la depression respiratoire. CYP3A4 convertit en 7-OH-mitragynine (Ki ~50 nM). Kruegel et al. 2016.",
+                es: "Alcaloide indolico de Mitragyna speciosa (kratom). Agonista parcial mu-opioide (Ki ~230 nM) con senalizacion sesgada — activa preferencialmente la proteina G sobre la beta-arrestina, reduciendo potencialmente la depresion respiratoria. CYP3A4 convierte a 7-OH-mitraginina (Ki ~50 nM). Kruegel et al. 2016.",
+                ja: "ミトラギナ・スペシオサ（クラトム）由来のインドールアルカロイド。偏向シグナリングを持つ部分的μオピオイドアゴニスト（Ki ~230 nM）— βアレスチンよりGタンパク質を優先的に活性化し、呼吸抑制を潜在的に軽減。CYP3A4が7-OH-ミトラギニン（Ki ~50 nM）に変換。Kruegel et al. 2016。",
+                zh: "来自帽柱木（kratom）的吲哚生物碱。偏向信号传导的部分μ阿片受体激动剂（Ki ~230 nM）——优先激活G蛋白而非β-arrestin，可能减少呼吸抑制。CYP3A4转化为7-OH-帽柱木碱（Ki ~50 nM）。Kruegel et al. 2016。",
+                ko: "미트라기나 스페시오사(크라톰)의 인돌 알칼로이드. 편향 신호전달을 가진 부분적 μ-오피오이드 작용제(Ki ~230 nM) — 베타-아레스틴보다 G-단백질을 우선적으로 활성화하여 잠재적으로 호흡 억제 감소. CYP3A4가 7-OH-미트라기닌(Ki ~50 nM)으로 전환. Kruegel et al. 2016.",
+                ru: "Индольный алкалоид из Митрагины прекрасной (кратом). Парциальный агонист мю-опиоидных рецепторов (Ki ~230 нМ) с предвзятой сигнализацией — предпочтительно активирует G-белок над бета-аррестином, потенциально снижая угнетение дыхания. CYP3A4 конвертирует в 7-ОН-митрагинин (Ki ~50 нМ). Kruegel et al. 2016.",
+                de: "Indolalkaloid aus Mitragyna speciosa (Kratom). Partieller Mu-Opioid-Agonist (Ki ~230 nM) mit verzerrter Signalgebung — aktiviert bevorzugt G-Protein uber Beta-Arrestin und reduziert potenziell Atemdepression. CYP3A4 konvertiert zu 7-OH-Mitragynin (Ki ~50 nM). Kruegel et al. 2016.",
+                ar: "قلويد إندول من ميتراجينا سبيسيوسا (كراتوم). ناهض جزئي لمستقبلات الأفيون مو (Ki ~230 نانومول) مع إشارات منحازة — ينشط بروتين G تفضيلياً على بيتا-أريستين، مما قد يقلل تثبيط التنفس. CYP3A4 يحول إلى 7-OH-ميتراجينين (Ki ~50 نانومول). Kruegel et al. 2016."
+            ),
+            dexNumber: 28
+        ),
+
+        // MARK: #029 - CBD (Terpenoid)
+
+        PokeDrugSpecies(
+            substanceId: "cbd",
+            name: LocalizedString(en: "CBD", fr: "CBD", es: "CBD", ja: "CBD", zh: "大麻二酚", ko: "CBD", ru: "КБД", de: "CBD", ar: "سي بي دي"),
+            primaryType: .cannabinoid,
+            scaffold: .terpenoid,
+            stats: PokeDrugStats(
+                hp: 5,      // No LD50 established; WHO 2017: favorable safety profile
+                attack: 1,  // Very low CB1 affinity (Ki >1 uM); negative allosteric modulator
+                defense: 5, // t1/2 ~18-32h; extensive first-pass CYP2C19/3A4
+                specialAttack: 5, // Multi-target: TRPV1, 5-HT1A, GPR55, PPARgamma, FAAH inhibition
+                specialDefense: 4, // Minimal tolerance; no abuse potential
+                speed: 2    // Oral onset 30-90 min; low bioavailability (~6%)
+            ),
+            habitat: .tropicalPlantations,
+            flavorText: LocalizedString(
+                en: "Non-intoxicating phytocannabinoid from Cannabis sativa. Negative allosteric modulator at CB1 (does not produce high). Multi-target pharmacology: TRPV1 agonist, 5-HT1A partial agonist, GPR55 antagonist, FAAH inhibitor. FDA-approved as Epidiolex for Dravet/Lennox-Gastaut epilepsy. Devinsky et al. 2017.",
+                fr: "Phytocannabinoide non intoxicant de Cannabis sativa. Modulateur allosterique negatif au CB1 (ne produit pas d'ivresse). Pharmacologie multi-cibles: agoniste TRPV1, agoniste partiel 5-HT1A, antagoniste GPR55, inhibiteur FAAH. Approuve par la FDA comme Epidiolex pour l'epilepsie de Dravet/Lennox-Gastaut. Devinsky et al. 2017.",
+                es: "Fitocannabinoide no intoxicante de Cannabis sativa. Modulador alosterico negativo en CB1 (no produce intoxicacion). Farmacologia multidiana: agonista TRPV1, agonista parcial 5-HT1A, antagonista GPR55, inhibidor FAAH. Aprobado por FDA como Epidiolex para epilepsia Dravet/Lennox-Gastaut. Devinsky et al. 2017.",
+                ja: "カンナビス・サティバ由来の非中毒性フィトカンナビノイド。CB1のネガティブアロステリックモジュレーター（酩酊を生じない）。マルチターゲット薬理学：TRPV1アゴニスト、5-HT1A部分アゴニスト、GPR55アンタゴニスト、FAAH阻害剤。ドラベ/レノックス・ガストー型てんかんのエピディオレックスとしてFDA承認。Devinsky et al. 2017。",
+                zh: "来自大麻的非致醉植物大麻素。CB1的负变构调节剂（不产生欣快感）。多靶点药理学：TRPV1激动剂、5-HT1A部分激动剂、GPR55拮抗剂、FAAH抑制剂。FDA批准为Epidiolex用于Dravet/Lennox-Gastaut癫痫。Devinsky et al. 2017。",
+                ko: "대마(Cannabis sativa)의 비중독성 식물 카나비노이드. CB1의 음성 알로스테릭 조절제(취하지 않음). 다중 표적 약리학: TRPV1 작용제, 5-HT1A 부분 작용제, GPR55 길항제, FAAH 억제제. 드라벳/레녹스-가스토 간질에 대해 에피디올렉스로 FDA 승인. Devinsky et al. 2017.",
+                ru: "Непсихоактивный фитоканнабиноид из Cannabis sativa. Негативный аллостерический модулятор CB1 (не вызывает опьянения). Мультитаргетная фармакология: агонист TRPV1, парциальный агонист 5-HT1A, антагонист GPR55, ингибитор FAAH. Одобрен FDA как Эпидиолекс для эпилепсии Драве/Леннокса-Гасто. Devinsky et al. 2017.",
+                de: "Nicht-berauschender Phytocannabinoid aus Cannabis sativa. Negativer allosterischer Modulator am CB1 (erzeugt keinen Rausch). Multi-Target-Pharmakologie: TRPV1-Agonist, 5-HT1A-Partialagonist, GPR55-Antagonist, FAAH-Inhibitor. FDA-zugelassen als Epidiolex fur Dravet/Lennox-Gastaut-Epilepsie. Devinsky et al. 2017.",
+                ar: "فيتوكانابينويد غير مسكر من القنب. معدل تفارغي سلبي في CB1 (لا ينتج نشوة). صيدلة متعددة الأهداف: ناهض TRPV1، ناهض جزئي 5-HT1A، مضاد GPR55، مثبط FAAH. معتمد من FDA كإبيديوليكس لصرع درافيت/لينوكس-غاستو. Devinsky et al. 2017."
+            ),
+            dexNumber: 29
+        ),
+
+        // MARK: #030 - Harmine (Beta-Carboline)
+
+        PokeDrugSpecies(
+            substanceId: "harmine",
+            name: LocalizedString(en: "Harmine", fr: "Harmine", es: "Harmina", ja: "ハルミン", zh: "骆驼蓬碱", ko: "하르민", ru: "Гармин", de: "Harmin", ar: "هارمين"),
+            primaryType: .serotonin,
+            scaffold: .betaCarboline,
+            stats: PokeDrugStats(
+                hp: 3,      // TI ~15-20; tremorigenic at high doses
+                attack: 3,  // MAO-A Ki ~5 nM (potent); 5-HT2A Ki ~300 nM (moderate)
+                defense: 2, // t1/2 ~1-3h; rapid O-demethylation to harmol
+                specialAttack: 3, // MAO-A selective (vs MAO-B >100x)
+                specialDefense: 3, // Moderate; MAO recovery over days
+                speed: 3    // Oral onset 20-40 min
+            ),
+            habitat: .tropicalJungle,
+            flavorText: LocalizedString(
+                en: "Beta-carboline alkaloid from Banisteriopsis caapi (ayahuasca vine). Potent reversible MAO-A inhibitor (Ki ~5 nM) enabling oral bioavailability of DMT in ayahuasca. Also binds 5-HT2A (Ki ~300 nM) and imidazoline receptors. The fluorescent compound that first revealed MAO enzymology. Buckholtz & Boggan 1977.",
+                fr: "Alcaloide beta-carboline de Banisteriopsis caapi (liane d'ayahuasca). Puissant inhibiteur reversible de la MAO-A (Ki ~5 nM) permettant la biodisponibilite orale du DMT dans l'ayahuasca. Se lie aussi au 5-HT2A (Ki ~300 nM) et aux recepteurs imidazoline. Le compose fluorescent qui a revele l'enzymologie MAO. Buckholtz & Boggan 1977.",
+                es: "Alcaloide beta-carbolina de Banisteriopsis caapi (liana de ayahuasca). Potente inhibidor reversible de MAO-A (Ki ~5 nM) que permite la biodisponibilidad oral del DMT en ayahuasca. Tambien se une a 5-HT2A (Ki ~300 nM) y receptores imidazolina. El compuesto fluorescente que primero revelo la enzimologia MAO. Buckholtz & Boggan 1977.",
+                ja: "バニステリオプシス・カーピ（アヤワスカ蔓）由来のβ-カルボリンアルカロイド。強力な可逆的MAO-A阻害剤（Ki ~5 nM）で、アヤワスカ中のDMTの経口生体利用能を可能にする。5-HT2A（Ki ~300 nM）とイミダゾリン受容体にも結合。MAO酵素学を最初に明らかにした蛍光化合物。Buckholtz & Boggan 1977。",
+                zh: "来自卡皮木（死藤水藤）的β-咔啉生物碱。强效可逆MAO-A抑制剂（Ki ~5 nM），使DMT在死藤水中的口服生物利用度成为可能。也结合5-HT2A（Ki ~300 nM）和咪唑啉受体。最先揭示MAO酶学的荧光化合物。Buckholtz & Boggan 1977。",
+                ko: "바니스테리옵시스 카피(아야와스카 덩굴)의 β-카르볼린 알칼로이드. 강력한 가역적 MAO-A 억제제(Ki ~5 nM)로 아야와스카에서 DMT의 경구 생체이용률을 가능하게 함. 5-HT2A(Ki ~300 nM)와 이미다졸린 수용체에도 결합. MAO 효소학을 최초로 밝힌 형광 화합물. Buckholtz & Boggan 1977.",
+                ru: "Бета-карболиновый алкалоид из Банистериопсиса каапи (лиана аяхуаски). Мощный обратимый ингибитор МАО-А (Ki ~5 нМ), обеспечивающий пероральную биодоступность ДМТ в аяхуаске. Также связывается с 5-HT2A (Ki ~300 нМ) и имидазолиновыми рецепторами. Флуоресцентное соединение, впервые раскрывшее энзимологию МАО. Buckholtz & Boggan 1977.",
+                de: "Beta-Carbolin-Alkaloid aus Banisteriopsis caapi (Ayahuasca-Liane). Potenter reversibler MAO-A-Inhibitor (Ki ~5 nM), der die orale Bioverfugbarkeit von DMT in Ayahuasca ermoglicht. Bindet auch an 5-HT2A (Ki ~300 nM) und Imidazolin-Rezeptoren. Die fluoreszierende Verbindung, die erstmals die MAO-Enzymologie enthullte. Buckholtz & Boggan 1977.",
+                ar: "قلويد بيتا-كربولين من بانيستيريوبسيس كابي (كرمة الأياواسكا). مثبط قوي قابل للعكس لـ MAO-A (Ki ~5 نانومول) يتيح التوافر الحيوي الفموي لـ DMT في الأياواسكا. يرتبط أيضاً بـ 5-HT2A (Ki ~300 نانومول) ومستقبلات الإميدازولين. المركب الفلوري الذي كشف أولاً عن إنزيمولوجيا MAO. Buckholtz & Boggan 1977."
+            ),
+            dexNumber: 30
+        ),
     ]
 
     /// Look up a species by substance ID (case-insensitive).

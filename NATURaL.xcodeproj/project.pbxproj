@@ -37,6 +37,7 @@
 		8D0E4ACCC2765CFA20347728 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A18B62ECE19ED25527FD00B /* HistoryView.swift */; };
 		8EEFA0257ABB9391390D01D6 /* WorkoutFlowViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */; };
 		918341A08086F652869D118B /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */; };
+		99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */; };
 		9AB4E4180C83DA08F3B16FDC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2075AB31C0DF70BDF50F297 /* HomeView.swift */; };
 		9B3B0CE83F8AD03C5D933F74 /* AirPlayFallbackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */; };
 		9D3E5EC185B3349F6332BB6C /* TVDisplayCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */; };
@@ -188,6 +189,7 @@
 		FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpatialPoseView.swift"; sourceTree = "<group>"; };
 		FE2AAFE554DF1D96F774F9EE /* BonhommeTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BonhommeTVApp.swift"; sourceTree = "<group>"; };
 		FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StreakWidget.swift"; sourceTree = "<group>"; };
+		033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NATURaLWidgetsBundle.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -544,6 +546,7 @@
 			isa = PBXGroup;
 			children = (
 				53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */,
+				033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */,
 				BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */,
 				FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */,
 			);
@@ -910,6 +913,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */,
+				99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */,
 				918341A08086F652869D118B /* StreakWidget.swift in Sources */,
 				E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */,
 			);
