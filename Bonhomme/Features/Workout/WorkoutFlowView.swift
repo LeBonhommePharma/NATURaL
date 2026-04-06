@@ -8,8 +8,8 @@ struct WorkoutFlowView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    init(plan: WorkoutPlan) {
-        _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan))
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+        _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine))
     }
 
     /// Initializer for restoring a killed-app workout session.
@@ -67,15 +67,14 @@ struct WorkoutFlowView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                Image(systemName: pose.category.symbolName)
-                    .font(.system(size: 100))
-                    .foregroundStyle(catColor.opacity(0.35))
-                    .shadow(color: catColor.opacity(0.2), radius: 16)
+                MotionCoachView(pose: pose, phase: .active)
+                    .frame(maxWidth: 520, minHeight: 360, maxHeight: 420)
+                    .padding(.horizontal, 56)
 
                 Text(pose.name.localized)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .padding(.top, 16)
+                    .padding(.top, 20)
 
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
@@ -184,13 +183,21 @@ struct WorkoutFlowView: View {
         VStack(spacing: 32) {
             Spacer()
 
-            Image(systemName: "figure.yoga")
-                .font(.system(size: 80))
-                .foregroundStyle(.cyan)
+            if let firstPose = viewModel.plan.poses.first {
+                MotionCoachView(pose: firstPose, phase: .preview)
+                    .frame(height: 280)
+                    .padding(.horizontal, 28)
+            } else {
+                Image(systemName: "figure.yoga")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.cyan)
+            }
 
             Text(viewModel.plan.name.localized)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
 
             Text("\(viewModel.plan.poseCount) poses · \(formattedDuration(viewModel.plan.totalDuration))")
                 .font(.system(size: 18))
@@ -219,13 +226,13 @@ struct WorkoutFlowView: View {
     private func activePoseView(poseIndex: Int) -> some View {
         let pose = viewModel.plan.poses[poseIndex]
         let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
+
         return VStack(spacing: 0) {
             Spacer()
 
-            Image(systemName: pose.category.symbolName)
-                .font(.system(size: 80))
-                .foregroundStyle(catColor.opacity(0.35))
-                .shadow(color: catColor.opacity(0.2), radius: 16)
+            MotionCoachView(pose: pose, phase: .active)
+                .frame(height: 300)
+                .padding(.horizontal, 28)
 
             Text(pose.name.localized)
                 .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -303,6 +310,7 @@ struct WorkoutFlowView: View {
     private func transitionView(nextIndex: Int, seconds: Int) -> some View {
         let nextPose = nextIndex < viewModel.plan.poses.count ? viewModel.plan.poses[nextIndex] : nil
         let catColor = nextPose.map { Color(hue: $0.category.accentHue, saturation: 0.7, brightness: 0.9) } ?? .cyan
+
         return VStack(spacing: 20) {
             Spacer()
 
@@ -311,9 +319,9 @@ struct WorkoutFlowView: View {
                 .foregroundStyle(.white.opacity(0.5))
 
             if let nextPose {
-                Image(systemName: nextPose.category.symbolName)
-                    .font(.system(size: 48))
-                    .foregroundStyle(catColor.opacity(0.5))
+                MotionCoachView(pose: nextPose, phase: .transition)
+                    .frame(height: 250)
+                    .padding(.horizontal, 32)
 
                 Text(nextPose.name.localized)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
