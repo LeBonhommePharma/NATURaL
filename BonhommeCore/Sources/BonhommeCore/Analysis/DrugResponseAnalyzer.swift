@@ -706,41 +706,9 @@ public struct DrugResponseAnalyzer: Sendable {
 
     // MARK: - Statistics Helpers
 
-    /// Pearson correlation coefficient between two arrays.
-    /// Filters out non-finite value pairs before computation.
+    /// Pearson correlation coefficient — delegates to shared global implementation
+    /// which uses C++ accelerator when available.
     private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        guard x.count >= 2, x.count == y.count else { return 0 }
-
-        // Filter pairs where both values are finite
-        var cleanX: [Double] = []
-        var cleanY: [Double] = []
-        for i in 0..<x.count {
-            if x[i].isFinite && y[i].isFinite {
-                cleanX.append(x[i])
-                cleanY.append(y[i])
-            }
-        }
-
-        let n = Double(cleanX.count)
-        guard n >= 2 else { return 0 }
-
-        let meanX = cleanX.reduce(0, +) / n
-        let meanY = cleanY.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-        var sumY2 = 0.0
-
-        for i in 0..<cleanX.count {
-            let dx = cleanX[i] - meanX
-            let dy = cleanY[i] - meanY
-            sumXY += dx * dy
-            sumX2 += dx * dx
-            sumY2 += dy * dy
-        }
-
-        let denom = sqrt(sumX2 * sumY2)
-        guard denom > 0 else { return 0 }
-        return sumXY / denom
+        BonhommeCore.pearsonCorrelation(x, y)
     }
 }

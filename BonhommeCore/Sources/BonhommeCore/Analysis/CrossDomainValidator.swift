@@ -1,4 +1,7 @@
 import Foundation
+#if BONHOMME_ACCEL
+import BonhommeAccelSwift
+#endif
 
 /// Validates the isomorphism between FlexAID∆S configurational entropy (in silico)
 /// and DrugResponseAnalyzer HRV entropy (in vivo).
@@ -441,83 +444,33 @@ public struct CrossDomainValidator: Sendable {
         )
     }
 
-    /// Pearson correlation coefficient between two arrays.
-    /// Filters out non-finite values before computation.
+    /// Pearson correlation — delegates to shared global implementation
+    /// which uses C++ accelerator when available.
     private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        guard x.count >= 2, x.count == y.count else { return 0 }
-
-        // Filter pairs where both values are finite
-        var cleanX: [Double] = []
-        var cleanY: [Double] = []
-        for i in 0..<x.count {
-            if x[i].isFinite && y[i].isFinite {
-                cleanX.append(x[i])
-                cleanY.append(y[i])
-            }
-        }
-
-        let n = Double(cleanX.count)
-        guard n >= 2 else { return 0 }
-
-        let meanX = cleanX.reduce(0, +) / n
-        let meanY = cleanY.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-        var sumY2 = 0.0
-
-        for i in 0..<cleanX.count {
-            let dx = cleanX[i] - meanX
-            let dy = cleanY[i] - meanY
-            sumXY += dx * dy
-            sumX2 += dx * dx
-            sumY2 += dy * dy
-        }
-
-        let denom = sqrt(sumX2 * sumY2)
-        guard denom > 0 else { return 0 }
-        return sumXY / denom
+        BonhommeCore.pearsonCorrelation(x, y)
     }
 
-    /// Simple linear regression: y = slope × x + intercept, plus MAE.
+    /// Linear regression — delegates to shared global implementation
+    /// which uses C++ accelerator when available.
     private func linearRegression(
         x: [Double],
         y: [Double]
     ) -> (slope: Double, intercept: Double, mae: Double) {
-        let n = Double(x.count)
-        guard n >= 2 else { return (slope: 0, intercept: 0, mae: 0) }
-
-        let meanX = x.reduce(0, +) / n
-        let meanY = y.reduce(0, +) / n
-
-        var sumXY = 0.0
-        var sumX2 = 0.0
-
-        for i in 0..<x.count {
-            sumXY += (x[i] - meanX) * (y[i] - meanY)
-            sumX2 += (x[i] - meanX) * (x[i] - meanX)
-        }
-
-        let slope = sumX2 > 0 ? sumXY / sumX2 : 0
-        let intercept = meanY - slope * meanX
-
-        var totalError = 0.0
-        for i in 0..<x.count {
-            let predicted = slope * x[i] + intercept
-            totalError += abs(y[i] - predicted)
-        }
-        let mae = totalError / n
-
-        return (slope: slope, intercept: intercept, mae: mae)
+        BonhommeCore.linearRegression(x: x, y: y)
     }
 
     // MARK: - Statistical Significance
 
     /// Compute two-tailed p-value for Pearson r using the t-distribution.
     ///
-    /// t = r × √(n-2) / √(1-r²), df = n-2.
-    /// p-value computed via the regularized incomplete beta function.
+    /// Delegates to C++ accelerator when available, with Swift fallback.
     static func computePValue(r: Double, n: Int) -> Double {
+        #if BONHOMME_ACCEL
+        if let pval = AccelCorrelation.pearsonPValue(r: r, n: n) {
+            return pval
+        }
+        #endif
+
         guard n > 2 else { return 1.0 }
         let absR = abs(r)
         guard absR < 1.0 else { return absR >= 1.0 ? 0.0 : 1.0 }
@@ -525,35 +478,29 @@ public struct CrossDomainValidator: Sendable {
         let df = Double(n - 2)
         let t = absR * sqrt(df) / sqrt(1.0 - absR * absR)
 
-        // Two-tailed p = 2 × (1 - CDF_t(|t|, df))
-        // Using the relationship: CDF_t(t, df) = 1 - 0.5 × I_{df/(df+t²)}(df/2, 1/2)
         let x = df / (df + t * t)
         let ibeta = regularizedIncompleteBeta(x: x, a: df / 2.0, b: 0.5)
-        return ibeta  // This is already the two-tailed p-value
+        return ibeta
     }
 
-    /// Regularized incomplete beta function I_x(a, b) using Lentz's continued fraction.
-    ///
-    /// This is a standard numerical method (Numerical Recipes, Press et al.)
-    /// for computing the cumulative distribution function of the beta distribution.
-    /// Used here to convert t-statistics to p-values without external dependencies.
+    /// Regularized incomplete beta function I_x(a, b) — delegates to C++ when available.
     private static func regularizedIncompleteBeta(x: Double, a: Double, b: Double) -> Double {
+        #if BONHOMME_ACCEL
+        if let result = AccelCorrelation.regularizedIncompleteBeta(x: x, a: a, b: b) {
+            return result
+        }
+        #endif
+
         guard x > 0 else { return 0.0 }
         guard x < 1 else { return 1.0 }
 
-        // Use the symmetry relation if x > (a+1)/(a+b+2) for better convergence
         if x > (a + 1.0) / (a + b + 2.0) {
             return 1.0 - regularizedIncompleteBeta(x: 1.0 - x, a: b, b: a)
         }
 
-        // Log of the beta function prefactor: x^a (1-x)^b / (a B(a,b))
-        let lnPrefactor = a * log(x) + b * log(1.0 - x)
-            - log(a)
-            - lnBeta(a: a, b: b)
-
+        let lnPrefactor = a * log(x) + b * log(1.0 - x) - log(a) - lnBeta(a: a, b: b)
         let prefactor = exp(lnPrefactor)
 
-        // Lentz's continued fraction for I_x(a, b)
         let maxIterations = 200
         let epsilon = 1.0e-10
         let tiny = 1.0e-30
@@ -565,13 +512,11 @@ public struct CrossDomainValidator: Sendable {
         for m in 1...maxIterations {
             let dm = Double(m)
 
-            // Even step: a_{2m}
             var numerator = dm * (b - dm) * x / ((a + 2.0 * dm - 1.0) * (a + 2.0 * dm))
             d = 1.0 / max(tiny, 1.0 + numerator * d)
             c = max(tiny, 1.0 + numerator / c)
             h *= d * c
 
-            // Odd step: a_{2m+1}
             numerator = -(a + dm) * (a + b + dm) * x / ((a + 2.0 * dm) * (a + 2.0 * dm + 1.0))
             d = 1.0 / max(tiny, 1.0 + numerator * d)
             c = max(tiny, 1.0 + numerator / c)
@@ -587,7 +532,6 @@ public struct CrossDomainValidator: Sendable {
     }
 
     /// Log of the beta function: ln B(a, b) = ln Γ(a) + ln Γ(b) - ln Γ(a+b).
-    /// Uses the Lanczos approximation for ln Γ.
     private static func lnBeta(a: Double, b: Double) -> Double {
         return lgamma(a) + lgamma(b) - lgamma(a + b)
     }
