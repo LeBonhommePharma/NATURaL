@@ -7,6 +7,7 @@ import BonhommeCore
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @AppStorage("natural.motionCoachHeroDismissed") private var motionCoachHeroDismissed = false
     @State private var showingHealthKitAuth = false
     @State private var selectedPlan: WorkoutPlan?
     @State private var selectedStyle: YogaStyle?
@@ -41,7 +42,7 @@ struct HomeView: View {
                             VStack(alignment: .leading) {
                                 Text(style.localizedName.localized)
                                     .font(.system(size: 16, weight: .medium))
-                                Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: "plans", fr: "programmes").localized)")
+                                Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: \"plans\", fr: \"programmes\").localized)")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary)
                             }
@@ -55,16 +56,25 @@ struct HomeView: View {
             if let style = selectedStyle {
                 StyleDetailView(style: style)
             } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "figure.yoga")
-                        .font(.system(size: 64))
-                        .foregroundStyle(.cyan.opacity(0.5))
-                    Text(LocalizedString(
-                        en: "Select a yoga style",
-                        fr: "Sélectionnez un style de yoga"
-                    ).localized)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        coachHeroCard(compact: true, dismissible: false)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 24)
+
+                        VStack(spacing: 16) {
+                            Image(systemName: "figure.yoga")
+                                .font(.system(size: 52))
+                                .foregroundStyle(.cyan.opacity(0.55))
+                            Text(LocalizedString(
+                                en: "Select a yoga style",
+                                fr: "Sélectionnez un style de yoga"
+                            ).localized)
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.bottom, 32)
+                    }
                 }
             }
         }
@@ -86,6 +96,11 @@ struct HomeView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
+
+                if !motionCoachHeroDismissed {
+                    coachHeroCard(compact: false, dismissible: true)
+                        .padding(.horizontal)
+                }
 
                 // CareKit prescribed section
                 if appState.careKitBridge.hasPrescriptions {
@@ -113,6 +128,120 @@ struct HomeView: View {
         }
         .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
+    }
+
+    // MARK: - Coach Hero
+
+    private func coachHeroCard(compact: Bool, dismissible: Bool) -> some View {
+        let previewPose = PoseCatalog.seatedCatCow
+        let previewPlan = PoseCatalog.beginnerFlow
+        let accent = Color(hue: previewPose.category.accentHue, saturation: 0.62, brightness: 0.88)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "video.slash")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(accent)
+                        Text(LocalizedString(en: "Clean-room visual coach", fr: "Coach visuel clean-room").localized)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(accent)
+                    }
+
+                    Text(LocalizedString(
+                        en: "Guided motion without trainer footage",
+                        fr: "Guidage animé sans vidéo de coach"
+                    ).localized)
+                    .font(.system(size: compact ? 22 : 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+
+                    Text(LocalizedString(
+                        en: "Procedural symbol animation, breathing cues, and pose pacing inspired by the pattern class — not by copied code, assets, or video.",
+                        fr: "Animation symbolique procédurale, repères respiratoires et rythme des postures inspirés de la classe de produit — sans code, actifs ni vidéo copiés."
+                    ).localized)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 12)
+
+                if dismissible {
+                    Button {
+                        motionCoachHeroDismissed = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            MotionCoachView(pose: previewPose, phase: .preview, cornerRadius: 24)
+                .frame(height: compact ? 250 : 220)
+
+            VStack(alignment: .leading, spacing: 10) {
+                coachPoint(
+                    systemName: "sparkles.rectangle.stack",
+                    text: LocalizedString(en: "Symbolic motion instead of trainer video", fr: "Mouvement symbolique au lieu d'une vidéo de coach").localized,
+                    color: accent
+                )
+                coachPoint(
+                    systemName: "wind",
+                    text: LocalizedString(en: "Breathing and pacing cues embedded in the animation", fr: "Repères respiratoires et de rythme intégrés à l'animation").localized,
+                    color: accent
+                )
+                coachPoint(
+                    systemName: "figure.walk.motion",
+                    text: LocalizedString(en: "Ready to wire into every guided workout phase", fr: "Prêt à être branché dans chaque phase guidée").localized,
+                    color: accent
+                )
+            }
+
+            NavigationLink {
+                WorkoutFlowView(plan: previewPlan)
+            } label: {
+                HStack {
+                    Text(LocalizedString(en: "Try guided preview", fr: "Essayer l'aperçu guidé").localized)
+                        .font(.system(size: 16, weight: .semibold))
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(accent, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(compact ? 24 : 20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(hue: previewPose.category.accentHue, saturation: 0.10, brightness: 0.97))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(accent.opacity(0.28), lineWidth: 1)
+        )
+    }
+
+    private func coachPoint(systemName: String, text: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 18, height: 18)
+                .padding(.top, 1)
+
+            Text(text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - Style Card Grid
