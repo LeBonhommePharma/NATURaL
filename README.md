@@ -355,7 +355,7 @@ NATURaL/
 │   └── Shared/Components/           # Activity rings, reusable views
 ├── BonhommeCore/                    # Shared Swift Package (all platforms)
 │   ├── Sources/BonhommeCore/        # Models + Analysis (29 modules) + TV display views
-│   └── Tests/BonhommeCoreTests/     # 19 test suites (pharmacology, entropy, codable)
+│   └── Tests/BonhommeCoreTests/     # 19 test suites (pharmacology, entropy, codable, PK)
 ├── BonhommeTV/                      # tvOS companion app
 │   ├── App/                         # @main entry
 │   ├── Networking/                  # NWListener Bonjour service
@@ -368,7 +368,12 @@ NATURaL/
 │                                    # SpatialBiofeedbackView (ornament gauges)
 ├── NATURaLLiveActivity/             # ActivityKit Dynamic Island
 ├── NATURaLWidgets/                  # Streak + Activity Rings widgets (WidgetBundle)
-├── .github/workflows/               # CI/CD (build + test on push/PR)
+├── .github/
+│   ├── workflows/ci.yml             # Build, test, lint with caching + coverage
+│   ├── workflows/release.yml        # Tag-triggered release automation
+│   ├── dependabot.yml               # Automated dependency updates (Actions + SPM)
+│   └── ISSUE_TEMPLATE/              # Bug report + feature request templates
+├── Makefile                         # Convenience targets (build, test, lint, coverage, clean)
 └── Tests/
     ├── BonhommeTests/               # iOS app unit tests
     └── BonhommeUITests/             # Xcode UI test suites
@@ -382,7 +387,7 @@ NATURaL/
 
 | Dependency | Version |
 |-----------|---------|
-| Xcode | 15.0+ (26+ for Apple Intelligence) |
+| Xcode | 16.0+ (26+ for Apple Intelligence) |
 | Swift | 5.9+ |
 | iOS deployment | 17.0+ |
 | watchOS deployment | 10.0+ |
@@ -400,7 +405,7 @@ cd NATURaL
 # Open in Xcode
 open NATURaL.xcodeproj
 
-# Select scheme → Bonhomme, destination → iPhone 15 Pro
+# Select scheme → Bonhomme, destination → iPhone 16 Pro
 # ⌘R to build and run
 ```
 
@@ -425,22 +430,47 @@ open NATURaL.xcodeproj
 
 ---
 
+## Development
+
+### Makefile Targets
+
+```bash
+make build       # Build BonhommeCore (SPM)
+make test        # Run BonhommeCore tests
+make coverage    # Tests with code coverage report
+make xcode-build # Build iOS app via xcodebuild
+make xcode-test  # Run iOS app tests via xcodebuild
+make lint        # SwiftLint
+make lint-fix    # SwiftLint with auto-fix
+make clean       # Remove build artifacts and DerivedData
+make help        # List all targets
+```
+
+### CI/CD
+
+- **ci.yml** — Runs on push/PR to master: build + test (BonhommeCore SPM and iOS app), SwiftLint, code coverage collection with SPM/DerivedData caching
+- **release.yml** — Triggered by `v*` tags: pre-release tests, changelog extraction, GitHub Release creation
+- **Dependabot** — Weekly automated updates for GitHub Actions and Swift Package Manager dependencies
+
+---
+
 ## Testing
 
 ```bash
-# BonhommeCore unit tests (platform-agnostic)
-xcodebuild test -scheme BonhommeCore -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Quick: use Makefile targets
+make test          # BonhommeCore SPM tests
+make xcode-test    # iOS app tests via xcodebuild
+make coverage      # BonhommeCore tests with code coverage report
 
-# iOS app unit tests
-xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
-
-# UI tests (requires simulator)
-xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Manual: xcodebuild
+xcodebuild test -scheme BonhommeCore -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
 ### Test Coverage
 
-**19 test suites** across BonhommeCore, iOS app, and UI tests:
+**23 test suites** across BonhommeCore, iOS app, and UI tests:
 
 | Suite | Scope |
 |-------|-------|
@@ -463,6 +493,10 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 | `ProfileConsistencyValidatorTests` | Cross-profile data integrity |
 | `HealthSignalTests` | Protocol conformance, signal types |
 | `EvolutionThermodynamicsTests` | Evolution chain thermodynamic validation |
+| `TVDisplayCoordinatorTests` | TV relay coordinator logic |
+| `WorkoutFlowViewModelTests` | Workout flow state machine |
+| `WorkoutFlowUITests` | End-to-end workout UI automation |
+| `AirPlayFallbackUITests` | AirPlay second-screen fallback flow |
 
 ---
 
