@@ -1,4 +1,7 @@
 import Foundation
+#if BONHOMME_ACCEL
+import BonhommeAccelSwift
+#endif
 
 // MARK: - Types
 
@@ -282,6 +285,12 @@ public struct PopulationPKAnalyzer: Sendable {
     // MARK: - Private
 
     private static func descriptiveStats(_ values: [Double]) -> (mean: Double, sd: Double) {
+        #if BONHOMME_ACCEL
+        if let result = AccelStatistics.descriptiveStats(values) {
+            return result
+        }
+        #endif
+
         let n = Double(values.count)
         guard n >= 1 else { return (0, 0) }
         let mean = values.reduce(0, +) / n

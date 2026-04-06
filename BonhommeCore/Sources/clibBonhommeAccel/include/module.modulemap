@@ -1,0 +1,4 @@
+module clibBonhommeAccel {
+    header "BonhommeAccel.h"
+    export *
+}

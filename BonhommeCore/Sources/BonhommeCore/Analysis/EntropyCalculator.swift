@@ -1,4 +1,7 @@
 import Foundation
+#if BONHOMME_ACCEL
+import BonhommeAccelSwift
+#endif
 
 /// Reusable Shannon entropy calculator for any distribution of continuous values.
 ///
@@ -29,6 +32,13 @@ public struct EntropyCalculator: Sendable {
     ///   sleep stage durations, respiratory rates).
     /// - Returns: Entropy in bits. Higher = more uniform/variable; lower = more concentrated/coherent.
     public func shannonEntropy(_ values: [Double]) -> Double {
+        #if BONHOMME_ACCEL
+        if values.count >= AccelEntropy.delegationThreshold,
+           let result = AccelEntropy.shannonEntropy(values, binCount: binCount) {
+            return result
+        }
+        #endif
+
         let clean = values.filter { $0.isFinite }
         guard clean.count >= 2 else { return 0 }
 
@@ -67,6 +77,13 @@ public struct EntropyCalculator: Sendable {
     ///   are wrapped via modular arithmetic.
     /// - Returns: Entropy in bits. Range [0, log₂(binCount)].
     public func circularShannonEntropy(_ angles: [Double]) -> Double {
+        #if BONHOMME_ACCEL
+        if angles.count >= AccelEntropy.delegationThreshold,
+           let result = AccelEntropy.circularShannonEntropy(angles, binCount: binCount) {
+            return result
+        }
+        #endif
+
         let clean = angles.filter { $0.isFinite }
         guard clean.count >= 2 else { return 0 }
 
@@ -118,6 +135,14 @@ public struct EntropyCalculator: Sendable {
     ///   - domainMax: Upper bound of the histogram domain (inclusive).
     /// - Returns: Entropy in bits.
     public func shannonEntropy(_ values: [Double], domainMin: Double, domainMax: Double) -> Double {
+        #if BONHOMME_ACCEL
+        if values.count >= AccelEntropy.delegationThreshold,
+           let result = AccelEntropy.shannonEntropyFixed(values, binCount: binCount,
+                                                          domainMin: domainMin, domainMax: domainMax) {
+            return result
+        }
+        #endif
+
         guard values.count >= 2 else { return 0 }
         let range = domainMax - domainMin
         guard range > 0 else { return 0 }
@@ -163,6 +188,12 @@ public struct EntropyCalculator: Sendable {
 ///   - y: Second variable array (must have same count as x).
 /// - Returns: Pearson r in [-1, 1], or 0 if insufficient data or zero variance.
 public func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
+    #if BONHOMME_ACCEL
+    if let result = AccelCorrelation.pearsonCorrelation(x, y) {
+        return result
+    }
+    #endif
+
     let n = Double(x.count)
     guard n >= 2, x.count == y.count else { return 0 }
 
@@ -193,6 +224,12 @@ public func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
 ///   - y: Dependent variable array (must have same count as x).
 /// - Returns: Tuple of (slope, intercept, mean absolute error).
 public func linearRegression(x: [Double], y: [Double]) -> (slope: Double, intercept: Double, mae: Double) {
+    #if BONHOMME_ACCEL
+    if let result = AccelCorrelation.linearRegression(x: x, y: y) {
+        return result
+    }
+    #endif
+
     let n = Double(x.count)
     guard n >= 2 else { return (slope: 0, intercept: 0, mae: 0) }
 
