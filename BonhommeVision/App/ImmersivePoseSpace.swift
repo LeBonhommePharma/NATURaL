@@ -208,6 +208,27 @@ struct ImmersivePoseSpace: View {
         case .balance:
             armRotation = .pi / 4
             torsoRotation = 0
+        case .core:
+            armRotation = .pi / 6    // Arms close to body for core engagement
+            torsoRotation = .pi / 10 // Slight forward lean
+        case .arms:
+            armRotation = .pi / 2.5  // Arms extended outward
+            torsoRotation = 0
+        case .legs:
+            armRotation = .pi / 8    // Arms relaxed at sides
+            torsoRotation = .pi / 16 // Slight lean for leg work
+        case .chest:
+            armRotation = .pi / 3    // Arms open wide for chest expansion
+            torsoRotation = -.pi / 16 // Slight backbend
+        case .back:
+            armRotation = .pi / 5    // Arms moderately raised
+            torsoRotation = .pi / 10 // Forward fold emphasis
+        case .relaxation:
+            armRotation = .pi / 10   // Arms resting low
+            torsoRotation = 0        // Neutral torso
+        case .inversion:
+            armRotation = .pi / 3    // Arms supporting weight
+            torsoRotation = .pi / 6  // Tilted forward for inversion
         }
 
         // Animate arm positions

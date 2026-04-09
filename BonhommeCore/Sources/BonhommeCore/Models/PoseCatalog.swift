@@ -2195,181 +2195,25 @@ public enum PoseCatalog {
     public static let freePoses: [Pose] = allPoses.filter(\.isFree)
     public static let premiumPoses: [Pose] = allPoses.filter { !$0.isFree }
 
-    // MARK: - Workout Plans
+    /// Returns all workout plans for a given yoga style.
+    public static func plans(for style: YogaStyle) -> [WorkoutPlan] {
+        switch style {
+        case .chairYoga:       return chairYogaPlans
+        case .vinyasa:         return vinyasaPlans
+        case .hatha:           return hathaPlans
+        case .yin:             return yinPlans
+        case .restorative:     return restorativePlans
+        case .power:           return powerPlans
+        case .standingBalance: return standingBalancePlans
+        case .prenatal:        return prenatalPlans
+        case .pranayama:       return pranayamaPlans
+        }
+    }
 
-    public static let beginnerFlow = WorkoutPlan(
-        id: "beginner-chair-flow",
-        name: LocalizedString(
-            en: "Gentle Chair Flow",
-            fr: "Enchaînement doux sur chaise",
-            es: "Flujo suave en silla",
-            ja: "やさしい椅子ヨガフロー",
-            zh: "温和椅子瑜伽流",
-            ko: "부드러운 의자 플로우",
-            ru: "Мягкий поток на стуле",
-            de: "Sanfter Stuhl-Flow",
-            ar: "تدفق لطيف على الكرسي"
-        ),
-        description: LocalizedString(
-            en: "A calming 5-minute sequence perfect for beginners or a quick break at your desk.",
-            fr: "Un enchaînement apaisant de 5 minutes, parfait pour les débutants ou une pause rapide au bureau.",
-            es: "Una secuencia relajante de 5 minutos perfecta para principiantes o una pausa rápida en su escritorio.",
-            ja: "初心者やデスクでの短い休憩に最適な、心を落ち着かせる5分間のシーケンスです。",
-            zh: "一套舒缓的5分钟序列，非常适合初学者或办公桌前的快速休息。",
-            ko: "초보자나 책상에서의 빠른 휴식에 완벽한 5분 진정 시퀀스입니다.",
-            ru: "Успокаивающая 5-минутная последовательность, идеальная для начинающих или быстрого перерыва за рабочим столом.",
-            de: "Eine beruhigende 5-Minuten-Sequenz, perfekt für Anfänger oder eine schnelle Pause am Schreibtisch.",
-            ar: "تسلسل مهدّئ مدته 5 دقائق مثالي للمبتدئين أو استراحة سريعة على مكتبك."
-        ),
-        poses: freePoses,
-        transitionSeconds: 5,
-        isFree: true
-    )
-
-    public static let morningWakeUp = WorkoutPlan(
-        id: "morning-wake-up",
-        name: LocalizedString(
-            en: "Morning Wake-Up Flow",
-            fr: "Enchaînement réveil matinal",
-            es: "Flujo de despertar matutino",
-            ja: "朝の目覚めフロー",
-            zh: "晨间唤醒流",
-            ko: "아침 기상 플로우",
-            ru: "Утренний пробуждающий поток",
-            de: "Morgendlicher Aufwach-Flow",
-            ar: "تدفق الاستيقاظ الصباحي"
-        ),
-        description: LocalizedString(
-            en: "An energizing 8-minute sequence to start your day with gentle spinal movement and breath work.",
-            fr: "Un enchaînement énergisant de 8 minutes pour commencer la journée avec des mouvements doux de la colonne et un travail du souffle.",
-            es: "Una secuencia energizante de 8 minutos para comenzar el día con movimiento suave de la columna y trabajo respiratorio.",
-            ja: "やさしい脊柱の動きと呼吸法で一日を始める、エネルギーを活性化する8分間のシーケンスです。",
-            zh: "一套充满活力的8分钟序列，通过温和的脊柱运动和呼吸练习开始新的一天。",
-            ko: "부드러운 척추 움직임과 호흡 운동으로 하루를 시작하는 활력 넘치는 8분 시퀀스입니다.",
-            ru: "Заряжающая энергией 8-минутная последовательность для начала дня с мягкими движениями позвоночника и дыхательной практикой.",
-            de: "Eine energetisierende 8-Minuten-Sequenz, um den Tag mit sanften Wirbelsäulenbewegungen und Atemarbeit zu beginnen.",
-            ar: "تسلسل منشّط مدته 8 دقائق لبدء يومك بحركات لطيفة للعمود الفقري وتمارين التنفس."
-        ),
-        poses: [seatedMountain, shoulderRolls, neckRolls, seatedCatCow, seatedSpinalTwist, seatedSideBend, seatedHeartOpener, seatedSunSalutation, seatedMeditation],
-        transitionSeconds: 5,
-        isFree: false
-    )
-
-    public static let hipOpener = WorkoutPlan(
-        id: "hip-opener-flow",
-        name: LocalizedString(
-            en: "Hip Opening Flow",
-            fr: "Enchaînement d'ouverture des hanches",
-            es: "Flujo de apertura de caderas",
-            ja: "股関節オープニングフロー",
-            zh: "髋部打开流",
-            ko: "골반 열기 플로우",
-            ru: "Поток для раскрытия бёдер",
-            de: "Hüftöffnungs-Flow",
-            ar: "تدفق فتح الوركين"
-        ),
-        description: LocalizedString(
-            en: "A 10-minute session focused on releasing tension in the hips and lower body.",
-            fr: "Une séance de 10 minutes axée sur le relâchement des tensions dans les hanches et le bas du corps.",
-            es: "Una sesión de 10 minutos enfocada en liberar tensión en las caderas y la parte inferior del cuerpo.",
-            ja: "股関節と下半身の緊張をほぐすことに焦点を当てた10分間のセッションです。",
-            zh: "一套10分钟的课程，专注于释放髋部和下半身的紧张。",
-            ko: "골반과 하체의 긴장을 풀어주는 데 집중하는 10분 세션입니다.",
-            ru: "10-минутное занятие, направленное на снятие напряжения в бёдрах и нижней части тела.",
-            de: "Eine 10-Minuten-Sitzung, die sich auf das Lösen von Spannungen in Hüften und Unterkörper konzentriert.",
-            ar: "جلسة مدتها 10 دقائق تركّز على تحرير التوتر في الوركين والجزء السفلي من الجسم."
-        ),
-        poses: [seatedMountain, seatedCatCow, seatedPigeon, seatedAnklesToKnees, seatedWarriorII, seatedExtendedSideBend, seatedForwardFold, seatedMeditation],
-        transitionSeconds: 5,
-        isFree: false
-    )
-
-    public static let fullBody = WorkoutPlan(
-        id: "full-body-chair-yoga",
-        name: LocalizedString(
-            en: "Full Body Chair Yoga",
-            fr: "Yoga sur chaise corps complet",
-            es: "Yoga en silla de cuerpo completo",
-            ja: "全身椅子ヨガ",
-            zh: "全身椅子瑜伽",
-            ko: "전신 의자 요가",
-            ru: "Йога на стуле для всего тела",
-            de: "Ganzkörper-Stuhl-Yoga",
-            ar: "يوغا الكرسي لكامل الجسم"
-        ),
-        description: LocalizedString(
-            en: "A comprehensive 15-minute session working through every major area of the body.",
-            fr: "Une séance complète de 15 minutes travaillant toutes les zones principales du corps.",
-            es: "Una sesión integral de 15 minutos que trabaja todas las áreas principales del cuerpo.",
-            ja: "体のすべての主要な部位を網羅する包括的な15分間のセッションです。",
-            zh: "一套全面的15分钟课程，涵盖身体每个主要区域。",
-            ko: "몸의 모든 주요 부위를 다루는 종합적인 15분 세션입니다.",
-            ru: "Комплексное 15-минутное занятие, прорабатывающее все основные зоны тела.",
-            de: "Eine umfassende 15-Minuten-Sitzung, die jeden wichtigen Bereich des Körpers durcharbeitet.",
-            ar: "جلسة شاملة مدتها 15 دقيقة تعمل على كل منطقة رئيسية في الجسم."
-        ),
-        poses: allPoses,
-        transitionSeconds: 5,
-        isFree: false
-    )
-
-    public static let deskBreak = WorkoutPlan(
-        id: "desk-break",
-        name: LocalizedString(
-            en: "Quick Desk Break",
-            fr: "Pause bureau rapide",
-            es: "Pausa rápida de escritorio",
-            ja: "デスクブレイク",
-            zh: "快速办公休息",
-            ko: "빠른 데스크 브레이크",
-            ru: "Быстрый перерыв за столом",
-            de: "Schnelle Schreibtischpause",
-            ar: "استراحة مكتب سريعة"
-        ),
-        description: LocalizedString(
-            en: "A focused 5-minute break targeting neck, shoulders, and wrists — perfect for office workers.",
-            fr: "Une pause ciblée de 5 minutes pour le cou, les épaules et les poignets — parfaite pour les travailleurs de bureau.",
-            es: "Una pausa enfocada de 5 minutos dirigida al cuello, hombros y muñecas — perfecta para trabajadores de oficina.",
-            ja: "首、肩、手首を対象にした集中的な5分間の休憩 — オフィスワーカーに最適です。",
-            zh: "一套有针对性的5分钟休息，专注于颈部、肩部和手腕——非常适合办公室工作者。",
-            ko: "목, 어깨, 손목을 대상으로 한 집중 5분 휴식 — 사무직에 완벽합니다.",
-            ru: "Целенаправленный 5-минутный перерыв для шеи, плеч и запястий — идеален для офисных работников.",
-            de: "Eine gezielte 5-Minuten-Pause für Nacken, Schultern und Handgelenke — perfekt für Büroangestellte.",
-            ar: "استراحة مركّزة مدتها 5 دقائق تستهدف الرقبة والكتفين والمعصمين — مثالية لموظفي المكاتب."
-        ),
-        poses: [seatedMountain, neckRolls, shoulderRolls, seatedWristStretches, seatedChestExpansion, seatedCrescentMoon, seatedMeditation],
-        transitionSeconds: 3,
-        isFree: false
-    )
-
-    public static let advancedFlow = WorkoutPlan(
-        id: "advanced-chair-flow",
-        name: LocalizedString(
-            en: "Advanced Chair Yoga",
-            fr: "Yoga sur chaise avancé",
-            es: "Yoga en silla avanzado",
-            ja: "上級椅子ヨガ",
-            zh: "高级椅子瑜伽",
-            ko: "고급 의자 요가",
-            ru: "Продвинутая йога на стуле",
-            de: "Fortgeschrittenes Stuhl-Yoga",
-            ar: "يوغا الكرسي المتقدمة"
-        ),
-        description: LocalizedString(
-            en: "A challenging 12-minute session with dynamic breath work, balance poses, and deep twists.",
-            fr: "Une séance stimulante de 12 minutes avec un travail dynamique du souffle, des postures d'équilibre et des torsions profondes.",
-            es: "Una sesión desafiante de 12 minutos con trabajo respiratorio dinámico, posturas de equilibrio y torsiones profundas.",
-            ja: "ダイナミックな呼吸法、バランスポーズ、深いねじりを含む、挑戦的な12分間のセッションです。",
-            zh: "一套具有挑战性的12分钟课程，包含动态呼吸练习、平衡姿势和深度扭转。",
-            ko: "역동적인 호흡 운동, 균형 자세, 깊은 비틀기를 포함한 도전적인 12분 세션입니다.",
-            ru: "Интенсивное 12-минутное занятие с динамической дыхательной практикой, позами на равновесие и глубокими скручиваниями.",
-            de: "Eine herausfordernde 12-Minuten-Sitzung mit dynamischer Atemarbeit, Gleichgewichtsposen und tiefen Drehungen.",
-            ar: "جلسة تحدٍّ مدتها 12 دقيقة تشمل تمارين تنفس ديناميكية ووضعيات توازن ولفّات عميقة."
-        ),
-        poses: [seatedMountain, seatedSunSalutation, seatedWarriorII, seatedReverseWarrior, seatedTreePose, seatedThreadTheNeedle, seatedBreathOfJoy, seatedHalfMoon, seatedForwardFold, seatedMeditation],
-        transitionSeconds: 5,
-        isFree: false
-    )
+    /// All workout plans across every yoga style.
+    public static let allPlans: [WorkoutPlan] = {
+        YogaStyle.allCases.flatMap { plans(for: $0) }
+    }()
 
     /// Number of plans for a given style.
     public static func planCount(for style: YogaStyle) -> Int {

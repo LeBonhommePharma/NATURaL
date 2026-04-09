@@ -153,8 +153,8 @@ struct WorkoutFlowView: View {
 
                 // Session progress
                 SessionProgressView(
-                    currentIndex: poseIndex,
-                    totalPoses: viewModel.plan.poseCount,
+                    index: poseIndex,
+                    total: viewModel.plan.poseCount,
                     elapsed: viewModel.elapsedTime
                 )
 

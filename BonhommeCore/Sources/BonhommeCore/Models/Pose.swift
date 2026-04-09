@@ -78,13 +78,20 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
 
     public var localizedName: LocalizedString {
         switch self {
-        case .spine:     return LocalizedString(en: "Spine", fr: "Colonne vertébrale", es: "Columna vertebral", ja: "背骨", zh: "脊柱", ko: "척추", ru: "Позвоночник", de: "Wirbelsäule", ar: "العمود الفقري")
-        case .hips:      return LocalizedString(en: "Hips", fr: "Hanches", es: "Caderas", ja: "股関節", zh: "臀部", ko: "골반", ru: "Бёдра", de: "Hüften", ar: "الوركان")
-        case .shoulders: return LocalizedString(en: "Shoulders", fr: "Épaules", es: "Hombros", ja: "肩", zh: "肩膀", ko: "어깨", ru: "Плечи", de: "Schultern", ar: "الكتفان")
-        case .neck:      return LocalizedString(en: "Neck", fr: "Cou", es: "Cuello", ja: "首", zh: "颈部", ko: "목", ru: "Шея", de: "Nacken", ar: "الرقبة")
-        case .fullBody:  return LocalizedString(en: "Full Body", fr: "Corps complet", es: "Cuerpo completo", ja: "全身", zh: "全身", ko: "전신", ru: "Всё тело", de: "Ganzkörper", ar: "الجسم بالكامل")
-        case .breathing: return LocalizedString(en: "Breathing", fr: "Respiration", es: "Respiración", ja: "呼吸", zh: "呼吸", ko: "호흡", ru: "Дыхание", de: "Atmung", ar: "التنفس")
-        case .balance:   return LocalizedString(en: "Balance", fr: "Équilibre", es: "Equilibrio", ja: "バランス", zh: "平衡", ko: "균형", ru: "Баланс", de: "Gleichgewicht", ar: "التوازن")
+        case .spine:       return LocalizedString(en: "Spine", fr: "Colonne vertébrale", es: "Columna vertebral", ja: "背骨", zh: "脊柱", ko: "척추", ru: "Позвоночник", de: "Wirbelsäule", ar: "العمود الفقري")
+        case .hips:        return LocalizedString(en: "Hips", fr: "Hanches", es: "Caderas", ja: "股関節", zh: "臀部", ko: "골반", ru: "Бёдра", de: "Hüften", ar: "الوركان")
+        case .shoulders:   return LocalizedString(en: "Shoulders", fr: "Épaules", es: "Hombros", ja: "肩", zh: "肩膀", ko: "어깨", ru: "Плечи", de: "Schultern", ar: "الكتفان")
+        case .neck:        return LocalizedString(en: "Neck", fr: "Cou", es: "Cuello", ja: "首", zh: "颈部", ko: "목", ru: "Шея", de: "Nacken", ar: "الرقبة")
+        case .fullBody:    return LocalizedString(en: "Full Body", fr: "Corps complet", es: "Cuerpo completo", ja: "全身", zh: "全身", ko: "전신", ru: "Всё тело", de: "Ganzkörper", ar: "الجسم بالكامل")
+        case .breathing:   return LocalizedString(en: "Breathing", fr: "Respiration", es: "Respiración", ja: "呼吸", zh: "呼吸", ko: "호흡", ru: "Дыхание", de: "Atmung", ar: "التنفس")
+        case .balance:     return LocalizedString(en: "Balance", fr: "Équilibre", es: "Equilibrio", ja: "バランス", zh: "平衡", ko: "균형", ru: "Баланс", de: "Gleichgewicht", ar: "التوازن")
+        case .core:        return LocalizedString(en: "Core", fr: "Abdominaux", es: "Centro", ja: "体幹", zh: "核心", ko: "코어", ru: "Кор", de: "Rumpf", ar: "الجذع")
+        case .arms:        return LocalizedString(en: "Arms", fr: "Bras", es: "Brazos", ja: "腕", zh: "手臂", ko: "팔", ru: "Руки", de: "Arme", ar: "الذراعان")
+        case .legs:        return LocalizedString(en: "Legs", fr: "Jambes", es: "Piernas", ja: "脚", zh: "腿部", ko: "다리", ru: "Ноги", de: "Beine", ar: "الساقان")
+        case .chest:       return LocalizedString(en: "Chest", fr: "Poitrine", es: "Pecho", ja: "胸", zh: "胸部", ko: "가슴", ru: "Грудь", de: "Brust", ar: "الصدر")
+        case .back:        return LocalizedString(en: "Back", fr: "Dos", es: "Espalda", ja: "背中", zh: "背部", ko: "등", ru: "Спина", de: "Rücken", ar: "الظهر")
+        case .relaxation:  return LocalizedString(en: "Relaxation", fr: "Relaxation", es: "Relajación", ja: "リラクゼーション", zh: "放松", ko: "이완", ru: "Расслабление", de: "Entspannung", ar: "الاسترخاء")
+        case .inversion:   return LocalizedString(en: "Inversion", fr: "Inversion", es: "Inversión", ja: "逆転", zh: "倒立", ko: "역전", ru: "Инверсия", de: "Umkehrhaltung", ar: "الانقلاب")
         }
     }
 
