@@ -1,5 +1,111 @@
 import Foundation
 
+import Foundation
+import BonhommeCore
+
+// MARK: - Supporting Types
+
+/// Yoga styles available in the app.
+public enum YogaStyle: String, Codable, Sendable, CaseIterable {
+    case chairYoga
+    case vinyasa
+    case hatha
+    case yin
+    case restorative
+    case power
+    case standingBalance
+    case prenatal
+    case pranayama
+    
+    public var localizedName: LocalizedString {
+        switch self {
+        case .chairYoga:
+            return LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise", es: "Yoga en silla", ja: "チェアヨガ", zh: "椅子瑜伽", ko: "의자 요가", ru: "Йога на стуле", de: "Stuhl-Yoga", ar: "يوغا الكرسي")
+        case .vinyasa:
+            return LocalizedString(en: "Vinyasa", fr: "Vinyasa", es: "Vinyasa", ja: "ヴィンヤサ", zh: "流瑜伽", ko: "빈야사", ru: "Виньяса", de: "Vinyasa", ar: "فينياسا")
+        case .hatha:
+            return LocalizedString(en: "Hatha", fr: "Hatha", es: "Hatha", ja: "ハタ", zh: "哈他瑜伽", ko: "하타", ru: "Хатха", de: "Hatha", ar: "هاثا")
+        case .yin:
+            return LocalizedString(en: "Yin", fr: "Yin", es: "Yin", ja: "陰ヨガ", zh: "阴瑜伽", ko: "음", ru: "Инь", de: "Yin", ar: "يين")
+        case .restorative:
+            return LocalizedString(en: "Restorative", fr: "Réparateur", es: "Restaurativo", ja: "リストラティブ", zh: "恢复性瑜伽", ko: "회복", ru: "Восстановительная", de: "Erholsam", ar: "استعادي")
+        case .power:
+            return LocalizedString(en: "Power", fr: "Power", es: "Power", ja: "パワー", zh: "力量瑜伽", ko: "파워", ru: "Силовая", de: "Power", ar: "قوة")
+        case .standingBalance:
+            return LocalizedString(en: "Standing Balance", fr: "Équilibre debout", es: "Equilibrio de pie", ja: "立位バランス", zh: "站立平衡", ko: "서서 균형", ru: "Баланс стоя", de: "Stehbalance", ar: "توازن الوقوف")
+        case .prenatal:
+            return LocalizedString(en: "Prenatal", fr: "Prénatal", es: "Prenatal", ja: "マタニティ", zh: "孕期瑜伽", ko: "산전", ru: "Пренатальная", de: "Pränatal", ar: "ما قبل الولادة")
+        case .pranayama:
+            return LocalizedString(en: "Pranayama", fr: "Pranayama", es: "Pranayama", ja: "プラナヤマ", zh: "呼吸法", ko: "호흡법", ru: "Пранаяма", de: "Pranayama", ar: "براناياما")
+        }
+    }
+    
+    public var symbolName: String {
+        switch self {
+        case .chairYoga: return "figure.seated.side"
+        case .vinyasa: return "figure.yoga"
+        case .hatha: return "figure.flexibility"
+        case .yin: return "moon.zzz"
+        case .restorative: return "leaf.fill"
+        case .power: return "bolt.fill"
+        case .standingBalance: return "figure.stand"
+        case .prenatal: return "heart.fill"
+        case .pranayama: return "wind"
+        }
+    }
+    
+    public var accentHue: Double {
+        switch self {
+        case .chairYoga: return 0.55
+        case .vinyasa: return 0.60
+        case .hatha: return 0.35
+        case .yin: return 0.75
+        case .restorative: return 0.30
+        case .power: return 0.05
+        case .standingBalance: return 0.65
+        case .prenatal: return 0.95
+        case .pranayama: return 0.50
+        }
+    }
+}
+
+/// A structured workout plan consisting of multiple poses.
+public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
+    public let id: String
+    public let name: LocalizedString
+    public let description: LocalizedString
+    public let poses: [Pose]
+    public let durationMinutes: Int
+    public let isFree: Bool
+    public let yogaStyle: YogaStyle
+    
+    public init(
+        id: String,
+        name: LocalizedString,
+        description: LocalizedString,
+        poses: [Pose],
+        durationMinutes: Int,
+        isFree: Bool,
+        yogaStyle: YogaStyle = .chairYoga
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.poses = poses
+        self.durationMinutes = durationMinutes
+        self.isFree = isFree
+        self.yogaStyle = yogaStyle
+    }
+    
+    public var poseCount: Int {
+        poses.count
+    }
+    
+    public var estimatedDuration: TimeInterval {
+        TimeInterval(durationMinutes * 60)
+    }
+}
+
 /// Central pose and workout plan registry aggregating all yoga styles.
 ///
 /// Each style contributes its poses and plans via extensions in dedicated files
@@ -19,7 +125,9 @@ public enum PoseCatalog {
             ko: "앉은 산 자세",
             ru: "Поза горы сидя",
             de: "Sitzender Berg",
-            ar: "وضعية الجبل جلوساً"
+            ar: "وضعية الجبل جلوساً",
+            it: "Montagna Seduta",
+            pt: "Montanha Sentada"
         ),
         description: LocalizedString(
             en: "Sit tall at the front edge of your chair, feet hip-width apart and flat on the floor. Place hands on thighs, palms down. Roll shoulders back and down, lengthen through the crown of your head.",
@@ -649,7 +757,7 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atmung, einatmen um die Ellbogen zu heben, ausatmen um die Schultern zu lösen",
             ar: "تنفس ثابت، استنشق لرفع المرفقين، وازفر لإرخاء الكتفين"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedPigeon = Pose(
@@ -742,7 +850,7 @@ public enum PoseCatalog {
             de: "Langsames Ausatmen, um in die Hüftdehnung loszulassen",
             ar: "زفير بطيء للاسترخاء في تمدد الورك"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedWarriorII = Pose(
@@ -826,7 +934,7 @@ public enum PoseCatalog {
             de: "Starke gleichmäßige Atemzüge, einatmen zum Verlängern, ausatmen zum Erden",
             ar: "أنفاس قوية وثابتة، استنشق للاستطالة، وازفر للثبات"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedSideBend = Pose(
@@ -910,7 +1018,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Verlängern, ausatmen um tiefer zu beugen",
             ar: "استنشق للاستطالة، وازفر للانحناء أعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedHeartOpener = Pose(
@@ -994,7 +1102,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Öffnen, ausatmen um die Anstrengung zu mildern",
             ar: "استنشق للانفتاح، وازفر لتخفيف الجهد"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedAnklesToKnees = Pose(
@@ -1078,7 +1186,7 @@ public enum PoseCatalog {
             de: "Langsame Atemzüge, ausatmen um in die Hüftdehnung loszulassen",
             ar: "أنفاس بطيئة، ازفر للاسترخاء في تمدد الورك"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedExtendedSideBend = Pose(
@@ -1162,7 +1270,7 @@ public enum PoseCatalog {
             de: "Einatmen um die Körperseite zu verlängern, ausatmen um zu vertiefen",
             ar: "استنشق لإطالة جانب الجسم، وازفر للتعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     // MARK: - Advanced Poses (Premium)
@@ -1248,7 +1356,7 @@ public enum PoseCatalog {
             de: "Ein Einatmen oder Ausatmen pro Bewegung — koordinierte Atem-Bewegung",
             ar: "شهيق أو زفير واحد لكل حركة — تنسيق بين النَّفَس والحركة"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedTreePose = Pose(
@@ -1332,7 +1440,7 @@ public enum PoseCatalog {
             de: "Gleichmäßige, ruhige Atemzüge zur Aufrechterhaltung des Gleichgewichts",
             ar: "أنفاس ثابتة وهادئة للحفاظ على التوازن"
         ),
-        isFree: false
+        isFree: true
     )
 
     // MARK: - Additional Poses
@@ -1642,7 +1750,7 @@ public enum PoseCatalog {
             de: "Tiefe Bauchatmung, ausatmen um weiter zu öffnen",
             ar: "أنفاس بطنية عميقة، ازفر لتفتح أوسع"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedReverseWarrior = Pose(
@@ -1726,7 +1834,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Strecken, ausatmen um tiefer einzusinken",
             ar: "استنشق للامتداد، وازفر للاستقرار أعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedCrescentMoon = Pose(
@@ -1810,7 +1918,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Hochstrecken, ausatmen zum Seitenbeugen",
             ar: "استنشق للاستطالة للأعلى، وازفر للانحناء إلى الجانب"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedChestExpansion = Pose(
@@ -1894,7 +2002,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Heben und Erweitern, ausatmen zum Lösen",
             ar: "استنشق للرفع والتوسع، وازفر للإرخاء"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedThreadTheNeedle = Pose(
@@ -1978,7 +2086,7 @@ public enum PoseCatalog {
             de: "Ausatmen um tiefer zu fädeln, einatmen um Raum zu schaffen",
             ar: "ازفر للتمرير أعمق، واستنشق لخلق مساحة"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedBreathOfJoy = Pose(
@@ -2071,7 +2179,7 @@ public enum PoseCatalog {
             de: "Drei Stakkato-Einatmungen durch die Nase, eine vollständige Ausatmung durch den Mund",
             ar: "ثلاث شهقات متقطعة من الأنف، وزفير كامل واحد من الفم"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedHalfMoon = Pose(
@@ -2155,8 +2263,49 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atemzüge zur Aufrechterhaltung des Gleichgewichts — ausatmen um weiter zu strecken",
             ar: "أنفاس ثابتة للحفاظ على التوازن — ازفر للامتداد أبعد"
         ),
-        isFree: false
+        isFree: true
     )
+
+    // MARK: - Workout Plan Collections
+    
+    /// Chair yoga workout plans
+    public static let chairYogaPlans: [WorkoutPlan] = []
+    
+    /// Vinyasa workout plans
+    public static let vinyasaPlans: [WorkoutPlan] = []
+    
+    /// Hatha yoga workout plans
+    public static let hathaPlans: [WorkoutPlan] = []
+    
+    /// Yin yoga workout plans
+    public static let yinPlans: [WorkoutPlan] = []
+    
+    /// Restorative yoga workout plans
+    public static let restorativePlans: [WorkoutPlan] = []
+    
+    /// Power yoga workout plans
+    public static let powerPlans: [WorkoutPlan] = []
+    
+    /// Standing balance workout plans
+    public static let standingBalancePlans: [WorkoutPlan] = []
+    
+    /// Prenatal yoga workout plans
+    public static let prenatalPlans: [WorkoutPlan] = []
+    
+    /// Pranayama (breathing) workout plans
+    public static let pranayamaPlans: [WorkoutPlan] = []
+    
+    /// Default beginner chair yoga plan
+    public static var beginnerFlow: WorkoutPlan {
+        chairYogaPlans.first ?? WorkoutPlan(
+            id: "beginner-flow",
+            name: LocalizedString(en: "Beginner Flow", fr: "Flux débutant"),
+            description: LocalizedString(en: "Gentle introduction to chair yoga", fr: "Introduction douce au yoga sur chaise"),
+            poses: [],
+            durationMinutes: 10,
+            isFree: true
+        )
+    }
 
     // MARK: - Pose Collections
 

@@ -24,18 +24,14 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSHealthShareUsageDescription</key>
-	<string>NATURaL reads heart rate and HRV data during chair yoga sessions to compute your Shannon Collapse Index biofeedback score.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>NATURaL saves your chair yoga workout sessions, heart rate data, and medication schedules to Apple Health.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>NATURaL uses the local network to stream your workout display to Apple TV via Bonjour.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonhomme._tcp</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>NATURaL uses the local network to stream your workout display to Apple TV via Bonjour.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -45,18 +41,14 @@
 	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>
