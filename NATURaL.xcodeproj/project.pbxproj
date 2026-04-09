@@ -1,1434 +1,1913 @@
-// !$*UTF8*$!
 {
-	archiveVersion = 1;
-	classes = {
-	};
-	objectVersion = 60;
-	objects = {
-
-/* Begin PBXBuildFile section */
-		00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */; };
-		0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */; };
-		0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */; };
-		11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */; };
-		20AF62F3EDCB32D6985E1742 /* FitnessPlusReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A68B1F8F551D3F2AE2D1AFD /* FitnessPlusReader.swift */; };
-		238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FA0E59182AE9EE86FCD708 /* PaywallView.swift */; };
-		23F1A4F57862025BECEDAE9F /* YogaTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */; };
-		28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */; };
-		312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */; };
-		3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */; };
-		4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */; };
-		5041357AEFDC77052FAD2D66 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2066727444F421784F230ED /* BonhommeCore */; };
-		5A13F14D9C36CE6E0E442C80 /* HeartRateMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */; };
-		5BE942EF6FB9C83DE5367956 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = 34D983926E592456B194E519 /* CareKitStore */; };
-		5D03FA63EC61DAB5028D4752 /* MetricsOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */; };
-		5E5FAE10B797CEEB05D1F365 /* TVDisplayCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82DEBB157CEFEC4307116E45 /* TVDisplayCoordinator.swift */; };
-		606455AAC0195FC7D0F2CAE2 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E967DEC3B235869C8A0302 /* AppState.swift */; };
-		67DC6423713149536129174C /* SpatialBiofeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31FE85BB44103C66CB93F1A1 /* SpatialBiofeedbackView.swift */; };
-		681122FD9CFB44DF7B145C3E /* NATURaLLiveActivity.appex in Embed Extensions */ = {isa = PBXBuildFile; fileRef = 7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		68C5637B03670C35407D1EF8 /* BonhommeWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CB8293F97DAD6558CA2C6 /* BonhommeWatchApp.swift */; };
-		70F5341A6A010D747DE471EA /* CareKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64AFE2D3D12ACF817073A5C8 /* CareKitBridge.swift */; };
-		77901275F880C3F29BC84974 /* WorkoutStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */; };
-		8269669262800477717015BA /* ChairYogaActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31B55F0E33E1894538ED708 /* ChairYogaActivity.swift */; };
-		83120F65EF14CED3B7D8EAC8 /* WatchHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */; };
-		869F462978A05FB70A457EEE /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9148A73EAA731B5C6F2FAD21 /* BonhommeCore */; };
-		879C3EB5DAC57163D311BE93 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 622080EA269671D7D0921B47 /* BonhommeCore */; };
-		88EA537DFE1C985516B3783E /* InsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63ED6670450497F627DE63D /* InsightEngine.swift */; };
-		8D0E4ACCC2765CFA20347728 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A18B62ECE19ED25527FD00B /* HistoryView.swift */; };
-		8EEFA0257ABB9391390D01D6 /* WorkoutFlowViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */; };
-		918341A08086F652869D118B /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */; };
-		99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */; };
-		9AB4E4180C83DA08F3B16FDC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2075AB31C0DF70BDF50F297 /* HomeView.swift */; };
-		9B3B0CE83F8AD03C5D933F74 /* AirPlayFallbackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */; };
-		9D3E5EC185B3349F6332BB6C /* TVDisplayCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */; };
-		9ECCE4C9BF90CD4E29BDD293 /* TVRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7EA9136C4131977C6C8296 /* TVRootView.swift */; };
-		A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */; };
-		ACFB314B176E156222E6BC27 /* AirPlayRoutePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33C239604307B68D16CBDF17 /* AirPlayRoutePickerView.swift */; };
-		B1549B8CB4C993CF9F332C5F /* NativeCompanionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8686D21C057BC30AB06189B5 /* NativeCompanionClient.swift */; };
-		B2A4F46F38A97347A6802603 /* SummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBCDD92683EEE41C15485A0 /* SummaryView.swift */; };
-		B4DAD494A9193918DFCB75A4 /* NATURaLWidgets.appex in Embed Extensions */ = {isa = PBXBuildFile; fileRef = 96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C0513339155F7CB14E6A44E3 /* BonhommeTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE2AAFE554DF1D96F774F9EE /* BonhommeTVApp.swift */; };
-		C48773DDABA1E459081BDB49 /* ActivityRingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4730C7E6FFF0E7CF323893 /* ActivityRingService.swift */; };
-		CAA745CD22BEA5EE166A990C /* WatchWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2AD88A7A8CA619E175EFD11 /* WatchWorkoutManager.swift */; };
-		D4D8E9B7EB4A2E04AC6F61A0 /* ImmersivePoseSpace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15B34065BB43F0D98D384DF /* ImmersivePoseSpace.swift */; };
-		D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4324640DCAEA8E0B08DAC833 /* WorkoutLiveActivity.swift */; };
-		D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D6723693F5CD2FDC781A166 /* Entitlement.swift */; };
-		DACE9EED9C8EAD27FC976982 /* SpatialPoseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */; };
-		DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */; };
-		DBEE9FF686FCCA1B46D89F3F /* AirPlaySecondScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */; };
-		E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77F1417FDEA535CCFB59899 /* PersistentModels.swift */; };
-		E3A9130BFEED01CCE906DCA3 /* ActivityRingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */; };
-		E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */; };
-		E8765D727C3447AFAE8D6490 /* ExternalDisplaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B23F8A7D5EF64D66A594E8D /* ExternalDisplaySceneDelegate.swift */; };
-		E9D90BC869E6D9EE781D3BA4 /* WorkoutFlowViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493EF22F8480E0C004517FEF /* WorkoutFlowViewModelTests.swift */; };
-		EBD6400DD749D6F607C87EB7 /* CountdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA78BAE67E02B6F68782FCBB /* CountdownView.swift */; };
-		EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */; };
-		ECA094B581739F661B6FADB1 /* BonhommeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */; };
-		ED7A353ABEC1EFA4BCDEBD84 /* BonhommeVisionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA4275C9E7DCC5C0353076E /* BonhommeVisionApp.swift */; };
-		EDEE89A8675D8B0A03BDBC64 /* CompanionListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */; };
-		EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E476F8E5973738F1E1B3844 /* MusicService.swift */; };
-		F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */; };
-		F3F7A9D411AB20AC7E2336B8 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2116565DC2151DED0D9D89F7 /* BonhommeCore */; };
-		FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */; };
-/* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		ECE723A0A0723CC11D08803A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7EA6D9377E56C32636195598 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = CBDE573061803B5CE517CE72;
-			remoteInfo = NATURaLLiveActivity;
-		};
-		13DCC5C111BF76B5B6BC6247 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7EA6D9377E56C32636195598 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AFF6D93EEBC72D1A16516CB6;
-			remoteInfo = NATURaLWidgets;
-		};
-		2E532B324EC44025019924BF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7EA6D9377E56C32636195598 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = CE2F95449EA116BB80C95669;
-			remoteInfo = Bonhomme;
-		};
-		79FC3CBBBDB59F4516824DC4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7EA6D9377E56C32636195598 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = CE2F95449EA116BB80C95669;
-			remoteInfo = Bonhomme;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		1AAB605232D382A12169D41C /* Embed Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				681122FD9CFB44DF7B145C3E /* NATURaLLiveActivity.appex in Embed Extensions */,
-				B4DAD494A9193918DFCB75A4 /* NATURaLWidgets.appex in Embed Extensions */,
-			);
-			name = "Embed Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXFileReference section */
-		006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ActivityRingsView.swift"; sourceTree = "<group>"; };
-		04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchHomeView.swift"; sourceTree = "<group>"; };
-		0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutRecorder.swift"; sourceTree = "<group>"; };
-		0E476F8E5973738F1E1B3844 /* MusicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MusicService.swift"; sourceTree = "<group>"; };
-		1B7EA9136C4131977C6C8296 /* TVRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVRootView.swift"; sourceTree = "<group>"; };
-		243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutFlowUITests.swift"; sourceTree = "<group>"; };
-		2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MedicationTracker.swift"; sourceTree = "<group>"; };
-		2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "BonhommeUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FDC5BA711EF5694CD2DCA5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BonhommeApp.swift"; sourceTree = "<group>"; };
-		31FE85BB44103C66CB93F1A1 /* SpatialBiofeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpatialBiofeedbackView.swift"; sourceTree = "<group>"; };
-		33C239604307B68D16CBDF17 /* AirPlayRoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AirPlayRoutePickerView.swift"; sourceTree = "<group>"; };
-		3AC78F2F5E1A8EC8A83A20D0 /* BonhommeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "BonhommeTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		3B20A0CBCF41B50E61CA0C8A /* BonhommeWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BonhommeWatch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		41E967DEC3B235869C8A0302 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
-		4324640DCAEA8E0B08DAC833 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutLiveActivity.swift"; sourceTree = "<group>"; };
-		43A7B3011053F64390AE6CCB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		493EF22F8480E0C004517FEF /* WorkoutFlowViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutFlowViewModelTests.swift"; sourceTree = "<group>"; };
-		49413D9326C03F255A9050CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		4BBCDD92683EEE41C15485A0 /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryView.swift"; sourceTree = "<group>"; };
-		53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ActivityRingsWidget.swift"; sourceTree = "<group>"; };
-		576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVDisplayCoordinatorTests.swift"; sourceTree = "<group>"; };
-		5787737B2C9B32BD9AC33949 /* BonhommeVision.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BonhommeVision.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		57AA50F104A8F756A65C0651 /* BonhommeTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BonhommeTV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		5D6723693F5CD2FDC781A166 /* Entitlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Entitlement.swift"; sourceTree = "<group>"; };
-		63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricsOverlayView.swift"; sourceTree = "<group>"; };
-		64AFE2D3D12ACF817073A5C8 /* CareKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CareKitBridge.swift"; sourceTree = "<group>"; };
-		6A18B62ECE19ED25527FD00B /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HistoryView.swift"; sourceTree = "<group>"; };
-		7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = "NATURaLLiveActivity.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		80FA0E59182AE9EE86FCD708 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PaywallView.swift"; sourceTree = "<group>"; };
-		82DEBB157CEFEC4307116E45 /* TVDisplayCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVDisplayCoordinator.swift"; sourceTree = "<group>"; };
-		8686D21C057BC30AB06189B5 /* NativeCompanionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCompanionClient.swift"; sourceTree = "<group>"; };
-		8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchConnectivityBridge.swift"; sourceTree = "<group>"; };
-		8A68B1F8F551D3F2AE2D1AFD /* FitnessPlusReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FitnessPlusReader.swift"; sourceTree = "<group>"; };
-		929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AirPlaySecondScreen.swift"; sourceTree = "<group>"; };
-		96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = "NATURaLWidgets.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HeartRateMonitor.swift"; sourceTree = "<group>"; };
-		9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutStateStore.swift"; sourceTree = "<group>"; };
-		9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SubscriptionManager.swift"; sourceTree = "<group>"; };
-		9A6B2F908F0917D19A145A0C /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Package.swift"; sourceTree = "<group>"; };
-		9B23F8A7D5EF64D66A594E8D /* ExternalDisplaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExternalDisplaySceneDelegate.swift"; sourceTree = "<group>"; };
-		9F6F7CD1DED33F23495EC2A1 /* Bonhomme.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Bonhomme.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		A15B34065BB43F0D98D384DF /* ImmersivePoseSpace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ImmersivePoseSpace.swift"; sourceTree = "<group>"; };
-		A2712A1AB52F16BD44CDA921 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		A52AF504CFE0BEDF4D47B83E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		AC4730C7E6FFF0E7CF323893 /* ActivityRingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ActivityRingService.swift"; sourceTree = "<group>"; };
-		ADA4275C9E7DCC5C0353076E /* BonhommeVisionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BonhommeVisionApp.swift"; sourceTree = "<group>"; };
-		AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneConnectivityBridge.swift"; sourceTree = "<group>"; };
-		B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionCoordinator.swift"; sourceTree = "<group>"; };
-		B31B55F0E33E1894538ED708 /* ChairYogaActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChairYogaActivity.swift"; sourceTree = "<group>"; };
-		B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchSessionView.swift"; sourceTree = "<group>"; };
-		B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthKitManager.swift"; sourceTree = "<group>"; };
-		B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CompanionListener.swift"; sourceTree = "<group>"; };
-		B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutIntents.swift"; sourceTree = "<group>"; };
-		B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutFlowView.swift"; sourceTree = "<group>"; };
-		B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YogaTaskBuilder.swift"; sourceTree = "<group>"; };
-		BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
-		C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AirPlayFallbackUITests.swift"; sourceTree = "<group>"; };
-		C2075AB31C0DF70BDF50F297 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeView.swift"; sourceTree = "<group>"; };
-		C2AD88A7A8CA619E175EFD11 /* WatchWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchWorkoutManager.swift"; sourceTree = "<group>"; };
-		C77F1417FDEA535CCFB59899 /* PersistentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersistentModels.swift"; sourceTree = "<group>"; };
-		CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutFlowViewModel.swift"; sourceTree = "<group>"; };
-		DA78BAE67E02B6F68782FCBB /* CountdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CountdownView.swift"; sourceTree = "<group>"; };
-		DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ResearchKitBridge.swift"; sourceTree = "<group>"; };
-		E42CB8293F97DAD6558CA2C6 /* BonhommeWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BonhommeWatchApp.swift"; sourceTree = "<group>"; };
-		F4088291BB46D86898D6D22D /* Bonhomme.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Bonhomme.entitlements"; sourceTree = "<group>"; };
-		F63ED6670450497F627DE63D /* InsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightEngine.swift"; sourceTree = "<group>"; };
-		FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpatialPoseView.swift"; sourceTree = "<group>"; };
-		FE2AAFE554DF1D96F774F9EE /* BonhommeTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BonhommeTVApp.swift"; sourceTree = "<group>"; };
-		FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StreakWidget.swift"; sourceTree = "<group>"; };
-		033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NATURaLWidgetsBundle.swift"; sourceTree = "<group>"; };
-/* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		97EFB573CCBC7A8C5EF5807F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				869F462978A05FB70A457EEE /* BonhommeCore in Frameworks */,
-				5BE942EF6FB9C83DE5367956 /* CareKitStore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C932E7622F9BB156D6C24BB8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				879C3EB5DAC57163D311BE93 /* BonhommeCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4CFF797DB6C64CBCB700A3DE /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5041357AEFDC77052FAD2D66 /* BonhommeCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F66FAD689BBECDE064C5873A /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F3F7A9D411AB20AC7E2336B8 /* BonhommeCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F8AF7353264A63268E534ABF /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B93A1141443322ACBD774BE4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		0A6742A6A9346E9598BDC2E1 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		5E9292B3FAE936A08A037EE3 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		E748EC556CACF57F5DA64FA6 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				41E967DEC3B235869C8A0302 /* AppState.swift */,
-				30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */,
-			);
-			path = "App";
-			sourceTree = "<group>";
-		};
-		5046310E6BDB98A70926195D /* History */ = {
-			isa = PBXGroup;
-			children = (
-				6A18B62ECE19ED25527FD00B /* HistoryView.swift */,
-			);
-			path = "History";
-			sourceTree = "<group>";
-		};
-		0E49E56A4A748A3A4C69EFC8 /* Paywall */ = {
-			isa = PBXGroup;
-			children = (
-				80FA0E59182AE9EE86FCD708 /* PaywallView.swift */,
-			);
-			path = "Paywall";
-			sourceTree = "<group>";
-		};
-		9DBEDABBF844160E3256A1D0 /* Summary */ = {
-			isa = PBXGroup;
-			children = (
-				4BBCDD92683EEE41C15485A0 /* SummaryView.swift */,
-			);
-			path = "Summary";
-			sourceTree = "<group>";
-		};
-		703B6E2D72B9A3F1184DD037 /* Workout */ = {
-			isa = PBXGroup;
-			children = (
-				DA78BAE67E02B6F68782FCBB /* CountdownView.swift */,
-				C2075AB31C0DF70BDF50F297 /* HomeView.swift */,
-				63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */,
-				B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */,
-				CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */,
-			);
-			path = "Workout";
-			sourceTree = "<group>";
-		};
-		871D995BCC5C0F397B87E1C3 /* Features */ = {
-			isa = PBXGroup;
-			children = (
-				5046310E6BDB98A70926195D /* History */,
-				0E49E56A4A748A3A4C69EFC8 /* Paywall */,
-				9DBEDABBF844160E3256A1D0 /* Summary */,
-				703B6E2D72B9A3F1184DD037 /* Workout */,
-			);
-			path = "Features";
-			sourceTree = "<group>";
-		};
-		2ACC9ECBEBB487CBABE92389 /* CareKit */ = {
-			isa = PBXGroup;
-			children = (
-				64AFE2D3D12ACF817073A5C8 /* CareKitBridge.swift */,
-				B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */,
-			);
-			path = "CareKit";
-			sourceTree = "<group>";
-		};
-		9CF01F0F472008BA63685FD6 /* HealthKit */ = {
-			isa = PBXGroup;
-			children = (
-				AC4730C7E6FFF0E7CF323893 /* ActivityRingService.swift */,
-				8A68B1F8F551D3F2AE2D1AFD /* FitnessPlusReader.swift */,
-				B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */,
-				985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */,
-				F63ED6670450497F627DE63D /* InsightEngine.swift */,
-				2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */,
-				DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */,
-				0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */,
-			);
-			path = "HealthKit";
-			sourceTree = "<group>";
-		};
-		869CEDD7ABE929A5415359CE /* Music */ = {
-			isa = PBXGroup;
-			children = (
-				0E476F8E5973738F1E1B3844 /* MusicService.swift */,
-			);
-			path = "Music";
-			sourceTree = "<group>";
-		};
-		8154D986313A83174D4B20A4 /* Persistence */ = {
-			isa = PBXGroup;
-			children = (
-				C77F1417FDEA535CCFB59899 /* PersistentModels.swift */,
-				9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */,
-			);
-			path = "Persistence";
-			sourceTree = "<group>";
-		};
-		53B67D7396B237BB9805387B /* SharePlay */ = {
-			isa = PBXGroup;
-			children = (
-				B31B55F0E33E1894538ED708 /* ChairYogaActivity.swift */,
-				B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */,
-			);
-			path = "SharePlay";
-			sourceTree = "<group>";
-		};
-		B98FCC200A649E73AA5510D2 /* Siri */ = {
-			isa = PBXGroup;
-			children = (
-				B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */,
-			);
-			path = "Siri";
-			sourceTree = "<group>";
-		};
-		209AFF137B15F38B84BA7AF5 /* Subscription */ = {
-			isa = PBXGroup;
-			children = (
-				5D6723693F5CD2FDC781A166 /* Entitlement.swift */,
-				9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */,
-			);
-			path = "Subscription";
-			sourceTree = "<group>";
-		};
-		77F1D93B9FC472D342AC4CBC /* WatchConnectivity */ = {
-			isa = PBXGroup;
-			children = (
-				AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */,
-			);
-			path = "WatchConnectivity";
-			sourceTree = "<group>";
-		};
-		B68118C5D7CD33B61FA1156D /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				2ACC9ECBEBB487CBABE92389 /* CareKit */,
-				9CF01F0F472008BA63685FD6 /* HealthKit */,
-				869CEDD7ABE929A5415359CE /* Music */,
-				8154D986313A83174D4B20A4 /* Persistence */,
-				53B67D7396B237BB9805387B /* SharePlay */,
-				B98FCC200A649E73AA5510D2 /* Siri */,
-				209AFF137B15F38B84BA7AF5 /* Subscription */,
-				77F1D93B9FC472D342AC4CBC /* WatchConnectivity */,
-			);
-			path = "Services";
-			sourceTree = "<group>";
-		};
-		FFDCC0B84EBAF743E5BBF2D0 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-				006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */,
-			);
-			path = "Components";
-			sourceTree = "<group>";
-		};
-		EFDC7F3A123A9292A2D85FF5 /* Shared */ = {
-			isa = PBXGroup;
-			children = (
-				FFDCC0B84EBAF743E5BBF2D0 /* Components */,
-			);
-			path = "Shared";
-			sourceTree = "<group>";
-		};
-		C5D5660995925A23982E9C16 /* TVRelay */ = {
-			isa = PBXGroup;
-			children = (
-				33C239604307B68D16CBDF17 /* AirPlayRoutePickerView.swift */,
-				929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */,
-				9B23F8A7D5EF64D66A594E8D /* ExternalDisplaySceneDelegate.swift */,
-				8686D21C057BC30AB06189B5 /* NativeCompanionClient.swift */,
-				82DEBB157CEFEC4307116E45 /* TVDisplayCoordinator.swift */,
-			);
-			path = "TVRelay";
-			sourceTree = "<group>";
-		};
-		4C9B3C81464508E6A8F3D306 /* Bonhomme */ = {
-			isa = PBXGroup;
-			children = (
-				E748EC556CACF57F5DA64FA6 /* App */,
-				871D995BCC5C0F397B87E1C3 /* Features */,
-				B68118C5D7CD33B61FA1156D /* Services */,
-				EFDC7F3A123A9292A2D85FF5 /* Shared */,
-				C5D5660995925A23982E9C16 /* TVRelay */,
-				F4088291BB46D86898D6D22D /* Bonhomme.entitlements */,
-				43A7B3011053F64390AE6CCB /* Info.plist */,
-			);
-			path = "Bonhomme";
-			sourceTree = "<group>";
-		};
-		DBDE6A2739D4222AD2BE630C /* BonhommeCore */ = {
-			isa = PBXGroup;
-			children = (
-				9A6B2F908F0917D19A145A0C /* Package.swift */,
-			);
-			path = "BonhommeCore";
-			sourceTree = "<group>";
-		};
-		6FDBEC71B2C2159541237617 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				FE2AAFE554DF1D96F774F9EE /* BonhommeTVApp.swift */,
-			);
-			path = "App";
-			sourceTree = "<group>";
-		};
-		13ABD2C5A9F71273FD18B004 /* Networking */ = {
-			isa = PBXGroup;
-			children = (
-				B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */,
-			);
-			path = "Networking";
-			sourceTree = "<group>";
-		};
-		6C38762A1916540B3096AE06 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				1B7EA9136C4131977C6C8296 /* TVRootView.swift */,
-			);
-			path = "Views";
-			sourceTree = "<group>";
-		};
-		4F91E5173525BE1784E7350E /* BonhommeTV */ = {
-			isa = PBXGroup;
-			children = (
-				6FDBEC71B2C2159541237617 /* App */,
-				13ABD2C5A9F71273FD18B004 /* Networking */,
-				6C38762A1916540B3096AE06 /* Views */,
-				2FDC5BA711EF5694CD2DCA5D /* Info.plist */,
-			);
-			path = "BonhommeTV";
-			sourceTree = "<group>";
-		};
-		C56BE0DC240D5136E49D892B /* App */ = {
-			isa = PBXGroup;
-			children = (
-				ADA4275C9E7DCC5C0353076E /* BonhommeVisionApp.swift */,
-				A15B34065BB43F0D98D384DF /* ImmersivePoseSpace.swift */,
-				31FE85BB44103C66CB93F1A1 /* SpatialBiofeedbackView.swift */,
-				FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */,
-			);
-			path = "App";
-			sourceTree = "<group>";
-		};
-		F9DD9E8FDDC95697A05DB93C /* BonhommeVision */ = {
-			isa = PBXGroup;
-			children = (
-				C56BE0DC240D5136E49D892B /* App */,
-				A2712A1AB52F16BD44CDA921 /* Info.plist */,
-			);
-			path = "BonhommeVision";
-			sourceTree = "<group>";
-		};
-		73431774202DA336377341EB /* App */ = {
-			isa = PBXGroup;
-			children = (
-				E42CB8293F97DAD6558CA2C6 /* BonhommeWatchApp.swift */,
-				8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */,
-				04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */,
-				B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */,
-				C2AD88A7A8CA619E175EFD11 /* WatchWorkoutManager.swift */,
-			);
-			path = "App";
-			sourceTree = "<group>";
-		};
-		DC23BE0794C05E7FA04CF314 /* BonhommeWatch */ = {
-			isa = PBXGroup;
-			children = (
-				73431774202DA336377341EB /* App */,
-				A52AF504CFE0BEDF4D47B83E /* Info.plist */,
-			);
-			path = "BonhommeWatch";
-			sourceTree = "<group>";
-		};
-		46E4583986DBE0438D7C23D6 /* NATURaLLiveActivity */ = {
-			isa = PBXGroup;
-			children = (
-				49413D9326C03F255A9050CC /* Info.plist */,
-				4324640DCAEA8E0B08DAC833 /* WorkoutLiveActivity.swift */,
-			);
-			path = "NATURaLLiveActivity";
-			sourceTree = "<group>";
-		};
-		130AD70FD95A4806574C6E3A /* NATURaLWidgets */ = {
-			isa = PBXGroup;
-			children = (
-				53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */,
-				033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */,
-				BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */,
-				FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */,
-			);
-			path = "NATURaLWidgets";
-			sourceTree = "<group>";
-		};
-		7D8785A8C8BB03A445EC28E1 /* BonhommeTests */ = {
-			isa = PBXGroup;
-			children = (
-				576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */,
-				493EF22F8480E0C004517FEF /* WorkoutFlowViewModelTests.swift */,
-			);
-			path = "BonhommeTests";
-			sourceTree = "<group>";
-		};
-		9ACAF0140E251DBD9E033F7A /* BonhommeUITests */ = {
-			isa = PBXGroup;
-			children = (
-				C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */,
-				243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */,
-			);
-			path = "BonhommeUITests";
-			sourceTree = "<group>";
-		};
-		2241B5DB692077C6A3C353CF /* Tests */ = {
-			isa = PBXGroup;
-			children = (
-				7D8785A8C8BB03A445EC28E1 /* BonhommeTests */,
-				9ACAF0140E251DBD9E033F7A /* BonhommeUITests */,
-			);
-			path = "Tests";
-			sourceTree = "<group>";
-		};
-		2B731CEFC6751AAE0EC69B98 /* = {
-			isa = PBXGroup;
-			children = (
-				4C9B3C81464508E6A8F3D306 /* Bonhomme */,
-				DBDE6A2739D4222AD2BE630C /* BonhommeCore */,
-				4F91E5173525BE1784E7350E /* BonhommeTV */,
-				F9DD9E8FDDC95697A05DB93C /* BonhommeVision */,
-				DC23BE0794C05E7FA04CF314 /* BonhommeWatch */,
-				46E4583986DBE0438D7C23D6 /* NATURaLLiveActivity */,
-				130AD70FD95A4806574C6E3A /* NATURaLWidgets */,
-				2241B5DB692077C6A3C353CF /* Tests */,
-				0A2C978E52A76F0AA9F68BB5 /* Products */,
-				154669CC2236551E32F273A3 /* Packages */,
-			);
-			sourceTree = "<group>";
-		};
-		0A2C978E52A76F0AA9F68BB5 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				9F6F7CD1DED33F23495EC2A1 /* Bonhomme.app */,
-				57AA50F104A8F756A65C0651 /* BonhommeTV.app */,
-				3B20A0CBCF41B50E61CA0C8A /* BonhommeWatch.app */,
-				5787737B2C9B32BD9AC33949 /* BonhommeVision.app */,
-				7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */,
-				96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */,
-				3AC78F2F5E1A8EC8A83A20D0 /* BonhommeTests.xctest */,
-				2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		154669CC2236551E32F273A3 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Packages;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		CE2F95449EA116BB80C95669 /* Bonhomme */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = BF1E96EAFD7A37E437EEC062 /* Build configuration list for PBXNativeTarget "Bonhomme" */;
-			buildPhases = (
-				75D36BED9165EA876343B76C /* Sources */,
-				97EFB573CCBC7A8C5EF5807F /* Frameworks */,
-				1AAB605232D382A12169D41C /* Embed Extensions */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				0669C55D86949C21B1E89871 /* PBXTargetDependency */,
-				A08EB289D4A6F49014354537 /* PBXTargetDependency */,
-			);
-			name = Bonhomme;
-			packageProductDependencies = (
-				9148A73EAA731B5C6F2FAD21 /* BonhommeCore */,
-				34D983926E592456B194E519 /* CareKitStore */,
-			);
-			productName = Bonhomme;
-			productReference = 9F6F7CD1DED33F23495EC2A1 /* Bonhomme.app */;
-			productType = "com.apple.product-type.application";
-		};
-		F87083C4BE51F1CCA10B40AC /* BonhommeTV */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FA4E675B01ABDC74FC10A91C /* Build configuration list for PBXNativeTarget "BonhommeTV" */;
-			buildPhases = (
-				D7031E39CAC89C4685B1962D /* Sources */,
-				C932E7622F9BB156D6C24BB8 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-
-			);
-			name = BonhommeTV;
-			packageProductDependencies = (
-				622080EA269671D7D0921B47 /* BonhommeCore */,
-			);
-			productName = BonhommeTV;
-			productReference = 57AA50F104A8F756A65C0651 /* BonhommeTV.app */;
-			productType = "com.apple.product-type.application";
-		};
-		3CBBBFC801363D2E6D9E6893 /* BonhommeWatch */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 7045E2E8379D46BFFA767FDE /* Build configuration list for PBXNativeTarget "BonhommeWatch" */;
-			buildPhases = (
-				251FBA5035B3A36B86D68809 /* Sources */,
-				4CFF797DB6C64CBCB700A3DE /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-
-			);
-			name = BonhommeWatch;
-			packageProductDependencies = (
-				D2066727444F421784F230ED /* BonhommeCore */,
-			);
-			productName = BonhommeWatch;
-			productReference = 3B20A0CBCF41B50E61CA0C8A /* BonhommeWatch.app */;
-			productType = "com.apple.product-type.application";
-		};
-		4E22AE3417C5850EA6DA0D1A /* BonhommeVision */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = DA6E99C7ADCB2DC6146295E6 /* Build configuration list for PBXNativeTarget "BonhommeVision" */;
-			buildPhases = (
-				73DA79884C2D753985A58A57 /* Sources */,
-				F66FAD689BBECDE064C5873A /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-
-			);
-			name = BonhommeVision;
-			packageProductDependencies = (
-				2116565DC2151DED0D9D89F7 /* BonhommeCore */,
-			);
-			productName = BonhommeVision;
-			productReference = 5787737B2C9B32BD9AC33949 /* BonhommeVision.app */;
-			productType = "com.apple.product-type.application";
-		};
-		CBDE573061803B5CE517CE72 /* NATURaLLiveActivity */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 8309BC7E1A0B7274B64F0F4A /* Build configuration list for PBXNativeTarget "NATURaLLiveActivity" */;
-			buildPhases = (
-				F0852BD9CBE9F80EB030D0A8 /* Sources */,
-				F8AF7353264A63268E534ABF /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-
-			);
-			name = NATURaLLiveActivity;
-			packageProductDependencies = (
-
-			);
-			productName = NATURaLLiveActivity;
-			productReference = 7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		AFF6D93EEBC72D1A16516CB6 /* NATURaLWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F98DE11A1125C91904B9DE5A /* Build configuration list for PBXNativeTarget "NATURaLWidgets" */;
-			buildPhases = (
-				0E2C3DDD8F819138FFB68E0F /* Sources */,
-				B93A1141443322ACBD774BE4 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-
-			);
-			name = NATURaLWidgets;
-			packageProductDependencies = (
-
-			);
-			productName = NATURaLWidgets;
-			productReference = 96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		A533C61BA31611801C58232D /* BonhommeTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = E5801BF18DEB40620893C616 /* Build configuration list for PBXNativeTarget "BonhommeTests" */;
-			buildPhases = (
-				2CE0C7BFA309E410C28629EC /* Sources */,
-				0A6742A6A9346E9598BDC2E1 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C2ACB5D37B5E45907B5CBB64 /* PBXTargetDependency */,
-			);
-			name = BonhommeTests;
-			packageProductDependencies = (
-
-			);
-			productName = BonhommeTests;
-			productReference = 3AC78F2F5E1A8EC8A83A20D0 /* BonhommeTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		C708235B5A6E91D489B1A866 /* BonhommeUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 5D0D56919135D7D373BDABBF /* Build configuration list for PBXNativeTarget "BonhommeUITests" */;
-			buildPhases = (
-				9E932D6F72419A52379B9947 /* Sources */,
-				5E9292B3FAE936A08A037EE3 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				E05F6CA729BE5E22ACB899E0 /* PBXTargetDependency */,
-			);
-			name = BonhommeUITests;
-			packageProductDependencies = (
-
-			);
-			productName = BonhommeUITests;
-			productReference = 2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		7EA6D9377E56C32636195598 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1540;
-			};
-			buildConfigurationList = E0367D107ACD4D83ED767BFC /* Build configuration list for PBXProject "NATURaL" */;
-			compatibilityVersion = "Xcode 15.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				fr,
-				Base,
-			);
-			mainGroup = 2B731CEFC6751AAE0EC69B98;
-			packageReferences = (
-				6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */,
-				5B2E4464C6E3412D83B3412A /* XCRemoteSwiftPackageReference "CareKit" */,
-			);
-			productRefGroup = 0A2C978E52A76F0AA9F68BB5 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				CE2F95449EA116BB80C95669 /* Bonhomme */,
-				F87083C4BE51F1CCA10B40AC /* BonhommeTV */,
-				3CBBBFC801363D2E6D9E6893 /* BonhommeWatch */,
-				4E22AE3417C5850EA6DA0D1A /* BonhommeVision */,
-				CBDE573061803B5CE517CE72 /* NATURaLLiveActivity */,
-				AFF6D93EEBC72D1A16516CB6 /* NATURaLWidgets */,
-				A533C61BA31611801C58232D /* BonhommeTests */,
-				C708235B5A6E91D489B1A866 /* BonhommeUITests */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXSourcesBuildPhase section */
-		75D36BED9165EA876343B76C /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				606455AAC0195FC7D0F2CAE2 /* AppState.swift in Sources */,
-				ECA094B581739F661B6FADB1 /* BonhommeApp.swift in Sources */,
-				8D0E4ACCC2765CFA20347728 /* HistoryView.swift in Sources */,
-				238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */,
-				B2A4F46F38A97347A6802603 /* SummaryView.swift in Sources */,
-				EBD6400DD749D6F607C87EB7 /* CountdownView.swift in Sources */,
-				9AB4E4180C83DA08F3B16FDC /* HomeView.swift in Sources */,
-				5D03FA63EC61DAB5028D4752 /* MetricsOverlayView.swift in Sources */,
-				0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */,
-				8EEFA0257ABB9391390D01D6 /* WorkoutFlowViewModel.swift in Sources */,
-				70F5341A6A010D747DE471EA /* CareKitBridge.swift in Sources */,
-				23F1A4F57862025BECEDAE9F /* YogaTaskBuilder.swift in Sources */,
-				C48773DDABA1E459081BDB49 /* ActivityRingService.swift in Sources */,
-				20AF62F3EDCB32D6985E1742 /* FitnessPlusReader.swift in Sources */,
-				FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */,
-				5A13F14D9C36CE6E0E442C80 /* HeartRateMonitor.swift in Sources */,
-				88EA537DFE1C985516B3783E /* InsightEngine.swift in Sources */,
-				F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */,
-				A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */,
-				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,
-				EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */,
-				E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */,
-				77901275F880C3F29BC84974 /* WorkoutStateStore.swift in Sources */,
-				8269669262800477717015BA /* ChairYogaActivity.swift in Sources */,
-				0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */,
-				00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */,
-				D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */,
-				DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */,
-				28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */,
-				E3A9130BFEED01CCE906DCA3 /* ActivityRingsView.swift in Sources */,
-				ACFB314B176E156222E6BC27 /* AirPlayRoutePickerView.swift in Sources */,
-				DBEE9FF686FCCA1B46D89F3F /* AirPlaySecondScreen.swift in Sources */,
-				E8765D727C3447AFAE8D6490 /* ExternalDisplaySceneDelegate.swift in Sources */,
-				B1549B8CB4C993CF9F332C5F /* NativeCompanionClient.swift in Sources */,
-				5E5FAE10B797CEEB05D1F365 /* TVDisplayCoordinator.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D7031E39CAC89C4685B1962D /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				C0513339155F7CB14E6A44E3 /* BonhommeTVApp.swift in Sources */,
-				EDEE89A8675D8B0A03BDBC64 /* CompanionListener.swift in Sources */,
-				9ECCE4C9BF90CD4E29BDD293 /* TVRootView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		251FBA5035B3A36B86D68809 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				68C5637B03670C35407D1EF8 /* BonhommeWatchApp.swift in Sources */,
-				11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */,
-				83120F65EF14CED3B7D8EAC8 /* WatchHomeView.swift in Sources */,
-				312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */,
-				CAA745CD22BEA5EE166A990C /* WatchWorkoutManager.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		73DA79884C2D753985A58A57 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				ED7A353ABEC1EFA4BCDEBD84 /* BonhommeVisionApp.swift in Sources */,
-				D4D8E9B7EB4A2E04AC6F61A0 /* ImmersivePoseSpace.swift in Sources */,
-				67DC6423713149536129174C /* SpatialBiofeedbackView.swift in Sources */,
-				DACE9EED9C8EAD27FC976982 /* SpatialPoseView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F0852BD9CBE9F80EB030D0A8 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		0E2C3DDD8F819138FFB68E0F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */,
-				99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */,
-				918341A08086F652869D118B /* StreakWidget.swift in Sources */,
-				E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2CE0C7BFA309E410C28629EC /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				9D3E5EC185B3349F6332BB6C /* TVDisplayCoordinatorTests.swift in Sources */,
-				E9D90BC869E6D9EE781D3BA4 /* WorkoutFlowViewModelTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9E932D6F72419A52379B9947 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				9B3B0CE83F8AD03C5D933F74 /* AirPlayFallbackUITests.swift in Sources */,
-				3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		0669C55D86949C21B1E89871 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = CBDE573061803B5CE517CE72 /* NATURaLLiveActivity */;
-			targetProxy = ECE723A0A0723CC11D08803A /* PBXContainerItemProxy */;
-		};
-		A08EB289D4A6F49014354537 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AFF6D93EEBC72D1A16516CB6 /* NATURaLWidgets */;
-			targetProxy = 13DCC5C111BF76B5B6BC6247 /* PBXContainerItemProxy */;
-		};
-		C2ACB5D37B5E45907B5CBB64 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = CE2F95449EA116BB80C95669 /* Bonhomme */;
-			targetProxy = 2E532B324EC44025019924BF /* PBXContainerItemProxy */;
-		};
-		E05F6CA729BE5E22ACB899E0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = CE2F95449EA116BB80C95669 /* Bonhomme */;
-			targetProxy = 79FC3CBBBDB59F4516824DC4 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin XCBuildConfiguration section */
-		B984FD7A965D163195480EFE /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Bonhomme/Bonhomme.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Bonhomme/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		B1DB3192867D06CBB7E0A96C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Bonhomme/Bonhomme.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Bonhomme/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		A0E7E8EBCEEAE1E35815A476 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeTV/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeTV;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 17.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		3BC3CCC0C9AF8127274C4759 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeTV/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeTV;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 17.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		D39233ED5CAC8277B9363841 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeWatch/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeWatch;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				WATCHOS_DEPLOYMENT_TARGET = 10.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		5C9C5FB500F94AF8DE406AB6 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeWatch/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeWatch;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				WATCHOS_DEPLOYMENT_TARGET = 10.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		6C1CE64DF3591527B554FAA4 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeVision/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeVision;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = xros;
-				XROS_DEPLOYMENT_TARGET = 1.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		BE7DD89400F4CA1482037F80 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BonhommeVision/Info.plist;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeVision;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = xros;
-				XROS_DEPLOYMENT_TARGET = 1.0;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		35B6FA243765014E56155659 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = NATURaLLiveActivity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.LiveActivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		0C8286DC9ED19D76E8D5BEE5 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = NATURaLLiveActivity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.LiveActivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		C4E569DD76746EA9FBB423E8 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.Widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		CFBE2ADE698F9AFD9CFAA8AE /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.Widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		93EE92728DA711E32F2FFD32 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bonhomme.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bonhomme";
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		2813B0F498B8C15B3382D7AD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bonhomme.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bonhomme";
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		BFB974B8593CC82A88598969 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				TEST_TARGET_NAME = Bonhomme;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		688706E039D5BE3B3F5108CD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				TEST_TARGET_NAME = Bonhomme;
-				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Release;
-		};
-		11BDF4520E415C208EC90709 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
-				SWIFT_VERSION = 5.0;
-				ENABLE_TESTABILITY = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				ONLY_ACTIVE_ARCH = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				DEBUG_INFORMATION_FORMAT = dwarf;
-			};
-			name = Debug;
-		};
-		72301898F1386BB67F77698A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
-				SWIFT_VERSION = 5.0;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				COPY_PHASE_STRIP = YES;
-				ENABLE_NS_ASSERTIONS = NO;
-			};
-			name = Release;
-		};
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		BF1E96EAFD7A37E437EEC062 /* Build configuration list for Bonhomme */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B984FD7A965D163195480EFE /* Debug */,
-				B1DB3192867D06CBB7E0A96C /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		FA4E675B01ABDC74FC10A91C /* Build configuration list for BonhommeTV */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A0E7E8EBCEEAE1E35815A476 /* Debug */,
-				3BC3CCC0C9AF8127274C4759 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		7045E2E8379D46BFFA767FDE /* Build configuration list for BonhommeWatch */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D39233ED5CAC8277B9363841 /* Debug */,
-				5C9C5FB500F94AF8DE406AB6 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		DA6E99C7ADCB2DC6146295E6 /* Build configuration list for BonhommeVision */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				6C1CE64DF3591527B554FAA4 /* Debug */,
-				BE7DD89400F4CA1482037F80 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		8309BC7E1A0B7274B64F0F4A /* Build configuration list for NATURaLLiveActivity */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				35B6FA243765014E56155659 /* Debug */,
-				0C8286DC9ED19D76E8D5BEE5 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F98DE11A1125C91904B9DE5A /* Build configuration list for NATURaLWidgets */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C4E569DD76746EA9FBB423E8 /* Debug */,
-				CFBE2ADE698F9AFD9CFAA8AE /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		E5801BF18DEB40620893C616 /* Build configuration list for BonhommeTests */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				93EE92728DA711E32F2FFD32 /* Debug */,
-				2813B0F498B8C15B3382D7AD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		5D0D56919135D7D373BDABBF /* Build configuration list for BonhommeUITests */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				BFB974B8593CC82A88598969 /* Debug */,
-				688706E039D5BE3B3F5108CD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		E0367D107ACD4D83ED767BFC /* Build configuration list for Project */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				11BDF4520E415C208EC90709 /* Debug */,
-				72301898F1386BB67F77698A /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-/* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = BonhommeCore;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		5B2E4464C6E3412D83B3412A /* XCRemoteSwiftPackageReference "CareKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/carekit-apple/CareKit.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		9148A73EAA731B5C6F2FAD21 /* BonhommeCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
-			productName = BonhommeCore;
-		};
-		622080EA269671D7D0921B47 /* BonhommeCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
-			productName = BonhommeCore;
-		};
-		D2066727444F421784F230ED /* BonhommeCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
-			productName = BonhommeCore;
-		};
-		2116565DC2151DED0D9D89F7 /* BonhommeCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
-			productName = BonhommeCore;
-		};
-		34D983926E592456B194E519 /* CareKitStore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5B2E4464C6E3412D83B3412A /* XCRemoteSwiftPackageReference "CareKit" */;
-			productName = CareKitStore;
-		};
-/* End XCSwiftPackageProductDependency section */
-
-	};
-	rootObject = 7EA6D9377E56C32636195598 /* Project object */;
+	"archiveVersion": "1",
+	"classes": {},
+	"objectVersion": "60",
+	"objects": {
+		"00000A792B5E2D3E20A00DD9": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B8DEB7CE56DE05FB0A6214D9"
+		},
+		"0E49383CD358A88C9AECA630": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B1885EBFCE2CC0B5387AD9CE"
+		},
+		"0EAB617165018E30C1D403AE": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B91D1BAD98216928F6EB03AC"
+		},
+		"11997E1AAA6EBDA3D50C5F77": {
+			"isa": "PBXBuildFile",
+			"fileRef": "8A4C18D50A61DA5766A933A3"
+		},
+		"20AF62F3EDCB32D6985E1742": {
+			"isa": "PBXBuildFile",
+			"fileRef": "8A68B1F8F551D3F2AE2D1AFD"
+		},
+		"238BCEA39FF4AD36C857045E": {
+			"isa": "PBXBuildFile",
+			"fileRef": "80FA0E59182AE9EE86FCD708"
+		},
+		"23F1A4F57862025BECEDAE9F": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B9F474ADF119BE0A9A27DC5B"
+		},
+		"28542F168E771A3D8C03D04E": {
+			"isa": "PBXBuildFile",
+			"fileRef": "AE126FCF2D708572DCC3D185"
+		},
+		"312211F5C4DD313CA7ECAA1B": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B52CB67AD0E3152C69497A0C"
+		},
+		"3E20844C3B7C73D4A4684AD0": {
+			"isa": "PBXBuildFile",
+			"fileRef": "243A016A66558286AE3E69C4"
+		},
+		"4EE07080CC92DE0579A52D6B": {
+			"isa": "PBXBuildFile",
+			"fileRef": "53F1C4187BEB28F5B75F49CA"
+		},
+		"5041357AEFDC77052FAD2D66": {
+			"isa": "PBXBuildFile",
+			"productRef": "D2066727444F421784F230ED"
+		},
+		"5A13F14D9C36CE6E0E442C80": {
+			"isa": "PBXBuildFile",
+			"fileRef": "985A02F6EE01452874C2D655"
+		},
+		"5BE942EF6FB9C83DE5367956": {
+			"isa": "PBXBuildFile",
+			"productRef": "34D983926E592456B194E519"
+		},
+		"5D03FA63EC61DAB5028D4752": {
+			"isa": "PBXBuildFile",
+			"fileRef": "63A01ECD3FE70C476577EECB"
+		},
+		"5E5FAE10B797CEEB05D1F365": {
+			"isa": "PBXBuildFile",
+			"fileRef": "82DEBB157CEFEC4307116E45"
+		},
+		"606455AAC0195FC7D0F2CAE2": {
+			"isa": "PBXBuildFile",
+			"fileRef": "41E967DEC3B235869C8A0302"
+		},
+		"67DC6423713149536129174C": {
+			"isa": "PBXBuildFile",
+			"fileRef": "31FE85BB44103C66CB93F1A1"
+		},
+		"681122FD9CFB44DF7B145C3E": {
+			"isa": "PBXBuildFile",
+			"fileRef": "7C51ECB1891FFEA624CCEB6A",
+			"settings": {
+				"ATTRIBUTES": [
+					"RemoveHeadersOnCopy"
+				]
+			}
+		},
+		"68C5637B03670C35407D1EF8": {
+			"isa": "PBXBuildFile",
+			"fileRef": "E42CB8293F97DAD6558CA2C6"
+		},
+		"70F5341A6A010D747DE471EA": {
+			"isa": "PBXBuildFile",
+			"fileRef": "64AFE2D3D12ACF817073A5C8"
+		},
+		"77901275F880C3F29BC84974": {
+			"isa": "PBXBuildFile",
+			"fileRef": "9A53B468E8757E05D22B14DA"
+		},
+		"8269669262800477717015BA": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B31B55F0E33E1894538ED708"
+		},
+		"83120F65EF14CED3B7D8EAC8": {
+			"isa": "PBXBuildFile",
+			"fileRef": "04CFBDFA4B4A2534530C39D1"
+		},
+		"869F462978A05FB70A457EEE": {
+			"isa": "PBXBuildFile",
+			"productRef": "9148A73EAA731B5C6F2FAD21"
+		},
+		"879C3EB5DAC57163D311BE93": {
+			"isa": "PBXBuildFile",
+			"productRef": "622080EA269671D7D0921B47"
+		},
+		"88EA537DFE1C985516B3783E": {
+			"isa": "PBXBuildFile",
+			"fileRef": "F63ED6670450497F627DE63D"
+		},
+		"8D0E4ACCC2765CFA20347728": {
+			"isa": "PBXBuildFile",
+			"fileRef": "6A18B62ECE19ED25527FD00B"
+		},
+		"8EEFA0257ABB9391390D01D6": {
+			"isa": "PBXBuildFile",
+			"fileRef": "CD322B3DC03C2ABDF826CC01"
+		},
+		"918341A08086F652869D118B": {
+			"isa": "PBXBuildFile",
+			"fileRef": "FFC3EE81DF19D881B7154CEC"
+		},
+		"99BFB4BF56E1EF22A984A770": {
+			"isa": "PBXBuildFile",
+			"fileRef": "033531C731694ED3620B940C"
+		},
+		"9AB4E4180C83DA08F3B16FDC": {
+			"isa": "PBXBuildFile",
+			"fileRef": "C2075AB31C0DF70BDF50F297"
+		},
+		"9B3B0CE83F8AD03C5D933F74": {
+			"isa": "PBXBuildFile",
+			"fileRef": "C0D9C2DCD9B00FA7ACB0AF84"
+		},
+		"9D3E5EC185B3349F6332BB6C": {
+			"isa": "PBXBuildFile",
+			"fileRef": "576757E618EA7061972DA59C"
+		},
+		"9ECCE4C9BF90CD4E29BDD293": {
+			"isa": "PBXBuildFile",
+			"fileRef": "1B7EA9136C4131977C6C8296"
+		},
+		"A1550E8D236FC77DA5874888": {
+			"isa": "PBXBuildFile",
+			"fileRef": "DCF106DA006A649B22762CE8"
+		},
+		"ACFB314B176E156222E6BC27": {
+			"isa": "PBXBuildFile",
+			"fileRef": "33C239604307B68D16CBDF17"
+		},
+		"B1549B8CB4C993CF9F332C5F": {
+			"isa": "PBXBuildFile",
+			"fileRef": "8686D21C057BC30AB06189B5"
+		},
+		"B2A4F46F38A97347A6802603": {
+			"isa": "PBXBuildFile",
+			"fileRef": "4BBCDD92683EEE41C15485A0"
+		},
+		"B4DAD494A9193918DFCB75A4": {
+			"isa": "PBXBuildFile",
+			"fileRef": "96E8B2FA17B7BBC82AFA71BB",
+			"settings": {
+				"ATTRIBUTES": [
+					"RemoveHeadersOnCopy"
+				]
+			}
+		},
+		"C0513339155F7CB14E6A44E3": {
+			"isa": "PBXBuildFile",
+			"fileRef": "FE2AAFE554DF1D96F774F9EE"
+		},
+		"C48773DDABA1E459081BDB49": {
+			"isa": "PBXBuildFile",
+			"fileRef": "AC4730C7E6FFF0E7CF323893"
+		},
+		"CAA745CD22BEA5EE166A990C": {
+			"isa": "PBXBuildFile",
+			"fileRef": "C2AD88A7A8CA619E175EFD11"
+		},
+		"D4D8E9B7EB4A2E04AC6F61A0": {
+			"isa": "PBXBuildFile",
+			"fileRef": "A15B34065BB43F0D98D384DF"
+		},
+		"D6F58A4BCA1BF89C52850CFC": {
+			"isa": "PBXBuildFile",
+			"fileRef": "4324640DCAEA8E0B08DAC833"
+		},
+		"D95E25FE6B51A3234313A654": {
+			"isa": "PBXBuildFile",
+			"fileRef": "5D6723693F5CD2FDC781A166"
+		},
+		"DACE9EED9C8EAD27FC976982": {
+			"isa": "PBXBuildFile",
+			"fileRef": "FA5001EDCCDD4DB8CD204525"
+		},
+		"DB44A4EC754338206E4E88DE": {
+			"isa": "PBXBuildFile",
+			"fileRef": "9A5DBA4E63F2205B25690B01"
+		},
+		"DBEE9FF686FCCA1B46D89F3F": {
+			"isa": "PBXBuildFile",
+			"fileRef": "929BF4BCFE193F18484615E0"
+		},
+		"E07D5C8CEE61F81FA41E28BB": {
+			"isa": "PBXBuildFile",
+			"fileRef": "C77F1417FDEA535CCFB59899"
+		},
+		"E3A9130BFEED01CCE906DCA3": {
+			"isa": "PBXBuildFile",
+			"fileRef": "006F6FA2BCEEA68E98F883AA"
+		},
+		"E6CE1531D07BF94FAF38069B": {
+			"isa": "PBXBuildFile",
+			"fileRef": "006F6FA2BCEEA68E98F883AA"
+		},
+		"E8765D727C3447AFAE8D6490": {
+			"isa": "PBXBuildFile",
+			"fileRef": "9B23F8A7D5EF64D66A594E8D"
+		},
+		"E9D90BC869E6D9EE781D3BA4": {
+			"isa": "PBXBuildFile",
+			"fileRef": "493EF22F8480E0C004517FEF"
+		},
+		"EBD6400DD749D6F607C87EB7": {
+			"isa": "PBXBuildFile",
+			"fileRef": "DA78BAE67E02B6F68782FCBB"
+		},
+		"EC6E020914E50BA731EAF436": {
+			"isa": "PBXBuildFile",
+			"fileRef": "0548EA572BDA6A5A2A713EDF"
+		},
+		"ECA094B581739F661B6FADB1": {
+			"isa": "PBXBuildFile",
+			"fileRef": "30BF400160AE9FBD8D3B266E"
+		},
+		"ED7A353ABEC1EFA4BCDEBD84": {
+			"isa": "PBXBuildFile",
+			"fileRef": "ADA4275C9E7DCC5C0353076E"
+		},
+		"EDEE89A8675D8B0A03BDBC64": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B7E5851C481D6F2C635A5F16"
+		},
+		"EE7A5360BFFDA59E0AF715AF": {
+			"isa": "PBXBuildFile",
+			"fileRef": "0E476F8E5973738F1E1B3844"
+		},
+		"F29B15D27C7DA1AACC0AC1AA": {
+			"isa": "PBXBuildFile",
+			"fileRef": "2641A7B30E9FE011D3F54CE4"
+		},
+		"F3F7A9D411AB20AC7E2336B8": {
+			"isa": "PBXBuildFile",
+			"productRef": "2116565DC2151DED0D9D89F7"
+		},
+		"FD49833D260B4FF35CDC6473": {
+			"isa": "PBXBuildFile",
+			"fileRef": "B53AE2127BD0406C5E0B209B"
+		},
+		"ECE723A0A0723CC11D08803A": {
+			"isa": "PBXContainerItemProxy",
+			"containerPortal": "7EA6D9377E56C32636195598",
+			"proxyType": "1",
+			"remoteGlobalIDString": "CBDE573061803B5CE517CE72",
+			"remoteInfo": "NATURaLLiveActivity"
+		},
+		"13DCC5C111BF76B5B6BC6247": {
+			"isa": "PBXContainerItemProxy",
+			"containerPortal": "7EA6D9377E56C32636195598",
+			"proxyType": "1",
+			"remoteGlobalIDString": "AFF6D93EEBC72D1A16516CB6",
+			"remoteInfo": "NATURaLWidgets"
+		},
+		"2E532B324EC44025019924BF": {
+			"isa": "PBXContainerItemProxy",
+			"containerPortal": "7EA6D9377E56C32636195598",
+			"proxyType": "1",
+			"remoteGlobalIDString": "CE2F95449EA116BB80C95669",
+			"remoteInfo": "Bonhomme"
+		},
+		"79FC3CBBBDB59F4516824DC4": {
+			"isa": "PBXContainerItemProxy",
+			"containerPortal": "7EA6D9377E56C32636195598",
+			"proxyType": "1",
+			"remoteGlobalIDString": "CE2F95449EA116BB80C95669",
+			"remoteInfo": "Bonhomme"
+		},
+		"1AAB605232D382A12169D41C": {
+			"isa": "PBXCopyFilesBuildPhase",
+			"buildActionMask": "2147483647",
+			"dstPath": "",
+			"dstSubfolderSpec": "13",
+			"files": [
+				"681122FD9CFB44DF7B145C3E",
+				"B4DAD494A9193918DFCB75A4"
+			],
+			"name": "Embed Extensions",
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"006F6FA2BCEEA68E98F883AA": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ActivityRingsView.swift",
+			"sourceTree": "<group>"
+		},
+		"04CFBDFA4B4A2534530C39D1": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WatchHomeView.swift",
+			"sourceTree": "<group>"
+		},
+		"0548EA572BDA6A5A2A713EDF": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutRecorder.swift",
+			"sourceTree": "<group>"
+		},
+		"0E476F8E5973738F1E1B3844": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "MusicService.swift",
+			"sourceTree": "<group>"
+		},
+		"1B7EA9136C4131977C6C8296": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "TVRootView.swift",
+			"sourceTree": "<group>"
+		},
+		"243A016A66558286AE3E69C4": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutFlowUITests.swift",
+			"sourceTree": "<group>"
+		},
+		"2641A7B30E9FE011D3F54CE4": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "MedicationTracker.swift",
+			"sourceTree": "<group>"
+		},
+		"2EE08A39FAC0453AF19734D2": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.cfbundle",
+			"includeInIndex": "0",
+			"path": "BonhommeUITests.xctest",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"2FDC5BA711EF5694CD2DCA5D": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"30BF400160AE9FBD8D3B266E": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "BonhommeApp.swift",
+			"sourceTree": "<group>"
+		},
+		"31FE85BB44103C66CB93F1A1": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "SpatialBiofeedbackView.swift",
+			"sourceTree": "<group>"
+		},
+		"33C239604307B68D16CBDF17": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "AirPlayRoutePickerView.swift",
+			"sourceTree": "<group>"
+		},
+		"3AC78F2F5E1A8EC8A83A20D0": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.cfbundle",
+			"includeInIndex": "0",
+			"path": "BonhommeTests.xctest",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"3B20A0CBCF41B50E61CA0C8A": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.application",
+			"includeInIndex": "0",
+			"path": "BonhommeWatch.app",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"41E967DEC3B235869C8A0302": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "AppState.swift",
+			"sourceTree": "<group>"
+		},
+		"4324640DCAEA8E0B08DAC833": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutLiveActivity.swift",
+			"sourceTree": "<group>"
+		},
+		"43A7B3011053F64390AE6CCB": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"493EF22F8480E0C004517FEF": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutFlowViewModelTests.swift",
+			"sourceTree": "<group>"
+		},
+		"49413D9326C03F255A9050CC": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"4BBCDD92683EEE41C15485A0": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "SummaryView.swift",
+			"sourceTree": "<group>"
+		},
+		"53F1C4187BEB28F5B75F49CA": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ActivityRingsWidget.swift",
+			"sourceTree": "<group>"
+		},
+		"576757E618EA7061972DA59C": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "TVDisplayCoordinatorTests.swift",
+			"sourceTree": "<group>"
+		},
+		"5787737B2C9B32BD9AC33949": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.application",
+			"includeInIndex": "0",
+			"path": "BonhommeVision.app",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"57AA50F104A8F756A65C0651": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.application",
+			"includeInIndex": "0",
+			"path": "BonhommeTV.app",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"5D6723693F5CD2FDC781A166": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "Entitlement.swift",
+			"sourceTree": "<group>"
+		},
+		"63A01ECD3FE70C476577EECB": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "MetricsOverlayView.swift",
+			"sourceTree": "<group>"
+		},
+		"64AFE2D3D12ACF817073A5C8": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "CareKitBridge.swift",
+			"sourceTree": "<group>"
+		},
+		"6A18B62ECE19ED25527FD00B": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "HistoryView.swift",
+			"sourceTree": "<group>"
+		},
+		"7C51ECB1891FFEA624CCEB6A": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.app-extension",
+			"includeInIndex": "0",
+			"path": "NATURaLLiveActivity.appex",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"80FA0E59182AE9EE86FCD708": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "PaywallView.swift",
+			"sourceTree": "<group>"
+		},
+		"82DEBB157CEFEC4307116E45": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "TVDisplayCoordinator.swift",
+			"sourceTree": "<group>"
+		},
+		"8686D21C057BC30AB06189B5": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "NativeCompanionClient.swift",
+			"sourceTree": "<group>"
+		},
+		"8A4C18D50A61DA5766A933A3": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WatchConnectivityBridge.swift",
+			"sourceTree": "<group>"
+		},
+		"8A68B1F8F551D3F2AE2D1AFD": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "FitnessPlusReader.swift",
+			"sourceTree": "<group>"
+		},
+		"929BF4BCFE193F18484615E0": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "AirPlaySecondScreen.swift",
+			"sourceTree": "<group>"
+		},
+		"96E8B2FA17B7BBC82AFA71BB": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.app-extension",
+			"includeInIndex": "0",
+			"path": "NATURaLWidgets.appex",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"985A02F6EE01452874C2D655": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "HeartRateMonitor.swift",
+			"sourceTree": "<group>"
+		},
+		"9A53B468E8757E05D22B14DA": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutStateStore.swift",
+			"sourceTree": "<group>"
+		},
+		"9A5DBA4E63F2205B25690B01": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "SubscriptionManager.swift",
+			"sourceTree": "<group>"
+		},
+		"9A6B2F908F0917D19A145A0C": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "Package.swift",
+			"sourceTree": "<group>"
+		},
+		"9B23F8A7D5EF64D66A594E8D": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ExternalDisplaySceneDelegate.swift",
+			"sourceTree": "<group>"
+		},
+		"9F6F7CD1DED33F23495EC2A1": {
+			"isa": "PBXFileReference",
+			"explicitFileType": "wrapper.application",
+			"includeInIndex": "0",
+			"path": "Bonhomme.app",
+			"sourceTree": "BUILT_PRODUCTS_DIR"
+		},
+		"A15B34065BB43F0D98D384DF": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ImmersivePoseSpace.swift",
+			"sourceTree": "<group>"
+		},
+		"A2712A1AB52F16BD44CDA921": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"A52AF504CFE0BEDF4D47B83E": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"AC4730C7E6FFF0E7CF323893": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ActivityRingService.swift",
+			"sourceTree": "<group>"
+		},
+		"ADA4275C9E7DCC5C0353076E": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "BonhommeVisionApp.swift",
+			"sourceTree": "<group>"
+		},
+		"AE126FCF2D708572DCC3D185": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "PhoneConnectivityBridge.swift",
+			"sourceTree": "<group>"
+		},
+		"B1885EBFCE2CC0B5387AD9CE": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "SessionCoordinator.swift",
+			"sourceTree": "<group>"
+		},
+		"B31B55F0E33E1894538ED708": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ChairYogaActivity.swift",
+			"sourceTree": "<group>"
+		},
+		"B52CB67AD0E3152C69497A0C": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WatchSessionView.swift",
+			"sourceTree": "<group>"
+		},
+		"B53AE2127BD0406C5E0B209B": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "HealthKitManager.swift",
+			"sourceTree": "<group>"
+		},
+		"B7E5851C481D6F2C635A5F16": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "CompanionListener.swift",
+			"sourceTree": "<group>"
+		},
+		"B8DEB7CE56DE05FB0A6214D9": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutIntents.swift",
+			"sourceTree": "<group>"
+		},
+		"B91D1BAD98216928F6EB03AC": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutFlowView.swift",
+			"sourceTree": "<group>"
+		},
+		"B9F474ADF119BE0A9A27DC5B": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "YogaTaskBuilder.swift",
+			"sourceTree": "<group>"
+		},
+		"BA6CDDF58A764BEDF0BF4AB5": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.xml",
+			"path": "Info.plist",
+			"sourceTree": "<group>"
+		},
+		"C0D9C2DCD9B00FA7ACB0AF84": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "AirPlayFallbackUITests.swift",
+			"sourceTree": "<group>"
+		},
+		"C2075AB31C0DF70BDF50F297": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "HomeView.swift",
+			"sourceTree": "<group>"
+		},
+		"C2AD88A7A8CA619E175EFD11": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WatchWorkoutManager.swift",
+			"sourceTree": "<group>"
+		},
+		"C77F1417FDEA535CCFB59899": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "PersistentModels.swift",
+			"sourceTree": "<group>"
+		},
+		"CD322B3DC03C2ABDF826CC01": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "WorkoutFlowViewModel.swift",
+			"sourceTree": "<group>"
+		},
+		"DA78BAE67E02B6F68782FCBB": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "CountdownView.swift",
+			"sourceTree": "<group>"
+		},
+		"DCF106DA006A649B22762CE8": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "ResearchKitBridge.swift",
+			"sourceTree": "<group>"
+		},
+		"E42CB8293F97DAD6558CA2C6": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "BonhommeWatchApp.swift",
+			"sourceTree": "<group>"
+		},
+		"F4088291BB46D86898D6D22D": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "text.plist.entitlements",
+			"path": "Bonhomme.entitlements",
+			"sourceTree": "<group>"
+		},
+		"F63ED6670450497F627DE63D": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "InsightEngine.swift",
+			"sourceTree": "<group>"
+		},
+		"FA5001EDCCDD4DB8CD204525": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "SpatialPoseView.swift",
+			"sourceTree": "<group>"
+		},
+		"FE2AAFE554DF1D96F774F9EE": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "BonhommeTVApp.swift",
+			"sourceTree": "<group>"
+		},
+		"FFC3EE81DF19D881B7154CEC": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "StreakWidget.swift",
+			"sourceTree": "<group>"
+		},
+		"033531C731694ED3620B940C": {
+			"isa": "PBXFileReference",
+			"lastKnownFileType": "sourcecode.swift",
+			"path": "NATURaLWidgetsBundle.swift",
+			"sourceTree": "<group>"
+		},
+		"97EFB573CCBC7A8C5EF5807F": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"869F462978A05FB70A457EEE",
+				"5BE942EF6FB9C83DE5367956"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"C932E7622F9BB156D6C24BB8": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"879C3EB5DAC57163D311BE93"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"4CFF797DB6C64CBCB700A3DE": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"5041357AEFDC77052FAD2D66"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"F66FAD689BBECDE064C5873A": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"F3F7A9D411AB20AC7E2336B8"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"F8AF7353264A63268E534ABF": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"B93A1141443322ACBD774BE4": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"0A6742A6A9346E9598BDC2E1": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"5E9292B3FAE936A08A037EE3": {
+			"isa": "PBXFrameworksBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"E748EC556CACF57F5DA64FA6": {
+			"isa": "PBXGroup",
+			"children": [
+				"41E967DEC3B235869C8A0302",
+				"30BF400160AE9FBD8D3B266E"
+			],
+			"path": "App",
+			"sourceTree": "<group>"
+		},
+		"5046310E6BDB98A70926195D": {
+			"isa": "PBXGroup",
+			"children": [
+				"6A18B62ECE19ED25527FD00B"
+			],
+			"path": "History",
+			"sourceTree": "<group>"
+		},
+		"0E49E56A4A748A3A4C69EFC8": {
+			"isa": "PBXGroup",
+			"children": [
+				"80FA0E59182AE9EE86FCD708"
+			],
+			"path": "Paywall",
+			"sourceTree": "<group>"
+		},
+		"9DBEDABBF844160E3256A1D0": {
+			"isa": "PBXGroup",
+			"children": [
+				"4BBCDD92683EEE41C15485A0"
+			],
+			"path": "Summary",
+			"sourceTree": "<group>"
+		},
+		"703B6E2D72B9A3F1184DD037": {
+			"isa": "PBXGroup",
+			"children": [
+				"DA78BAE67E02B6F68782FCBB",
+				"C2075AB31C0DF70BDF50F297",
+				"63A01ECD3FE70C476577EECB",
+				"B91D1BAD98216928F6EB03AC",
+				"CD322B3DC03C2ABDF826CC01"
+			],
+			"path": "Workout",
+			"sourceTree": "<group>"
+		},
+		"871D995BCC5C0F397B87E1C3": {
+			"isa": "PBXGroup",
+			"children": [
+				"5046310E6BDB98A70926195D",
+				"0E49E56A4A748A3A4C69EFC8",
+				"9DBEDABBF844160E3256A1D0",
+				"703B6E2D72B9A3F1184DD037"
+			],
+			"path": "Features",
+			"sourceTree": "<group>"
+		},
+		"2ACC9ECBEBB487CBABE92389": {
+			"isa": "PBXGroup",
+			"children": [
+				"64AFE2D3D12ACF817073A5C8",
+				"B9F474ADF119BE0A9A27DC5B"
+			],
+			"path": "CareKit",
+			"sourceTree": "<group>"
+		},
+		"9CF01F0F472008BA63685FD6": {
+			"isa": "PBXGroup",
+			"children": [
+				"AC4730C7E6FFF0E7CF323893",
+				"8A68B1F8F551D3F2AE2D1AFD",
+				"B53AE2127BD0406C5E0B209B",
+				"985A02F6EE01452874C2D655",
+				"F63ED6670450497F627DE63D",
+				"2641A7B30E9FE011D3F54CE4",
+				"DCF106DA006A649B22762CE8",
+				"0548EA572BDA6A5A2A713EDF"
+			],
+			"path": "HealthKit",
+			"sourceTree": "<group>"
+		},
+		"869CEDD7ABE929A5415359CE": {
+			"isa": "PBXGroup",
+			"children": [
+				"0E476F8E5973738F1E1B3844"
+			],
+			"path": "Music",
+			"sourceTree": "<group>"
+		},
+		"8154D986313A83174D4B20A4": {
+			"isa": "PBXGroup",
+			"children": [
+				"C77F1417FDEA535CCFB59899",
+				"9A53B468E8757E05D22B14DA"
+			],
+			"path": "Persistence",
+			"sourceTree": "<group>"
+		},
+		"53B67D7396B237BB9805387B": {
+			"isa": "PBXGroup",
+			"children": [
+				"B31B55F0E33E1894538ED708",
+				"B1885EBFCE2CC0B5387AD9CE"
+			],
+			"path": "SharePlay",
+			"sourceTree": "<group>"
+		},
+		"B98FCC200A649E73AA5510D2": {
+			"isa": "PBXGroup",
+			"children": [
+				"B8DEB7CE56DE05FB0A6214D9"
+			],
+			"path": "Siri",
+			"sourceTree": "<group>"
+		},
+		"209AFF137B15F38B84BA7AF5": {
+			"isa": "PBXGroup",
+			"children": [
+				"5D6723693F5CD2FDC781A166",
+				"9A5DBA4E63F2205B25690B01"
+			],
+			"path": "Subscription",
+			"sourceTree": "<group>"
+		},
+		"77F1D93B9FC472D342AC4CBC": {
+			"isa": "PBXGroup",
+			"children": [
+				"AE126FCF2D708572DCC3D185"
+			],
+			"path": "WatchConnectivity",
+			"sourceTree": "<group>"
+		},
+		"B68118C5D7CD33B61FA1156D": {
+			"isa": "PBXGroup",
+			"children": [
+				"2ACC9ECBEBB487CBABE92389",
+				"9CF01F0F472008BA63685FD6",
+				"869CEDD7ABE929A5415359CE",
+				"8154D986313A83174D4B20A4",
+				"53B67D7396B237BB9805387B",
+				"B98FCC200A649E73AA5510D2",
+				"209AFF137B15F38B84BA7AF5",
+				"77F1D93B9FC472D342AC4CBC"
+			],
+			"path": "Services",
+			"sourceTree": "<group>"
+		},
+		"FFDCC0B84EBAF743E5BBF2D0": {
+			"isa": "PBXGroup",
+			"children": [
+				"006F6FA2BCEEA68E98F883AA"
+			],
+			"path": "Components",
+			"sourceTree": "<group>"
+		},
+		"EFDC7F3A123A9292A2D85FF5": {
+			"isa": "PBXGroup",
+			"children": [
+				"FFDCC0B84EBAF743E5BBF2D0"
+			],
+			"path": "Shared",
+			"sourceTree": "<group>"
+		},
+		"C5D5660995925A23982E9C16": {
+			"isa": "PBXGroup",
+			"children": [
+				"33C239604307B68D16CBDF17",
+				"929BF4BCFE193F18484615E0",
+				"9B23F8A7D5EF64D66A594E8D",
+				"8686D21C057BC30AB06189B5",
+				"82DEBB157CEFEC4307116E45"
+			],
+			"path": "TVRelay",
+			"sourceTree": "<group>"
+		},
+		"4C9B3C81464508E6A8F3D306": {
+			"isa": "PBXGroup",
+			"children": [
+				"E748EC556CACF57F5DA64FA6",
+				"871D995BCC5C0F397B87E1C3",
+				"B68118C5D7CD33B61FA1156D",
+				"EFDC7F3A123A9292A2D85FF5",
+				"C5D5660995925A23982E9C16",
+				"F4088291BB46D86898D6D22D",
+				"43A7B3011053F64390AE6CCB"
+			],
+			"path": "Bonhomme",
+			"sourceTree": "<group>"
+		},
+		"DBDE6A2739D4222AD2BE630C": {
+			"isa": "PBXGroup",
+			"children": [
+				"9A6B2F908F0917D19A145A0C"
+			],
+			"path": "BonhommeCore",
+			"sourceTree": "<group>"
+		},
+		"6FDBEC71B2C2159541237617": {
+			"isa": "PBXGroup",
+			"children": [
+				"FE2AAFE554DF1D96F774F9EE"
+			],
+			"path": "App",
+			"sourceTree": "<group>"
+		},
+		"13ABD2C5A9F71273FD18B004": {
+			"isa": "PBXGroup",
+			"children": [
+				"B7E5851C481D6F2C635A5F16"
+			],
+			"path": "Networking",
+			"sourceTree": "<group>"
+		},
+		"6C38762A1916540B3096AE06": {
+			"isa": "PBXGroup",
+			"children": [
+				"1B7EA9136C4131977C6C8296"
+			],
+			"path": "Views",
+			"sourceTree": "<group>"
+		},
+		"4F91E5173525BE1784E7350E": {
+			"isa": "PBXGroup",
+			"children": [
+				"6FDBEC71B2C2159541237617",
+				"13ABD2C5A9F71273FD18B004",
+				"6C38762A1916540B3096AE06",
+				"2FDC5BA711EF5694CD2DCA5D"
+			],
+			"path": "BonhommeTV",
+			"sourceTree": "<group>"
+		},
+		"C56BE0DC240D5136E49D892B": {
+			"isa": "PBXGroup",
+			"children": [
+				"ADA4275C9E7DCC5C0353076E",
+				"A15B34065BB43F0D98D384DF",
+				"31FE85BB44103C66CB93F1A1",
+				"FA5001EDCCDD4DB8CD204525"
+			],
+			"path": "App",
+			"sourceTree": "<group>"
+		},
+		"F9DD9E8FDDC95697A05DB93C": {
+			"isa": "PBXGroup",
+			"children": [
+				"C56BE0DC240D5136E49D892B",
+				"A2712A1AB52F16BD44CDA921"
+			],
+			"path": "BonhommeVision",
+			"sourceTree": "<group>"
+		},
+		"73431774202DA336377341EB": {
+			"isa": "PBXGroup",
+			"children": [
+				"E42CB8293F97DAD6558CA2C6",
+				"8A4C18D50A61DA5766A933A3",
+				"04CFBDFA4B4A2534530C39D1",
+				"B52CB67AD0E3152C69497A0C",
+				"C2AD88A7A8CA619E175EFD11"
+			],
+			"path": "App",
+			"sourceTree": "<group>"
+		},
+		"DC23BE0794C05E7FA04CF314": {
+			"isa": "PBXGroup",
+			"children": [
+				"73431774202DA336377341EB",
+				"A52AF504CFE0BEDF4D47B83E"
+			],
+			"path": "BonhommeWatch",
+			"sourceTree": "<group>"
+		},
+		"46E4583986DBE0438D7C23D6": {
+			"isa": "PBXGroup",
+			"children": [
+				"49413D9326C03F255A9050CC",
+				"4324640DCAEA8E0B08DAC833"
+			],
+			"path": "NATURaLLiveActivity",
+			"sourceTree": "<group>"
+		},
+		"130AD70FD95A4806574C6E3A": {
+			"isa": "PBXGroup",
+			"children": [
+				"53F1C4187BEB28F5B75F49CA",
+				"033531C731694ED3620B940C",
+				"BA6CDDF58A764BEDF0BF4AB5",
+				"FFC3EE81DF19D881B7154CEC"
+			],
+			"path": "NATURaLWidgets",
+			"sourceTree": "<group>"
+		},
+		"7D8785A8C8BB03A445EC28E1": {
+			"isa": "PBXGroup",
+			"children": [
+				"576757E618EA7061972DA59C",
+				"493EF22F8480E0C004517FEF"
+			],
+			"path": "BonhommeTests",
+			"sourceTree": "<group>"
+		},
+		"9ACAF0140E251DBD9E033F7A": {
+			"isa": "PBXGroup",
+			"children": [
+				"C0D9C2DCD9B00FA7ACB0AF84",
+				"243A016A66558286AE3E69C4"
+			],
+			"path": "BonhommeUITests",
+			"sourceTree": "<group>"
+		},
+		"2241B5DB692077C6A3C353CF": {
+			"isa": "PBXGroup",
+			"children": [
+				"7D8785A8C8BB03A445EC28E1",
+				"9ACAF0140E251DBD9E033F7A"
+			],
+			"path": "Tests",
+			"sourceTree": "<group>"
+		},
+		"2B731CEFC6751AAE0EC69B98": {
+			"isa": "PBXGroup",
+			"children": [
+				"4C9B3C81464508E6A8F3D306",
+				"DBDE6A2739D4222AD2BE630C",
+				"4F91E5173525BE1784E7350E",
+				"F9DD9E8FDDC95697A05DB93C",
+				"DC23BE0794C05E7FA04CF314",
+				"46E4583986DBE0438D7C23D6",
+				"130AD70FD95A4806574C6E3A",
+				"2241B5DB692077C6A3C353CF",
+				"0A2C978E52A76F0AA9F68BB5",
+				"154669CC2236551E32F273A3"
+			],
+			"sourceTree": "<group>"
+		},
+		"0A2C978E52A76F0AA9F68BB5": {
+			"isa": "PBXGroup",
+			"children": [
+				"9F6F7CD1DED33F23495EC2A1",
+				"57AA50F104A8F756A65C0651",
+				"3B20A0CBCF41B50E61CA0C8A",
+				"5787737B2C9B32BD9AC33949",
+				"7C51ECB1891FFEA624CCEB6A",
+				"96E8B2FA17B7BBC82AFA71BB",
+				"3AC78F2F5E1A8EC8A83A20D0",
+				"2EE08A39FAC0453AF19734D2"
+			],
+			"name": "Products",
+			"sourceTree": "<group>"
+		},
+		"154669CC2236551E32F273A3": {
+			"isa": "PBXGroup",
+			"children": [],
+			"name": "Packages",
+			"sourceTree": "<group>"
+		},
+		"CE2F95449EA116BB80C95669": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "BF1E96EAFD7A37E437EEC062",
+			"buildPhases": [
+				"75D36BED9165EA876343B76C",
+				"97EFB573CCBC7A8C5EF5807F",
+				"1AAB605232D382A12169D41C"
+			],
+			"buildRules": [],
+			"dependencies": [
+				"0669C55D86949C21B1E89871",
+				"A08EB289D4A6F49014354537"
+			],
+			"name": "Bonhomme",
+			"packageProductDependencies": [
+				"9148A73EAA731B5C6F2FAD21",
+				"34D983926E592456B194E519"
+			],
+			"productName": "Bonhomme",
+			"productReference": "9F6F7CD1DED33F23495EC2A1",
+			"productType": "com.apple.product-type.application"
+		},
+		"F87083C4BE51F1CCA10B40AC": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "FA4E675B01ABDC74FC10A91C",
+			"buildPhases": [
+				"D7031E39CAC89C4685B1962D",
+				"C932E7622F9BB156D6C24BB8"
+			],
+			"buildRules": [],
+			"dependencies": [],
+			"name": "BonhommeTV",
+			"packageProductDependencies": [
+				"622080EA269671D7D0921B47"
+			],
+			"productName": "BonhommeTV",
+			"productReference": "57AA50F104A8F756A65C0651",
+			"productType": "com.apple.product-type.application"
+		},
+		"3CBBBFC801363D2E6D9E6893": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "7045E2E8379D46BFFA767FDE",
+			"buildPhases": [
+				"251FBA5035B3A36B86D68809",
+				"4CFF797DB6C64CBCB700A3DE"
+			],
+			"buildRules": [],
+			"dependencies": [],
+			"name": "BonhommeWatch",
+			"packageProductDependencies": [
+				"D2066727444F421784F230ED"
+			],
+			"productName": "BonhommeWatch",
+			"productReference": "3B20A0CBCF41B50E61CA0C8A",
+			"productType": "com.apple.product-type.application"
+		},
+		"4E22AE3417C5850EA6DA0D1A": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "DA6E99C7ADCB2DC6146295E6",
+			"buildPhases": [
+				"73DA79884C2D753985A58A57",
+				"F66FAD689BBECDE064C5873A"
+			],
+			"buildRules": [],
+			"dependencies": [],
+			"name": "BonhommeVision",
+			"packageProductDependencies": [
+				"2116565DC2151DED0D9D89F7"
+			],
+			"productName": "BonhommeVision",
+			"productReference": "5787737B2C9B32BD9AC33949",
+			"productType": "com.apple.product-type.application"
+		},
+		"CBDE573061803B5CE517CE72": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "8309BC7E1A0B7274B64F0F4A",
+			"buildPhases": [
+				"F0852BD9CBE9F80EB030D0A8",
+				"F8AF7353264A63268E534ABF"
+			],
+			"buildRules": [],
+			"dependencies": [],
+			"name": "NATURaLLiveActivity",
+			"packageProductDependencies": [],
+			"productName": "NATURaLLiveActivity",
+			"productReference": "7C51ECB1891FFEA624CCEB6A",
+			"productType": "com.apple.product-type.app-extension"
+		},
+		"AFF6D93EEBC72D1A16516CB6": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "F98DE11A1125C91904B9DE5A",
+			"buildPhases": [
+				"0E2C3DDD8F819138FFB68E0F",
+				"B93A1141443322ACBD774BE4"
+			],
+			"buildRules": [],
+			"dependencies": [],
+			"name": "NATURaLWidgets",
+			"packageProductDependencies": [],
+			"productName": "NATURaLWidgets",
+			"productReference": "96E8B2FA17B7BBC82AFA71BB",
+			"productType": "com.apple.product-type.app-extension"
+		},
+		"A533C61BA31611801C58232D": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "E5801BF18DEB40620893C616",
+			"buildPhases": [
+				"2CE0C7BFA309E410C28629EC",
+				"0A6742A6A9346E9598BDC2E1"
+			],
+			"buildRules": [],
+			"dependencies": [
+				"C2ACB5D37B5E45907B5CBB64"
+			],
+			"name": "BonhommeTests",
+			"packageProductDependencies": [],
+			"productName": "BonhommeTests",
+			"productReference": "3AC78F2F5E1A8EC8A83A20D0",
+			"productType": "com.apple.product-type.bundle.unit-test"
+		},
+		"C708235B5A6E91D489B1A866": {
+			"isa": "PBXNativeTarget",
+			"buildConfigurationList": "5D0D56919135D7D373BDABBF",
+			"buildPhases": [
+				"9E932D6F72419A52379B9947",
+				"5E9292B3FAE936A08A037EE3"
+			],
+			"buildRules": [],
+			"dependencies": [
+				"E05F6CA729BE5E22ACB899E0"
+			],
+			"name": "BonhommeUITests",
+			"packageProductDependencies": [],
+			"productName": "BonhommeUITests",
+			"productReference": "2EE08A39FAC0453AF19734D2",
+			"productType": "com.apple.product-type.bundle.ui-testing"
+		},
+		"7EA6D9377E56C32636195598": {
+			"isa": "PBXProject",
+			"attributes": {
+				"BuildIndependentTargetsInParallel": "1",
+				"LastSwiftUpdateCheck": "1540",
+				"LastUpgradeCheck": "1540"
+			},
+			"buildConfigurationList": "E0367D107ACD4D83ED767BFC",
+			"compatibilityVersion": "Xcode 15.0",
+			"developmentRegion": "en",
+			"hasScannedForEncodings": "0",
+			"knownRegions": [
+				"en",
+				"fr",
+				"Base"
+			],
+			"mainGroup": "2B731CEFC6751AAE0EC69B98",
+			"packageReferences": [
+				"6B1B48011FD2DF61F369AFC4",
+				"5B2E4464C6E3412D83B3412A"
+			],
+			"productRefGroup": "0A2C978E52A76F0AA9F68BB5",
+			"projectDirPath": "",
+			"projectRoot": "",
+			"targets": [
+				"CE2F95449EA116BB80C95669",
+				"F87083C4BE51F1CCA10B40AC",
+				"3CBBBFC801363D2E6D9E6893",
+				"4E22AE3417C5850EA6DA0D1A",
+				"CBDE573061803B5CE517CE72",
+				"AFF6D93EEBC72D1A16516CB6",
+				"A533C61BA31611801C58232D",
+				"C708235B5A6E91D489B1A866"
+			]
+		},
+		"75D36BED9165EA876343B76C": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"606455AAC0195FC7D0F2CAE2",
+				"ECA094B581739F661B6FADB1",
+				"8D0E4ACCC2765CFA20347728",
+				"238BCEA39FF4AD36C857045E",
+				"B2A4F46F38A97347A6802603",
+				"EBD6400DD749D6F607C87EB7",
+				"9AB4E4180C83DA08F3B16FDC",
+				"5D03FA63EC61DAB5028D4752",
+				"0EAB617165018E30C1D403AE",
+				"8EEFA0257ABB9391390D01D6",
+				"70F5341A6A010D747DE471EA",
+				"23F1A4F57862025BECEDAE9F",
+				"C48773DDABA1E459081BDB49",
+				"20AF62F3EDCB32D6985E1742",
+				"FD49833D260B4FF35CDC6473",
+				"5A13F14D9C36CE6E0E442C80",
+				"88EA537DFE1C985516B3783E",
+				"F29B15D27C7DA1AACC0AC1AA",
+				"A1550E8D236FC77DA5874888",
+				"EC6E020914E50BA731EAF436",
+				"EE7A5360BFFDA59E0AF715AF",
+				"E07D5C8CEE61F81FA41E28BB",
+				"77901275F880C3F29BC84974",
+				"8269669262800477717015BA",
+				"0E49383CD358A88C9AECA630",
+				"00000A792B5E2D3E20A00DD9",
+				"D95E25FE6B51A3234313A654",
+				"DB44A4EC754338206E4E88DE",
+				"28542F168E771A3D8C03D04E",
+				"E3A9130BFEED01CCE906DCA3",
+				"ACFB314B176E156222E6BC27",
+				"DBEE9FF686FCCA1B46D89F3F",
+				"E8765D727C3447AFAE8D6490",
+				"B1549B8CB4C993CF9F332C5F",
+				"5E5FAE10B797CEEB05D1F365"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"D7031E39CAC89C4685B1962D": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"C0513339155F7CB14E6A44E3",
+				"EDEE89A8675D8B0A03BDBC64",
+				"9ECCE4C9BF90CD4E29BDD293"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"251FBA5035B3A36B86D68809": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"68C5637B03670C35407D1EF8",
+				"11997E1AAA6EBDA3D50C5F77",
+				"83120F65EF14CED3B7D8EAC8",
+				"312211F5C4DD313CA7ECAA1B",
+				"CAA745CD22BEA5EE166A990C"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"73DA79884C2D753985A58A57": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"ED7A353ABEC1EFA4BCDEBD84",
+				"D4D8E9B7EB4A2E04AC6F61A0",
+				"67DC6423713149536129174C",
+				"DACE9EED9C8EAD27FC976982"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"F0852BD9CBE9F80EB030D0A8": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"D6F58A4BCA1BF89C52850CFC"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"0E2C3DDD8F819138FFB68E0F": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"4EE07080CC92DE0579A52D6B",
+				"99BFB4BF56E1EF22A984A770",
+				"918341A08086F652869D118B",
+				"E6CE1531D07BF94FAF38069B"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"2CE0C7BFA309E410C28629EC": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"9D3E5EC185B3349F6332BB6C",
+				"E9D90BC869E6D9EE781D3BA4"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"9E932D6F72419A52379B9947": {
+			"isa": "PBXSourcesBuildPhase",
+			"buildActionMask": "2147483647",
+			"files": [
+				"9B3B0CE83F8AD03C5D933F74",
+				"3E20844C3B7C73D4A4684AD0"
+			],
+			"runOnlyForDeploymentPostprocessing": "0"
+		},
+		"0669C55D86949C21B1E89871": {
+			"isa": "PBXTargetDependency",
+			"target": "CBDE573061803B5CE517CE72",
+			"targetProxy": "ECE723A0A0723CC11D08803A"
+		},
+		"A08EB289D4A6F49014354537": {
+			"isa": "PBXTargetDependency",
+			"target": "AFF6D93EEBC72D1A16516CB6",
+			"targetProxy": "13DCC5C111BF76B5B6BC6247"
+		},
+		"C2ACB5D37B5E45907B5CBB64": {
+			"isa": "PBXTargetDependency",
+			"target": "CE2F95449EA116BB80C95669",
+			"targetProxy": "2E532B324EC44025019924BF"
+		},
+		"E05F6CA729BE5E22ACB899E0": {
+			"isa": "PBXTargetDependency",
+			"target": "CE2F95449EA116BB80C95669",
+			"targetProxy": "79FC3CBBBDB59F4516824DC4"
+		},
+		"B984FD7A965D163195480EFE": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES": "YES",
+				"ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+				"CODE_SIGN_ENTITLEMENTS": "Bonhomme/Bonhomme.entitlements",
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "Bonhomme/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SWIFT_EMIT_LOC_STRINGS": "YES",
+				"TARGETED_DEVICE_FAMILY": "1,2",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"B1DB3192867D06CBB7E0A96C": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES": "YES",
+				"ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+				"CODE_SIGN_ENTITLEMENTS": "Bonhomme/Bonhomme.entitlements",
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "Bonhomme/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SWIFT_EMIT_LOC_STRINGS": "YES",
+				"TARGETED_DEVICE_FAMILY": "1,2",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"A0E7E8EBCEEAE1E35815A476": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeTV/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeTV",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "appletvos",
+				"TVOS_DEPLOYMENT_TARGET": "17.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"3BC3CCC0C9AF8127274C4759": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeTV/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeTV",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "appletvos",
+				"TVOS_DEPLOYMENT_TARGET": "17.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"D39233ED5CAC8277B9363841": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeWatch/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeWatch",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "watchos",
+				"WATCHOS_DEPLOYMENT_TARGET": "10.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"5C9C5FB500F94AF8DE406AB6": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeWatch/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeWatch",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "watchos",
+				"WATCHOS_DEPLOYMENT_TARGET": "10.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"6C1CE64DF3591527B554FAA4": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeVision/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeVision",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "xros",
+				"XROS_DEPLOYMENT_TARGET": "1.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"BE7DD89400F4CA1482037F80": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "BonhommeVision/Info.plist",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeVision",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "xros",
+				"XROS_DEPLOYMENT_TARGET": "1.0",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"35B6FA243765014E56155659": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "NATURaLLiveActivity/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme.LiveActivity",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SKIP_INSTALL": "YES",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"0C8286DC9ED19D76E8D5BEE5": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "NATURaLLiveActivity/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme.LiveActivity",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SKIP_INSTALL": "YES",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"C4E569DD76746EA9FBB423E8": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "NATURaLWidgets/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme.Widgets",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SKIP_INSTALL": "YES",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"CFBE2ADE698F9AFD9CFAA8AE": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"CURRENT_PROJECT_VERSION": "1",
+				"GENERATE_INFOPLIST_FILE": "NO",
+				"INFOPLIST_FILE": "NATURaLWidgets/Info.plist",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"MARKETING_VERSION": "1.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.Bonhomme.Widgets",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"SKIP_INSTALL": "YES",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"93EE92728DA711E32F2FFD32": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"BUNDLE_LOADER": "$(TEST_HOST)",
+				"GENERATE_INFOPLIST_FILE": "YES",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeTests",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"TEST_HOST": "$(BUILT_PRODUCTS_DIR)/Bonhomme.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bonhomme",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"2813B0F498B8C15B3382D7AD": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"BUNDLE_LOADER": "$(TEST_HOST)",
+				"GENERATE_INFOPLIST_FILE": "YES",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeTests",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"TEST_HOST": "$(BUILT_PRODUCTS_DIR)/Bonhomme.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bonhomme",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"BFB974B8593CC82A88598969": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"GENERATE_INFOPLIST_FILE": "YES",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeUITests",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"TEST_TARGET_NAME": "Bonhomme",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+			},
+			"name": "Debug"
+		},
+		"688706E039D5BE3B3F5108CD": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"GENERATE_INFOPLIST_FILE": "YES",
+				"IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+				"PRODUCT_BUNDLE_IDENTIFIER": "com.natural.BonhommeUITests",
+				"PRODUCT_NAME": "$(TARGET_NAME)",
+				"SDKROOT": "iphoneos",
+				"TEST_TARGET_NAME": "Bonhomme",
+				"SWIFT_VERSION": "5.0",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"COPY_PHASE_STRIP": "YES"
+			},
+			"name": "Release"
+		},
+		"11BDF4520E415C208EC90709": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"ALWAYS_SEARCH_USER_PATHS": "NO",
+				"CLANG_ANALYZER_NONNULL": "YES",
+				"CLANG_CXX_LANGUAGE_STANDARD": "gnu++20",
+				"CLANG_ENABLE_MODULES": "YES",
+				"CLANG_ENABLE_OBJC_ARC": "YES",
+				"CODE_SIGN_STYLE": "Automatic",
+				"DEVELOPMENT_TEAM": "",
+				"SWIFT_VERSION": "5.0",
+				"ENABLE_TESTABILITY": "YES",
+				"GCC_OPTIMIZATION_LEVEL": "0",
+				"ONLY_ACTIVE_ARCH": "YES",
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
+				"SWIFT_OPTIMIZATION_LEVEL": "-Onone",
+				"DEBUG_INFORMATION_FORMAT": "dwarf"
+			},
+			"name": "Debug"
+		},
+		"72301898F1386BB67F77698A": {
+			"isa": "XCBuildConfiguration",
+			"buildSettings": {
+				"ALWAYS_SEARCH_USER_PATHS": "NO",
+				"CLANG_ANALYZER_NONNULL": "YES",
+				"CLANG_CXX_LANGUAGE_STANDARD": "gnu++20",
+				"CLANG_ENABLE_MODULES": "YES",
+				"CLANG_ENABLE_OBJC_ARC": "YES",
+				"CODE_SIGN_STYLE": "Automatic",
+				"DEVELOPMENT_TEAM": "",
+				"SWIFT_VERSION": "5.0",
+				"SWIFT_OPTIMIZATION_LEVEL": "-O",
+				"DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
+				"COPY_PHASE_STRIP": "YES",
+				"ENABLE_NS_ASSERTIONS": "NO"
+			},
+			"name": "Release"
+		},
+		"BF1E96EAFD7A37E437EEC062": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"B984FD7A965D163195480EFE",
+				"B1DB3192867D06CBB7E0A96C"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"FA4E675B01ABDC74FC10A91C": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"A0E7E8EBCEEAE1E35815A476",
+				"3BC3CCC0C9AF8127274C4759"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"7045E2E8379D46BFFA767FDE": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"D39233ED5CAC8277B9363841",
+				"5C9C5FB500F94AF8DE406AB6"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"DA6E99C7ADCB2DC6146295E6": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"6C1CE64DF3591527B554FAA4",
+				"BE7DD89400F4CA1482037F80"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"8309BC7E1A0B7274B64F0F4A": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"35B6FA243765014E56155659",
+				"0C8286DC9ED19D76E8D5BEE5"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"F98DE11A1125C91904B9DE5A": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"C4E569DD76746EA9FBB423E8",
+				"CFBE2ADE698F9AFD9CFAA8AE"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"E5801BF18DEB40620893C616": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"93EE92728DA711E32F2FFD32",
+				"2813B0F498B8C15B3382D7AD"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"5D0D56919135D7D373BDABBF": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"BFB974B8593CC82A88598969",
+				"688706E039D5BE3B3F5108CD"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"E0367D107ACD4D83ED767BFC": {
+			"isa": "XCConfigurationList",
+			"buildConfigurations": [
+				"11BDF4520E415C208EC90709",
+				"72301898F1386BB67F77698A"
+			],
+			"defaultConfigurationIsVisible": "0",
+			"defaultConfigurationName": "Release"
+		},
+		"6B1B48011FD2DF61F369AFC4": {
+			"isa": "XCLocalSwiftPackageReference",
+			"relativePath": "BonhommeCore"
+		},
+		"5B2E4464C6E3412D83B3412A": {
+			"isa": "XCRemoteSwiftPackageReference",
+			"repositoryURL": "https://github.com/carekit-apple/CareKit.git",
+			"requirement": {
+				"kind": "upToNextMajorVersion",
+				"minimumVersion": "3.0.0"
+			}
+		},
+		"9148A73EAA731B5C6F2FAD21": {
+			"isa": "XCSwiftPackageProductDependency",
+			"package": "6B1B48011FD2DF61F369AFC4",
+			"productName": "BonhommeCore"
+		},
+		"622080EA269671D7D0921B47": {
+			"isa": "XCSwiftPackageProductDependency",
+			"package": "6B1B48011FD2DF61F369AFC4",
+			"productName": "BonhommeCore"
+		},
+		"D2066727444F421784F230ED": {
+			"isa": "XCSwiftPackageProductDependency",
+			"package": "6B1B48011FD2DF61F369AFC4",
+			"productName": "BonhommeCore"
+		},
+		"2116565DC2151DED0D9D89F7": {
+			"isa": "XCSwiftPackageProductDependency",
+			"package": "6B1B48011FD2DF61F369AFC4",
+			"productName": "BonhommeCore"
+		},
+		"34D983926E592456B194E519": {
+			"isa": "XCSwiftPackageProductDependency",
+			"package": "5B2E4464C6E3412D83B3412A",
+			"productName": "CareKitStore"
+		}
+	},
+	"rootObject": "7EA6D9377E56C32636195598"
 }
