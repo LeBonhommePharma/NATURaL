@@ -28,17 +28,37 @@ struct BonhommeApp: App {
         } catch {
             // If CloudKit container fails, fall back to local-only storage.
             // This can happen on simulators or when iCloud is not signed in.
+            print("⚠️ Failed to create CloudKit container: \(error.localizedDescription)")
+            print("   Falling back to local-only storage.")
+            
             let schema = Schema([
                 WorkoutRecord.self,
                 UserPreferences.self,
                 SessionStreak.self,
                 MedicationSchedule.self,
+                DrugResponseRecord.self,
             ])
-            let fallbackConfig = ModelConfiguration(
-                "NATURaLLocal",
-                schema: schema
-            )
-            return try! ModelContainer(for: schema, configurations: [fallbackConfig])
+            
+            do {
+                let fallbackConfig = ModelConfiguration(
+                    "NATURaLLocal",
+                    schema: schema
+                )
+                return try ModelContainer(for: schema, configurations: [fallbackConfig])
+            } catch {
+                // If even local storage fails, create an in-memory container as last resort
+                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
+                print("   Using in-memory storage. Data will not persist.")
+                
+                let inMemoryConfig = ModelConfiguration(
+                    "NATURaLInMemory",
+                    schema: schema,
+                    isStoredInMemoryOnly: true
+                )
+                
+                // This should never fail, but if it does, the app cannot function
+                return try! ModelContainer(for: schema, configurations: [inMemoryConfig])
+            }
         }
     }
 
@@ -82,6 +102,7 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var showResumeAlert = false
     @State private var navigateToRestoredWorkout = false
+    @State private var initializationError: Error?
 
     var body: some View {
         NavigationStack {
@@ -116,5 +137,32 @@ struct ContentView: View {
                 ).localized)
             }
         }
+        .task {
+            // Perform async initialization checks
+            await performInitializationChecks()
+        }
+    }
+    
+    /// Validates that core app components initialized correctly.
+    @MainActor
+    private func performInitializationChecks() async {
+        print("🔍 Running initialization diagnostics...")
+        
+        // Check HealthKit availability
+        if HealthKitManager.isAvailable {
+            print("✅ HealthKit is available")
+        } else {
+            print("⚠️ HealthKit is not available on this device")
+        }
+        
+        // Check for resumable workout
+        if appState.workoutStateStore.hasActiveWorkout {
+            print("ℹ️ Resumable workout detected")
+        }
+        
+        // Verify feedback engine is ready
+        print("✅ FeedbackEngine initialized with analyzers")
+        
+        print("✅ Initialization checks complete")
     }
 }

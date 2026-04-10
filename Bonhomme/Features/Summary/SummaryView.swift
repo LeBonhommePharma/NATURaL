@@ -105,9 +105,7 @@ struct SummaryView: View {
                     ActivityRingsView(
                         moveProgress: rings.moveProgress,
                         exerciseProgress: rings.exerciseProgress,
-                        standProgress: rings.standProgress,
-                        moveDelta: "+\(Int(result.activeCalories)) cal",
-                        exerciseDelta: "+\(Int(result.totalDuration / 60)) min"
+                        standProgress: rings.standProgress
                     )
                 }
                 .padding()
@@ -245,7 +243,7 @@ struct SummaryView: View {
         }
         .task {
             let card = WorkoutShareCard(result: result)
-            shareCardImage = await card.renderPNGData()
+            shareCardImage = await MainActor.run { card.renderPNGData() }
         }
     }
 
@@ -341,35 +339,6 @@ struct SummaryView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var hrChartView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedString(en: "Heart Rate", fr: "Fréquence cardiaque").localized)
-                .font(.system(size: 16, weight: .semibold))
-
-            Chart(result.heartRateSamples, id: \.timestamp) { sample in
-                LineMark(
-                    x: .value("Time", sample.timestamp),
-                    y: .value("BPM", sample.bpm)
-                )
-                .foregroundStyle(.red.gradient)
-                .interpolationMethod(.catmullRom)
-
-                AreaMark(
-                    x: .value("Time", sample.timestamp),
-                    y: .value("BPM", sample.bpm)
-                )
-                .foregroundStyle(.red.opacity(0.1).gradient)
-                .interpolationMethod(.catmullRom)
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading)
-            }
-            .frame(height: 160)
-        }
-        .padding()
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 

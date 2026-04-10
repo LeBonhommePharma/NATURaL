@@ -42,11 +42,12 @@ final class SubscriptionManager {
     /// Listens for transaction updates (renewals, cancellations, refunds).
     private func listenForUpdates() {
         updateListenerTask?.cancel()
-        updateListenerTask = Task(priority: .background) {
+        updateListenerTask = Task(priority: .background) { [weak self] in
             for await result in Transaction.updates {
                 if case .verified(let transaction) = result {
                     await transaction.finish()
-                    await checkEntitlement()
+                    guard let self else { return }
+                    await self.checkEntitlement()
                 }
             }
         }
@@ -58,7 +59,4 @@ final class SubscriptionManager {
         await checkEntitlement()
     }
 
-    deinit {
-        updateListenerTask?.cancel()
-    }
 }

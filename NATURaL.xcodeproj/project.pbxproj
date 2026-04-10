@@ -19,6 +19,11 @@
 		3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */; };
 		4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */; };
 		5041357AEFDC77052FAD2D66 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2066727444F421784F230ED /* BonhommeCore */; };
+		534933C22F88928400628680 /* YogaStyle+HealthKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C12F88928400628680 /* YogaStyle+HealthKit.swift */; };
+		534933C52F8892F600628680 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */; };
+		534933C72F8892F600628680 /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C62F8892F600628680 /* WorkoutLiveActivity.swift */; };
+		534933C92F88934C00628680 /* WorkoutShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C82F88934C00628680 /* WorkoutShareCard.swift */; };
+		534933CB2F88936700628680 /* StyleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933CA2F88936700628680 /* StyleDetailView.swift */; };
 		5A13F14D9C36CE6E0E442C80 /* HeartRateMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */; };
 		5BE942EF6FB9C83DE5367956 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = 34D983926E592456B194E519 /* CareKitStore */; };
 		5D03FA63EC61DAB5028D4752 /* MetricsOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */; };
@@ -139,6 +144,11 @@
 		49413D9326C03F255A9050CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4BBCDD92683EEE41C15485A0 /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryView.swift; sourceTree = "<group>"; };
 		530269F52F885C6E0030AA2D /* LOCALIZATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCALIZATION_GUIDE.md; sourceTree = "<group>"; };
+		534933C12F88928400628680 /* YogaStyle+HealthKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YogaStyle+HealthKit.swift"; sourceTree = "<group>"; };
+		534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
+		534933C62F8892F600628680 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivity.swift; sourceTree = "<group>"; };
+		534933C82F88934C00628680 /* WorkoutShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutShareCard.swift; sourceTree = "<group>"; };
+		534933CA2F88936700628680 /* StyleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleDetailView.swift; sourceTree = "<group>"; };
 		53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRingsWidget.swift; sourceTree = "<group>"; };
 		576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayCoordinatorTests.swift; sourceTree = "<group>"; };
 		5787737B2C9B32BD9AC33949 /* BonhommeVision.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeVision.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -351,6 +361,7 @@
 				C5D5660995925A23982E9C16 /* TVRelay */,
 				F4088291BB46D86898D6D22D /* Bonhomme.entitlements */,
 				43A7B3011053F64390AE6CCB /* Info.plist */,
+				534933C32F8892E800628680 /* LiveActivity 2 */,
 			);
 			path = Bonhomme;
 			sourceTree = "<group>";
@@ -372,6 +383,15 @@
 				6A18B62ECE19ED25527FD00B /* HistoryView.swift */,
 			);
 			path = History;
+			sourceTree = "<group>";
+		};
+		534933C32F8892E800628680 /* LiveActivity 2 */ = {
+			isa = PBXGroup;
+			children = (
+				534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */,
+				534933C62F8892F600628680 /* WorkoutLiveActivity.swift */,
+			);
+			path = "LiveActivity 2";
 			sourceTree = "<group>";
 		};
 		53B67D7396B237BB9805387B /* SharePlay */ = {
@@ -407,6 +427,7 @@
 				63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */,
 				B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */,
 				CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */,
+				534933CA2F88936700628680 /* StyleDetailView.swift */,
 			);
 			path = Workout;
 			sourceTree = "<group>";
@@ -488,6 +509,7 @@
 				2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */,
 				DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */,
 				0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */,
+				534933C12F88928400628680 /* YogaStyle+HealthKit.swift */,
 			);
 			path = HealthKit;
 			sourceTree = "<group>";
@@ -496,6 +518,7 @@
 			isa = PBXGroup;
 			children = (
 				4BBCDD92683EEE41C15485A0 /* SummaryView.swift */,
+				534933C82F88934C00628680 /* WorkoutShareCard.swift */,
 			);
 			path = Summary;
 			sourceTree = "<group>";
@@ -848,6 +871,8 @@
 				238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */,
 				B2A4F46F38A97347A6802603 /* SummaryView.swift in Sources */,
 				EBD6400DD749D6F607C87EB7 /* CountdownView.swift in Sources */,
+				534933C72F8892F600628680 /* WorkoutLiveActivity.swift in Sources */,
+				534933CB2F88936700628680 /* StyleDetailView.swift in Sources */,
 				9AB4E4180C83DA08F3B16FDC /* HomeView.swift in Sources */,
 				5D03FA63EC61DAB5028D4752 /* MetricsOverlayView.swift in Sources */,
 				0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */,
@@ -861,6 +886,7 @@
 				88EA537DFE1C985516B3783E /* InsightEngine.swift in Sources */,
 				F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */,
 				A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */,
+				534933C52F8892F600628680 /* WorkoutActivityAttributes.swift in Sources */,
 				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,
 				EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */,
 				E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */,
@@ -868,9 +894,11 @@
 				8269669262800477717015BA /* ChairYogaActivity.swift in Sources */,
 				0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */,
 				00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */,
+				534933C22F88928400628680 /* YogaStyle+HealthKit.swift in Sources */,
 				D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */,
 				DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */,
 				28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */,
+				534933C92F88934C00628680 /* WorkoutShareCard.swift in Sources */,
 				E3A9130BFEED01CCE906DCA3 /* ActivityRingsView.swift in Sources */,
 				ACFB314B176E156222E6BC27 /* AirPlayRoutePickerView.swift in Sources */,
 				DBEE9FF686FCCA1B46D89F3F /* AirPlaySecondScreen.swift in Sources */,
@@ -1419,7 +1447,7 @@
 			repositoryURL = "https://github.com/carekit-apple/CareKit.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 3.0.0;
+				minimumVersion = 4.1.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

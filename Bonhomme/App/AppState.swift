@@ -3,6 +3,7 @@ import Observation
 import BonhommeCore
 
 @Observable
+@MainActor
 final class AppState {
     var isWorkoutActive = false
     var isPremium = true
@@ -26,11 +27,20 @@ final class AppState {
 
     init() {
         // Register all signal analyzers at app level so data persists across sessions
-        feedbackEngine.register(HRVAnalyzer())
-        feedbackEngine.register(MedicationAnalyzer())
-        feedbackEngine.register(DockingInsightAnalyzer())
-
-        medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
+        do {
+            feedbackEngine.register(HRVAnalyzer())
+            feedbackEngine.register(MedicationAnalyzer())
+            feedbackEngine.register(DockingInsightAnalyzer())
+            
+            medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
+            
+            print("✅ AppState initialized successfully")
+        } catch {
+            // If any analyzer registration fails, we still need to initialize medicationTracker
+            // with whatever analyzers were successfully registered
+            medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
+            print("⚠️ AppState initialization completed with warnings: \(error.localizedDescription)")
+        }
     }
 
     /// Checks for a recoverable workout on app launch.

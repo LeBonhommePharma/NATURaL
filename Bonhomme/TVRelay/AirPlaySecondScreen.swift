@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import AVFoundation
 import AVRouting
 import SwiftUI
 
@@ -17,11 +18,13 @@ final class AirPlaySecondScreenManager: ObservableObject {
         routesAvailable = routeDetector.multipleRoutesDetected
 
         observation = NotificationCenter.default.addObserver(
-            forName: AVRouteDetector.multipleRoutesDetectedDidChangeNotification,
+            forName: Notification.Name.AVRouteDetectorMultipleRoutesDetectedDidChange,
             object: routeDetector,
             queue: .main
         ) { [weak self] _ in
-            self?.routesAvailable = self?.routeDetector.multipleRoutesDetected ?? false
+            Task { @MainActor in
+                self?.routesAvailable = self?.routeDetector.multipleRoutesDetected ?? false
+            }
         }
     }
 

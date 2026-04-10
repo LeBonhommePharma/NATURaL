@@ -42,7 +42,7 @@ struct HomeView: View {
                             VStack(alignment: .leading) {
                                 Text(style.localizedName.localized)
                                     .font(.system(size: 16, weight: .medium))
-                                Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: \"plans\", fr: \"programmes\").localized)")
+                                Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: "plans", fr: "programmes").localized)")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary)
                             }

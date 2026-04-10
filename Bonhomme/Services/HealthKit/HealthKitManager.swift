@@ -115,7 +115,7 @@ final class HealthKitManager: Sendable {
         let samples = try await descriptor.result(for: healthStore)
 
         return samples.compactMap { sample -> (sdnn: Double, timestamp: Date)? in
-            guard let quantitySample = sample as? HKQuantitySample else { return nil }
+            let quantitySample = sample
             let sdnn = quantitySample.quantity.doubleValue(for: .secondUnit(with: .milli))
             return (sdnn: sdnn, timestamp: quantitySample.startDate)
         }

@@ -76,11 +76,16 @@ struct HistoryView: View {
                     "com.apple.workout",
                 ].contains(workout.sourceRevision.source.bundleIdentifier)
 
+                let activeEnergyType = HKQuantityType(.activeEnergyBurned)
+                let calories = workout.statistics(for: activeEnergyType)?
+                    .sumQuantity()?
+                    .doubleValue(for: .kilocalorie())
+
                 return WorkoutHistoryItem(
                     id: workout.uuid.uuidString,
                     date: workout.startDate,
                     duration: workout.duration,
-                    calories: workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()),
+                    calories: calories,
                     source: isApple ? .fitnessPlus : .natural
                 )
             }
