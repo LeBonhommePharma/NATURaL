@@ -746,6 +746,11 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1540;
 				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					C708235B5A6E91D489B1A866 = {
+						TestTargetID = CE2F95449EA116BB80C95669;
+					};
+				};
 			};
 			buildConfigurationList = E0367D107ACD4D83ED767BFC /* Build configuration list for PBXProject "NATURaL" */;
 			developmentRegion = en;
