@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import BonhommeCore
 
 @main
 struct BonhommeApp: App {
