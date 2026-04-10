@@ -754,6 +754,27 @@
 				en,
 				fr,
 				Base,
+				"zh-Hans",
+				ar,
+				de,
+				"fr-CA",
+				"en-GB",
+				"en-AU",
+				hr,
+				cs,
+				nl,
+				da,
+				bg,
+				ja,
+				he,
+				fi,
+				ko,
+				id,
+				vi,
+				ru,
+				ro,
+				"pt-BR",
+				pl,
 			);
 			mainGroup = 2B731CEFC6751AAE0EC69B98;
 			packageReferences = (
@@ -1173,7 +1194,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bonhomme/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1196,7 +1217,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bonhomme/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
 				PRODUCT_NAME = "$(TARGET_NAME)";
