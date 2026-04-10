@@ -571,7 +571,7 @@ public struct DrugResponseAnalyzer: Sendable {
 
         return DrugResponseAggregate(
             medicationId: results.first?.doseEvent.medicationId ?? "",
-            medicationName: results.first?.doseEvent.name.en ?? "",
+            medicationName: results.first?.doseEvent.name ?? "",
             n: n,
             meanDeltaH: meanDelta,
             sdDeltaH: sqrt(variance),
