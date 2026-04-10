@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+@testable import BonhommeCore
 
 @Suite("LocalizedString and LocalizedStringArray Locale Resolution")
 struct LocalizedStringLocaleTests {

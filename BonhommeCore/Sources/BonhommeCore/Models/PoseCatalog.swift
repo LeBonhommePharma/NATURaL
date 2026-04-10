@@ -1,8 +1,5 @@
 import Foundation
 
-import Foundation
-import BonhommeCore
-
 // MARK: - Supporting Types
 
 /// Yoga styles available in the app.
@@ -16,7 +13,7 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
     case standingBalance
     case prenatal
     case pranayama
-    
+
     public var localizedName: LocalizedString {
         switch self {
         case .chairYoga:
@@ -39,7 +36,30 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
             return LocalizedString(en: "Pranayama", fr: "Pranayama", es: "Pranayama", ja: "プラナヤマ", zh: "呼吸法", ko: "호흡법", ru: "Пранаяма", de: "Pranayama", ar: "براناياما")
         }
     }
-    
+
+    public var localizedDescription: LocalizedString {
+        switch self {
+        case .chairYoga:
+            return LocalizedString(en: "Accessible yoga performed while seated in a chair, ideal for all fitness levels.", fr: "Yoga accessible pratiqué assis sur une chaise, idéal pour tous les niveaux de forme physique.")
+        case .vinyasa:
+            return LocalizedString(en: "A flowing style linking breath with movement through dynamic pose sequences.", fr: "Un style fluide reliant la respiration au mouvement à travers des séquences de postures dynamiques.")
+        case .hatha:
+            return LocalizedString(en: "A classical style focusing on physical postures and breathing techniques at a slower pace.", fr: "Un style classique axé sur les postures physiques et les techniques de respiration à un rythme plus lent.")
+        case .yin:
+            return LocalizedString(en: "Long-held passive poses targeting deep connective tissue for flexibility and relaxation.", fr: "Des postures passives tenues longtemps ciblant les tissus conjonctifs profonds pour la flexibilité et la relaxation.")
+        case .restorative:
+            return LocalizedString(en: "Deeply supported poses using props to promote full relaxation and stress relief.", fr: "Postures profondément soutenues utilisant des accessoires pour favoriser une relaxation totale et soulager le stress.")
+        case .power:
+            return LocalizedString(en: "A vigorous, fitness-based approach building strength, stamina, and flexibility.", fr: "Une approche vigoureuse basée sur la forme physique pour développer la force, l'endurance et la flexibilité.")
+        case .standingBalance:
+            return LocalizedString(en: "Standing poses that develop stability, coordination, and lower-body strength.", fr: "Postures debout qui développent la stabilité, la coordination et la force du bas du corps.")
+        case .prenatal:
+            return LocalizedString(en: "Gentle yoga adapted for pregnancy, supporting comfort, breath, and body awareness.", fr: "Yoga doux adapté à la grossesse, favorisant le confort, la respiration et la conscience corporelle.")
+        case .pranayama:
+            return LocalizedString(en: "Breathing exercises that regulate energy, calm the mind, and enhance focus.", fr: "Exercices de respiration qui régulent l'énergie, apaisent l'esprit et améliorent la concentration.")
+        }
+    }
+
     public var symbolName: String {
         switch self {
         case .chairYoga: return "figure.seated.side"
@@ -74,35 +94,37 @@ public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let name: LocalizedString
     public let description: LocalizedString
+    public let style: YogaStyle
     public let poses: [Pose]
-    public let durationMinutes: Int
+    /// Seconds between pose holds during which the cue for the next pose is shown.
+    public let transitionSeconds: TimeInterval
     public let isFree: Bool
-    public let yogaStyle: YogaStyle
-    
+
     public init(
         id: String,
         name: LocalizedString,
         description: LocalizedString,
+        style: YogaStyle = .chairYoga,
         poses: [Pose],
-        durationMinutes: Int,
-        isFree: Bool,
-        yogaStyle: YogaStyle = .chairYoga
+        transitionSeconds: TimeInterval = 5,
+        isFree: Bool = false
     ) {
         self.id = id
         self.name = name
         self.description = description
+        self.style = style
         self.poses = poses
-        self.durationMinutes = durationMinutes
+        self.transitionSeconds = transitionSeconds
         self.isFree = isFree
-        self.yogaStyle = yogaStyle
     }
-    
-    public var poseCount: Int {
-        poses.count
-    }
-    
-    public var estimatedDuration: TimeInterval {
-        TimeInterval(durationMinutes * 60)
+
+    public var poseCount: Int { poses.count }
+
+    /// Total session time: sum of all pose durations plus transition intervals between them.
+    public var totalDuration: TimeInterval {
+        let poseDuration = poses.reduce(0) { $0 + $1.durationSeconds }
+        let transitions = poses.count > 1 ? TimeInterval(poses.count - 1) * transitionSeconds : 0
+        return poseDuration + transitions
     }
 }
 
@@ -2301,8 +2323,8 @@ public enum PoseCatalog {
             id: "beginner-flow",
             name: LocalizedString(en: "Beginner Flow", fr: "Flux débutant"),
             description: LocalizedString(en: "Gentle introduction to chair yoga", fr: "Introduction douce au yoga sur chaise"),
-            poses: [],
-            durationMinutes: 10,
+            poses: Array(freePoses.prefix(5)),
+            transitionSeconds: 5,
             isFree: true
         )
     }

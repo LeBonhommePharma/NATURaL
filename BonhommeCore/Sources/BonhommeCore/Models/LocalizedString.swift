@@ -2,6 +2,7 @@ import Foundation
 
 /// A string with multilingual translations.
 /// Supports: English, French, Spanish, Japanese, Chinese, Korean, Russian, German, Arabic, Italian, Portuguese.
+/// Also supports common regional variants (en-GB, en-CA, pt-BR, zh-Hans).
 /// Resolves automatically based on the current locale.
 public struct LocalizedString: Codable, Sendable, Hashable {
     public let en: String
@@ -16,9 +17,29 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     public let it: String
     public let pt: String
 
-    public init(en: String, fr: String, es: String = "", ja: String = "",
-                zh: String = "", ko: String = "", ru: String = "",
-                de: String = "", ar: String = "", it: String = "", pt: String = "") {
+    // Regional variants (empty string = fall back to base language)
+    public let en_GB: String
+    public let en_CA: String
+    public let pt_BR: String
+    public let zh_Hans: String
+
+    public init(
+        en: String,
+        fr: String,
+        es: String = "",
+        ja: String = "",
+        zh: String = "",
+        ko: String = "",
+        ru: String = "",
+        de: String = "",
+        ar: String = "",
+        it: String = "",
+        pt: String = "",
+        en_GB: String = "",
+        en_CA: String = "",
+        pt_BR: String = "",
+        zh_Hans: String = ""
+    ) {
         self.en = en
         self.fr = fr
         self.es = es
@@ -30,9 +51,13 @@ public struct LocalizedString: Codable, Sendable, Hashable {
         self.ar = ar
         self.it = it
         self.pt = pt
+        self.en_GB = en_GB
+        self.en_CA = en_CA
+        self.pt_BR = pt_BR
+        self.zh_Hans = zh_Hans
     }
 
-    /// All supported language codes.
+    /// All supported base language codes.
     public static let supportedLanguages = ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]
 
     /// Returns the appropriate translation for the current locale.
@@ -43,8 +68,20 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     }
 
     /// Explicitly resolve for a given language code.
-    /// Falls back to English if the translation for the requested language is empty.
+    /// Checks specific regional variants first, then falls back to the base language, then English.
     public func value(for languageCode: String) -> String {
+        // Check specific regional variants first
+        let regional: String?
+        switch languageCode {
+        case "en-GB":   regional = en_GB.isEmpty ? nil : en_GB
+        case "en-CA":   regional = en_CA.isEmpty ? nil : en_CA
+        case "pt-BR":   regional = pt_BR.isEmpty ? nil : pt_BR
+        case "zh-Hans": regional = zh_Hans.isEmpty ? nil : zh_Hans
+        default:        regional = nil
+        }
+        if let r = regional { return r }
+
+        // Base language match
         let resolved: String
         switch true {
         case languageCode.hasPrefix("fr"): resolved = fr
@@ -77,9 +114,29 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
     public let it: [String]
     public let pt: [String]
 
-    public init(en: [String], fr: [String], es: [String] = [], ja: [String] = [],
-                zh: [String] = [], ko: [String] = [], ru: [String] = [],
-                de: [String] = [], ar: [String] = [], it: [String] = [], pt: [String] = []) {
+    // Regional variants
+    public let en_GB: [String]
+    public let en_CA: [String]
+    public let pt_BR: [String]
+    public let zh_Hans: [String]
+
+    public init(
+        en: [String],
+        fr: [String],
+        es: [String] = [],
+        ja: [String] = [],
+        zh: [String] = [],
+        ko: [String] = [],
+        ru: [String] = [],
+        de: [String] = [],
+        ar: [String] = [],
+        it: [String] = [],
+        pt: [String] = [],
+        en_GB: [String] = [],
+        en_CA: [String] = [],
+        pt_BR: [String] = [],
+        zh_Hans: [String] = []
+    ) {
         self.en = en
         self.fr = fr
         self.es = es
@@ -91,6 +148,10 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
         self.ar = ar
         self.it = it
         self.pt = pt
+        self.en_GB = en_GB
+        self.en_CA = en_CA
+        self.pt_BR = pt_BR
+        self.zh_Hans = zh_Hans
     }
 
     public var localized: [String] {
@@ -99,6 +160,18 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
     }
 
     public func value(for languageCode: String) -> [String] {
+        // Check specific regional variants first
+        let regional: [String]?
+        switch languageCode {
+        case "en-GB":   regional = en_GB.isEmpty ? nil : en_GB
+        case "en-CA":   regional = en_CA.isEmpty ? nil : en_CA
+        case "pt-BR":   regional = pt_BR.isEmpty ? nil : pt_BR
+        case "zh-Hans": regional = zh_Hans.isEmpty ? nil : zh_Hans
+        default:        regional = nil
+        }
+        if let r = regional { return r }
+
+        // Base language match
         let resolved: [String]
         switch true {
         case languageCode.hasPrefix("fr"): resolved = fr
