@@ -27,6 +27,9 @@ enum ActivityRingError: LocalizedError {
 
 /// Queries HealthKit for today's activity summary (Move / Exercise / Stand rings).
 final class ActivityRingService {
+    
+    // FIX: Add the missing HealthKit store
+    private let store = HKHealthStore()
 
     // MARK: Nested types
 
