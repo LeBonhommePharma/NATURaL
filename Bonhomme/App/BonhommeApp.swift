@@ -54,11 +54,23 @@ struct BonhommeApp: App {
                 print("   Using in-memory storage. Data will not persist.")
 
                 // Unnamed in-memory config avoids any name-based store lookup.
-                let inMemoryConfig = ModelConfiguration(isStoredInMemoryOnly: true)
+                // FIX: build the container directly from the model types without
+                // a named configuration — the name-based lookup can itself fail
+                // when the schema has validation errors. Passing types directly
+                // lets SwiftData construct the schema fresh with no store conflict.
                 do {
-                    return try ModelContainer(for: schema, configurations: [inMemoryConfig])
+                    return try ModelContainer(for:
+                        WorkoutRecord.self,
+                        UserPreferences.self,
+                        SessionStreak.self,
+                        MedicationSchedule.self,
+                        DrugResponseRecord.self
+                    )
                 } catch {
-                    fatalError("Cannot create in-memory SwiftData container: \(error)")
+                    // Absolute last resort — single-model container so the app
+                    // can at least boot and show an error UI instead of crashing.
+                    print("❌ FATAL: In-memory container failed: \(error)")
+                    return try! ModelContainer(for: WorkoutRecord.self)
                 }
             }
         }
