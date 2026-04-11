@@ -26,6 +26,10 @@
 	<true/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>NATURaL saves completed yoga sessions as workouts and mindful sessions so they appear in the Health and Fitness apps.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonhomme._tcp</string>
