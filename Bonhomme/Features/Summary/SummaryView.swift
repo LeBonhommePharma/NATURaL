@@ -41,17 +41,6 @@ struct SummaryView: View {
                         .padding(.horizontal)
                 }
 
-                // Done button
-                Button {
-                    onDismiss()
-                } label: {
-                    Text(LocalizedString(en: "Done", fr: "Terminé").localized)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(.cyan, in: RoundedRectangle(cornerRadius: 14))
-                }
                 shareSection
                 doneButton
             }

@@ -52,7 +52,7 @@ public enum PosePosition: String, Codable, Sendable, CaseIterable {
         case .seated:    return "figure.seated.side"
         case .standing:  return "figure.stand"
         case .supine:    return "figure.roll"
-        case .prone:     return "figure.roll"
+        case .prone:     return "figure.wrestling"
         case .kneeling:  return "figure.flexibility"
         case .inversion: return "figure.yoga"
         }
@@ -112,6 +112,43 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
         case .back:        return "figure.flexibility"
         case .relaxation:  return "moon.zzz"
         case .inversion:   return "figure.yoga"
+        }
+    }
+
+    /// Short anatomical movement descriptor shown in MotionCoachView during active pose.
+    /// Encodes the primary kinematic direction so practitioners know where to focus.
+    public var kineticFocusTag: String {
+        switch self {
+        case .spine:       return "Spinal extension · flexion"
+        case .hips:        return "Hip mobility · release"
+        case .shoulders:   return "Shoulder retraction · opening"
+        case .neck:        return "Cervical decompression"
+        case .fullBody:    return "Full-chain integration"
+        case .breathing:   return "Diaphragmatic expansion"
+        case .balance:     return "Neuromuscular stability"
+        case .core:        return "Trunk activation · bracing"
+        case .arms:        return "Upper-limb lengthening"
+        case .legs:        return "Lower-limb grounding"
+        case .chest:       return "Chest opening · heart lift"
+        case .back:        return "Posterior chain release"
+        case .relaxation:  return "Parasympathetic activation"
+        case .inversion:   return "Gravitational decompression"
+        }
+    }
+
+    /// Lighting mood used by MotionCoachView to modulate backdrop ambiance.
+    /// Warm = restorative/calming; Cool = activating/dynamic; Neutral = balanced flow.
+    public enum LightingMood {
+        case warm    // soft amber-rose bloom for relaxation/breathing poses
+        case cool    // sharp cyan-indigo for balance/core/power poses
+        case neutral // flowing teal for spine/hips/shoulders
+    }
+
+    public var lightingMood: LightingMood {
+        switch self {
+        case .relaxation, .breathing:        return .warm
+        case .balance, .core, .inversion:    return .cool
+        default:                             return .neutral
         }
     }
 

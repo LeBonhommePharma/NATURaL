@@ -1,5 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<!-- HealthKit: read/write workout, HRV, heart rate, activity, mindfulness -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.background-delivery</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array>
+		<string>health-records</string>
+	</array>
+
+	<!-- iCloud / CloudKit: SwiftData CloudKit sync for WorkoutRecord, SessionStreak, etc. -->
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.natural.Bonhomme</string>
+	</array>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)com.natural.Bonhomme</string>
+
+	<!-- App Groups: shared data store between Bonhomme, Widget, and LiveActivity extensions -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.natural.Bonhomme</string>
+	</array>
+
+	<!-- WatchKit: enables the BonhommeWatch companion app -->
+	<key>com.apple.developer.watchkit</key>
+	<true/>
+
+	<!-- Siri / App Intents: WorkoutIntents for Siri shortcuts -->
+	<key>com.apple.developer.siri</key>
+	<true/>
+
+	<!-- Push Notifications: required for Live Activities (Dynamic Island / Lock Screen) -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
 </plist>

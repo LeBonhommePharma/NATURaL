@@ -53,13 +53,13 @@ struct BonhommeApp: App {
                 print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
                 print("   Using in-memory storage. Data will not persist.")
 
-                let inMemoryConfig = ModelConfiguration(
-                    "NATURaLInMemory",
-                    schema: schema,
-                    isStoredInMemoryOnly: true
-                )
-                // In-memory container with a valid schema cannot fail.
-                return try! ModelContainer(for: schema, configurations: [inMemoryConfig])
+                // Unnamed in-memory config avoids any name-based store lookup.
+                let inMemoryConfig = ModelConfiguration(isStoredInMemoryOnly: true)
+                do {
+                    return try ModelContainer(for: schema, configurations: [inMemoryConfig])
+                } catch {
+                    fatalError("Cannot create in-memory SwiftData container: \(error)")
+                }
             }
         }
     }

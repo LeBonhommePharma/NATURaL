@@ -39,6 +39,9 @@ final class WorkoutFlowViewModel {
     /// Incremented only when a pose timer reaches zero naturally (i.e., pose was fully held).
     private(set) var posesCompletedCount: Int = 0
 
+    /// Whether the session is currently paused (timer cancelled, HealthKit suspended).
+    private(set) var isPaused: Bool = false
+
     var currentPose: Pose? {
         switch phase {
         case .active(let idx): return plan.poses[safe: idx]
@@ -191,6 +194,7 @@ final class WorkoutFlowViewModel {
     }
 
     func pause() {
+        isPaused = true
         recorder.pause()
         musicService.pause()
         timerTask?.cancel()
@@ -198,6 +202,7 @@ final class WorkoutFlowViewModel {
     }
 
     func resume() {
+        isPaused = false
         recorder.resume()
         Task { [weak self] in
             guard let self else { return }
@@ -262,7 +267,7 @@ final class WorkoutFlowViewModel {
                 feedbackInsights: insights
             ),
             sessionElapsed: elapsedTime,
-            isPaused: false,
+            isPaused: isPaused,
             sequenceIndex: currentPoseIndex,
             sequenceTotal: plan.poseCount
         )
@@ -393,19 +398,20 @@ final class WorkoutFlowViewModel {
                 guard !Task.isCancelled else { return }
             }
 
-            // Start HealthKit recording. WorkoutRecorder.start() internally races
-            // beginCollection against a 3 s timeout, but belt-and-suspenders: wrap
-            // the whole call so any future blocking path can't freeze workout launch.
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask { [weak self] in
-                    guard let self else { return }
-                    try? await self.recorder.start(style: self.plan.style)
+            // FIX: Start HealthKit recording in background — don't block workout flow.
+            // The workout MUST proceed even if HealthKit initialization is slow or fails.
+            // This prevents the countdown-freezes-at-1 bug when HealthKit or WatchConnectivity
+            // is not properly initialized.
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    try await self.recorder.start(style: self.plan.style)
+                    print("✅ HealthKit workout session started successfully")
+                } catch {
+                    print("⚠️ HealthKit workout session failed to start: \(error)")
+                    // Continue workout without HealthKit recording
                 }
-                group.addTask { try? await Task.sleep(for: .seconds(5)) }
-                _ = await group.next()
-                group.cancelAll()
             }
-            guard !Task.isCancelled else { return }
 
             // Music is fire-and-forget — MusicAuthorization.request() and
             // the Apple Music catalog search can both block indefinitely on
@@ -420,7 +426,7 @@ final class WorkoutFlowViewModel {
             // Start Live Activity for Dynamic Island
             startLiveActivity()
 
-            // Begin first pose
+            // Begin first pose IMMEDIATELY — don't wait for HealthKit or Music
             beginPose(at: 0)
         }
     }

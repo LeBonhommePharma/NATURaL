@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */; };
-		4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */; };
 		0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */; };
 		0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */; };
 		11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */; };
@@ -19,6 +18,7 @@
 		312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */; };
 		3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */; };
 		4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */; };
+		4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */; };
 		5041357AEFDC77052FAD2D66 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2066727444F421784F230ED /* BonhommeCore */; };
 		534933C22F88928400628680 /* YogaStyle+HealthKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C12F88928400628680 /* YogaStyle+HealthKit.swift */; };
 		534933C52F8892F600628680 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */; };
@@ -155,6 +155,8 @@
 		534933C62F8892F600628680 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivity.swift; sourceTree = "<group>"; };
 		534933C82F88934C00628680 /* WorkoutShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutShareCard.swift; sourceTree = "<group>"; };
 		534933CA2F88936700628680 /* StyleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleDetailView.swift; sourceTree = "<group>"; };
+		53825E3B2F8AE5F8008159A9 /* WORKOUT_COUNTDOWN_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WORKOUT_COUNTDOWN_FIX.md; sourceTree = "<group>"; };
+		53825E3C2F8AE620008159A9 /* CONSOLE_MESSAGE_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONSOLE_MESSAGE_GUIDE.md; sourceTree = "<group>"; };
 		53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRingsWidget.swift; sourceTree = "<group>"; };
 		576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayCoordinatorTests.swift; sourceTree = "<group>"; };
 		5787737B2C9B32BD9AC33949 /* BonhommeVision.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeVision.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -454,6 +456,8 @@
 			isa = PBXGroup;
 			children = (
 				AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */,
+				53825E3B2F8AE5F8008159A9 /* WORKOUT_COUNTDOWN_FIX.md */,
+				53825E3C2F8AE620008159A9 /* CONSOLE_MESSAGE_GUIDE.md */,
 			);
 			path = WatchConnectivity;
 			sourceTree = "<group>";
@@ -1095,6 +1099,7 @@
 		5C9C5FB500F94AF8DE406AB6 /* Release configuration for PBXNativeTarget "BonhommeWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BonhommeWatch/BonhommeWatch.entitlements;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -1354,6 +1359,7 @@
 		D39233ED5CAC8277B9363841 /* Debug configuration for PBXNativeTarget "BonhommeWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BonhommeWatch/BonhommeWatch.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = NO;

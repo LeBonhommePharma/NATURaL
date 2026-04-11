@@ -29,6 +29,14 @@ public struct MotionCoachView: View {
 
     public var body: some View {
         let profile = MotionCoachProfile(pose: pose)
+        // Lighting mood modulates background saturation and warmth
+        let moodSatBoost: Double = {
+            switch pose.category.lightingMood {
+            case .warm:    return 0.18   // amber-rose warmth, lower sat for softness
+            case .cool:    return -0.08  // sharper, more desaturated baseline
+            case .neutral: return 0.0
+            }
+        }()
 
         TimelineView(.animation(minimumInterval: reduceMotion ? 1.0 : (1.0 / 24.0), paused: false)) { context in
             let timestamp = context.date.timeIntervalSinceReferenceDate
@@ -40,13 +48,13 @@ public struct MotionCoachView: View {
             let hueShift = reduceMotion ? 0.0 : sin(breathAngle) * 0.02
 
             ZStack(alignment: .topLeading) {
-                // Background with breathing hue shift
+                // Background with breathing hue shift, modulated by lighting mood
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(hue: profile.accentHue + hueShift, saturation: 0.42, brightness: 0.20),
-                                Color(hue: profile.accentHue + hueShift, saturation: 0.58, brightness: 0.11),
+                                Color(hue: profile.accentHue + hueShift, saturation: 0.42 + moodSatBoost, brightness: 0.20),
+                                Color(hue: profile.accentHue + hueShift, saturation: 0.58 + moodSatBoost, brightness: 0.11),
                                 Color.black.opacity(0.96)
                             ],
                             startPoint: .topLeading,
@@ -187,6 +195,19 @@ public struct MotionCoachView: View {
                             .background(.black.opacity(0.26), in: Capsule())
                             .contentTransition(.opacity)
                             .animation(.easeInOut(duration: 0.3), value: phase)
+
+                            // Kinematic focus tag — shows movement direction for the active category
+                            HStack(spacing: 5) {
+                                Image(systemName: pose.category.symbolName)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(Color(hue: profile.accentHue, saturation: 0.74, brightness: 0.98))
+                                Text(pose.category.kineticFocusTag)
+                                    .font(.system(size: size > 240 ? 10 : 9, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.70))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.black.opacity(0.22), in: Capsule())
 
                             Spacer()
 
