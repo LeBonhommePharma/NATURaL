@@ -221,25 +221,9 @@ public struct MotionCoachView: View {
                                 .offset(x: x, y: y)
                         }
 
-                        // Central symbol with layered shadows
-                        Image(systemName: profile.primarySymbol)
-                            .font(.system(size: size * 0.34, weight: .regular))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.95),
-                                        Color(hue: profile.accentHue, saturation: 0.58, brightness: 0.98)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.4), radius: 4)
-                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.25), radius: 14)
-                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.12), radius: 30)
-                            .scaleEffect(1.0 + (pulse * profile.scaleAmplitude))
-                            .rotationEffect(.degrees(wave * profile.rotationAmplitude))
-                            .offset(x: sway * profile.swayAmplitude, y: wave * profile.verticalAmplitude)
+                        Text(pose.category.kineticFocusTag.localized)
+                            .font(.system(size: size > 240 ? 10 : 9, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.70))
 
                         VStack(spacing: 10) {
                             HStack(spacing: 8) {
@@ -260,9 +244,9 @@ public struct MotionCoachView: View {
                                 Image(systemName: pose.category.symbolName)
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundStyle(Color(hue: profile.accentHue, saturation: 0.74, brightness: 0.98))
-                                Text(pose.category.kineticFocusTag)
-                                    .font(.system(size: size > 240 ? 10 : 9, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.70))
+                                Text(pose.category.kineticFocusTag.localized)   // ✅ fix
+                                        .font(.system(size: size > 240 ? 10 : 9, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(.white.opacity(0.70))
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -361,7 +345,219 @@ private struct MotionCoachProfile {
         }
     }
 }
+// MARK: - Stick figure performing the actual movement
 
+private struct StickFigureKinematicsView: View {
+    let pose: Pose
+    let phase: MotionCoachPhase
+    let time: TimeInterval
+    let reduceMotion: Bool
+
+    private var lineColor: Color {
+        .white.opacity(0.95)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let size   = min(geo.size.width, geo.size.height)
+            let center = CGPoint(x: geo.size.width / 2,
+                                 y: geo.size.height / 2 + size * 0.05)
+
+            // Sinusoidal param t ∈ [0,1] for repeating motion
+            let t = reduceMotion ? 0.0 : 0.5 + 0.5 * sin(time * 1.6)
+
+            // Base skeleton (torso + legs)
+            let headRadius   = size * 0.10
+            let shouldersY   = center.y - size * 0.15
+            let pelvisY      = center.y + size * 0.12
+            let torsoTop     = CGPoint(x: center.x, y: shouldersY)
+            let torsoBottom  = CGPoint(x: center.x, y: pelvisY)
+
+            let shoulderOffsetX = size * 0.16
+            let leftShoulder  = CGPoint(x: center.x - shoulderOffsetX, y: shouldersY)
+            let rightShoulder = CGPoint(x: center.x + shoulderOffsetX, y: shouldersY)
+
+            let leftKnee  = CGPoint(x: center.x - size * 0.10, y: pelvisY + size * 0.12)
+            let rightKnee = CGPoint(x: center.x + size * 0.10, y: pelvisY + size * 0.12)
+            let leftFoot  = CGPoint(x: center.x - size * 0.12, y: pelvisY + size * 0.26)
+            let rightFoot = CGPoint(x: center.x + size * 0.12, y: pelvisY + size * 0.26)
+
+            // Arm kinematics driven by category
+            let armConfig = StickArmConfig(category: pose.category)
+            let leftAngles  = armConfig.leftAngles(t: t)
+            let rightAngles = armConfig.rightAngles(t: t)
+
+            let upperLen = size * 0.22
+            let lowerLen = size * 0.20
+
+            let leftElbow = point(onCircleFrom: leftShoulder,
+                                  radius: upperLen,
+                                  angle: leftAngles.upper)
+            let leftHand  = point(onCircleFrom: leftElbow,
+                                  radius: lowerLen,
+                                  angle: leftAngles.lower)
+
+            let rightElbow = point(onCircleFrom: rightShoulder,
+                                   radius: upperLen,
+                                   angle: rightAngles.upper)
+            let rightHand  = point(onCircleFrom: rightElbow,
+                                   radius: lowerLen,
+                                   angle: rightAngles.lower)
+
+            ZStack {
+                // Torso + legs
+                Path { p in
+                    p.move(to: torsoTop)
+                    p.addLine(to: torsoBottom)
+
+                    p.move(to: torsoBottom)
+                    p.addLine(to: leftKnee)
+                    p.addLine(to: leftFoot)
+
+                    p.move(to: torsoBottom)
+                    p.addLine(to: rightKnee)
+                    p.addLine(to: rightFoot)
+                }
+                .stroke(lineColor.opacity(0.9),
+                        style: StrokeStyle(lineWidth: 3,
+                                           lineCap: .round,
+                                           lineJoin: .round))
+
+                // Head
+                Circle()
+                    .stroke(lineColor.opacity(0.95), lineWidth: 3)
+                    .frame(width: headRadius * 2, height: headRadius * 2)
+                    .position(x: center.x, y: shouldersY - headRadius * 1.4)
+
+                // Shoulder joints
+                Circle()
+                    .fill(lineColor)
+                    .frame(width: 4, height: 4)
+                    .position(leftShoulder)
+                Circle()
+                    .fill(lineColor)
+                    .frame(width: 4, height: 4)
+                    .position(rightShoulder)
+
+                // Arms
+                Path { p in
+                    p.move(to: leftShoulder)
+                    p.addLine(to: leftElbow)
+                    p.addLine(to: leftHand)
+
+                    p.move(to: rightShoulder)
+                    p.addLine(to: rightElbow)
+                    p.addLine(to: rightHand)
+                }
+                .stroke(Color(hue: pose.category.accentHue,
+                              saturation: 0.9,
+                              brightness: 1.0),
+                        style: StrokeStyle(lineWidth: 3.2,
+                                           lineCap: .round,
+                                           lineJoin: .round))
+                .shadow(color: Color(hue: pose.category.accentHue,
+                                     saturation: 0.8,
+                                     brightness: 0.95).opacity(0.5),
+                        radius: 6)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    private func point(onCircleFrom center: CGPoint,
+                       radius: CGFloat,
+                       angle: CGFloat) -> CGPoint {
+        CGPoint(
+            x: center.x + cos(angle) * radius,
+            y: center.y + sin(angle) * radius
+        )
+    }
+}
+
+/// Per‑category arm motion configuration (angles interpolated over t ∈ [0,1]).
+private struct StickArmConfig {
+    let startUpperLeft:  CGFloat
+    let endUpperLeft:    CGFloat
+    let startLowerLeft:  CGFloat
+    let endLowerLeft:    CGFloat
+
+    let startUpperRight: CGFloat
+    let endUpperRight:   CGFloat
+    let startLowerRight: CGFloat
+    let endLowerRight:   CGFloat
+
+    init(category: PoseCategory) {
+        switch category {
+        case .shoulders, .chest:
+            // Shoulder retraction + opening
+            startUpperLeft  =  .pi * 0.35
+            endUpperLeft    = -.pi * 0.10
+            startLowerLeft  =  .pi * 0.55
+            endLowerLeft    =  .pi * 0.80
+
+            startUpperRight =  .pi - startUpperLeft
+            endUpperRight   =  .pi - endUpperLeft
+            startLowerRight =  .pi - startLowerLeft
+            endLowerRight   =  .pi - endLowerLeft
+
+        case .hips, .legs:
+            // More grounding / downward arms
+            startUpperLeft  =  .pi * 0.65
+            endUpperLeft    =  .pi * 0.75
+            startLowerLeft  =  .pi * 0.90
+            endLowerLeft    =  .pi * 1.05
+
+            startUpperRight =  .pi - startUpperLeft
+            endUpperRight   =  .pi - endUpperLeft
+            startLowerRight =  .pi - startLowerLeft
+            endLowerRight   =  .pi - endLowerLeft
+
+        case .spine, .back:
+            // Small stabilizing oscillation
+            startUpperLeft  =  .pi * 0.40
+            endUpperLeft    =  .pi * 0.25
+            startLowerLeft  =  .pi * 0.60
+            endLowerLeft    =  .pi * 0.70
+
+            startUpperRight =  .pi - startUpperLeft
+            endUpperRight   =  .pi - endUpperLeft
+            startLowerRight =  .pi - startLowerLeft
+            endLowerRight   =  .pi - endLowerLeft
+
+        default:
+            // Generic open/close
+            startUpperLeft  =  .pi * 0.45
+            endUpperLeft    =  .pi * 0.20
+            startLowerLeft  =  .pi * 0.65
+            endLowerLeft    =  .pi * 0.85
+
+            startUpperRight =  .pi - startUpperLeft
+            endUpperRight   =  .pi - endUpperLeft
+            startLowerRight =  .pi - startLowerLeft
+            endLowerRight   =  .pi - endLowerLeft
+        }
+    }
+
+    func leftAngles(t: Double) -> (upper: CGFloat, lower: CGFloat) {
+        let tt = CGFloat(t)
+        return (
+            upper: lerp(startUpperLeft,  endUpperLeft,  tt),
+            lower: lerp(startLowerLeft,  endLowerLeft,  tt)
+        )
+    }
+
+    func rightAngles(t: Double) -> (upper: CGFloat, lower: CGFloat) {
+        let tt = CGFloat(t)
+        return (
+            upper: lerp(startUpperRight, endUpperRight, tt),
+            lower: lerp(startLowerRight, endLowerRight, tt)
+        )
+    }
+
+    private func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat {
+        a + (b - a) * t
+    }
+}
 // ═══════════════════════════════════════════════════════════════════════════════
 // MARK: - Kinematic Motion Components
 // ═══════════════════════════════════════════════════════════════════════════════
