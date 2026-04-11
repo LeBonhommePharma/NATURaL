@@ -199,7 +199,10 @@ final class WorkoutFlowViewModel {
 
     func resume() {
         recorder.resume()
-        Task { await musicService.playWorkoutMusic(mood: musicService.adaptiveMood, style: plan.style) }
+        Task { [weak self] in
+            guard let self else { return }
+            await self.musicService.playWorkoutMusic(mood: self.musicService.adaptiveMood, style: self.plan.style)
+        }
 
         // BUG 2 FIX: Original code only restarted the timer for the .active phase,
         // leaving the session permanently frozen if the user paused mid-transition
@@ -404,9 +407,15 @@ final class WorkoutFlowViewModel {
             }
             guard !Task.isCancelled else { return }
 
-            // Start adaptive music with style-aware playlists
-            await musicService.requestAuthorization()
-            await musicService.playWorkoutMusic(mood: .calm, style: plan.style)
+            // Music is fire-and-forget — MusicAuthorization.request() and
+            // the Apple Music catalog search can both block indefinitely on
+            // simulator or without an active Apple Music subscription.
+            // The workout flow must NEVER await music.
+            Task { [weak self] in
+                guard let self else { return }
+                await self.musicService.requestAuthorization()
+                await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
+            }
 
             // Start Live Activity for Dynamic Island
             startLiveActivity()
