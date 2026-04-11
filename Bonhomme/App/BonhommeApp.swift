@@ -7,6 +7,12 @@ struct BonhommeApp: App {
     @State private var appState = AppState()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Stored once at app launch — must NOT be a computed property.
+    /// A computed `var` would create a new ModelContainer on every `body`
+    /// re-evaluation (triggered by any AppState mutation), causing repeated
+    /// CloudKit initialization storms and the forever-loading symptom.
+    private let persistentContainer: ModelContainer = Self.makePersistentContainer()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -22,15 +28,16 @@ struct BonhommeApp: App {
     }
 
     /// SwiftData ModelContainer with CloudKit sync for cross-device data.
-    private var persistentContainer: ModelContainer {
+    /// Three-tier fallback: CloudKit → local-only → in-memory (last resort).
+    /// Called exactly once via the stored `persistentContainer` let-property.
+    private static func makePersistentContainer() -> ModelContainer {
         do {
             return try PersistenceConfiguration.makeContainer()
         } catch {
-            // If CloudKit container fails, fall back to local-only storage.
-            // This can happen on simulators or when iCloud is not signed in.
+            // CloudKit container fails on simulators or when iCloud is not signed in.
             print("⚠️ Failed to create CloudKit container: \(error.localizedDescription)")
             print("   Falling back to local-only storage.")
-            
+
             let schema = Schema([
                 WorkoutRecord.self,
                 UserPreferences.self,
@@ -38,26 +45,20 @@ struct BonhommeApp: App {
                 MedicationSchedule.self,
                 DrugResponseRecord.self,
             ])
-            
+
             do {
-                let fallbackConfig = ModelConfiguration(
-                    "NATURaLLocal",
-                    schema: schema
-                )
+                let fallbackConfig = ModelConfiguration("NATURaLLocal", schema: schema)
                 return try ModelContainer(for: schema, configurations: [fallbackConfig])
             } catch {
-                // If even local storage fails, create an in-memory container as last resort
-                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
                 print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
                 print("   Using in-memory storage. Data will not persist.")
-                
+
                 let inMemoryConfig = ModelConfiguration(
                     "NATURaLInMemory",
                     schema: schema,
                     isStoredInMemoryOnly: true
                 )
-                
-                // This should never fail, but if it does, the app cannot function
+                // In-memory container with a valid schema cannot fail.
                 return try! ModelContainer(for: schema, configurations: [inMemoryConfig])
             }
         }
