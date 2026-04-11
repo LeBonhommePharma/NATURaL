@@ -341,8 +341,19 @@ final class WorkoutFlowViewModel {
                 guard !Task.isCancelled else { return }
             }
 
-            // Start HealthKit recording with style-aware activity type
-            try? await recorder.start(style: plan.style)
+            // Start HealthKit recording. WorkoutRecorder.start() internally races
+            // beginCollection against a 3 s timeout, but belt-and-suspenders: wrap
+            // the whole call so any future blocking path can't freeze workout launch.
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { [weak self] in
+                    guard let self else { return }
+                    try? await self.recorder.start(style: self.plan.style)
+                }
+                group.addTask { try? await Task.sleep(for: .seconds(5)) }
+                _ = await group.next()
+                group.cancelAll()
+            }
+            guard !Task.isCancelled else { return }
 
             // Start adaptive music with style-aware playlists
             await musicService.requestAuthorization()

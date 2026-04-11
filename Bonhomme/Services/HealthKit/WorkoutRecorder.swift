@@ -38,7 +38,18 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         self.builder = builder
 
         session.startActivity(with: Date())
-        try await builder.beginCollection(at: Date())
+
+        // beginCollection(at:) waits for the HKWorkoutSession delegate to signal
+        // .running, which can stall indefinitely on simulator or when HealthKit
+        // authorization is incomplete. Race it against a 3-second timeout so the
+        // workout flow is never blocked — HR/cal streaming just won't start live.
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { try? await builder.beginCollection(at: Date()) }
+            group.addTask { try? await Task.sleep(for: .seconds(3)) }
+            _ = await group.next()
+            group.cancelAll()
+        }
+
         isRecording = true
     }
 
