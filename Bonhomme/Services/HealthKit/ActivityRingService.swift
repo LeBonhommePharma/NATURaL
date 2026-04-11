@@ -19,10 +19,11 @@ final class ActivityRingService {
     /// Fetches today's activity summary.
     func todaySummary() async throws -> RingData? {
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: Date())
+        var components = calendar.dateComponents([.year, .month, .day], from: Date())
+        components.calendar = calendar          // ← THE FIX: HKQuery needs this
 
-        let predicate = HKQuery.predicateForActivitySummary(with: components)
-        let descriptor = HKActivitySummaryQueryDescriptor(predicate: predicate)
+    let predicate = HKQuery.predicateForActivitySummary(with: components)
+    let descriptor = HKActivitySummaryQueryDescriptor(predicate: predicate)
 
         let results = try await descriptor.result(for: store)
         guard let summary = results.first else { return nil }
