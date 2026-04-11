@@ -9,6 +9,7 @@ public enum MotionCoachPhase: Sendable {
 }
 
 /// Procedural, video-free pose guidance view built entirely from symbols and animation.
+/// Enhanced with smoothstep orbital kinematics, volumetric ambient bloom, layered shadows, and ghost trails.
 public struct MotionCoachView: View {
     public let pose: Pose
     public var phase: MotionCoachPhase
@@ -36,14 +37,16 @@ public struct MotionCoachView: View {
             let wave = reduceMotion ? 0.0 : sin(breathAngle)
             let sway = reduceMotion ? 0.0 : cos(breathAngle * 0.72)
             let pulse = reduceMotion ? 0.0 : ((sin(breathAngle) + 1.0) * 0.5)
+            let hueShift = reduceMotion ? 0.0 : sin(breathAngle) * 0.02
 
             ZStack(alignment: .topLeading) {
+                // Background with breathing hue shift
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(hue: profile.accentHue, saturation: 0.42, brightness: 0.20),
-                                Color(hue: profile.accentHue, saturation: 0.58, brightness: 0.11),
+                                Color(hue: profile.accentHue + hueShift, saturation: 0.42, brightness: 0.20),
+                                Color(hue: profile.accentHue + hueShift, saturation: 0.58, brightness: 0.11),
                                 Color.black.opacity(0.96)
                             ],
                             startPoint: .topLeading,
@@ -51,6 +54,7 @@ public struct MotionCoachView: View {
                         )
                     )
 
+                // Glowing border
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
@@ -63,6 +67,7 @@ public struct MotionCoachView: View {
                         ),
                         lineWidth: 1
                     )
+                    .shadow(color: Color(hue: profile.accentHue, saturation: 0.6, brightness: 0.9).opacity(0.08), radius: 12)
 
                 GeometryReader { geo in
                     let size = min(geo.size.width, geo.size.height)
@@ -71,21 +76,24 @@ public struct MotionCoachView: View {
                     let secondaryRingSize = size * 0.88
 
                     ZStack {
+                        // Ambient bloom (volumetric)
                         Circle()
                             .fill(
                                 RadialGradient(
                                     colors: [
-                                        Color(hue: profile.accentHue, saturation: 0.65, brightness: 0.92).opacity(0.22),
+                                        Color(hue: profile.accentHue, saturation: 0.3, brightness: 0.95).opacity(0.10 + pulse * 0.06),
+                                        Color(hue: profile.accentHue, saturation: 0.65, brightness: 0.92).opacity(0.08),
                                         Color.clear
                                     ],
                                     center: .center,
                                     startRadius: 12,
-                                    endRadius: size * 0.48
+                                    endRadius: size * 0.55
                                 )
                             )
-                            .frame(width: size * 0.92, height: size * 0.92)
+                            .frame(width: size * 1.1, height: size * 1.1)
                             .scaleEffect(1.0 + (pulse * 0.08))
 
+                        // Primary accent ring with emission glow
                         Circle()
                             .stroke(
                                 Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.96).opacity(0.30),
@@ -93,7 +101,9 @@ public struct MotionCoachView: View {
                             )
                             .frame(width: ringSize, height: ringSize)
                             .scaleEffect(0.96 + (pulse * 0.10))
+                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.7, brightness: 0.95).opacity(0.25), radius: 8)
 
+                        // Secondary dashed ring
                         Circle()
                             .stroke(
                                 Color.white.opacity(0.12),
@@ -102,10 +112,32 @@ public struct MotionCoachView: View {
                             .frame(width: secondaryRingSize, height: secondaryRingSize)
                             .rotationEffect(.degrees(reduceMotion ? 0 : timestamp * 8.0))
 
+                        // Ghost trail orbits (behind, faded)
+                        if !reduceMotion {
+                            ForEach(0..<3, id: \.self) { index in
+                                let ghostAngle = orbitAngle - 0.15 + (Double(index) * ((.pi * 2.0) / 3.0))
+                                let gx = cos(ghostAngle) * orbitRadius
+                                let gy = sin(ghostAngle) * orbitRadius * 0.75
+
+                                Image(systemName: profile.orbitSymbol)
+                                    .font(.system(size: size * 0.08, weight: .semibold))
+                                    .foregroundStyle(
+                                        Color(hue: profile.accentHue, saturation: 0.74, brightness: 0.98).opacity(0.20)
+                                    )
+                                    .offset(x: gx, y: gy)
+                            }
+                        }
+
+                        // Primary orbiting symbols with smoothstep
                         ForEach(0..<3, id: \.self) { index in
-                            let offsetAngle = orbitAngle + (Double(index) * ((.pi * 2.0) / 3.0))
-                            let x = cos(offsetAngle) * orbitRadius
-                            let y = sin(offsetAngle) * orbitRadius * 0.75
+                            let baseAngle = orbitAngle + (Double(index) * ((.pi * 2.0) / 3.0))
+                            // Smoothstep on the normalized phase for each node
+                            let raw = fmod(baseAngle / (.pi * 2.0), 1.0)
+                            let t = raw < 0 ? raw + 1.0 : raw
+                            let smooth = t * t * (3.0 - 2.0 * t)
+                            let smoothAngle = smooth * .pi * 2.0 + (Double(index) * ((.pi * 2.0) / 3.0))
+                            let x = cos(smoothAngle) * orbitRadius
+                            let y = sin(smoothAngle) * orbitRadius * 0.75
 
                             Image(systemName: profile.orbitSymbol)
                                 .font(.system(size: size * 0.10, weight: .semibold))
@@ -118,9 +150,11 @@ public struct MotionCoachView: View {
                                     Circle()
                                         .stroke(Color.white.opacity(0.07), lineWidth: 1)
                                 )
+                                .shadow(color: Color(hue: profile.accentHue, saturation: 0.6, brightness: 0.9).opacity(0.15), radius: 6)
                                 .offset(x: x, y: y)
                         }
 
+                        // Central symbol with layered shadows
                         Image(systemName: profile.primarySymbol)
                             .font(.system(size: size * 0.34, weight: .regular))
                             .foregroundStyle(
@@ -133,7 +167,9 @@ public struct MotionCoachView: View {
                                     endPoint: .bottom
                                 )
                             )
-                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.28), radius: 22)
+                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.4), radius: 4)
+                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.25), radius: 14)
+                            .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.12), radius: 30)
                             .scaleEffect(1.0 + (pulse * profile.scaleAmplitude))
                             .rotationEffect(.degrees(wave * profile.rotationAmplitude))
                             .offset(x: sway * profile.swayAmplitude, y: wave * profile.verticalAmplitude)
@@ -149,6 +185,8 @@ public struct MotionCoachView: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(.black.opacity(0.26), in: Capsule())
+                            .contentTransition(.opacity)
+                            .animation(.easeInOut(duration: 0.3), value: phase)
 
                             Spacer()
 
