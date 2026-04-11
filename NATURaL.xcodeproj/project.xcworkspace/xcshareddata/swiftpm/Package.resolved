@@ -1,0 +1,42 @@
+{
+  "originHash" : "ca2d5df2cda5e3575b35680bbf0ab1555eed74a7f5d921c8eed25083c6b547ef",
+  "pins" : [
+    {
+      "identity" : "carekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/carekit-apple/CareKit.git",
+      "state" : {
+        "revision" : "348a5efbd10cb79d92c760c8023156015558b06b",
+        "version" : "4.1.0"
+      }
+    },
+    {
+      "identity" : "fhirmodels",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/FHIRModels.git",
+      "state" : {
+        "revision" : "861afd5816a98d38f86220eab2f812d76cad84a0",
+        "version" : "0.5.0"
+      }
+    },
+    {
+      "identity" : "swift-async-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-async-algorithms",
+      "state" : {
+        "revision" : "6ae9a051f76b81cc668305ceed5b0e0a7fd93d20",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
+        "version" : "1.4.1"
+      }
+    }
+  ],
+  "version" : 3
+}

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */; };
+		4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */; };
 		0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */; };
 		0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */; };
 		11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */; };
@@ -144,6 +145,11 @@
 		49413D9326C03F255A9050CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4BBCDD92683EEE41C15485A0 /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryView.swift; sourceTree = "<group>"; };
 		530269F52F885C6E0030AA2D /* LOCALIZATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCALIZATION_GUIDE.md; sourceTree = "<group>"; };
+		53094E512F8A9BE2002A7CFE /* AppInitializationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInitializationTests.swift; sourceTree = "<group>"; };
+		53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugDashboardView.swift; sourceTree = "<group>"; };
+		53094E532F8A9C43002A7CFE /* STARTUP_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = STARTUP_CHECKLIST.md; sourceTree = "<group>"; };
+		53094E542F8A9C7C002A7CFE /* DEBUGGING_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEBUGGING_SUMMARY.md; sourceTree = "<group>"; };
+		53094E552F8A9C95002A7CFE /* QUICK_REFERENCE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = QUICK_REFERENCE.md; sourceTree = "<group>"; };
 		534933C12F88928400628680 /* YogaStyle+HealthKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YogaStyle+HealthKit.swift"; sourceTree = "<group>"; };
 		534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
 		534933C62F8892F600628680 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivity.swift; sourceTree = "<group>"; };
@@ -574,6 +580,7 @@
 			children = (
 				9A6B2F908F0917D19A145A0C /* Package.swift */,
 				530269F52F885C6E0030AA2D /* LOCALIZATION_GUIDE.md */,
+				53094E512F8A9BE2002A7CFE /* AppInitializationTests.swift */,
 			);
 			path = BonhommeCore;
 			sourceTree = "<group>";
@@ -592,6 +599,10 @@
 			children = (
 				41E967DEC3B235869C8A0302 /* AppState.swift */,
 				30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */,
+				53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */,
+				53094E532F8A9C43002A7CFE /* STARTUP_CHECKLIST.md */,
+				53094E542F8A9C7C002A7CFE /* DEBUGGING_SUMMARY.md */,
+				53094E552F8A9C95002A7CFE /* QUICK_REFERENCE.md */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -867,6 +878,7 @@
 			files = (
 				606455AAC0195FC7D0F2CAE2 /* AppState.swift in Sources */,
 				ECA094B581739F661B6FADB1 /* BonhommeApp.swift in Sources */,
+				4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */,
 				8D0E4ACCC2765CFA20347728 /* HistoryView.swift in Sources */,
 				238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */,
 				B2A4F46F38A97347A6802603 /* SummaryView.swift in Sources */,

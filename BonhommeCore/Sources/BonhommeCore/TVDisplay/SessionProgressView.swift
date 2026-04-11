@@ -40,7 +40,7 @@ public struct SessionProgressView: View {
                                 LinearGradient(
                                     stops: [
                                         .init(color: .cyan, location: max(0, shimmer - 0.15)),
-                                        .init(color: .cyan.opacity(0.6).mix(with: .white, by: 0.4), location: shimmer),
+                                        .init(color: blendColors(.cyan.opacity(0.6), .white, by: 0.4), location: shimmer),
                                         .init(color: .cyan, location: min(1, shimmer + 0.15))
                                     ],
                                     startPoint: .leading,
@@ -80,4 +80,48 @@ public struct SessionProgressView: View {
         let seconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+}
+
+private func blendColors(_ c1: Color, _ c2: Color, by t: CGFloat) -> Color {
+    // Prefer native mix when available
+    if #available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, *) {
+        return c1.mix(with: c2, by: t)
+    }
+
+    #if canImport(UIKit)
+    let ui1 = UIColor(c1)
+    let ui2 = UIColor(c2)
+
+    var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+    var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+
+    ui1.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+    ui2.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+
+    let clampedT = max(0, min(1, t))
+    let r = r1 + (r2 - r1) * clampedT
+    let g = g1 + (g2 - g1) * clampedT
+    let b = b1 + (b2 - b1) * clampedT
+    let a = a1 + (a2 - a1) * clampedT
+
+    return Color(UIColor(red: r, green: g, blue: b, alpha: a))
+    #elseif canImport(AppKit)
+    let ns1 = NSColor(c1)
+    let ns2 = NSColor(c2)
+
+    guard let c1rgb = ns1.usingColorSpace(.deviceRGB), let c2rgb = ns2.usingColorSpace(.deviceRGB) else {
+        // Fallback if conversion fails
+        return c1
+    }
+
+    let r = c1rgb.redComponent + (c2rgb.redComponent - c1rgb.redComponent) * t
+    let g = c1rgb.greenComponent + (c2rgb.greenComponent - c1rgb.greenComponent) * t
+    let b = c1rgb.blueComponent + (c2rgb.blueComponent - c1rgb.blueComponent) * t
+    let a = c1rgb.alphaComponent + (c2rgb.alphaComponent - c1rgb.alphaComponent) * t
+
+    return Color(NSColor(calibratedRed: r, green: g, blue: b, alpha: a))
+    #else
+    // Generic fallback: return the first color if platform is unknown
+    return c1
+    #endif
 }

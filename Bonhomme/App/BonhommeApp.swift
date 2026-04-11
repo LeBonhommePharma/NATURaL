@@ -48,6 +48,7 @@ struct BonhommeApp: App {
             } catch {
                 // If even local storage fails, create an in-memory container as last resort
                 print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
+                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
                 print("   Using in-memory storage. Data will not persist.")
                 
                 let inMemoryConfig = ModelConfiguration(
@@ -80,9 +81,13 @@ struct BonhommeApp: App {
             if !appState.isWorkoutActive {
                 appState.checkForResumableWorkout()
             }
-            // Refresh CareKit prescriptions
+            // Refresh CareKit prescriptions only after HealthKit authorization
             Task {
-                await appState.careKitBridge.refreshPrescribedTasks()
+                if appState.healthKitAuthorized {
+                    await appState.careKitBridge.refreshPrescribedTasks()
+                } else {
+                    print("ℹ️ Skipping CareKit refresh: HealthKit not authorized")
+                }
             }
         @unknown default:
             break
@@ -103,43 +108,75 @@ struct ContentView: View {
     @State private var showResumeAlert = false
     @State private var navigateToRestoredWorkout = false
     @State private var initializationError: Error?
+    @State private var showDebugDashboard = false
 
     var body: some View {
-        NavigationStack {
-            HomeView()
-                .navigationDestination(isPresented: $navigateToRestoredWorkout) {
-                    if let vm = appState.pendingRestoredWorkout {
-                        WorkoutFlowView(restoredViewModel: vm)
+        ZStack(alignment: .bottom) {
+            NavigationStack {
+                HomeView()
+                    .navigationDestination(isPresented: $navigateToRestoredWorkout) {
+                        if let vm = appState.pendingRestoredWorkout {
+                            WorkoutFlowView(restoredViewModel: vm)
+                        }
                     }
+                    .toolbar {
+                        #if DEBUG
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                showDebugDashboard.toggle()
+                            } label: {
+                                Image(systemName: "ladybug.fill")
+                                    .foregroundStyle(showDebugDashboard ? .orange : .secondary)
+                            }
+                        }
+                        #endif
+                    }
+            }
+            .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
+                showResumeAlert = hasWorkout
+            }
+            .alert(
+                LocalizedString(
+                    en: "Resume Workout?",
+                    fr: "Reprendre l'entraînement ?"
+                ).localized,
+                isPresented: $showResumeAlert
+            ) {
+                Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
+                    navigateToRestoredWorkout = true
                 }
-        }
-        .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
-            showResumeAlert = hasWorkout
-        }
-        .alert(
-            LocalizedString(
-                en: "Resume Workout?",
-                fr: "Reprendre l'entraînement ?"
-            ).localized,
-            isPresented: $showResumeAlert
-        ) {
-            Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
-                navigateToRestoredWorkout = true
+                Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
+                    appState.dismissRestoredWorkout()
+                }
+            } message: {
+                if let vm = appState.pendingRestoredWorkout {
+                    Text(LocalizedString(
+                        en: "You have an unfinished \(vm.plan.name.en) session. Would you like to continue?",
+                        fr: "Vous avez une séance \(vm.plan.name.fr) inachevée. Voulez-vous continuer ?"
+                    ).localized)
+                }
             }
-            Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
-                appState.dismissRestoredWorkout()
+            .task {
+                // Perform async initialization checks
+                await performInitializationChecks()
             }
-        } message: {
-            if let vm = appState.pendingRestoredWorkout {
-                Text(LocalizedString(
-                    en: "You have an unfinished \(vm.plan.name.en) session. Would you like to continue?",
-                    fr: "Vous avez une séance \(vm.plan.name.fr) inachevée. Voulez-vous continuer ?"
-                ).localized)
+            .task {
+                // Request HealthKit authorization early and enable background delivery
+                guard HealthKitManager.isAvailable else {
+                    print("ℹ️ HealthKit not available on this device; skipping authorization.")
+                    return
+                }
+                do {
+                    try await appState.healthKitManager.requestAuthorization()
+                    appState.healthKitAuthorized = true
+                    try? await appState.healthKitManager.enableBackgroundDelivery()
+                    // Safe to refresh CareKit prescriptions after authorization
+                    await appState.careKitBridge.refreshPrescribedTasks()
+                } catch {
+                    appState.healthKitAuthorized = false
+                    print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
+                }
             }
-        }
-        .task {
-            // Perform async initialization checks
-            await performInitializationChecks()
         }
     }
     
