@@ -9,7 +9,8 @@ public enum MotionCoachPhase: Sendable {
 }
 
 /// Procedural, video-free pose guidance view built entirely from symbols and animation.
-/// Enhanced with smoothstep orbital kinematics, volumetric ambient bloom, layered shadows, and ghost trails.
+/// Enhanced with smoothstep orbital kinematics, volumetric ambient bloom, layered shadows, ghost trails,
+/// and NEW: directional movement arrows, joint articulation indicators, and biomechanical force vectors.
 public struct MotionCoachView: View {
     public let pose: Pose
     public var phase: MotionCoachPhase
@@ -82,6 +83,7 @@ public struct MotionCoachView: View {
                     let orbitRadius = size * 0.24
                     let ringSize = size * 0.68
                     let secondaryRingSize = size * 0.88
+                    let kinematicProfile = KinematicProfile(category: pose.category)
 
                     ZStack {
                         // Ambient bloom (volumetric)
@@ -119,6 +121,63 @@ public struct MotionCoachView: View {
                             )
                             .frame(width: secondaryRingSize, height: secondaryRingSize)
                             .rotationEffect(.degrees(reduceMotion ? 0 : timestamp * 8.0))
+
+                        // ═══════════════════════════════════════════════════════════
+                        // NEW: KINEMATIC MOTION LAYER — Movement Vectors & Joints
+                        // ═══════════════════════════════════════════════════════════
+                        if phase == .active {
+                            // Movement vector arrows showing primary motion direction
+                            ForEach(kinematicProfile.movementVectors.indices, id: \.self) { index in
+                                let vector = kinematicProfile.movementVectors[index]
+                                MovementArrow(
+                                    start: CGPoint(
+                                        x: geo.size.width * vector.startX,
+                                        y: geo.size.height * vector.startY
+                                    ),
+                                    end: CGPoint(
+                                        x: geo.size.width * vector.endX,
+                                        y: geo.size.height * vector.endY
+                                    ),
+                                    color: Color(hue: pose.category.accentHue, saturation: 0.85, brightness: 0.95),
+                                    timestamp: timestamp,
+                                    reduceMotion: reduceMotion,
+                                    index: index
+                                )
+                            }
+                            
+                            // Joint articulation indicators (pulsing circles at key joints)
+                            ForEach(kinematicProfile.jointPositions.indices, id: \.self) { index in
+                                let joint = kinematicProfile.jointPositions[index]
+                                JointIndicator(
+                                    position: CGPoint(
+                                        x: geo.size.width * joint.x,
+                                        y: geo.size.height * joint.y
+                                    ),
+                                    size: size * 0.05,
+                                    color: Color(hue: pose.category.accentHue, saturation: 0.75, brightness: 0.92),
+                                    timestamp: timestamp,
+                                    reduceMotion: reduceMotion,
+                                    index: index
+                                )
+                            }
+                            
+                            // Ghost trail showing start position (faded) for reference
+                            if !reduceMotion {
+                                ForEach(kinematicProfile.ghostPositions.indices, id: \.self) { index in
+                                    let ghost = kinematicProfile.ghostPositions[index]
+                                    GhostPosition(
+                                        position: CGPoint(
+                                            x: geo.size.width * ghost.x,
+                                            y: geo.size.height * ghost.y
+                                        ),
+                                        symbol: ghost.symbol,
+                                        size: size * 0.10,
+                                        color: Color(hue: pose.category.accentHue, saturation: 0.6, brightness: 0.8),
+                                        opacity: 0.15
+                                    )
+                                }
+                            }
+                        }
 
                         // Ghost trail orbits (behind, faded)
                         if !reduceMotion {
@@ -301,4 +360,294 @@ private struct MotionCoachProfile {
             self.cue = description
         }
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MARK: - Kinematic Motion Components
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Animated arrow showing movement direction with flow animation
+private struct MovementArrow: View {
+    let start: CGPoint
+    let end: CGPoint
+    let color: Color
+    let timestamp: TimeInterval
+    let reduceMotion: Bool
+    let index: Int
+    
+    var body: some View {
+        let angle = atan2(end.y - start.y, end.x - start.x)
+        let length = hypot(end.x - start.x, end.y - start.y)
+        let flowPhase = reduceMotion ? 0.5 : fmod(timestamp * 1.5 + Double(index) * 0.3, 1.0)
+        
+        ZStack {
+            // Arrow shaft with flowing gradient
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        stops: [
+                            .init(color: color.opacity(0.15), location: max(0, flowPhase - 0.3)),
+                            .init(color: color.opacity(0.75), location: flowPhase),
+                            .init(color: color.opacity(0.15), location: min(1, flowPhase + 0.3))
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: length * 0.85, height: 2.5)
+                .shadow(color: color.opacity(0.4), radius: 4)
+            
+            // Arrowhead
+            ArrowHead(color: color)
+                .frame(width: 14, height: 14)
+                .offset(x: length * 0.42)
+                .shadow(color: color.opacity(0.5), radius: 3)
+        }
+        .rotationEffect(.radians(angle))
+        .position(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+    }
+}
+
+/// Triangle arrowhead shape
+private struct ArrowHead: View {
+    let color: Color
+    
+    var body: some View {
+        Path { path in
+            path.move(to: CGPoint(x: 14, y: 7))
+            path.addLine(to: CGPoint(x: 0, y: 0))
+            path.addLine(to: CGPoint(x: 0, y: 14))
+            path.closeSubpath()
+        }
+        .fill(color)
+    }
+}
+
+/// Pulsing circle indicating a joint or articulation point
+private struct JointIndicator: View {
+    let position: CGPoint
+    let size: CGFloat
+    let color: Color
+    let timestamp: TimeInterval
+    let reduceMotion: Bool
+    let index: Int
+    
+    var body: some View {
+        let pulse = reduceMotion ? 1.0 : 0.85 + sin(timestamp * 2.5 + Double(index) * 0.5) * 0.15
+        
+        ZStack {
+            // Outer ring
+            Circle()
+                .stroke(color.opacity(0.4), lineWidth: 2)
+                .frame(width: size * 1.4, height: size * 1.4)
+                .scaleEffect(pulse)
+            
+            // Inner filled circle
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            color.opacity(0.8),
+                            color.opacity(0.4)
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: size * 0.5
+                    )
+                )
+                .frame(width: size, height: size)
+                .shadow(color: color.opacity(0.6), radius: 6)
+        }
+        .position(position)
+    }
+}
+
+/// Faded ghost position showing starting or reference posture
+private struct GhostPosition: View {
+    let position: CGPoint
+    let symbol: String
+    let size: CGFloat
+    let color: Color
+    let opacity: Double
+    
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size, weight: .thin))
+            .foregroundStyle(color.opacity(opacity))
+            .position(position)
+    }
+}
+
+/// Kinematic profile defining movement vectors and joint positions for each category.
+/// Maps anatomical movements to visual coordinate space (0.0-1.0 normalized).
+private struct KinematicProfile {
+    let movementVectors: [MovementVector]
+    let jointPositions: [JointPosition]
+    let ghostPositions: [GhostSymbol]
+    
+    init(category: PoseCategory) {
+        switch category {
+        case .shoulders:
+            // Shoulder retraction: arrows showing shoulders pulling back + opening outward
+            movementVectors = [
+                MovementVector(startX: 0.35, startY: 0.42, endX: 0.25, endY: 0.38), // Left shoulder back
+                MovementVector(startX: 0.65, startY: 0.42, endX: 0.75, endY: 0.38), // Right shoulder back
+                MovementVector(startX: 0.35, startY: 0.45, endX: 0.28, endY: 0.52), // Left opening down
+                MovementVector(startX: 0.65, startY: 0.45, endX: 0.72, endY: 0.52)  // Right opening down
+            ]
+            jointPositions = [
+                JointPosition(x: 0.35, y: 0.42), // Left shoulder
+                JointPosition(x: 0.65, y: 0.42), // Right shoulder
+                JointPosition(x: 0.50, y: 0.48)  // Upper spine (T4-T6)
+            ]
+            ghostPositions = [
+                GhostSymbol(x: 0.38, y: 0.44, symbol: "circle.fill"), // Left shoulder start
+                GhostSymbol(x: 0.62, y: 0.44, symbol: "circle.fill")  // Right shoulder start
+            ]
+            
+        case .hips:
+            // Hip opening: arrows showing hip external rotation + abduction
+            movementVectors = [
+                MovementVector(startX: 0.40, startY: 0.58, endX: 0.32, endY: 0.64), // Left hip opening
+                MovementVector(startX: 0.60, startY: 0.58, endX: 0.68, endY: 0.64)  // Right hip opening
+            ]
+            jointPositions = [
+                JointPosition(x: 0.40, y: 0.58), // Left hip
+                JointPosition(x: 0.60, y: 0.58), // Right hip
+                JointPosition(x: 0.50, y: 0.52)  // Sacrum
+            ]
+            ghostPositions = [
+                GhostSymbol(x: 0.42, y: 0.60, symbol: "circle.fill"),
+                GhostSymbol(x: 0.58, y: 0.60, symbol: "circle.fill")
+            ]
+            
+        case .spine:
+            // Spinal extension/flexion: arrows showing vertebral movement
+            movementVectors = [
+                MovementVector(startX: 0.50, startY: 0.35, endX: 0.50, endY: 0.28), // Cervical extension
+                MovementVector(startX: 0.50, startY: 0.48, endX: 0.48, endY: 0.42), // Thoracic curve
+                MovementVector(startX: 0.50, startY: 0.60, endX: 0.50, endY: 0.54)  // Lumbar extension
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.35), // C7
+                JointPosition(x: 0.50, y: 0.48), // T6
+                JointPosition(x: 0.50, y: 0.60)  // L3
+            ]
+            ghostPositions = [
+                GhostSymbol(x: 0.50, y: 0.32, symbol: "circle.fill"),
+                GhostSymbol(x: 0.50, y: 0.45, symbol: "circle.fill"),
+                GhostSymbol(x: 0.50, y: 0.58, symbol: "circle.fill")
+            ]
+            
+        case .chest:
+            // Chest opening: arrows showing sternum lift + shoulder blade retraction
+            movementVectors = [
+                MovementVector(startX: 0.50, startY: 0.45, endX: 0.50, endY: 0.38), // Sternum lift
+                MovementVector(startX: 0.38, startY: 0.42, endX: 0.32, endY: 0.40), // Left scapula retract
+                MovementVector(startX: 0.62, startY: 0.42, endX: 0.68, endY: 0.40)  // Right scapula retract
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.45), // Sternum
+                JointPosition(x: 0.38, y: 0.42),
+                JointPosition(x: 0.62, y: 0.42)
+            ]
+            ghostPositions = [
+                GhostSymbol(x: 0.50, y: 0.47, symbol: "heart.fill")
+            ]
+            
+        case .neck:
+            // Cervical decompression: arrows showing head/neck alignment
+            movementVectors = [
+                MovementVector(startX: 0.50, startY: 0.28, endX: 0.50, endY: 0.22), // Crown lift
+                MovementVector(startX: 0.50, startY: 0.34, endX: 0.50, endY: 0.38)  // Chin tuck
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.28), // Occiput
+                JointPosition(x: 0.50, y: 0.34)  // C7
+            ]
+            ghostPositions = [
+                GhostSymbol(x: 0.48, y: 0.30, symbol: "circle.fill")
+            ]
+            
+        case .core:
+            // Core activation: arrows showing trunk stabilization
+            movementVectors = [
+                MovementVector(startX: 0.42, startY: 0.52, endX: 0.46, endY: 0.50), // Left oblique
+                MovementVector(startX: 0.58, startY: 0.52, endX: 0.54, endY: 0.50), // Right oblique
+                MovementVector(startX: 0.50, startY: 0.56, endX: 0.50, endY: 0.52)  // Rectus pull
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.50), // Navel
+                JointPosition(x: 0.50, y: 0.56)  // Lower abs
+            ]
+            ghostPositions = []
+            
+        case .legs:
+            // Lower limb grounding: arrows showing root/press
+            movementVectors = [
+                MovementVector(startX: 0.42, startY: 0.75, endX: 0.40, endY: 0.82), // Left leg press
+                MovementVector(startX: 0.58, startY: 0.75, endX: 0.60, endY: 0.82)  // Right leg press
+            ]
+            jointPositions = [
+                JointPosition(x: 0.42, y: 0.75),
+                JointPosition(x: 0.58, y: 0.75)
+            ]
+            ghostPositions = []
+            
+        case .arms:
+            // Upper limb lengthening
+            movementVectors = [
+                MovementVector(startX: 0.35, startY: 0.45, endX: 0.25, endY: 0.48), // Left arm reach
+                MovementVector(startX: 0.65, startY: 0.45, endX: 0.75, endY: 0.48)  // Right arm reach
+            ]
+            jointPositions = [
+                JointPosition(x: 0.35, y: 0.45),
+                JointPosition(x: 0.65, y: 0.45)
+            ]
+            ghostPositions = []
+            
+        case .back:
+            // Posterior chain release
+            movementVectors = [
+                MovementVector(startX: 0.50, startY: 0.38, endX: 0.50, endY: 0.45),
+                MovementVector(startX: 0.50, startY: 0.55, endX: 0.50, endY: 0.62)
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.40),
+                JointPosition(x: 0.50, y: 0.55)
+            ]
+            ghostPositions = []
+            
+        default:
+            // Generic full-body integration vectors
+            movementVectors = [
+                MovementVector(startX: 0.50, startY: 0.30, endX: 0.50, endY: 0.25), // Crown lift
+                MovementVector(startX: 0.50, startY: 0.70, endX: 0.50, endY: 0.76)  // Root ground
+            ]
+            jointPositions = [
+                JointPosition(x: 0.50, y: 0.35),
+                JointPosition(x: 0.50, y: 0.50),
+                JointPosition(x: 0.50, y: 0.65)
+            ]
+            ghostPositions = []
+        }
+    }
+}
+
+private struct MovementVector {
+    let startX: Double
+    let startY: Double
+    let endX: Double
+    let endY: Double
+}
+
+private struct JointPosition {
+    let x: Double
+    let y: Double
+}
+
+private struct GhostSymbol {
+    let x: Double
+    let y: Double
+    let symbol: String
 }
