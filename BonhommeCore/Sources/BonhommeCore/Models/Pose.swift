@@ -115,24 +115,206 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Short anatomical movement descriptor shown in MotionCoachView during active pose.
-    /// Encodes the primary kinematic direction so practitioners know where to focus.
-    public var kineticFocusTag: String {
+    /// Localized kinematic movement descriptor shown in MotionCoachView during active pose.
+    /// Encodes the primary movement direction so practitioners know where to focus.
+    public var kineticFocusTag: LocalizedString {
         switch self {
-        case .spine:       return "Spinal extension · flexion"
-        case .hips:        return "Hip mobility · release"
-        case .shoulders:   return "Shoulder retraction · opening"
-        case .neck:        return "Cervical decompression"
-        case .fullBody:    return "Full-chain integration"
-        case .breathing:   return "Diaphragmatic expansion"
-        case .balance:     return "Neuromuscular stability"
-        case .core:        return "Trunk activation · bracing"
-        case .arms:        return "Upper-limb lengthening"
-        case .legs:        return "Lower-limb grounding"
-        case .chest:       return "Chest opening · heart lift"
-        case .back:        return "Posterior chain release"
-        case .relaxation:  return "Parasympathetic activation"
-        case .inversion:   return "Gravitational decompression"
+        case .spine:
+            return LocalizedString(
+                en: "Spinal extension · flexion",
+                fr: "Extension · flexion vertébrale",
+                es: "Extensión · flexión espinal",
+                ja: "脊柱伸展・屈曲",
+                zh: "脊柱伸展·屈曲",
+                ko: "척추 신전·굴곡",
+                ru: "Разгибание · сгибание позвоночника",
+                de: "Wirbelsäulenstreckung · Beugung",
+                ar: "تمدد · ثني العمود الفقري",
+                it: "Estensione · flessione spinale",
+                pt: "Extensão · flexão espinhal"
+            )
+        case .hips:
+            return LocalizedString(
+                en: "Hip mobility · release",
+                fr: "Mobilité · relâchement des hanches",
+                es: "Movilidad · liberación de cadera",
+                ja: "股関節の可動性・解放",
+                zh: "髋部活动性·释放",
+                ko: "골반 가동성·이완",
+                ru: "Подвижность · раскрытие тазобедренных",
+                de: "Hüftmobilität · Lösung",
+                ar: "حركة · تحرير الورك",
+                it: "Mobilità · rilascio dell'anca",
+                pt: "Mobilidade · liberação do quadril"
+            )
+        case .shoulders:
+            return LocalizedString(
+                en: "Shoulder retraction · opening",
+                fr: "Rétraction · ouverture des épaules",
+                es: "Retracción · apertura de hombros",
+                ja: "肩の後退・開放",
+                zh: "肩部回缩·打开",
+                ko: "어깨 후인·개방",
+                ru: "Отведение · раскрытие плеч",
+                de: "Schulterretraktion · Öffnung",
+                ar: "انسحاب · فتح الكتف",
+                it: "Retrazione · apertura delle spalle",
+                pt: "Retração · abertura dos ombros"
+            )
+        case .neck:
+            return LocalizedString(
+                en: "Cervical decompression",
+                fr: "Décompression cervicale",
+                es: "Descompresión cervical",
+                ja: "頸部減圧",
+                zh: "颈椎减压",
+                ko: "경추 감압",
+                ru: "Декомпрессия шейного отдела",
+                de: "Zervikale Dekompression",
+                ar: "تخفيف الضغط العنقي",
+                it: "Decompressione cervicale",
+                pt: "Descompressão cervical"
+            )
+        case .fullBody:
+            return LocalizedString(
+                en: "Full-chain integration",
+                fr: "Intégration chaîne complète",
+                es: "Integración de cadena completa",
+                ja: "全身連鎖統合",
+                zh: "全链整合",
+                ko: "전신 사슬 통합",
+                ru: "Интеграция всего тела",
+                de: "Ganzkörperintegration",
+                ar: "تكامل السلسلة الكاملة",
+                it: "Integrazione della catena completa",
+                pt: "Integração de cadeia completa"
+            )
+        case .breathing:
+            return LocalizedString(
+                en: "Diaphragmatic expansion",
+                fr: "Expansion diaphragmatique",
+                es: "Expansión diafragmática",
+                ja: "横隔膜の拡張",
+                zh: "膈肌扩张",
+                ko: "횡격막 확장",
+                ru: "Расширение диафрагмы",
+                de: "Zwerchfellerweiterung",
+                ar: "توسع الحجاب الحاجز",
+                it: "Espansione diaframmatica",
+                pt: "Expansão diafragmática"
+            )
+        case .balance:
+            return LocalizedString(
+                en: "Neuromuscular stability",
+                fr: "Stabilité neuromusculaire",
+                es: "Estabilidad neuromuscular",
+                ja: "神経筋の安定性",
+                zh: "神经肌肉稳定性",
+                ko: "신경근 안정성",
+                ru: "Нейромышечная стабильность",
+                de: "Neuromuskuläre Stabilität",
+                ar: "الاستقرار العصبي العضلي",
+                it: "Stabilità neuromuscolare",
+                pt: "Estabilidade neuromuscular"
+            )
+        case .core:
+            return LocalizedString(
+                en: "Trunk activation · bracing",
+                fr: "Activation · gainage du tronc",
+                es: "Activación · fortalecimiento del tronco",
+                ja: "体幹の活性化・固定",
+                zh: "躯干激活·支撑",
+                ko: "몸통 활성화·지지",
+                ru: "Активация · укрепление корпуса",
+                de: "Rumpfaktivierung · Versteifung",
+                ar: "تنشيط · تدعيم الجذع",
+                it: "Attivazione · rinforzo del tronco",
+                pt: "Ativação · fortalecimento do tronco"
+            )
+        case .arms:
+            return LocalizedString(
+                en: "Upper-limb lengthening",
+                fr: "Allongement des membres supérieurs",
+                es: "Alargamiento de extremidades superiores",
+                ja: "上肢の伸長",
+                zh: "上肢拉长",
+                ko: "상지 신장",
+                ru: "Удлинение верхних конечностей",
+                de: "Obere Gliedmaßen-Verlängerung",
+                ar: "استطالة الأطراف العلوية",
+                it: "Allungamento degli arti superiori",
+                pt: "Alongamento dos membros superiores"
+            )
+        case .legs:
+            return LocalizedString(
+                en: "Lower-limb grounding",
+                fr: "Ancrage des membres inférieurs",
+                es: "Arraigo de extremidades inferiores",
+                ja: "下肢の接地",
+                zh: "下肢接地",
+                ko: "하지 접지",
+                ru: "Заземление нижних конечностей",
+                de: "Untere Gliedmaßen-Erdung",
+                ar: "تأريض الأطراف السفلية",
+                it: "Radicamento degli arti inferiori",
+                pt: "Enraizamento dos membros inferiores"
+            )
+        case .chest:
+            return LocalizedString(
+                en: "Chest opening · heart lift",
+                fr: "Ouverture thoracique · élévation du cœur",
+                es: "Apertura de pecho · elevación del corazón",
+                ja: "胸の開放・心臓の挙上",
+                zh: "胸部打开·心脏提升",
+                ko: "가슴 열기·심장 올리기",
+                ru: "Раскрытие груди · подъём сердца",
+                de: "Brustöffnung · Herzanhebung",
+                ar: "فتح الصدر · رفع القلب",
+                it: "Apertura del petto · sollevamento del cuore",
+                pt: "Abertura do peito · elevação do coração"
+            )
+        case .back:
+            return LocalizedString(
+                en: "Posterior chain release",
+                fr: "Relâchement de la chaîne postérieure",
+                es: "Liberación de cadena posterior",
+                ja: "後鎖の解放",
+                zh: "后链释放",
+                ko: "후방 사슬 이완",
+                ru: "Освобождение задней цепи",
+                de: "Hintere Ketten-Lösung",
+                ar: "تحرير السلسلة الخلفية",
+                it: "Rilascio della catena posteriore",
+                pt: "Liberação da cadeia posterior"
+            )
+        case .relaxation:
+            return LocalizedString(
+                en: "Parasympathetic activation",
+                fr: "Activation parasympathique",
+                es: "Activación parasimpática",
+                ja: "副交感神経の活性化",
+                zh: "副交感神经激活",
+                ko: "부교감 신경 활성화",
+                ru: "Активация парасимпатической системы",
+                de: "Parasympathische Aktivierung",
+                ar: "تنشيط الجهاز السمبتاوي",
+                it: "Attivazione parasimpatica",
+                pt: "Ativação parassimpática"
+            )
+        case .inversion:
+            return LocalizedString(
+                en: "Gravitational decompression",
+                fr: "Décompression gravitationnelle",
+                es: "Descompresión gravitacional",
+                ja: "重力減圧",
+                zh: "重力减压",
+                ko: "중력 감압",
+                ru: "Гравитационная декомпрессия",
+                de: "Gravitationale Dekompression",
+                ar: "تخفيف ضغط الجاذبية",
+                it: "Decompressione gravitazionale",
+                pt: "Descompressão gravitacional"
+            )
         }
     }
 

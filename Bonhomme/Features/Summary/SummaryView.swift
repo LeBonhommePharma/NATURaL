@@ -45,6 +45,10 @@ struct SummaryView: View {
                 doneButton
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            // Ensures Done button is fully scrollable even on smaller screens
+            Color.clear.frame(height: 20)
+        }
         .background(Color(.systemBackground))
         .task {
             guard !hasPersisted else { return }
