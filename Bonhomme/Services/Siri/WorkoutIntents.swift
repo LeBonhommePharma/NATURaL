@@ -187,7 +187,7 @@ struct AppShortcuts: AppShortcutsProvider {
             intent: StartWorkoutPlanIntent(),
             phrases: [
                 "Start \(\.$plan) in \(.applicationName)",
-                "Begin \(\.$plan) workout",
+                "Begin \(\.$plan) workout in \(.applicationName)",
             ],
             shortTitle: "Start Plan",
             systemImageName: "list.bullet"

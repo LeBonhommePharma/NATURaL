@@ -43,9 +43,8 @@ final class MedicationTracker: ObservableObject {
         let records = try await descriptor.result(for: healthStore)
 
         // Parse clinical records into medication profiles
-        for record in records {
-            guard let clinicalRecord = record as? HKClinicalRecord,
-                  let fhirResource = clinicalRecord.fhirResource else { continue }
+        for clinicalRecord in records {
+            guard let fhirResource = clinicalRecord.fhirResource else { continue }
 
             if let profile = parseFHIRMedication(fhirResource, record: clinicalRecord) {
                 if !activeMedications.contains(where: { $0.id == profile.id }) {
@@ -175,7 +174,7 @@ final class MedicationTracker: ObservableObject {
         let samples = try await descriptor.result(for: healthStore)
 
         return samples.compactMap { sample -> HRVSignal? in
-            guard let quantitySample = sample as? HKQuantitySample else { return nil }
+            let quantitySample = sample
             let sdnn = quantitySample.quantity.doubleValue(for: .secondUnit(with: .milli))
             return HRVSignal(
                 timestamp: quantitySample.startDate,
@@ -219,8 +218,7 @@ final class MedicationTracker: ObservableObject {
         // so we generate synthetic RR intervals with SDNN-based jitter.
         var rrSeries: [(timestamp: Date, rrInterval: Double)] = []
 
-        for sample in samples {
-            guard let quantitySample = sample as? HKQuantitySample else { continue }
+        for quantitySample in samples {
             let bpm = quantitySample.quantity.doubleValue(
                 for: HKUnit.count().unitDivided(by: .minute())
             )

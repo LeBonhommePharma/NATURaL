@@ -92,7 +92,7 @@ enum YogaTaskBuilder {
             components.minute = 0
             guard let sessionDate = calendar.date(from: components) else { continue }
 
-            var element = OCKScheduleElement(
+            let element = OCKScheduleElement(
                 start: sessionDate,
                 end: nil,
                 interval: DateComponents(weekOfYear: 1),

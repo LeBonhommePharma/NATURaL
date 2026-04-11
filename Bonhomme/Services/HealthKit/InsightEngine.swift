@@ -88,8 +88,6 @@ final class InsightEngine: ObservableObject {
     private func generateWithFoundationModel(
         _ insights: [SignalType: AnalysisInsight]
     ) async -> String {
-        let prompt = buildInsightPrompt(from: insights)
-
         // FoundationModels integration point:
         // import FoundationModels
         // guard LanguageModelSession.isAvailable else {
@@ -112,8 +110,6 @@ final class InsightEngine: ObservableObject {
         pose: Pose,
         insights: [SignalType: AnalysisInsight]
     ) async -> String? {
-        let prompt = buildPoseCuePrompt(pose: pose, insights: insights)
-
         // FoundationModels integration point:
         // guard LanguageModelSession.isAvailable else { return nil }
         // do {
@@ -132,8 +128,6 @@ final class InsightEngine: ObservableObject {
         result: WorkoutResult,
         insights: [SignalType: AnalysisInsight]
     ) async -> String {
-        let prompt = buildWorkoutSummaryPrompt(result: result, insights: insights)
-
         // FoundationModels integration point:
         // guard LanguageModelSession.isAvailable else {
         //     return generateSummaryWithTemplates(result: result, insights: insights)

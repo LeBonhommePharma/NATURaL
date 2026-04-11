@@ -32,15 +32,17 @@ final class HealthKitManager: Sendable {
             // Sleep & mindfulness
             HKCategoryType(.sleepAnalysis),
             HKCategoryType(.mindfulSession),
+
+            // ECG for high-fidelity RR intervals (Apple Watch Series 4+)
+            HKObjectType.electrocardiogramType(),
         ]
 
-        // Clinical medication records (requires Health Records entitlement)
-        if HKHealthStore.isHealthDataAvailable() {
-            typesToRead.insert(HKClinicalType(.medicationRecord))
-        }
-
-        // ECG for high-fidelity RR intervals (Apple Watch Series 4+)
-        typesToRead.insert(HKObjectType.electrocardiogramType())
+        // NOTE: HKClinicalType(.medicationRecord) is intentionally excluded.
+        // It requires the "Health Records" entitlement (com.apple.developer.healthkit.background-delivery
+        // + clinical-health-records) which is not provisioned for this app.
+        // Requesting it without that entitlement causes requestAuthorization() to throw
+        // BEFORE the permission sheet appears, leaving HealthKit permanently unauthorized
+        // and producing the forever-loading-screen symptom at launch.
 
         let typesToShare: Set<HKSampleType> = [
             HKQuantityType(.activeEnergyBurned),
@@ -115,7 +117,7 @@ final class HealthKitManager: Sendable {
         let samples = try await descriptor.result(for: healthStore)
 
         return samples.compactMap { sample -> (sdnn: Double, timestamp: Date)? in
-            guard let quantitySample = sample as? HKQuantitySample else { return nil }
+            let quantitySample = sample
             let sdnn = quantitySample.quantity.doubleValue(for: .secondUnit(with: .milli))
             return (sdnn: sdnn, timestamp: quantitySample.startDate)
         }

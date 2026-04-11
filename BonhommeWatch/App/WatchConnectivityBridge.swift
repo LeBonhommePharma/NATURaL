@@ -27,11 +27,25 @@ final class WatchConnectivityBridge: NSObject {
     // MARK: - Session Activation
 
     private func activateSession() {
-        guard WCSession.isSupported() else { return }
+        guard WCSession.isSupported() else {
+            print("⚠️ WatchConnectivity is not supported on this device")
+            return
+        }
+        
         let session = WCSession.default
         session.delegate = self
+        
+        // FIX: Check if session is already activated to prevent pairing ID conflicts
+        if session.activationState == .activated {
+            print("✅ WCSession already activated")
+            wcSession = session
+            isReachable = session.isReachable
+            return
+        }
+        
         session.activate()
         wcSession = session
+        print("🔄 WCSession activation requested")
     }
 
     // MARK: - Real-Time Biofeedback Relay
@@ -130,13 +144,40 @@ extension WatchConnectivityBridge: WCSessionDelegate {
         error: Error?
     ) {
         Task { @MainActor in
-            isReachable = session.isReachable
+            if let error = error {
+                print("❌ WCSession activation failed: \(error.localizedDescription)")
+                isReachable = false
+                return
+            }
+            
+            switch activationState {
+            case .activated:
+                print("✅ WCSession activated successfully")
+                isReachable = session.isReachable
+                if !session.isReachable {
+                    print("⚠️ Watch is not reachable (may be disconnected or out of range)")
+                }
+            case .inactive:
+                print("⚠️ WCSession is inactive")
+                isReachable = false
+            case .notActivated:
+                print("⚠️ WCSession is not activated")
+                isReachable = false
+            @unknown default:
+                print("⚠️ WCSession unknown activation state")
+                isReachable = false
+            }
         }
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in
             isReachable = session.isReachable
+            if session.isReachable {
+                print("✅ Watch became reachable")
+            } else {
+                print("⚠️ Watch became unreachable")
+            }
         }
     }
 

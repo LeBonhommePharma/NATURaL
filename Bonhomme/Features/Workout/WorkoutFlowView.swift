@@ -147,7 +147,7 @@ struct WorkoutFlowView: View {
                 let insight = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)
                 SCIVisualizationView(
                     score: insight?.score,
-                    trend: insight?.trend.asSCITrend
+                    trend: insight?.trend.asSCITrend ?? .stable
                 )
                 .frame(width: 120, height: 120)
 
@@ -384,14 +384,4 @@ struct WorkoutFlowView: View {
     }
 }
 
-// MARK: - InsightTrend → SCITrend Bridge
-
-extension InsightTrend {
-    var asSCITrend: SCITrend {
-        switch self {
-        case .improving: return .improving
-        case .stable: return .stable
-        case .declining: return .declining
-        }
-    }
-}
+// InsightTrend → SCITrend bridge is defined in BonhommeCore/TVDisplay/TVDisplayPayload.swift

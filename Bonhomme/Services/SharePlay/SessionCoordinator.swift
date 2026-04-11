@@ -1,5 +1,6 @@
 import GroupActivities
 import Combine
+import Dispatch
 
 /// Coordinates workout state across SharePlay participants using GroupSessionMessenger.
 @MainActor

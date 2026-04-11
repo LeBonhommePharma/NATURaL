@@ -94,7 +94,7 @@ final class CareKitBridge: ObservableObject {
 
         let eventIndex = events.isEmpty ? 0 : 0 // Use first event of the day
 
-        var outcome = OCKOutcome(
+        let outcome = OCKOutcome(
             taskUUID: task.uuid,
             taskOccurrenceIndex: eventIndex,
             values: outcomeValues

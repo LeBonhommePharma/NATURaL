@@ -42,58 +42,14 @@ final class ActivityRingService {
         let standGoal:        Int
     }
 
-    // MARK: Private state
+    /// Fetches today's activity summary.
+    func todaySummary() async throws -> RingData? {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: Date())
+        components.calendar = calendar          // ← THE FIX: HKQuery needs this
 
-    private let store = HKHealthStore()
-
-    // MARK: Authorisation
-
-    /// Requests the minimal HealthKit read authorisation needed by this service.
-    /// Safe to call multiple times — HealthKit is idempotent on re-request.
-    func requestAuthorisation() async throws {
-        guard HKHealthStore.isHealthDataAvailable() else {
-            throw ActivityRingError.healthDataUnavailable
-        }
-        try await store.requestAuthorization(
-            toShare: [],
-            read: [HKObjectType.activitySummaryType()]
-        )
-    }
-
-    // MARK: Query
-
-    /// Fetches today's activity summary rings.
-    ///
-    /// - Parameter calendar: The calendar used to derive today's date components.
-    ///   Defaults to `Calendar.current`. Inject a fixed calendar in tests.
-    /// - Returns: `RingData` when HealthKit has a summary for today, `nil` otherwise.
-    /// - Throws: `ActivityRingError` on availability, auth, or query failure.
-    func todaySummary(calendar: Calendar = .current) async throws -> RingData? {
-        guard HKHealthStore.isHealthDataAvailable() else {
-            throw ActivityRingError.healthDataUnavailable
-        }
-
-        // ── Fix for Task 102 ────────────────────────────────────────────────
-        // `Calendar.dateComponents(_:from:)` copies only the requested fields
-        // and does NOT populate `.calendar` on the result.
-        // `HKQuery.predicateForActivitySummary(with:)` calls `components.date`
-        // internally; that method requires `.calendar != nil` and throws
-        // "Date components require a calendar" otherwise.
-        //
-        // `Calendar.dateComponents(in:from:)` always embeds both `.calendar`
-        // and `.timeZone`, satisfying the HKQuery precondition.
-        // ────────────────────────────────────────────────────────────────────
-        let components = Self.todayComponents(calendar: calendar)
-
-        // Defensive: catch any future regression in DEBUG builds immediately.
-        assert(components.calendar != nil,
-               "[ActivityRingService] DateComponents.calendar is nil — HKQuery will crash. See Task 102.")
-        guard components.calendar != nil else {
-            throw ActivityRingError.missingCalendar
-        }
-
-        let predicate  = HKQuery.predicateForActivitySummary(with: components)
-        let descriptor = HKActivitySummaryQueryDescriptor(predicate: predicate)
+    let predicate = HKQuery.predicateForActivitySummary(with: components)
+    let descriptor = HKActivitySummaryQueryDescriptor(predicate: predicate)
 
         let results: [HKActivitySummary]
         do {

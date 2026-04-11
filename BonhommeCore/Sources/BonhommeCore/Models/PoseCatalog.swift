@@ -1,5 +1,133 @@
 import Foundation
 
+// MARK: - Supporting Types
+
+/// Yoga styles available in the app.
+public enum YogaStyle: String, Codable, Sendable, CaseIterable {
+    case chairYoga
+    case vinyasa
+    case hatha
+    case yin
+    case restorative
+    case power
+    case standingBalance
+    case prenatal
+    case pranayama
+    
+    public var localizedName: LocalizedString {
+        switch self {
+        case .chairYoga:
+            return LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise", es: "Yoga en silla", ja: "チェアヨガ", zh: "椅子瑜伽", ko: "의자 요가", ru: "Йога на стуле", de: "Stuhl-Yoga", ar: "يوغا الكرسي")
+        case .vinyasa:
+            return LocalizedString(en: "Vinyasa", fr: "Vinyasa", es: "Vinyasa", ja: "ヴィンヤサ", zh: "流瑜伽", ko: "빈야사", ru: "Виньяса", de: "Vinyasa", ar: "فينياسا")
+        case .hatha:
+            return LocalizedString(en: "Hatha", fr: "Hatha", es: "Hatha", ja: "ハタ", zh: "哈他瑜伽", ko: "하타", ru: "Хатха", de: "Hatha", ar: "هاثا")
+        case .yin:
+            return LocalizedString(en: "Yin", fr: "Yin", es: "Yin", ja: "陰ヨガ", zh: "阴瑜伽", ko: "음", ru: "Инь", de: "Yin", ar: "يين")
+        case .restorative:
+            return LocalizedString(en: "Restorative", fr: "Réparateur", es: "Restaurativo", ja: "リストラティブ", zh: "恢复性瑜伽", ko: "회복", ru: "Восстановительная", de: "Erholsam", ar: "استعادي")
+        case .power:
+            return LocalizedString(en: "Power", fr: "Power", es: "Power", ja: "パワー", zh: "力量瑜伽", ko: "파워", ru: "Силовая", de: "Power", ar: "قوة")
+        case .standingBalance:
+            return LocalizedString(en: "Standing Balance", fr: "Équilibre debout", es: "Equilibrio de pie", ja: "立位バランス", zh: "站立平衡", ko: "서서 균형", ru: "Баланс стоя", de: "Stehbalance", ar: "توازن الوقوف")
+        case .prenatal:
+            return LocalizedString(en: "Prenatal", fr: "Prénatal", es: "Prenatal", ja: "マタニティ", zh: "孕期瑜伽", ko: "산전", ru: "Пренатальная", de: "Pränatal", ar: "ما قبل الولادة")
+        case .pranayama:
+            return LocalizedString(en: "Pranayama", fr: "Pranayama", es: "Pranayama", ja: "プラナヤマ", zh: "呼吸法", ko: "호흡법", ru: "Пранаяма", de: "Pranayama", ar: "براناياما")
+        }
+    }
+
+    public var localizedDescription: LocalizedString {
+        switch self {
+        case .chairYoga:
+            return LocalizedString(en: "Accessible yoga performed while seated in a chair, ideal for all fitness levels.", fr: "Yoga accessible pratiqué assis sur une chaise, idéal pour tous les niveaux de forme physique.")
+        case .vinyasa:
+            return LocalizedString(en: "A flowing style linking breath with movement through dynamic pose sequences.", fr: "Un style fluide reliant la respiration au mouvement à travers des séquences de postures dynamiques.")
+        case .hatha:
+            return LocalizedString(en: "A classical style focusing on physical postures and breathing techniques at a slower pace.", fr: "Un style classique axé sur les postures physiques et les techniques de respiration à un rythme plus lent.")
+        case .yin:
+            return LocalizedString(en: "Long-held passive poses targeting deep connective tissue for flexibility and relaxation.", fr: "Des postures passives tenues longtemps ciblant les tissus conjonctifs profonds pour la flexibilité et la relaxation.")
+        case .restorative:
+            return LocalizedString(en: "Deeply supported poses using props to promote full relaxation and stress relief.", fr: "Postures profondément soutenues utilisant des accessoires pour favoriser une relaxation totale et soulager le stress.")
+        case .power:
+            return LocalizedString(en: "A vigorous, fitness-based approach building strength, stamina, and flexibility.", fr: "Une approche vigoureuse basée sur la forme physique pour développer la force, l'endurance et la flexibilité.")
+        case .standingBalance:
+            return LocalizedString(en: "Standing poses that develop stability, coordination, and lower-body strength.", fr: "Postures debout qui développent la stabilité, la coordination et la force du bas du corps.")
+        case .prenatal:
+            return LocalizedString(en: "Gentle yoga adapted for pregnancy, supporting comfort, breath, and body awareness.", fr: "Yoga doux adapté à la grossesse, favorisant le confort, la respiration et la conscience corporelle.")
+        case .pranayama:
+            return LocalizedString(en: "Breathing exercises that regulate energy, calm the mind, and enhance focus.", fr: "Exercices de respiration qui régulent l'énergie, apaisent l'esprit et améliorent la concentration.")
+        }
+    }
+    
+    public var symbolName: String {
+        switch self {
+        case .chairYoga: return "figure.seated.side"
+        case .vinyasa: return "figure.yoga"
+        case .hatha: return "figure.flexibility"
+        case .yin: return "moon.zzz"
+        case .restorative: return "leaf.fill"
+        case .power: return "bolt.fill"
+        case .standingBalance: return "figure.stand"
+        case .prenatal: return "heart.fill"
+        case .pranayama: return "wind"
+        }
+    }
+    
+    public var accentHue: Double {
+        switch self {
+        case .chairYoga: return 0.55
+        case .vinyasa: return 0.60
+        case .hatha: return 0.35
+        case .yin: return 0.75
+        case .restorative: return 0.30
+        case .power: return 0.05
+        case .standingBalance: return 0.65
+        case .prenatal: return 0.95
+        case .pranayama: return 0.50
+        }
+    }
+}
+
+/// A structured workout plan consisting of multiple poses.
+public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
+    public let id: String
+    public let name: LocalizedString
+    public let description: LocalizedString
+    public let style: YogaStyle
+    public let poses: [Pose]
+    /// Seconds between pose holds during which the cue for the next pose is shown.
+    public let transitionSeconds: TimeInterval
+    public let isFree: Bool
+
+    public init(
+        id: String,
+        name: LocalizedString,
+        description: LocalizedString,
+        style: YogaStyle = .chairYoga,
+        poses: [Pose],
+        transitionSeconds: TimeInterval = 5,
+        isFree: Bool = false
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.style = style
+        self.poses = poses
+        self.transitionSeconds = transitionSeconds
+        self.isFree = isFree
+    }
+
+    public var poseCount: Int { poses.count }
+
+    /// Total session time: sum of all pose durations plus transition intervals between them.
+    public var totalDuration: TimeInterval {
+        let poseDuration = poses.reduce(0) { $0 + $1.durationSeconds }
+        let transitions = poses.count > 1 ? TimeInterval(poses.count - 1) * transitionSeconds : 0
+        return poseDuration + transitions
+    }
+}
+
 /// Central pose and workout plan registry aggregating all yoga styles.
 ///
 /// Each style contributes its poses and plans via extensions in dedicated files
@@ -19,7 +147,9 @@ public enum PoseCatalog {
             ko: "앉은 산 자세",
             ru: "Поза горы сидя",
             de: "Sitzender Berg",
-            ar: "وضعية الجبل جلوساً"
+            ar: "وضعية الجبل جلوساً",
+            it: "Montagna Seduta",
+            pt: "Montanha Sentada"
         ),
         description: LocalizedString(
             en: "Sit tall at the front edge of your chair, feet hip-width apart and flat on the floor. Place hands on thighs, palms down. Roll shoulders back and down, lengthen through the crown of your head.",
@@ -649,7 +779,7 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atmung, einatmen um die Ellbogen zu heben, ausatmen um die Schultern zu lösen",
             ar: "تنفس ثابت، استنشق لرفع المرفقين، وازفر لإرخاء الكتفين"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedPigeon = Pose(
@@ -742,7 +872,7 @@ public enum PoseCatalog {
             de: "Langsames Ausatmen, um in die Hüftdehnung loszulassen",
             ar: "زفير بطيء للاسترخاء في تمدد الورك"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedWarriorII = Pose(
@@ -826,7 +956,7 @@ public enum PoseCatalog {
             de: "Starke gleichmäßige Atemzüge, einatmen zum Verlängern, ausatmen zum Erden",
             ar: "أنفاس قوية وثابتة، استنشق للاستطالة، وازفر للثبات"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedSideBend = Pose(
@@ -910,7 +1040,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Verlängern, ausatmen um tiefer zu beugen",
             ar: "استنشق للاستطالة، وازفر للانحناء أعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedHeartOpener = Pose(
@@ -994,7 +1124,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Öffnen, ausatmen um die Anstrengung zu mildern",
             ar: "استنشق للانفتاح، وازفر لتخفيف الجهد"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedAnklesToKnees = Pose(
@@ -1078,7 +1208,7 @@ public enum PoseCatalog {
             de: "Langsame Atemzüge, ausatmen um in die Hüftdehnung loszulassen",
             ar: "أنفاس بطيئة، ازفر للاسترخاء في تمدد الورك"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedExtendedSideBend = Pose(
@@ -1162,7 +1292,7 @@ public enum PoseCatalog {
             de: "Einatmen um die Körperseite zu verlängern, ausatmen um zu vertiefen",
             ar: "استنشق لإطالة جانب الجسم، وازفر للتعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     // MARK: - Advanced Poses (Premium)
@@ -1248,7 +1378,7 @@ public enum PoseCatalog {
             de: "Ein Einatmen oder Ausatmen pro Bewegung — koordinierte Atem-Bewegung",
             ar: "شهيق أو زفير واحد لكل حركة — تنسيق بين النَّفَس والحركة"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedTreePose = Pose(
@@ -1332,7 +1462,7 @@ public enum PoseCatalog {
             de: "Gleichmäßige, ruhige Atemzüge zur Aufrechterhaltung des Gleichgewichts",
             ar: "أنفاس ثابتة وهادئة للحفاظ على التوازن"
         ),
-        isFree: false
+        isFree: true
     )
 
     // MARK: - Additional Poses
@@ -1642,7 +1772,7 @@ public enum PoseCatalog {
             de: "Tiefe Bauchatmung, ausatmen um weiter zu öffnen",
             ar: "أنفاس بطنية عميقة، ازفر لتفتح أوسع"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedReverseWarrior = Pose(
@@ -1726,7 +1856,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Strecken, ausatmen um tiefer einzusinken",
             ar: "استنشق للامتداد، وازفر للاستقرار أعمق"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedCrescentMoon = Pose(
@@ -1810,7 +1940,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Hochstrecken, ausatmen zum Seitenbeugen",
             ar: "استنشق للاستطالة للأعلى، وازفر للانحناء إلى الجانب"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedChestExpansion = Pose(
@@ -1894,7 +2024,7 @@ public enum PoseCatalog {
             de: "Einatmen zum Heben und Erweitern, ausatmen zum Lösen",
             ar: "استنشق للرفع والتوسع، وازفر للإرخاء"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedThreadTheNeedle = Pose(
@@ -1978,7 +2108,7 @@ public enum PoseCatalog {
             de: "Ausatmen um tiefer zu fädeln, einatmen um Raum zu schaffen",
             ar: "ازفر للتمرير أعمق، واستنشق لخلق مساحة"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedBreathOfJoy = Pose(
@@ -2071,7 +2201,7 @@ public enum PoseCatalog {
             de: "Drei Stakkato-Einatmungen durch die Nase, eine vollständige Ausatmung durch den Mund",
             ar: "ثلاث شهقات متقطعة من الأنف، وزفير كامل واحد من الفم"
         ),
-        isFree: false
+        isFree: true
     )
 
     public static let seatedHalfMoon = Pose(
@@ -2155,8 +2285,385 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atemzüge zur Aufrechterhaltung des Gleichgewichts — ausatmen um weiter zu strecken",
             ar: "أنفاس ثابتة للحفاظ على التوازن — ازفر للامتداد أبعد"
         ),
-        isFree: false
+        isFree: true
     )
+
+    // MARK: - Workout Plan Collections
+
+    /// Chair Yoga — all plans use the full seated pose library.
+    public static let chairYogaPlans: [WorkoutPlan] = [
+
+        // 1. Beginner Flow (free) — 5 poses, ~4 min
+        WorkoutPlan(
+            id: "chair-beginner-flow",
+            name: LocalizedString(
+                en: "Beginner Flow", fr: "Flux débutant",
+                es: "Flujo para principiantes", ja: "初心者フロー",
+                zh: "初学者流", ko: "초보자 플로우"
+            ),
+            description: LocalizedString(
+                en: "A gentle 5-pose introduction to seated yoga — breath, posture, and calm.",
+                fr: "Une douce introduction au yoga assis en 5 postures — souffle, posture et calme."
+            ),
+            style: .chairYoga,
+            poses: [seatedMountain, neckRolls, shoulderRolls, seatedCatCow, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+
+        // 2. Morning Mobility (free) — 6 poses, ~7 min
+        WorkoutPlan(
+            id: "chair-morning-mobility",
+            name: LocalizedString(
+                en: "Morning Mobility", fr: "Mobilité matinale",
+                es: "Movilidad matutina", ja: "朝のモビリティ",
+                zh: "晨间活动", ko: "아침 모빌리티"
+            ),
+            description: LocalizedString(
+                en: "Wake up the spine and joints with 6 energising seated poses.",
+                fr: "Réveillez la colonne et les articulations avec 6 postures assises tonifiantes."
+            ),
+            style: .chairYoga,
+            poses: [seatedMountain, seatedCatCow, shoulderRolls, seatedSpinalTwist, seatedForwardFold, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+
+        // 3. Full Body Flow (premium) — 8 poses, ~16 min
+        WorkoutPlan(
+            id: "chair-full-body-flow",
+            name: LocalizedString(
+                en: "Full Body Flow", fr: "Flux corps entier",
+                es: "Flujo de cuerpo completo", ja: "全身フロー",
+                zh: "全身流", ko: "전신 플로우"
+            ),
+            description: LocalizedString(
+                en: "An intermediate 8-pose sequence targeting strength, flexibility, and balance.",
+                fr: "Une séquence intermédiaire de 8 postures pour la force, la souplesse et l'équilibre."
+            ),
+            style: .chairYoga,
+            poses: [seatedMountain, seatedEagleArms, seatedWarriorII, seatedSideBend,
+                    seatedSpinalTwist, seatedPigeon, seatedHeartOpener, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: false
+        ),
+
+        // 4. Deep Stretch (premium) — 7 poses, ~18 min
+        WorkoutPlan(
+            id: "chair-deep-stretch",
+            name: LocalizedString(
+                en: "Deep Stretch", fr: "Étirement profond",
+                es: "Estiramiento profundo", ja: "ディープストレッチ",
+                zh: "深度拉伸", ko: "딥 스트레치"
+            ),
+            description: LocalizedString(
+                en: "Long-hold poses releasing hip flexors, hamstrings, and upper back tension.",
+                fr: "Postures tenues longtemps pour relâcher les fléchisseurs de hanches, les ischio-jambiers et les tensions du haut du dos."
+            ),
+            style: .chairYoga,
+            poses: [seatedMountain, seatedAnklesToKnees, seatedPigeon, seatedForwardFold,
+                    seatedThreadTheNeedle, seatedExtendedSideBend, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: false
+        ),
+
+        // 5. Power Chair (premium) — 7 poses, ~15 min
+        WorkoutPlan(
+            id: "chair-power",
+            name: LocalizedString(
+                en: "Power Chair", fr: "Chaise puissance",
+                es: "Silla de poder", ja: "パワーチェア",
+                zh: "力量椅式", ko: "파워 체어"
+            ),
+            description: LocalizedString(
+                en: "High-energy seated sequence for strength and cardiovascular activation.",
+                fr: "Séquence assise haute énergie pour la force et l'activation cardiovasculaire."
+            ),
+            style: .chairYoga,
+            poses: [seatedHighKneeLifts, seatedGoddess, seatedWarriorII, seatedReverseWarrior,
+                    seatedCrescentMoon, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 4,
+            isFree: false
+        ),
+
+        // 6. Advanced Flow (premium) — 6 poses, ~20 min
+        WorkoutPlan(
+            id: "chair-advanced-flow",
+            name: LocalizedString(
+                en: "Advanced Flow", fr: "Flux avancé",
+                es: "Flujo avanzado", ja: "上級フロー",
+                zh: "进阶流", ko: "고급 플로우"
+            ),
+            description: LocalizedString(
+                en: "Challenging seated sequences demanding full-body coordination and focus.",
+                fr: "Séquences assises exigeantes demandant coordination et concentration à corps entier."
+            ),
+            style: .chairYoga,
+            poses: [seatedSunSalutation, seatedTreePose, seatedHalfMoon,
+                    seatedChestExpansion, seatedThreadTheNeedle, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: false
+        ),
+    ]
+
+    /// Vinyasa — breath-linked dynamic flow adapted to chair.
+    public static let vinyasaPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "vinyasa-seated-flow",
+            name: LocalizedString(en: "Seated Vinyasa Flow", fr: "Flux Vinyasa assis"),
+            description: LocalizedString(
+                en: "Breath-synchronized seated sequences building heat and momentum.",
+                fr: "Séquences assises synchronisées avec la respiration pour construire chaleur et élan."
+            ),
+            style: .vinyasa,
+            poses: [seatedMountain, seatedSunSalutation, seatedWarriorII, seatedReverseWarrior,
+                    seatedCrescentMoon, seatedGoddess, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 4,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "vinyasa-power-flow",
+            name: LocalizedString(en: "Power Vinyasa", fr: "Vinyasa puissance"),
+            description: LocalizedString(
+                en: "Vigorous linked movement building endurance and whole-body awareness.",
+                fr: "Mouvement lié vigoureux pour développer l'endurance et la conscience corporelle."
+            ),
+            style: .vinyasa,
+            poses: [seatedSunSalutation, seatedHighKneeLifts, seatedGoddess, seatedWarriorII,
+                    seatedReverseWarrior, seatedHalfMoon, seatedChestExpansion, seatedMeditation],
+            transitionSeconds: 3,
+            isFree: false
+        ),
+    ]
+
+    /// Hatha — classical slow-paced posture work.
+    public static let hathaPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "hatha-foundation",
+            name: LocalizedString(en: "Hatha Foundation", fr: "Fondation Hatha"),
+            description: LocalizedString(
+                en: "Classical held postures building alignment, breath, and body awareness.",
+                fr: "Postures classiques tenues pour l'alignement, la respiration et la conscience corporelle."
+            ),
+            style: .hatha,
+            poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedForwardFold,
+                    seatedHeartOpener, seatedAnklesToKnees, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "hatha-balance",
+            name: LocalizedString(en: "Hatha Balance", fr: "Équilibre Hatha"),
+            description: LocalizedString(
+                en: "Balancing seated postures to ground the nervous system and refine focus.",
+                fr: "Postures assises d'équilibre pour ancrer le système nerveux et affiner la concentration."
+            ),
+            style: .hatha,
+            poses: [seatedMountain, seatedTreePose, seatedEagleArms, seatedSideBend,
+                    seatedExtendedSideBend, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: false
+        ),
+    ]
+
+    /// Yin — long-hold passive stretches for deep tissue release.
+    public static let yinPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "yin-hip-opener",
+            name: LocalizedString(en: "Yin Hip Opener", fr: "Ouverture des hanches Yin"),
+            description: LocalizedString(
+                en: "Slow, deep hip and connective tissue release. Each pose held 2–3 minutes.",
+                fr: "Relâchement lent et profond des hanches et des tissus conjonctifs. Chaque posture tenue 2 à 3 minutes."
+            ),
+            style: .yin,
+            poses: [seatedMountain, seatedAnklesToKnees, seatedPigeon,
+                    seatedForwardFold, seatedThreadTheNeedle, seatedMeditation],
+            transitionSeconds: 10,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "yin-spine-release",
+            name: LocalizedString(en: "Yin Spine Release", fr: "Libération de la colonne Yin"),
+            description: LocalizedString(
+                en: "Passive spinal decompression targeting thoracic and lumbar meridians.",
+                fr: "Décompression spinale passive ciblant les méridiens thoraciques et lombaires."
+            ),
+            style: .yin,
+            poses: [seatedCatCow, seatedSpinalTwist, seatedForwardFold,
+                    seatedExtendedSideBend, seatedChestExpansion, seatedMeditation],
+            transitionSeconds: 10,
+            isFree: false
+        ),
+    ]
+
+    /// Restorative — deeply supported relaxation and nervous system reset.
+    public static let restorativePlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "restorative-calm",
+            name: LocalizedString(en: "Deep Calm", fr: "Calme profond"),
+            description: LocalizedString(
+                en: "Slow, supportive poses to down-regulate the nervous system and release tension.",
+                fr: "Postures lentes et soutenues pour réguler le système nerveux et relâcher les tensions."
+            ),
+            style: .restorative,
+            poses: [seatedMountain, neckRolls, shoulderRolls, seatedHeartOpener,
+                    seatedForwardFold, seatedMeditation],
+            transitionSeconds: 10,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "restorative-recovery",
+            name: LocalizedString(en: "Active Recovery", fr: "Récupération active"),
+            description: LocalizedString(
+                en: "Post-exertion restoration releasing muscle tension and promoting recovery.",
+                fr: "Récupération post-effort relâchant les tensions musculaires et favorisant la guérison."
+            ),
+            style: .restorative,
+            poses: [seatedMountain, seatedAnkleCircles, seatedWristStretches,
+                    seatedChestExpansion, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: false
+        ),
+    ]
+
+    /// Power — vigorous strength and endurance work.
+    public static let powerPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "power-ignite",
+            name: LocalizedString(en: "Ignite", fr: "Ignition"),
+            description: LocalizedString(
+                en: "High-energy seated power sequence to build strength and cardiovascular fitness.",
+                fr: "Séquence assise haute énergie pour développer la force et la condition cardiovasculaire."
+            ),
+            style: .power,
+            poses: [seatedHighKneeLifts, seatedGoddess, seatedWarriorII,
+                    seatedReverseWarrior, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 3,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "power-full-burn",
+            name: LocalizedString(en: "Full Burn", fr: "Combustion totale"),
+            description: LocalizedString(
+                en: "Maximum-effort seated sequence targeting every major muscle group.",
+                fr: "Séquence assise à effort maximal ciblant chaque groupe musculaire principal."
+            ),
+            style: .power,
+            poses: [seatedHighKneeLifts, seatedSunSalutation, seatedGoddess, seatedWarriorII,
+                    seatedReverseWarrior, seatedCrescentMoon, seatedHalfMoon, seatedMeditation],
+            transitionSeconds: 3,
+            isFree: false
+        ),
+    ]
+
+    /// Standing Balance — stability and proprioception training.
+    public static let standingBalancePlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "balance-foundations",
+            name: LocalizedString(en: "Balance Foundations", fr: "Fondations d'équilibre"),
+            description: LocalizedString(
+                en: "Chair-assisted balance poses building stability and lower-body proprioception.",
+                fr: "Postures d'équilibre assistées par chaise pour la stabilité et la proprioception du bas du corps."
+            ),
+            style: .standingBalance,
+            poses: [seatedMountain, seatedTreePose, seatedWarriorII,
+                    seatedHalfMoon, seatedAnkleCircles, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "balance-challenge",
+            name: LocalizedString(en: "Balance Challenge", fr: "Défi d'équilibre"),
+            description: LocalizedString(
+                en: "Advanced balance and coordination work demanding full-body integration.",
+                fr: "Travail avancé d'équilibre et de coordination demandant une intégration corporelle complète."
+            ),
+            style: .standingBalance,
+            poses: [seatedTreePose, seatedHalfMoon, seatedEagleArms,
+                    seatedReverseWarrior, seatedCrescentMoon, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: false
+        ),
+    ]
+
+    /// Prenatal — gentle, body-aware practice safe for pregnancy.
+    public static let prenatalPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "prenatal-gentle",
+            name: LocalizedString(en: "Gentle Prenatal", fr: "Prénatal doux"),
+            description: LocalizedString(
+                en: "Soft, supportive seated poses promoting comfort, breath, and body awareness during pregnancy.",
+                fr: "Postures assises douces et soutenues favorisant le confort, la respiration et la conscience corporelle pendant la grossesse."
+            ),
+            style: .prenatal,
+            poses: [seatedMountain, neckRolls, shoulderRolls, seatedAnkleCircles,
+                    seatedWristStretches, seatedHeartOpener, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "prenatal-breath-body",
+            name: LocalizedString(en: "Breath & Body", fr: "Souffle et corps"),
+            description: LocalizedString(
+                en: "Breathing-centred movement to reduce tension and connect with the breath.",
+                fr: "Mouvement centré sur la respiration pour réduire les tensions et se connecter au souffle."
+            ),
+            style: .prenatal,
+            poses: [seatedMountain, seatedCatCow, seatedSpinalTwist,
+                    seatedForwardFold, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: false
+        ),
+    ]
+
+    /// Pranayama — breath-regulation and mindful focus.
+    public static let pranayamaPlans: [WorkoutPlan] = [
+
+        WorkoutPlan(
+            id: "pranayama-foundations",
+            name: LocalizedString(en: "Breath Foundations", fr: "Fondations du souffle"),
+            description: LocalizedString(
+                en: "Essential pranayama techniques: ujjayi, sitali, and diaphragmatic breath awareness.",
+                fr: "Techniques essentielles de pranayama : ujjayi, sitali et conscience diaphragmatique."
+            ),
+            style: .pranayama,
+            poses: [seatedMountain, seatedBreathOfJoy, seatedHeartOpener,
+                    shoulderRolls, neckRolls, seatedMeditation],
+            transitionSeconds: 10,
+            isFree: true
+        ),
+
+        WorkoutPlan(
+            id: "pranayama-energy",
+            name: LocalizedString(en: "Energy Breath", fr: "Souffle d'énergie"),
+            description: LocalizedString(
+                en: "Energising pranayama sequence to raise prana, clear the mind, and sharpen focus.",
+                fr: "Séquence de pranayama énergisante pour élever le prana, clarifier l'esprit et aiguiser la concentration."
+            ),
+            style: .pranayama,
+            poses: [seatedMountain, seatedBreathOfJoy, seatedGoddess,
+                    seatedChestExpansion, seatedSunSalutation, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: false
+        ),
+    ]
+
+    /// Default beginner chair yoga plan — first in chairYogaPlans.
+    public static var beginnerFlow: WorkoutPlan { chairYogaPlans[0] }
 
     // MARK: - Pose Collections
 

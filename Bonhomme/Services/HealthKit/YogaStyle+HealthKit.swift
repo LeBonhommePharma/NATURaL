@@ -2,9 +2,7 @@ import HealthKit
 import BonhommeCore
 
 extension YogaStyle {
-    /// Maps yoga style to the most appropriate HKWorkoutActivityType.
-    /// All yoga styles map to `.yoga` except pranayama which maps to `.mindAndBody`,
-    /// mirroring Apple Fitness+ categorization.
+    /// Maps yoga style to the most appropriate HealthKit workout activity type.
     var healthKitActivityType: HKWorkoutActivityType {
         switch self {
         case .pranayama:
