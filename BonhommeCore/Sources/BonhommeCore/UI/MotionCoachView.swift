@@ -112,12 +112,14 @@ public struct MotionCoachView: View {
                                     wave: ghostWave
                                 )
                                 let fade = 0.12 - Double(i) * 0.025
-
-                                Image(systemName: profile.primarySymbol)
-                                    .font(.system(size: size * 0.34, weight: .thin))
-                                    .foregroundStyle(
-                                        Color(hue: profile.accentHue, saturation: 0.74, brightness: 0.98)
-                                            .opacity(max(fade, 0))
+                                StickFigureKinematicsView(
+                                    pose: pose,
+                                    phase: phase,
+                                    smooth: gs,
+                                    wave: ghostWave
+                                )
+                                    .frame(width: size * 0.58, height: size * 0.58)
+                                    .opacity(max(fade, 0))
                                     )
                                     .rotationEffect(.degrees(gRot))
                                     .offset(x: gOffX, y: gOffY)
@@ -128,18 +130,13 @@ public struct MotionCoachView: View {
 
                         // Central figure: pose-specific kinematic displacement
                         let (offX, offY, rot) = profile.limbOffset(smooth: smooth, wave: wave)
-                        Image(systemName: profile.primarySymbol)
-                            .font(.system(size: size * 0.38, weight: .regular))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.97),
-                                        Color(hue: profile.accentHue, saturation: 0.58, brightness: 0.98)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
+                        StickFigureKinematicsView(
+                            pose: pose,
+                            phase: phase,
+                            smooth: smooth,
+                            wave: wave
+                        )
+                            .frame(width: size * 0.62, height: size * 0.62)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.45), radius: 4)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.28), radius: 16)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.14), radius: 32)
@@ -190,6 +187,246 @@ public struct MotionCoachView: View {
     }
 }
 
+// MARK: - Stick figure kinematics
+
+private struct StickFigureKinematicsView: View {
+    let pose: Pose
+    let phase: MotionCoachPhase
+    let smooth: Double
+    let wave: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let center = CGPoint(x: geo.size.width / 2.0, y: geo.size.height / 2.0)
+            let profile = StickFigureMotionProfile(
+                category: pose.category,
+                difficulty: pose.difficulty,
+                phase: phase
+            )
+
+            let cycle = smooth * .pi * 2.0
+            let torsoTilt = profile.torsoTiltRadians * wave
+            let torsoBob = profile.verticalBob * cos(cycle) * size
+            let sway = profile.lateralSway * sin(cycle) * size
+
+            let pelvis = CGPoint(
+                x: center.x + sway,
+                y: center.y + size * 0.10 + torsoBob
+            )
+            let torsoLength = size * 0.30
+            let neck = point(from: pelvis, length: torsoLength, angle: -.pi / 2.0 + torsoTilt)
+            let headRadius = size * 0.075
+            let headCenter = point(from: neck, length: headRadius * 1.6, angle: -.pi / 2.0 + torsoTilt)
+
+            let shoulderHalfWidth = size * 0.14
+            let hipHalfWidth = size * 0.10
+            let shoulderAxis = torsoTilt
+
+            let leftShoulder = point(from: neck, length: shoulderHalfWidth, angle: shoulderAxis + .pi)
+            let rightShoulder = point(from: neck, length: shoulderHalfWidth, angle: shoulderAxis)
+            let leftHip = point(from: pelvis, length: hipHalfWidth, angle: shoulderAxis + .pi)
+            let rightHip = point(from: pelvis, length: hipHalfWidth, angle: shoulderAxis)
+
+            let armSwing = profile.armSwingRadians * sin(cycle)
+            let elbowFlexBase = profile.elbowFlexRadians
+            let elbowFlexPulse = profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(cycle))
+            let elbowFlex = elbowFlexBase + elbowFlexPulse
+
+            let upperArm = size * 0.18
+            let lowerArm = size * 0.16
+            let leftUpperAngle = -.pi / 2.0 + torsoTilt + armSwing
+            let rightUpperAngle = -.pi / 2.0 + torsoTilt - armSwing
+
+            let leftElbow = point(from: leftShoulder, length: upperArm, angle: leftUpperAngle)
+            let rightElbow = point(from: rightShoulder, length: upperArm, angle: rightUpperAngle)
+            let leftHand = point(from: leftElbow, length: lowerArm, angle: leftUpperAngle + (.pi - elbowFlex))
+            let rightHand = point(from: rightElbow, length: lowerArm, angle: rightUpperAngle - (.pi - elbowFlex))
+
+            let upperLeg = size * 0.19
+            let lowerLeg = size * 0.19
+            let kneeDrift = profile.kneeDriftRadians * sin(cycle)
+            let kneeFlex = profile.kneeFlexRadians + profile.kneeFlexVarianceRadians * (0.5 + 0.5 * sin(cycle + .pi / 2.0))
+
+            let leftKnee = point(from: leftHip, length: upperLeg, angle: .pi / 2.0 + torsoTilt - kneeDrift)
+            let rightKnee = point(from: rightHip, length: upperLeg, angle: .pi / 2.0 + torsoTilt + kneeDrift)
+            let leftFoot = point(from: leftKnee, length: lowerLeg, angle: .pi / 2.0 + torsoTilt - kneeFlex * 0.35)
+            let rightFoot = point(from: rightKnee, length: lowerLeg, angle: .pi / 2.0 + torsoTilt + kneeFlex * 0.35)
+
+            let lineColor = Color.white.opacity(0.94)
+            let limbColor = Color(hue: pose.category.accentHue, saturation: 0.78, brightness: 0.99)
+
+            ZStack {
+                Path { p in
+                    p.move(to: neck)
+                    p.addLine(to: pelvis)
+
+                    p.move(to: leftShoulder)
+                    p.addLine(to: rightShoulder)
+                    p.move(to: leftHip)
+                    p.addLine(to: rightHip)
+
+                    p.move(to: leftHip)
+                    p.addLine(to: leftKnee)
+                    p.addLine(to: leftFoot)
+
+                    p.move(to: rightHip)
+                    p.addLine(to: rightKnee)
+                    p.addLine(to: rightFoot)
+                }
+                .stroke(
+                    lineColor,
+                    style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
+                )
+
+                Path { p in
+                    p.move(to: leftShoulder)
+                    p.addLine(to: leftElbow)
+                    p.addLine(to: leftHand)
+
+                    p.move(to: rightShoulder)
+                    p.addLine(to: rightElbow)
+                    p.addLine(to: rightHand)
+                }
+                .stroke(
+                    limbColor,
+                    style: StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round)
+                )
+
+                Circle()
+                    .stroke(lineColor, lineWidth: 2.2)
+                    .frame(width: headRadius * 2.0, height: headRadius * 2.0)
+                    .position(headCenter)
+
+                joint(at: neck, color: lineColor)
+                joint(at: leftShoulder, color: limbColor)
+                joint(at: rightShoulder, color: limbColor)
+                joint(at: leftElbow, color: limbColor)
+                joint(at: rightElbow, color: limbColor)
+                joint(at: pelvis, color: lineColor)
+                joint(at: leftKnee, color: lineColor)
+                joint(at: rightKnee, color: lineColor)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    private func point(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
+        CGPoint(
+            x: origin.x + cos(angle) * length,
+            y: origin.y + sin(angle) * length
+        )
+    }
+
+    @ViewBuilder
+    private func joint(at point: CGPoint, color: Color) -> some View {
+        Circle()
+            .fill(color.opacity(0.92))
+            .frame(width: 4.0, height: 4.0)
+            .position(point)
+    }
+}
+
+private struct StickFigureMotionProfile {
+    let torsoTiltRadians: Double
+    let verticalBob: Double
+    let lateralSway: Double
+    let armSwingRadians: Double
+    let elbowFlexRadians: Double
+    let elbowFlexVarianceRadians: Double
+    let kneeDriftRadians: Double
+    let kneeFlexRadians: Double
+    let kneeFlexVarianceRadians: Double
+
+    init(category: PoseCategory, difficulty: PoseDifficulty, phase: MotionCoachPhase) {
+        let difficultyScale = 1.0 + (Double(difficulty.dotCount) - 1.0) * 0.12
+        let phaseScale: Double
+        switch phase {
+        case .preview: phaseScale = 0.68
+        case .active: phaseScale = 1.0
+        case .transition: phaseScale = 0.82
+        }
+
+        switch category {
+        case .spine, .back:
+            torsoTiltRadians = 0.18 * difficultyScale * phaseScale
+            verticalBob = 0.030 * difficultyScale * phaseScale
+            lateralSway = 0.018 * phaseScale
+            armSwingRadians = 0.15 * difficultyScale * phaseScale
+            elbowFlexRadians = 0.95
+            elbowFlexVarianceRadians = 0.20 * phaseScale
+            kneeDriftRadians = 0.06 * phaseScale
+            kneeFlexRadians = 0.30
+            kneeFlexVarianceRadians = 0.12 * phaseScale
+
+        case .hips, .legs:
+            torsoTiltRadians = 0.10 * difficultyScale * phaseScale
+            verticalBob = 0.024 * difficultyScale * phaseScale
+            lateralSway = 0.045 * difficultyScale * phaseScale
+            armSwingRadians = 0.10 * phaseScale
+            elbowFlexRadians = 1.10
+            elbowFlexVarianceRadians = 0.12 * phaseScale
+            kneeDriftRadians = 0.12 * difficultyScale * phaseScale
+            kneeFlexRadians = 0.42
+            kneeFlexVarianceRadians = 0.15 * phaseScale
+
+        case .shoulders, .arms, .chest:
+            torsoTiltRadians = 0.08 * phaseScale
+            verticalBob = 0.018 * phaseScale
+            lateralSway = 0.012 * phaseScale
+            armSwingRadians = 0.42 * difficultyScale * phaseScale
+            elbowFlexRadians = 1.28
+            elbowFlexVarianceRadians = 0.32 * difficultyScale * phaseScale
+            kneeDriftRadians = 0.03 * phaseScale
+            kneeFlexRadians = 0.24
+            kneeFlexVarianceRadians = 0.08 * phaseScale
+
+        case .neck:
+            torsoTiltRadians = 0.14 * difficultyScale * phaseScale
+            verticalBob = 0.012 * phaseScale
+            lateralSway = 0.016 * phaseScale
+            armSwingRadians = 0.06 * phaseScale
+            elbowFlexRadians = 1.02
+            elbowFlexVarianceRadians = 0.09 * phaseScale
+            kneeDriftRadians = 0.02 * phaseScale
+            kneeFlexRadians = 0.22
+            kneeFlexVarianceRadians = 0.06 * phaseScale
+
+        case .balance:
+            torsoTiltRadians = 0.12 * difficultyScale * phaseScale
+            verticalBob = 0.020 * phaseScale
+            lateralSway = 0.052 * difficultyScale * phaseScale
+            armSwingRadians = 0.20 * difficultyScale * phaseScale
+            elbowFlexRadians = 1.15
+            elbowFlexVarianceRadians = 0.16 * phaseScale
+            kneeDriftRadians = 0.15 * difficultyScale * phaseScale
+            kneeFlexRadians = 0.48
+            kneeFlexVarianceRadians = 0.18 * phaseScale
+
+        case .core, .fullBody, .inversion:
+            torsoTiltRadians = 0.20 * difficultyScale * phaseScale
+            verticalBob = 0.026 * difficultyScale * phaseScale
+            lateralSway = 0.026 * phaseScale
+            armSwingRadians = 0.26 * difficultyScale * phaseScale
+            elbowFlexRadians = 1.20
+            elbowFlexVarianceRadians = 0.22 * phaseScale
+            kneeDriftRadians = 0.08 * phaseScale
+            kneeFlexRadians = 0.35
+            kneeFlexVarianceRadians = 0.14 * phaseScale
+
+        case .breathing, .relaxation:
+            torsoTiltRadians = 0.05 * phaseScale
+            verticalBob = 0.014 * phaseScale
+            lateralSway = 0.010 * phaseScale
+            armSwingRadians = 0.05 * phaseScale
+            elbowFlexRadians = 1.05
+            elbowFlexVarianceRadians = 0.08 * phaseScale
+            kneeDriftRadians = 0.02 * phaseScale
+            kneeFlexRadians = 0.20
+            kneeFlexVarianceRadians = 0.04 * phaseScale
+        }
+    }
+}
 // MARK: - Limb arc path drawn as a subtle motion trace
 
 private struct LimbArcView: View {
