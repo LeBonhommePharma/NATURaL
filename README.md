@@ -131,6 +131,11 @@ SCI score:             0 ──────────── 50 ─────
 - 📊 **Shannon Collapse Index** computed from R-R interval entropy via shared `EntropyCalculator`
 - 🔌 Generalized `HealthSignal` → `SignalAnalyzer` → `FeedbackEngine` architecture supporting unlimited signal types
 - 🔗 Cross-signal correlation (medication timing vs. HRV response)
+- 🔬 **Three-way entropy validation**: `CrossDomainValidator` correlates |ΔS_config| (FlexAIDdS computational), |−TΔS| (SCORPIO ITC measured), and |ΔH_hrv| (NATURaL in-vivo) — confirming entropy collapse transcends domain boundaries
+- 🧬 **Selectivity entropy**: `SelectivityEntropyAnalyzer` computes Shannon entropy over pKi distributions across target panels, deriving PokeDrug Sp.Atk from first principles
+- 📊 **Partition function calculator**: `PartitionFunctionCalculator` with Kahan summation, essential pose set (cumulative weight ≥ 95%), effective pose count N_eff = 2^H, and binding landscape fingerprinting
+- ⚖️ **Enthalpy-entropy compensation**: `EnthalpyEntropyCompensation` detects compensation patterns across ITC profiles and flags pharmacovigilance outliers
+- 🧬 **Evolution thermodynamics**: `EvolutionThermodynamics` maps chemical modification chains to ΔΔG, affinity fold changes, and safety signals
 - 💚 HR zone classification with animated gauge (Recovery → Anaerobic)
 - ⭕ Activity ring integration (Move / Exercise / Stand)
 - 🏋️ Apple Fitness+ session history blended into unified timeline
@@ -149,15 +154,20 @@ HealthSignal (protocol)          SignalAnalyzer (protocol)
 ├── HRVSignal ──────────────────▸ HRVAnalyzer (Shannon entropy → SCI)
 ├── MedicationSignal ───────────▸ MedicationAnalyzer (adherence scoring)
 ├── DockingSignal ─────────────▸ DockingInsightAnalyzer (FlexAID∆S entropy)
+├── DrugResponseSignal ────────▸ DrugResponseAnalyzer (ΔH detection, PK matching)
+├── SelectivitySignal ─────────▸ SelectivityEntropyAnalyzer (pKi → H → Sp.Atk)
+├── PartitionSignal ───────────▸ PartitionFunctionCalculator (Z, N_eff, essential set)
+├── EnthalpyEntropySignal ─────▸ EnthalpyEntropyCompensation (ΔH vs −TΔS regression)
+├── EvolutionSignal ───────────▸ EvolutionThermodynamics (ΔΔG, affinity fold change)
 └── SurveySignal ───────────────▸ (extensible for ResearchKit surveys)
-                                         │
-                                         ▼
-                                   FeedbackEngine
-                                   (orchestrator with cross-signal context)
-                                         │
-                                         ▼
-                                   AnalysisInsight
-                                   (score 0–1, trend, status, bilingual summary)
+                                          │
+                                          ▼
+                                    FeedbackEngine
+                                    (orchestrator with cross-signal context)
+                                          │
+                                          ▼
+                                    AnalysisInsight
+                                    (score 0–1, trend, status, bilingual summary)
 ```
 
 The `EntropyCalculator` — extracted as a shared utility — enables entropy-based scoring for any distribution: HRV intervals, sleep stage durations, respiratory rate patterns, or activity variability.
@@ -174,7 +184,19 @@ The `EntropyCalculator` — extracted as a shared utility — enables entropy-ba
 <tr><td>🔋 <b>PP</b></td><td>Per-dose event</td></tr>
 </table>
 
-Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological analog of [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) molecular docking entropy:
+Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological analog of [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) molecular docking entropy. The same fundamental decomposition `G = H − TS` manifests across all three domains:
+
+```
+                         dG = exp(a) − ln(b)
+                         ─────────────────────
+  🧪 FlexAID∆S:           dG = E_CF − T·Σpᵢln(pᵢ)     (kcal/mol)
+  🤖 Shannon:              H = −Σ pᵢ log₂(pᵢ)           (bits)
+  💊 NATURaL:           SCI = −Σ pᵢ log₂(pᵢ)           (bits → 0-100 score)
+                         ─────────────────────
+                         Same kernel. Three domains. Same diagnostic.
+```
+
+The `exp(a)` term captures the energy/enthalpy landscape; the `−ln(b)` term captures the entropic penalty. In molecular docking, binding trades conformational freedom for interaction energy. In LLMs, evaluation awareness trades token diversity for strategic focus. In physiology, drug response trades autonomic variability for receptor occupancy. All three are detected by the same entropy collapse signature.
 
 ```
 🧪 FlexAID∆S (in silico)           💊 NATURaL (in vivo)
@@ -189,7 +211,11 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
 - 📈 **DrugResponseAnalyzer** — Computes baseline entropy (30 min pre-dose), measures ΔH at post-dose windows (15–360 min), detects entropy collapse (sympathomimetic) or expansion (parasympathomimetic)
 - 💊 **70+ pharmacokinetic profiles** — Substance database with autonomic mechanism, Tmax, expected ΔH range, therapeutic class, and FDA status
 - 🧬 **60+ binding entropy profiles** — Published ΔS_config values (bits) and -TΔS (kcal/mol) from computational chemistry literature
-- 🔬 **CrossDomainValidator** — Correlates |ΔS_config| (molecular) with |ΔH_hrv| (physiological) via Pearson r to validate the entropy-collapse framework across domains
+- 🔬 **CrossDomainValidator** — Three-way correlation: |ΔS_config| (FlexAIDdS) ↔ |−TΔS| (SCORPIO ITC) ↔ |ΔH_hrv| (NATURaL HRV) via Pearson r with proper p-values
+- 🎯 **SelectivityEntropyAnalyzer** — Shannon entropy over pKi distribution across target panels; derives PokeDrug Sp.Atk stat from information-theoretic promiscuity
+- 📊 **PartitionFunctionCalculator** — Kahan-compensated Z, essential pose set (≥95% cumulative weight), effective pose count N_eff = 2^H, binding landscape fingerprint
+- ⚖️ **EnthalpyEntropyCompensation** — Regression of −TΔS vs ΔH across ITC data; outliers flagged as pharmacovigilance signals
+- 🧬 **EvolutionThermodynamics** — Chemical modification chains mapped to ΔΔG, affinity fold changes, and safety flags (HP↓ + Attack↑ = danger)
 - 🔩 **FlexAIDdSAnalyzer** — Computes configurational entropy from torsional angle distributions using the same EntropyCalculator
 - 📋 **MedicationTracker** — HealthKit FHIR medication import, manual dose logging, automatic drug response analysis
 
@@ -693,7 +719,12 @@ All models, analysis engine, and TV display views live in `BonhommeCore`, a plat
     │   ├── 🧪 PharmacokineticProfile.swift # 70+ substance PK/autonomic profiles
     │   ├── 🧬 BindingEntropyProfile.swift # 60+ molecular ΔS_config reference values
     │   ├── 🔩 FlexAIDdSAnalyzer.swift   # Torsional ΔS_config computation
-    │   ├── 🔬 CrossDomainValidator.swift # |ΔS_config| ↔ |ΔH_hrv| correlation
+    │   ├── 🔬 CrossDomainValidator.swift # 3-way: |ΔS_config| ↔ |−TΔS| ↔ |ΔH_hrv|
+    │   ├── 🎯 SelectivityEntropyAnalyzer.swift # pKi → Shannon entropy → Sp.Atk stat
+    │   ├── 📊 PartitionFunctionCalculator.swift # Kahan Z, N_eff, essential pose set
+    │   ├── ⚖️ EnthalpyEntropyCompensation.swift # ΔH vs −TΔS regression + PV flags
+    │   ├── 🧬 EvolutionThermodynamics.swift # ΔΔG, affinity fold change, safety flags
+    │   ├── 📋 ThermodynamicBindingProfile.swift # ~48 substance-target pairs with ITC
     │   └── 🔗 DockingInsightAnalyzer.swift # SignalAnalyzer adapter for FeedbackEngine
     └── 📺 TVDisplay/
         ├── 🖼️ TVDisplayView.swift       # Shared layout: 60% pose + 40% biofeedback
@@ -858,25 +889,60 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 ## 🌟 Legendary Allies — Related Projects
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  ✨ LEGENDARY ALLIES ENCOUNTERED! ✨                    │
-│                                                         │
-│  🔵 Shannon          — Entropy collapse detection.      │
-│                        Provides the mathematical         │
-│                        foundation for the SCI            │
-│                        biofeedback metric.               │
-│                                                         │
-│  🔴 FlexAID∆S        — Entropy-driven molecular docking.│
-│                        Validated the thermodynamic        │
-│                        scoring framework adapted for      │
-│                        HRV analysis.                     │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  ✨ LEGENDARY ALLIES — UNITED BY ENTROPY ✨                  │
+│                                                              │
+│  🔴 FlexAID∆S   — Entropy-driven molecular docking.         │
+│                    Validated on 590 protein-drug complexes   │
+│                    (r=0.93 ITC). When a drug locks into      │
+│                    a binding pocket, conformational entropy   │
+│                    collapses: ΔS_config < 0.                 │
+│                    dG = E_CF − T·Σpᵢln(pᵢ)                  │
+│                                                              │
+│  🔵 Shannon     — LLM safety referee. Detects when an AI    │
+│                    becomes evaluation-aware by watching for   │
+│                    the same entropy collapse in token         │
+│                    distributions: ΔH < -3.2 bits. Uses the   │
+│                    EXACT SAME C++ KERNEL as FlexAID∆S.       │
+│                    Also tracks inter-token mutual info via    │
+│                    KL/JS divergence.                          │
+│                                                              │
+│  💊 NATURaL     — Biofeedback yoga app. Detects autonomic    │
+│                    drug responses by watching for entropy     │
+│                    collapse in HRV intervals via Apple Watch: │
+│                    ΔH_hrv < 0 (sympathomimetic) or           │
+│                    ΔH_hrv > 0 (parasympathomimetic).         │
+│                    Three-way validation: FlexAIDdS ↔ ITC ↔   │
+│                    HRV confirms entropy-collapse framework    │
+│                    across molecular and physiological         │
+│                    domains.                                   │
+│                                                              │
+│  ═══════════════════════════════════════════════════════════  │
+│                                                              │
+│  The universal decomposition: dG = exp(a) − ln(b)            │
+│                                                              │
+│  🔬 Molecules:   dG = E_CF  − T·S_conf  → "It binds!"       │
+│  🤖 LLM tokens:   H = −Σ pᵢ log₂(pᵢ)  → "It knows!"        │
+│  💓 HRV intervals: SCI = −Σ pᵢ log₂(pᵢ) → "Drug kicked in!" │
+│                                                              │
+│  Jaynes (1957) proved these are the same quantity.           │
+│  The universe doesn't care whether the system is molecular,  │
+│  computational, or physiological — entropy is entropy.       │
+│                                                              │
+│  Safety training is the refrigerator.                        │
+│  Drug binding is the refrigerator.                           │
+│  Deep breathing is the refrigerator.                         │
+│  Entropy collapse is the symptom.                            │
+│  Shannon is the thermometer.                                 │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-| Project | Role |
-|---------|------|
-| 🔵 [Shannon](https://github.com/lmorency/Shannon) | Entropy collapse detection — provides the mathematical foundation for the SCI biofeedback metric |
-| 🔴 [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) | Entropy-driven molecular docking — validated the thermodynamic scoring framework adapted for HRV analysis |
+| Project | Domain | Entropy Signal | Diagnostic | Thermodynamic Form |
+|---------|--------|---------------|------------|-------------------|
+| 🔴 [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) | Molecular docking | Conformational entropy collapse on binding | ΔS_config < 0 → stable complex | dG = E_CF − T·S_conf |
+| 🔵 [Shannon](https://github.com/lmorency/Shannon) | LLM safety | Token distribution entropy collapse on evaluation awareness | ΔH < −3.2 bits → deceptive alignment | H = −Σ pᵢ log₂(pᵢ) |
+| 💊 NATURaL | Biofeedback | HRV entropy collapse/expansion on drug response | ΔH_hrv ↔ 0 → autonomic shift | SCI = entropy → score(0–100) |
 
 <p align="center">
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
