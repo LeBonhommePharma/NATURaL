@@ -17,9 +17,11 @@ final class PopulationPKAnalyzerTests: XCTestCase {
 
     private func makeMeasurement(minutesAfter: Double, entropy: Double) -> EntropyMeasurement {
         EntropyMeasurement(
-            timestamp: Date().addingTimeInterval(minutesAfter * 60),
+            minutesPostDose: minutesAfter,
             entropy: entropy,
-            rrIntervalCount: 100
+            deltaH: 0.0,
+            rrCount: 100,
+            coherenceScore: 0.5
         )
     }
 

@@ -672,12 +672,22 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         }
 
         let now = Date()
-        let drugResults = (0..<5).map { i in
-            DrugResponseResult(
-                doseEvent: DoseEventSummary(medicationId: "drug_\(i)", name: "Drug \(i)", doseValue: 10, doseUnit: "mg", timestamp: now),
+        let drugResults: [DrugResponseResult] = (0..<5).map { i in
+            let doseEvent = DoseEventSummary(
+                medicationId: "drug_\(i)", name: "Drug \(i)",
+                doseValue: 10, doseUnit: "mg", timestamp: now
+            )
+            let entropy = Double(4 - i) * 0.8
+            let deltaH = Double(-i) * 0.5
+            let measurement = EntropyMeasurement(
+                minutesPostDose: 60, entropy: entropy,
+                deltaH: deltaH, rrCount: 50, coherenceScore: 0.5
+            )
+            return DrugResponseResult(
+                doseEvent: doseEvent,
                 baselineEntropy: 4.0, baselineRRCount: 100,
-                measurements: [EntropyMeasurement(minutesPostDose: 60, entropy: Double(4 - i) * 0.8, deltaH: Double(-i) * 0.5, rrCount: 50, coherenceScore: 0.5)],
-                peakDeltaH: Double(-i) * 0.5, peakTimeMinutes: 60, profileMatch: nil
+                measurements: [measurement],
+                peakDeltaH: deltaH, peakTimeMinutes: 60, profileMatch: nil
             )
         }
 

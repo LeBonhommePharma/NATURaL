@@ -5,6 +5,7 @@ let package = Package(
     name: "BonhommeCore",
     platforms: [
         .iOS(.v17),
+        .macOS(.v14),
         .watchOS(.v10),
         .tvOS(.v17),
         .visionOS(.v1)
