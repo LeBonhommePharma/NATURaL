@@ -10,7 +10,7 @@ Zero external Swift dependencies. Proprietary codebase.
 
 ## Sibling Repository: FlexAIDdS
 
-[FlexAIDdS](https://github.com/lmorency/FlexAIDdS) (`/Users/lp.more/Documents/PhD/Programs/FlexAIDdS`) is the companion entropy-driven molecular docking engine. NATURaL has **no runtime dependency** on FlexAIDdS — instead it reimplements the core Shannon entropy mathematics in Swift and accepts docking results as user-provided data. The relationship is:
+[FlexAIDdS](https://github.com/LeBonhommePharma/FlexAIDdS) (`/Users/lp.more/Documents/PhD/Programs/FlexAIDdS`) is the companion entropy-driven molecular docking engine. NATURaL has **no runtime dependency** on FlexAIDdS — instead it reimplements the core Shannon entropy mathematics in Swift and accepts docking results as user-provided data. The relationship is:
 
 - **Shared math**: `EntropyCalculator.shannonEntropy()` (HRV) and `.circularShannonEntropy()` (torsional angles) use the identical Shannon formula as FlexAIDdS's `StatMechEngine` and `ShannonThermoStack`
 - **Data import, not code import**: `FlexAIDdSAnalyzer` consumes `DockingPose` structs (torsional angles from FlexAID runs) and computes configurational entropy penalty (ΔS_config) independently
@@ -70,7 +70,7 @@ Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends:
 ### Three-Layer Stack
 1. **Platform Apps** (SwiftUI) — `Bonhomme/` (iOS), `BonhommeWatch/`, `BonhommeTV/`, `BonhommeVision/`, `NATURaLWidgets/`, `NATURaLLiveActivity/`
 2. **BonhommeCore** (Swift Package) — shared models, analysis engines, UI components. This is the bulk of the logic.
-3. **BonhommeAccel** (C++20 static library) — high-performance entropy, correlation, and statistics. Bridged to Swift via `clibBonhommeAccel` C shim -> `BonhommeAccelSwift` wrapper. Compile flag `BONHOMME_ACCEL` enables the accelerated path.
+3. **BonhommeAccel** (C++20 static library) — high-performance entropy, correlation, and statistics. Bridged to Swift via `clibBonhommeAccel` C shim -> `BonhommeAccelSwift` wrapper. Compile flag `BONHOMME_ACCEL` enables the accelerated path. Note: `BonhommeAccelSwift` is defined as a target in Package.swift but not wired as a dependency of `BonhommeCore` (conditional linkage handled at Xcode project level).
 
 ### Key Protocol Chain
 `HealthSignal` (protocol) -> `SignalAnalyzer` (protocol with extensions: HRVAnalyzer, MedicationAnalyzer, DockingInsightAnalyzer) -> `FeedbackEngine` (multi-signal orchestrator producing insights).
@@ -113,11 +113,13 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 
 ## Testing
 
-Swift unit tests are in `BonhommeCore/Tests/BonhommeCoreTests/` (18 test files covering analysis, models, and poses). Xcode-level tests in `Tests/BonhommeTests/` and `Tests/BonhommeUITests/`. C++ tests in `BonhommeAccel/tests/` (4 Catch2 test files).
+Swift unit tests are in `BonhommeCore/Tests/BonhommeCoreTests/` (22 test files covering analysis, models, and poses). Xcode-level tests in `Tests/BonhommeTests/` and `Tests/BonhommeUITests/`. C++ tests in `BonhommeAccel/tests/` (5 Catch2 test files).
 
 Run Swift tests: `cd BonhommeCore && swift test`
+Run a single Swift test: `cd BonhommeCore && swift test --filter EntropyCalculatorTests`
 Run C++ tests: `cd BonhommeAccel/build && ctest --output-on-failure`
-Run Xcode tests: Cmd+U in Xcode with appropriate scheme selected.
+Run Xcode tests from CLI: `xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
+Run Xcode tests from IDE: Cmd+U with appropriate scheme selected.
 
 ## Code Conventions
 

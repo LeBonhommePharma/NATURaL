@@ -83,7 +83,6 @@ public struct SessionProgressView: View {
 }
 
 private func blendColors(_ c1: Color, _ c2: Color, by t: CGFloat) -> Color {
-    // Prefer native mix when available
     if #available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, *) {
         return c1.mix(with: c2, by: t)
     }
@@ -105,23 +104,7 @@ private func blendColors(_ c1: Color, _ c2: Color, by t: CGFloat) -> Color {
     let a = a1 + (a2 - a1) * clampedT
 
     return Color(UIColor(red: r, green: g, blue: b, alpha: a))
-    #elseif canImport(AppKit)
-    let ns1 = NSColor(c1)
-    let ns2 = NSColor(c2)
-
-    guard let c1rgb = ns1.usingColorSpace(.deviceRGB), let c2rgb = ns2.usingColorSpace(.deviceRGB) else {
-        // Fallback if conversion fails
-        return c1
-    }
-
-    let r = c1rgb.redComponent + (c2rgb.redComponent - c1rgb.redComponent) * t
-    let g = c1rgb.greenComponent + (c2rgb.greenComponent - c1rgb.greenComponent) * t
-    let b = c1rgb.blueComponent + (c2rgb.blueComponent - c1rgb.blueComponent) * t
-    let a = c1rgb.alphaComponent + (c2rgb.alphaComponent - c1rgb.alphaComponent) * t
-
-    return Color(NSColor(calibratedRed: r, green: g, blue: b, alpha: a))
     #else
-    // Generic fallback: return the first color if platform is unknown
     return c1
     #endif
 }

@@ -411,7 +411,9 @@ public struct CrossDomainValidator: Sendable {
         return ThreeWayValidationResult(
             observations: observations,
             flexAIDvsScorpio: pearsonCorrelation(flexAIDValues, scorpioValues),
+
             flexAIDvsNatural: pearsonCorrelation(flexAIDValues, naturalValues),
+
             scorpioVsNatural: pearsonCorrelation(scorpioValues, naturalValues)
         )
     }
@@ -431,8 +433,10 @@ public struct CrossDomainValidator: Sendable {
         let y = cleanPairs.map { abs($0.deltaHHRV) }
 
         let r = pearsonCorrelation(x, y)
-        let p = Self.computePValue(r: r, n: cleanPairs.count)
+
         let regression = linearRegression(x: x, y: y)
+
+        let p = Self.computePValue(r: r, n: cleanPairs.count)
 
         return ValidationResult(
             observations: cleanPairs,
@@ -442,21 +446,6 @@ public struct CrossDomainValidator: Sendable {
             regressionSlope: regression.slope,
             regressionIntercept: regression.intercept
         )
-    }
-
-    /// Pearson correlation — delegates to shared global implementation
-    /// which uses C++ accelerator when available.
-    private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        BonhommeCore.pearsonCorrelation(x, y)
-    }
-
-    /// Linear regression — delegates to shared global implementation
-    /// which uses C++ accelerator when available.
-    private func linearRegression(
-        x: [Double],
-        y: [Double]
-    ) -> (slope: Double, intercept: Double, mae: Double) {
-        BonhommeCore.linearRegression(x: x, y: y)
     }
 
     // MARK: - Statistical Significance

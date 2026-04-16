@@ -4,10 +4,4 @@
    <FileRef
       location = "self:">
    </FileRef>
-   <FileRef
-      location = "group:LocalizationTests.swift">
-   </FileRef>
-   <FileRef
-      location = "group:LocalizedStringLocaleTests.swift">
-   </FileRef>
 </Workspace>

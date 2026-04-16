@@ -703,12 +703,4 @@ public struct DrugResponseAnalyzer: Sendable {
 
         return best
     }
-
-    // MARK: - Statistics Helpers
-
-    /// Pearson correlation coefficient — delegates to shared global implementation
-    /// which uses C++ accelerator when available.
-    private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        BonhommeCore.pearsonCorrelation(x, y)
-    }
 }
