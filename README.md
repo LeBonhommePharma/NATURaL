@@ -83,7 +83,7 @@
 └─────────────────────────────────────────────────────┘
 ```
 
-The **Shannon Collapse Index (SCI)** — inspired by the entropy framework in [Shannon](https://github.com/lmorency/Shannon) and the thermodynamic scoring validated in [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) — measures focus coherence from heart rate variability in real time. When HRV entropy narrows during deep breathing, the SCI rises, giving practitioners a live "focus ring" on every display surface.
+The **Shannon Collapse Index (SCI)** — inspired by the entropy framework in [Shannon](https://github.com/LeBonhommePharma/Shannon) and the thermodynamic scoring validated in [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) — measures focus coherence from heart rate variability in real time. When HRV entropy narrows during deep breathing, the SCI rises, giving practitioners a live "focus ring" on every display surface.
 
 ```
 Normal resting HRV:    H ~ 6-8 bits   (broad, variable intervals)
@@ -184,19 +184,17 @@ The `EntropyCalculator` — extracted as a shared utility — enables entropy-ba
 <tr><td>🔋 <b>PP</b></td><td>Per-dose event</td></tr>
 </table>
 
-Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological analog of [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) molecular docking entropy. The same fundamental decomposition `G = H − TS` manifests across all three domains:
+Detects autonomic drug response signatures by measuring Shannon entropy changes in HRV RR-interval distributions around medication dose events — the physiological counterpart of [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) molecular docking entropy. The shared entropy kernel `H = −Σ pᵢ log₂(pᵢ)` operates across all three domains, grounded in the Jaynes (1957) identity `S = k_B · H · ln(2)`:
 
 ```
-                         dG = exp(a) − ln(b)
+  🧪 FlexAID∆S:   F = −kT ln Z, S = −k_B Σ pᵢ ln pᵢ      (kcal/mol)
+  🤖 Shannon:      H = −Σ pᵢ log₂(pᵢ)                       (bits)
+  💊 NATURaL:      SCI = −Σ pᵢ log₂(pᵢ)                     (bits → 0-100 score)
                          ─────────────────────
-  🧪 FlexAID∆S:           dG = E_CF − T·Σpᵢln(pᵢ)     (kcal/mol)
-  🤖 Shannon:              H = −Σ pᵢ log₂(pᵢ)           (bits)
-  💊 NATURaL:           SCI = −Σ pᵢ log₂(pᵢ)           (bits → 0-100 score)
-                         ─────────────────────
-                         Same kernel. Three domains. Same diagnostic.
+                         One entropy kernel. Three domains.
 ```
 
-The `exp(a)` term captures the energy/enthalpy landscape; the `−ln(b)` term captures the entropic penalty. In molecular docking, binding trades conformational freedom for interaction energy. In LLMs, evaluation awareness trades token diversity for strategic focus. In physiology, drug response trades autonomic variability for receptor occupancy. All three are detected by the same entropy collapse signature.
+Odrzywołek (2026, arXiv:2603.21852) proved that `eml(a,b) = exp(a) − ln(b)` is functionally complete for elementary functions, providing a natural algebraic language for writing the domain-specific formulas above as compositions of a single operator.
 
 ```
 🧪 FlexAID∆S (in silico)           💊 NATURaL (in vivo)
@@ -816,7 +814,7 @@ public struct LocalizedString: Codable, Sendable, Hashable {
 
 ```bash
 # 📥 Clone
-git clone https://github.com/lmorency/NATURaL.git
+git clone https://github.com/LeBonhommePharma/NATURaL.git
 cd NATURaL
 
 # 🛠️ Open in Xcode
@@ -919,29 +917,24 @@ xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,nam
 │                                                              │
 │  ═══════════════════════════════════════════════════════════  │
 │                                                              │
-│  The universal decomposition: dG = exp(a) − ln(b)            │
+│  The shared entropy kernel: H = −Σ pᵢ log₂(pᵢ)              │
 │                                                              │
 │  🔬 Molecules:   dG = E_CF  − T·S_conf  → "It binds!"       │
 │  🤖 LLM tokens:   H = −Σ pᵢ log₂(pᵢ)  → "It knows!"        │
 │  💓 HRV intervals: SCI = −Σ pᵢ log₂(pᵢ) → "Drug kicked in!" │
 │                                                              │
-│  Jaynes (1957) proved these are the same quantity.           │
-│  The universe doesn't care whether the system is molecular,  │
-│  computational, or physiological — entropy is entropy.       │
-│                                                              │
-│  Safety training is the refrigerator.                        │
-│  Drug binding is the refrigerator.                           │
-│  Deep breathing is the refrigerator.                         │
-│  Entropy collapse is the symptom.                            │
-│  Shannon is the thermometer.                                 │
+│  Jaynes (1957) proved these are the same quantity            │
+│  in different units. One kernel, three domains.              │
+│  Odrzywołek (2026) provides the algebraic unification        │
+│  via eml(a,b) = exp(a) − ln(b).                             │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 | Project | Domain | Entropy Signal | Diagnostic | Thermodynamic Form |
 |---------|--------|---------------|------------|-------------------|
-| 🔴 [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) | Molecular docking | Conformational entropy collapse on binding | ΔS_config < 0 → stable complex | dG = E_CF − T·S_conf |
-| 🔵 [Shannon](https://github.com/lmorency/Shannon) | LLM safety | Token distribution entropy collapse on evaluation awareness | ΔH < −3.2 bits → deceptive alignment | H = −Σ pᵢ log₂(pᵢ) |
+| 🔴 [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) | Molecular docking | Conformational entropy collapse on binding | ΔS_config < 0 → stable complex | dG = E_CF − T·S_conf |
+| 🔵 [Shannon](https://github.com/LeBonhommePharma/Shannon) | LLM safety | Token distribution entropy collapse on evaluation awareness | ΔH < −3.2 bits → deceptive alignment | H = −Σ pᵢ log₂(pᵢ) |
 | 💊 NATURaL | Biofeedback | HRV entropy collapse/expansion on drug response | ΔH_hrv ↔ 0 → autonomic shift | SCI = entropy → score(0–100) |
 
 <p align="center">

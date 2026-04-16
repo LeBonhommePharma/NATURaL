@@ -427,8 +427,8 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 | Project | Relationship |
 |---------|-------------|
-| [Shannon](https://github.com/lmorency/Shannon) | Mathematical foundation: entropy collapse detection framework |
-| [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) | Molecular docking entropy that PokeDrug validates physiologically |
+| [Shannon](https://github.com/LeBonhommePharma/Shannon) | Mathematical foundation: entropy collapse detection framework |
+| [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) | Molecular docking entropy that PokeDrug validates physiologically |
 | NATURaL / Bonhomme | Host application: chair yoga with HRV biofeedback |
 
 ---
@@ -437,7 +437,7 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 1. **One EntropyCalculator, two domains.** The same 32-bin Shannon engine computes
    entropy for molecular torsional angles and cardiac RR intervals. No domain-specific
-   math exists — the isomorphism is enforced by shared code.
+   math exists — the mathematical identity (Jaynes 1957) is enforced by shared code.
 
 2. **Protocol-driven extensibility.** `HealthSignal` → `SignalAnalyzer` → `FeedbackEngine`
    allows adding new signal types (sleep, respiratory, activity) without modifying existing code.
