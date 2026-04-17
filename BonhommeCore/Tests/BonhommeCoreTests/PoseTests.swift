@@ -72,7 +72,7 @@ final class PoseTests: XCTestCase {
     // MARK: - PoseCategory
 
     func testPoseCategoryAllCases() {
-        XCTAssertEqual(PoseCategory.allCases.count, 7)
+        XCTAssertEqual(PoseCategory.allCases.count, 14)
     }
 
     func testPoseCategoryLocalizedName() {

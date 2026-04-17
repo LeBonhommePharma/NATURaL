@@ -67,7 +67,8 @@ struct WorkoutFlowView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                MotionCoachView(pose: pose, phase: .active)
+                MotionCoachView(pose: pose, phase: .active,
+                                poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
                     .frame(maxWidth: 520, minHeight: 360, maxHeight: 420)
                     .padding(.horizontal, 56)
 
@@ -230,7 +231,8 @@ struct WorkoutFlowView: View {
         return VStack(spacing: 0) {
             Spacer()
 
-            MotionCoachView(pose: pose, phase: .active)
+            MotionCoachView(pose: pose, phase: .active,
+                            poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
                 .frame(height: 300)
                 .padding(.horizontal, 28)
 

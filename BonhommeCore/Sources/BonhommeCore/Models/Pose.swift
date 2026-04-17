@@ -400,4 +400,8 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
         self.breathingPattern = breathingPattern
         self.isFree = isFree
     }
+
+    public var kinematics: PoseKinematics {
+        PoseKinematicsCatalog.kinematics(for: id)
+    }
 }

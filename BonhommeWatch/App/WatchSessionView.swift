@@ -73,10 +73,17 @@ struct WatchSessionView: View {
 
     private func activePoseContent(pose: Pose) -> some View {
         let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
+        let kinematics = pose.kinematics
+        let regionLabel = kinematics.highlightedRegions.first?.localizedName ?? pose.category.localizedName
         return VStack(spacing: 6) {
-            Image(systemName: pose.category.symbolName)
-                .font(.system(size: 28))
-                .foregroundStyle(catColor.opacity(0.6))
+            ZStack {
+                Circle()
+                    .fill(catColor.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: pose.category.symbolName)
+                    .font(.system(size: 24))
+                    .foregroundStyle(catColor)
+            }
 
             Text(pose.name.localized)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -84,24 +91,34 @@ struct WatchSessionView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
-            // Difficulty dots
             HStack(spacing: 3) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
                         .fill(i < pose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
                         .frame(width: 5, height: 5)
                 }
+                Text(regionLabel.localized)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(catColor.opacity(0.7))
+                    .lineLimit(1)
             }
 
-            // Countdown
             Text("\(Int(manager.poseTimeRemaining))")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
 
-            // Breathing cue
-            if !pose.breathingPattern.localized.isEmpty {
+            if !kinematics.setupSteps.isEmpty {
+                let stepIdx = min(
+                    Int(Double(manager.poseTimeRemaining) / pose.durationSeconds * Double(kinematics.setupSteps.count)),
+                    kinematics.setupSteps.count - 1
+                )
+                Text(kinematics.setupSteps[stepIdx].localized)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(1)
+            } else if !pose.breathingPattern.localized.isEmpty {
                 Text(pose.breathingPattern.localized)
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.4))

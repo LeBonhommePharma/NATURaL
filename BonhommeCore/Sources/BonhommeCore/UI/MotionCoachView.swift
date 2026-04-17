@@ -1,14 +1,11 @@
 import SwiftUI
 
-/// Phase styling for the symbolic motion coach.
 public enum MotionCoachPhase: Sendable {
     case preview
     case active
     case transition
 }
 
-/// Named geometric proportions for stick figure rendering.
-/// All values are fractions of the available `size` (min(width, height)).
 private enum Proportion {
     static let pelvisYOffset: CGFloat = 0.10
     static let torsoLength: CGFloat = 0.30
@@ -34,18 +31,21 @@ private enum Proportion {
     static let limbArcRadius: CGFloat = 0.30
     static let radialGlowEnd: CGFloat = 0.50
     static let groundShadowWidthPadding: CGFloat = 0.10
-    /// Arrowhead barb angle ≈ 149°, giving a ~31° opening from the tip direction.
     static let arrowheadBarbAngle: Double = 2.6
 }
 
-/// Free helper for skeleton geometry — shared by SkeletonState.
 private func skelPoint(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
     CGPoint(x: origin.x + cos(angle) * length, y: origin.y + sin(angle) * length)
 }
 
-/// Pre-computed skeleton joint positions and kinematic state.
-/// Extracted from the view body to decouple geometry from rendering
-/// and enable unit testing of kinematics without SwiftUI.
+private func lerpAngle(_ a: Double, _ b: Double, _ t: Double) -> Double {
+    a + (b - a) * t
+}
+
+private func clamp01(_ v: Double) -> Double {
+    max(0, min(1, v))
+}
+
 private struct SkeletonState {
     let pelvis: CGPoint
     let neck: CGPoint
@@ -87,13 +87,39 @@ private struct SkeletonState {
     let frontElbow: CGPoint
     let frontHand: CGPoint
 
-    init(profile: StickFigureMotionProfile, smooth: Double, t: Double, size: CGFloat, center: CGPoint) {
+    let blend: Double
+    let oscBlend: Double
+    let kinematics: PoseKinematics
+    let highlightedRegions: Set<BodyRegion>
+
+    init(
+        profile: StickFigureMotionProfile,
+        kinematics: PoseKinematics,
+        phaseState: AnimationPhaseState,
+        smooth: Double,
+        t: Double,
+        size: CGFloat,
+        center: CGPoint
+    ) {
         let c = smooth * .pi * 2.0
         cycle = c
+        self.kinematics = kinematics
+        self.blend = phaseState.poseBlend
+        self.oscBlend = phaseState.oscillationBlend * kinematics.holdOscillationScale
+        self.highlightedRegions = kinematics.highlightedRegions
 
-        torsoTilt = profile.torsoTiltRadians * sin(c)
-        armSwing = profile.armSwingRadians * sin(c)
-        kneeDrift = profile.kneeDriftRadians * sin(c)
+        let oscAmp = phaseState.oscillationBlend * kinematics.holdOscillationScale
+        let jointSet = kinematics.oscillationJoints
+        let torsoOsc = jointSet.contains(.torso) ? 1.0 : 0.3
+        let armOsc = (jointSet.contains(.leftArm) || jointSet.contains(.rightArm)) ? 1.0 : 0.3
+        let legOsc = (jointSet.contains(.leftLeg) || jointSet.contains(.rightLeg)) ? 1.0 : 0.3
+        let headOsc = jointSet.contains(.head) ? 1.0 : 0.3
+
+        torsoTilt = kinematics.forwardLean * phaseState.poseBlend
+            + profile.torsoTiltRadians * sin(c) * oscAmp * torsoOsc
+        armSwing = profile.armSwingRadians * sin(c) * oscAmp * armOsc
+        kneeDrift = kinematics.leftKneeSpread * phaseState.poseBlend
+            + profile.kneeDriftRadians * sin(c) * oscAmp * legOsc
 
         secWave = sin(c - 0.9)
         secWaveRight = sin(c - 1.1)
@@ -103,14 +129,17 @@ private struct SkeletonState {
         let depthCycle = t * 0.08
         armDepthPhase = sin(depthCycle) * 0.5 + 0.5
 
-        // cos(cycle) convention: smooth=0 is start of inhale, cos(0)=1 → figure bobs UP.
-        // Thoracic expansion on inhale lifts the torso; cos(π)=−1 → bobs DOWN on exhale.
-        let torsoBob: CGFloat = CGFloat(profile.verticalBob * cos(c)) * size
-        let sway: CGFloat = CGFloat(profile.lateralSway * sin(c)) * size
+        let lateralSway = kinematics.sideLean * phaseState.poseBlend
+            + profile.lateralSwayAmplitude * sin(c) * oscAmp * torsoOsc
+        let breathBob = profile.verticalBob * cos(c) * oscAmp
+        let torsoBob: CGFloat = CGFloat(breathBob) * size
+        let sway: CGFloat = CGFloat(lateralSway) * size
 
         pelvis = CGPoint(x: center.x + sway, y: center.y + size * Proportion.pelvisYOffset + torsoBob)
 
         let core = Self.computeCore(pelvis: pelvis, size: size, torsoTilt: torsoTilt,
+                                     spineCurvature: kinematics.spineArch * phaseState.poseBlend,
+                                     headTilt: kinematics.headTilt * phaseState.poseBlend * headOsc,
                                      secWave: secWave, tertWave: tertWave, cycle: c)
         spineMid = core.spineMid
         neck = core.neck
@@ -118,7 +147,7 @@ private struct SkeletonState {
         headCenter = core.headCenter
 
         let girdle = Self.computeGirdle(neck: neck, pelvis: pelvis, size: size,
-                                         torsoTilt: torsoTilt, cycle: c)
+                                          torsoTilt: torsoTilt, cycle: c)
         leftShoulder = girdle.leftShoulder
         rightShoulder = girdle.rightShoulder
         leftHip = girdle.leftHip
@@ -129,7 +158,9 @@ private struct SkeletonState {
             size: size, torsoTilt: torsoTilt, armSwing: armSwing,
             secWave: secWave, secWaveRight: secWaveRight,
             tertWave: tertWave, tertWaveRight: tertWaveRight,
-            cycle: c, profile: profile
+            cycle: c, profile: profile,
+            kinematics: kinematics, blend: phaseState.poseBlend,
+            oscAmp: oscAmp, jointSet: jointSet
         )
         leftElbow = arms.leftElbow
         rightElbow = arms.rightElbow
@@ -141,7 +172,9 @@ private struct SkeletonState {
             size: size, torsoTilt: torsoTilt, kneeDrift: kneeDrift,
             secWave: secWave, secWaveRight: secWaveRight,
             tertWave: tertWave, tertWaveRight: tertWaveRight,
-            cycle: c, profile: profile
+            cycle: c, profile: profile,
+            kinematics: kinematics, blend: phaseState.poseBlend,
+            oscAmp: oscAmp
         )
         leftKnee = legs.leftKnee
         rightKnee = legs.rightKnee
@@ -165,16 +198,18 @@ private struct SkeletonState {
 
     private static func computeCore(
         pelvis: CGPoint, size: CGFloat, torsoTilt: Double,
+        spineCurvature: Double, headTilt: Double,
         secWave: Double, tertWave: Double, cycle: Double
     ) -> CoreData {
         let torsoLen = size * Proportion.torsoLength
         let halfAngle = -.pi / 2.0 + torsoTilt
+        let curvatureOffset = spineCurvature * 0.5
         let spineMid = skelPoint(from: pelvis, length: torsoLen * 0.5,
-                                  angle: halfAngle + secWave * 0.6)
+                                   angle: halfAngle + secWave * 0.6 + curvatureOffset)
         let neck = skelPoint(from: pelvis, length: torsoLen, angle: halfAngle)
         let headRadius = size * Proportion.headRadius
         let headCenter = skelPoint(from: neck, length: headRadius * 1.6,
-                                    angle: halfAngle + tertWave * 0.45)
+                                     angle: halfAngle + tertWave * 0.45 + headTilt)
         return CoreData(spineMid: spineMid, neck: neck, headCenter: headCenter, headRadius: headRadius)
     }
 
@@ -209,21 +244,43 @@ private struct SkeletonState {
         size: CGFloat, torsoTilt: Double, armSwing: Double,
         secWave: Double, secWaveRight: Double,
         tertWave: Double, tertWaveRight: Double,
-        cycle: Double, profile: StickFigureMotionProfile
+        cycle: Double, profile: StickFigureMotionProfile,
+        kinematics: PoseKinematics, blend: Double,
+        oscAmp: Double, jointSet: Set<OscillationJoint>
     ) -> ArmData {
-        let elbowFlex = profile.elbowFlexRadians
-            + profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(cycle))
         let upperArmLen = size * Proportion.upperArm
         let lowerArmLen = size * Proportion.lowerArm
 
-        let leftAngle = -.pi / 2.0 + torsoTilt + armSwing + secWave * 0.12
-        let rightAngle = -.pi / 2.0 + torsoTilt - armSwing - secWaveRight * 0.12
+        let leftBase = lerpAngle(PoseKinematics.neutral.leftUpperArmAngle,
+                                  kinematics.leftUpperArmAngle, blend)
+        let rightBase = lerpAngle(PoseKinematics.neutral.rightUpperArmAngle,
+                                   kinematics.rightUpperArmAngle, blend)
+
+        let armOscL = jointSet.contains(.leftArm) ? 1.0 : 0.2
+        let armOscR = jointSet.contains(.rightArm) ? 1.0 : 0.2
+
+        let leftAngle = leftBase + torsoTilt
+            + profile.armSwingRadians * sin(cycle) * oscAmp * armOscL
+            + secWave * 0.12 * oscAmp
+            + kinematics.leftArmCross * blend * 0.3
+        let rightAngle = rightBase + torsoTilt
+            - profile.armSwingRadians * sin(cycle) * oscAmp * armOscR
+            - secWaveRight * 0.12 * oscAmp
+            - kinematics.rightArmCross * blend * 0.3
 
         let leftElbow = skelPoint(from: leftShoulder, length: upperArmLen, angle: leftAngle)
         let rightElbow = skelPoint(from: rightShoulder, length: upperArmLen, angle: rightAngle)
 
-        let leftHandAngle = leftAngle + (.pi - elbowFlex) + tertWave * 0.10
-        let rightHandAngle = rightAngle - (.pi - elbowFlex) - tertWaveRight * 0.10
+        let leftFlexBase = lerpAngle(PoseKinematics.neutral.leftForearmBend,
+                                      kinematics.leftForearmBend, blend)
+        let rightFlexBase = lerpAngle(PoseKinematics.neutral.rightForearmBend,
+                                       kinematics.rightForearmBend, blend)
+
+        let leftFlexVariance = profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(cycle)) * oscAmp
+        let rightFlexVariance = profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(cycle)) * oscAmp
+
+        let leftHandAngle = leftAngle + (.pi - leftFlexBase - leftFlexVariance) + tertWave * 0.10 * oscAmp
+        let rightHandAngle = rightAngle - (.pi - rightFlexBase - rightFlexVariance) - tertWaveRight * 0.10 * oscAmp
         let leftHand = skelPoint(from: leftElbow, length: lowerArmLen, angle: leftHandAngle)
         let rightHand = skelPoint(from: rightElbow, length: lowerArmLen, angle: rightHandAngle)
 
@@ -241,46 +298,56 @@ private struct SkeletonState {
         size: CGFloat, torsoTilt: Double, kneeDrift: Double,
         secWave: Double, secWaveRight: Double,
         tertWave: Double, tertWaveRight: Double,
-        cycle: Double, profile: StickFigureMotionProfile
+        cycle: Double, profile: StickFigureMotionProfile,
+        kinematics: PoseKinematics, blend: Double,
+        oscAmp: Double
     ) -> LegData {
         let upperLegLen = size * Proportion.upperLeg
         let lowerLegLen = size * Proportion.lowerLeg
+
+        let downAngle = Double.pi / 2.0 + torsoTilt
         let kneeFlex = profile.kneeFlexRadians
             + profile.kneeFlexVarianceRadians * (0.5 + 0.5 * sin(cycle + .pi / 2.0))
-        let downAngle = Double.pi / 2.0 + torsoTilt
+
+        let leftThighOff = lerpAngle(0, kinematics.leftThighOffset, blend)
+        let rightThighOff = lerpAngle(0, kinematics.rightThighOffset, blend)
+        let leftSpread = lerpAngle(0, kinematics.leftKneeSpread, blend)
+        let rightSpread = lerpAngle(0, kinematics.rightKneeSpread, blend)
 
         let leftKnee = skelPoint(from: leftHip, length: upperLegLen,
-                                  angle: downAngle - kneeDrift + secWave * 0.04)
+                                   angle: downAngle + leftThighOff - kneeDrift - leftSpread + secWave * 0.04)
         let rightKnee = skelPoint(from: rightHip, length: upperLegLen,
-                                   angle: downAngle + kneeDrift - secWaveRight * 0.04)
+                                    angle: downAngle + rightThighOff + kneeDrift + rightSpread - secWaveRight * 0.04)
+        let leftShinOff = lerpAngle(0, kinematics.leftShinOffset, blend)
+        let rightShinOff = lerpAngle(0, kinematics.rightShinOffset, blend)
         let leftFoot = skelPoint(from: leftKnee, length: lowerLegLen,
-                                  angle: downAngle - kneeFlex * 0.35 + tertWave * 0.03)
+                                   angle: downAngle - kneeFlex * 0.35 + leftShinOff + tertWave * 0.03)
         let rightFoot = skelPoint(from: rightKnee, length: lowerLegLen,
-                                   angle: downAngle + kneeFlex * 0.35 - tertWaveRight * 0.03)
+                                    angle: downAngle + kneeFlex * 0.35 + rightShinOff - tertWaveRight * 0.03)
 
         return LegData(leftKnee: leftKnee, rightKnee: rightKnee,
                        leftFoot: leftFoot, rightFoot: rightFoot)
     }
 }
 
-/// Procedural, video-free pose guidance view.
-/// Kinematics: per-category limb arcs driven by quintic ease, depth-aware limb painting,
-/// breathing ring, ground reflection, and ambient particles.
 public struct MotionCoachView: View {
     public let pose: Pose
     public var phase: MotionCoachPhase
     public var cornerRadius: CGFloat
+    public var poseElapsed: TimeInterval
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         pose: Pose,
         phase: MotionCoachPhase = .active,
-        cornerRadius: CGFloat = 28
+        cornerRadius: CGFloat = 28,
+        poseElapsed: TimeInterval = 0
     ) {
         self.pose = pose
         self.phase = phase
         self.cornerRadius = cornerRadius
+        self.poseElapsed = poseElapsed
     }
 
     public var body: some View {
@@ -301,11 +368,17 @@ public struct MotionCoachView: View {
             let pulse = reduceMotion ? 0.0 : (sinBreath + 1.0) * 0.5
             let hueShift = reduceMotion ? 0.0 : sinBreath * 0.02
 
-            // Quintic ease (5th-order Hermite) for silkier transitions than cubic smoothstep
             let rawPhase = fmod(t / profile.breathPeriod, 1.0)
             let normPhase = rawPhase < 0 ? rawPhase + 1.0 : rawPhase
             let s = normPhase
-            let smooth = s * s * s * (s * (s * 6.0 - 15.0) + 10.0) // quintic ease-in-out
+            let smooth = s * s * s * (s * (s * 6.0 - 15.0) + 10.0)
+
+            let phaseState = AnimationPhaseState.compute(
+                elapsed: poseElapsed,
+                duration: pose.durationSeconds,
+                phase: phase
+            )
+            let kinematics = pose.kinematics
 
             ZStack(alignment: .bottom) {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -374,8 +447,17 @@ public struct MotionCoachView: View {
                         if !reduceMotion {
                             ghostTrail(
                                 pose: pose, phase: phase, profile: profile,
+                                kinematics: kinematics, phaseState: phaseState,
                                 t: t, normPhase: normPhase, size: size,
                                 cx: cx, cy: cy
+                            )
+                        }
+
+                        if phaseState.poseBlend > 0.15 {
+                            goalSilhouette(
+                                pose: pose, profile: profile,
+                                kinematics: kinematics, size: size,
+                                cx: cx, cy: cy, alpha: phaseState.poseBlend
                             )
                         }
 
@@ -384,7 +466,9 @@ public struct MotionCoachView: View {
                             pose: pose,
                             phase: phase,
                             smooth: smooth,
-                            time: t
+                            time: t,
+                            phaseState: phaseState,
+                            kinematics: kinematics
                         )
                             .frame(width: size * Proportion.mainFigure, height: size * Proportion.mainFigure)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.35), radius: 3)
@@ -398,6 +482,7 @@ public struct MotionCoachView: View {
                         if !reduceMotion {
                             groundReflection(
                                 pose: pose, phase: phase, profile: profile,
+                                kinematics: kinematics, phaseState: phaseState,
                                 smooth: smooth, wave: wave,
                                 size: size, cx: cx, cy: cy
                             )
@@ -418,6 +503,15 @@ public struct MotionCoachView: View {
                                 smooth: smooth, pulse: pulse,
                                 accentHue: profile.accentHue,
                                 size: size, cx: cx, cy: cy
+                            )
+                        }
+
+                        if phase == .active, !kinematics.setupSteps.isEmpty {
+                            stepOverlays(
+                                steps: kinematics.setupSteps,
+                                phaseState: phaseState,
+                                size: size, cx: cx, cy: cy,
+                                accentHue: profile.accentHue
                             )
                         }
                     }
@@ -461,11 +555,79 @@ public struct MotionCoachView: View {
         ).localized))
     }
 
+    // MARK: - Goal silhouette (Phase 4)
+
+    @ViewBuilder
+    private func goalSilhouette(
+        pose: Pose, profile: MotionCoachProfile,
+        kinematics: PoseKinematics, size: CGFloat,
+        cx: CGFloat, cy: CGFloat, alpha: Double
+    ) -> some View {
+        let goalState = AnimationPhaseState(phase: .hold, progress: 1.0, poseBlend: 1.0, oscillationBlend: 0)
+        StickFigureKinematicsView(
+            pose: pose,
+            phase: phase,
+            smooth: 0.5,
+            time: 0,
+            phaseState: goalState,
+            kinematics: kinematics
+        )
+        .frame(width: size * Proportion.mainFigure, height: size * Proportion.mainFigure)
+        .opacity(alpha * 0.12)
+        .position(x: cx, y: cy)
+    }
+
+    // MARK: - Step overlays (Phase 6)
+
+    @ViewBuilder
+    private func stepOverlays(
+        steps: [LocalizedString],
+        phaseState: AnimationPhaseState,
+        size: CGFloat, cx: CGFloat, cy: CGFloat,
+        accentHue: Double
+    ) -> some View {
+        if phaseState.phase == .setup || (phaseState.phase == .hold && phaseState.progress < 0.15) {
+            let stepAlpha = phaseState.phase == .setup ? 1.0 : 1.0 - (phaseState.progress / 0.15)
+            let currentStep = min(Int(phaseState.progress * Double(steps.count)), steps.count - 1)
+
+            ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+                let yOffset = size * 0.08 * CGFloat(i)
+                let isActive = i == currentStep
+                let rowAlpha = stepAlpha * (isActive ? 1.0 : 0.4)
+
+                HStack(spacing: 6) {
+                    Text("\(i + 1)")
+                        .font(.system(size: isActive ? 14 : 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            isActive
+                            ? Color(hue: accentHue, saturation: 0.8, brightness: 1.0)
+                            : .white.opacity(0.5)
+                        )
+                        .frame(width: 22, height: 22)
+
+                    Text(step.localized)
+                        .font(.system(size: isActive ? 14 : 12, weight: isActive ? .semibold : .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(rowAlpha))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(.black.opacity(isActive ? 0.45 : 0.20))
+                )
+                .offset(y: -size * 0.35 + yOffset)
+                .opacity(rowAlpha)
+            }
+        }
+    }
+
     // MARK: - Ghost trail helper
 
     @ViewBuilder
     private func ghostTrail(
         pose: Pose, phase: MotionCoachPhase, profile: MotionCoachProfile,
+        kinematics: PoseKinematics, phaseState: AnimationPhaseState,
         t: Double, normPhase: Double, size: CGFloat,
         cx: CGFloat, cy: CGFloat
     ) -> some View {
@@ -474,12 +636,13 @@ public struct MotionCoachView: View {
             let ghostPhase = fmod(normPhase - lag, 1.0)
             let gp = ghostPhase < 0 ? ghostPhase + 1.0 : ghostPhase
             let s = gp
-            let gs = s * s * s * (s * (s * 6.0 - 15.0) + 10.0) // quintic ease
+            let gs = s * s * s * (s * (s * 6.0 - 15.0) + 10.0)
             let ghostTimeOffset = t - lag * profile.breathPeriod
             let ghostWave = sin(ghostTimeOffset * .pi * 2.0 / profile.breathPeriod)
             let (gOffX, gOffY, gRot) = profile.limbOffset(smooth: gs, wave: ghostWave)
             let fade = 0.10 - Double(i) * 0.014
-            StickFigureKinematicsView(pose: pose, phase: phase, smooth: gs, time: ghostTimeOffset, detail: .simplified)
+            StickFigureKinematicsView(pose: pose, phase: phase, smooth: gs, time: ghostTimeOffset,
+                                       phaseState: phaseState, kinematics: kinematics, detail: .simplified)
                 .frame(width: size * Proportion.ghostFigure, height: size * Proportion.ghostFigure)
                 .opacity(max(fade, 0))
                 .rotationEffect(.degrees(gRot))
@@ -531,11 +694,13 @@ public struct MotionCoachView: View {
     @ViewBuilder
     private func groundReflection(
         pose: Pose, phase: MotionCoachPhase, profile: MotionCoachProfile,
+        kinematics: PoseKinematics, phaseState: AnimationPhaseState,
         smooth: Double, wave: Double,
         size: CGFloat, cx: CGFloat, cy: CGFloat
     ) -> some View {
         let (offX, offY, rot) = profile.limbOffset(smooth: smooth, wave: wave)
-        StickFigureKinematicsView(pose: pose, phase: phase, smooth: smooth, time: 0, detail: .simplified)
+        StickFigureKinematicsView(pose: pose, phase: phase, smooth: smooth, time: 0,
+                                   phaseState: phaseState, kinematics: kinematics, detail: .simplified)
             .frame(width: size * Proportion.groundReflectionWidth, height: size * Proportion.groundReflectionHeight)
             .opacity(0.04)
             .scaleEffect(y: -0.4)
@@ -552,7 +717,7 @@ public struct MotionCoachView: View {
         size: CGFloat, cx: CGFloat, cy: CGFloat
     ) -> some View {
         ForEach(0..<8, id: \.self) { i in
-            let seed = Double(i) * 137.508 // golden angle offset (≈ 137.508° vs true 137.50776°)
+            let seed = Double(i) * 137.508
             let orbitRadius = size * (Proportion.particleOrbitBase + 0.12 * sin(seed))
             let speed = 0.08 + Double(i) * 0.015
             let angle = t * speed + seed
@@ -579,8 +744,6 @@ public struct MotionCoachView: View {
     }
 }
 
-// MARK: - Stick figure kinematics (organic 3D-like)
-
 private enum RenderDetail {
     case full, simplified
 }
@@ -590,13 +753,20 @@ private struct StickFigureKinematicsView: View {
     let phase: MotionCoachPhase
     let smooth: Double
     let time: Double
+    let phaseState: AnimationPhaseState
+    let kinematics: PoseKinematics
     let detail: RenderDetail
 
-    init(pose: Pose, phase: MotionCoachPhase, smooth: Double, time: Double, detail: RenderDetail = .full) {
+    init(pose: Pose, phase: MotionCoachPhase, smooth: Double, time: Double,
+         phaseState: AnimationPhaseState = .neutral,
+         kinematics: PoseKinematics? = nil,
+         detail: RenderDetail = .full) {
         self.pose = pose
         self.phase = phase
         self.smooth = smooth
         self.time = time
+        self.phaseState = phaseState
+        self.kinematics = kinematics ?? pose.kinematics
         self.detail = detail
     }
 
@@ -610,11 +780,15 @@ private struct StickFigureKinematicsView: View {
                 phase: phase
             )
             let skel = SkeletonState(
-                profile: profile, smooth: smooth, t: time,
+                profile: profile,
+                kinematics: kinematics,
+                phaseState: phaseState,
+                smooth: smooth, t: time,
                 size: size, center: center
             )
             let baseHue = pose.category.accentHue
             let isFull = detail == .full
+            let highlighted = skel.highlightedRegions
 
             ZStack {
                 if isFull {
@@ -627,38 +801,45 @@ private struct StickFigureKinematicsView: View {
                 let backOpacity  = 0.38 + skel.backDepth * 0.30
                 let backW: CGFloat = 2.0 + CGFloat(skel.backDepth) * 1.4
                 let backGlow: Color? = isFull ? Color(hue: baseHue, saturation: 0.80, brightness: 1.0).opacity(backOpacity * 0.3) : nil
+                let backDim: Double = regionDimFactor(for: .shoulders, highlighted: highlighted)
                 taperedLimb(
                     from: skel.backShoulder, to: skel.backElbow,
                     startW: backW * 1.15, endW: backW * 0.75,
-                    color: Color(hue: baseHue, saturation: 0.72, brightness: 0.95).opacity(backOpacity),
+                    color: Color(hue: baseHue, saturation: 0.72, brightness: 0.95).opacity(backOpacity * backDim),
                     glowColor: backGlow,
                     curvature: skel.secWave * 0.08
                 )
                 taperedLimb(
                     from: skel.backElbow, to: skel.backHand,
                     startW: backW * 0.75, endW: backW * 0.40,
-                    color: Color(hue: baseHue, saturation: 0.72, brightness: 0.95).opacity(backOpacity),
+                    color: Color(hue: baseHue, saturation: 0.72, brightness: 0.95).opacity(backOpacity * backDim),
                     glowColor: backGlow,
                     curvature: skel.tertWave * 0.06
                 )
 
                 let coreColor = Color.white.opacity(0.92)
                 let legGlow: Color? = isFull ? Color(hue: baseHue, saturation: 0.30, brightness: 1.0).opacity(0.15) : nil
+                let legDim: Double = regionDimFactor(for: .legs, highlighted: highlighted)
+                let legHighlight = highlighted.contains(.legs) || highlighted.contains(.hips)
                 taperedLimb(from: skel.leftHip,  to: skel.leftKnee,
                             startW: 3.2, endW: 2.6,
-                            color: coreColor.opacity(0.88), glowColor: legGlow,
+                            color: coreColor.opacity(legHighlight ? 1.0 : 0.88 * legDim),
+                            glowColor: legHighlight ? legGlow?.opacity(2.0) : legGlow,
                             curvature: skel.secWave * 0.04)
                 taperedLimb(from: skel.leftKnee, to: skel.leftFoot,
                             startW: 2.6, endW: 2.0,
-                            color: coreColor.opacity(0.85), glowColor: legGlow,
+                            color: coreColor.opacity(legHighlight ? 0.95 : 0.85 * legDim),
+                            glowColor: legHighlight ? legGlow?.opacity(2.0) : legGlow,
                             curvature: skel.tertWave * 0.03)
                 taperedLimb(from: skel.rightHip,  to: skel.rightKnee,
                             startW: 3.2, endW: 2.6,
-                            color: coreColor.opacity(0.88), glowColor: legGlow,
+                            color: coreColor.opacity(legHighlight ? 1.0 : 0.88 * legDim),
+                            glowColor: legHighlight ? legGlow?.opacity(2.0) : legGlow,
                             curvature: -skel.secWaveRight * 0.04)
                 taperedLimb(from: skel.rightKnee, to: skel.rightFoot,
                             startW: 2.6, endW: 2.0,
-                            color: coreColor.opacity(0.85), glowColor: legGlow,
+                            color: coreColor.opacity(legHighlight ? 0.95 : 0.85 * legDim),
+                            glowColor: legHighlight ? legGlow?.opacity(2.0) : legGlow,
                             curvature: -skel.tertWaveRight * 0.03)
 
                 if isFull {
@@ -666,14 +847,16 @@ private struct StickFigureKinematicsView: View {
                         neck: skel.neck, pelvis: skel.pelvis, spineMid: skel.spineMid,
                         leftShoulder: skel.leftShoulder, rightShoulder: skel.rightShoulder,
                         leftHip: skel.leftHip, rightHip: skel.rightHip,
-                        size: size, hue: baseHue
+                        size: size, hue: baseHue,
+                        highlighted: highlighted
                     )
                 }
 
                 let frontOpacity = 0.55 + skel.frontDepth * 0.40
                 let frontW: CGFloat = 2.4 + CGFloat(skel.frontDepth) * 1.6
                 let limbAccent = Color(hue: baseHue, saturation: 0.82, brightness: 0.99)
-                let limbGlow: Color? = isFull ? Color(hue: baseHue, saturation: 0.90, brightness: 1.0).opacity(frontOpacity * 0.25) : nil
+                let armHighlight = highlighted.contains(.shoulders) || highlighted.contains(.arms) || highlighted.contains(.chest)
+                let limbGlow: Color? = isFull ? limbAccent.opacity(frontOpacity * (armHighlight ? 0.50 : 0.25)) : nil
                 taperedLimb(
                     from: skel.frontShoulder, to: skel.frontElbow,
                     startW: frontW * 1.20, endW: frontW * 0.78,
@@ -690,31 +873,36 @@ private struct StickFigureKinematicsView: View {
                 )
 
                 if isFull {
-                    headSphere(at: skel.headCenter, radius: skel.headRadius, hue: baseHue, tilt: skel.torsoTilt)
+                    headSphere(at: skel.headCenter, radius: skel.headRadius, hue: baseHue, tilt: skel.torsoTilt,
+                               highlighted: highlighted.contains(.head) || highlighted.contains(.neck))
                 }
 
                 if isFull {
                     let jr = size * Proportion.jointRadius
-                    jointSphere(at: skel.neck,           radius: jr * 1.1, lightAngle: -.pi / 4.0 + skel.torsoTilt,
-                                baseColor: .white)
-                    jointSphere(at: skel.pelvis,         radius: jr * 1.3, lightAngle: -.pi / 4.0,
-                                baseColor: .white)
-                    jointSphere(at: skel.leftShoulder,   radius: jr * (0.9 + CGFloat(skel.backDepth) * 0.3),
+                    jointSphere(at: skel.neck,           radius: jr * (1.1 * (highlighted.contains(.neck) ? 1.5 : 1.0)),
+                                lightAngle: -.pi / 4.0 + skel.torsoTilt,
+                                baseColor: highlighted.contains(.neck) ? Color(hue: baseHue, saturation: 0.8, brightness: 1.0) : .white)
+                    jointSphere(at: skel.pelvis,         radius: jr * (1.3 * (highlighted.contains(.hips) ? 1.4 : 1.0)),
+                                lightAngle: -.pi / 4.0,
+                                baseColor: highlighted.contains(.hips) ? Color(hue: baseHue, saturation: 0.8, brightness: 1.0) : .white)
+                    jointSphere(at: skel.leftShoulder,   radius: jr * (0.9 + CGFloat(skel.backDepth) * 0.3) * (highlighted.contains(.shoulders) ? 1.5 : 1.0),
                                 lightAngle: -.pi / 3.0, baseColor: limbAccent)
-                    jointSphere(at: skel.rightShoulder,  radius: jr * (0.9 + CGFloat(skel.frontDepth) * 0.3),
+                    jointSphere(at: skel.rightShoulder,  radius: jr * (0.9 + CGFloat(skel.frontDepth) * 0.3) * (highlighted.contains(.shoulders) ? 1.5 : 1.0),
                                 lightAngle: -.pi / 3.0, baseColor: limbAccent)
-                    jointSphere(at: skel.backElbow,      radius: jr * 0.85,
+                    jointSphere(at: skel.backElbow,      radius: jr * 0.85 * (highlighted.contains(.arms) ? 1.3 : 1.0),
                                 lightAngle: -.pi / 5.0, baseColor: limbAccent.opacity(backOpacity))
-                    jointSphere(at: skel.frontElbow,     radius: jr * 0.95,
+                    jointSphere(at: skel.frontElbow,     radius: jr * 0.95 * (highlighted.contains(.arms) ? 1.3 : 1.0),
                                 lightAngle: -.pi / 5.0, baseColor: limbAccent.opacity(frontOpacity))
                     jointSphere(at: skel.backHand,       radius: jr * 0.65,
                                 lightAngle: -.pi / 6.0, baseColor: limbAccent.opacity(backOpacity * 0.9))
                     jointSphere(at: skel.frontHand,      radius: jr * 0.75,
                                 lightAngle: -.pi / 6.0, baseColor: limbAccent.opacity(frontOpacity * 0.9))
-                    jointSphere(at: skel.leftKnee,       radius: jr * 1.05, lightAngle: -.pi / 4.0,
-                                baseColor: .white)
-                    jointSphere(at: skel.rightKnee,      radius: jr * 1.05, lightAngle: -.pi / 4.0,
-                                baseColor: .white)
+                    jointSphere(at: skel.leftKnee,       radius: jr * 1.05 * (highlighted.contains(.legs) ? 1.4 : 1.0),
+                                lightAngle: -.pi / 4.0,
+                                baseColor: highlighted.contains(.legs) ? Color(hue: baseHue, saturation: 0.8, brightness: 1.0) : .white)
+                    jointSphere(at: skel.rightKnee,      radius: jr * 1.05 * (highlighted.contains(.legs) ? 1.4 : 1.0),
+                                lightAngle: -.pi / 4.0,
+                                baseColor: highlighted.contains(.legs) ? Color(hue: baseHue, saturation: 0.8, brightness: 1.0) : .white)
                     jointSphere(at: skel.leftFoot,       radius: jr * 0.70, lightAngle: -.pi / 4.0,
                                 baseColor: .white.opacity(0.85))
                     jointSphere(at: skel.rightFoot,      radius: jr * 0.70, lightAngle: -.pi / 4.0,
@@ -722,27 +910,32 @@ private struct StickFigureKinematicsView: View {
                 }
 
                 if isFull, phase == .active {
-                    motionArrows(skel: skel, profile: profile, size: size, hue: baseHue)
+                    motionArrows(skel: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    // MARK: - Motion arrows (refactored: SkeletonState replaces 18 params)
+    private func regionDimFactor(for region: BodyRegion, highlighted: Set<BodyRegion>) -> Double {
+        if highlighted.isEmpty { return 1.0 }
+        return highlighted.contains(region) ? 1.0 : 0.55
+    }
 
-    /// Draws explicit directional motion arrows at active joints.
-    /// Each arrow shows: (1) an arc indicating the range of motion,
-    /// (2) a bold arrowhead at the current position showing live direction.
+    // MARK: - Motion arrows (Phase 5: phase-aware + breathing-synced)
+
     @ViewBuilder
     private func motionArrows(
         skel: SkeletonState,
         profile: StickFigureMotionProfile,
-        size: CGFloat, hue: Double
+        size: CGFloat, hue: Double,
+        phaseState: AnimationPhaseState
     ) -> some View {
         let arrowColor = Color(hue: hue, saturation: 0.85, brightness: 1.0)
-        let arrowAlpha = 0.55
-        let r = size * Proportion.arrowArcRadius
+        let isSetup = phaseState.phase == .setup
+        let arrowScale: CGFloat = isSetup ? 1.6 : 1.0
+        let arrowAlpha = isSetup ? 0.75 : 0.55
+        let r = size * Proportion.arrowArcRadius * arrowScale
 
         ZStack {
             let lsArcStart = -.pi / 2.0 + skel.torsoTilt - profile.armSwingRadians
@@ -811,9 +1004,6 @@ private struct StickFigureKinematicsView: View {
         }
     }
 
-    /// Draws an arc range indicator with a directional arrowhead at the current position.
-    /// - Arc shows the full range of motion (faint)
-    /// - Arrowhead at `currentAngle` shows live direction (bold)
     @ViewBuilder
     private func arcArrow(
         center: CGPoint, radius: CGFloat,
@@ -875,7 +1065,6 @@ private struct StickFigureKinematicsView: View {
         }
     }
 
-    /// Tapered limb: filled shape narrowing from startW to endW with optional glow layer.
     @ViewBuilder
     private func taperedLimb(
         from start: CGPoint, to end: CGPoint,
@@ -934,7 +1123,6 @@ private struct StickFigureKinematicsView: View {
         }
     }
 
-    /// 3D-looking joint sphere with specular highlight.
     private func jointSphere(
         at center: CGPoint, radius: CGFloat,
         lightAngle: Double, baseColor: Color
@@ -942,7 +1130,7 @@ private struct StickFigureKinematicsView: View {
         let hlx = cos(lightAngle) * radius * 0.30
         let hly = sin(lightAngle) * radius * 0.30
         let gradCenter = UnitPoint(x: 0.5 + hlx / (radius * 2.0),
-                                   y: 0.5 + hly / (radius * 2.0))
+                                    y: 0.5 + hly / (radius * 2.0))
         let grad = RadialGradient(
             colors: [
                 Color.white.opacity(0.95),
@@ -960,9 +1148,9 @@ private struct StickFigureKinematicsView: View {
             .shadow(color: baseColor.opacity(0.20), radius: radius * 0.6)
     }
 
-    /// 3D head: gradient sphere with specular highlight, rim light, and face direction dot.
-    private func headSphere(at center: CGPoint, radius: CGFloat, hue: Double, tilt: Double) -> some View {
-        let skinTint = Color(hue: hue, saturation: 0.18, brightness: 0.98)
+    private func headSphere(at center: CGPoint, radius: CGFloat, hue: Double, tilt: Double,
+                            highlighted: Bool) -> some View {
+        let skinTint = Color(hue: hue, saturation: highlighted ? 0.35 : 0.18, brightness: 0.98)
         let headGrad = RadialGradient(
             colors: [
                 Color.white.opacity(0.97),
@@ -986,9 +1174,8 @@ private struct StickFigureKinematicsView: View {
             startAngle: .degrees(200),
             endAngle: .degrees(520)
         )
-        let glowColor = Color(hue: hue, saturation: 0.60, brightness: 0.95).opacity(0.25)
+        let glowColor = Color(hue: hue, saturation: 0.60, brightness: 0.95).opacity(highlighted ? 0.40 : 0.25)
 
-        // Face direction dot: -π/2 points up; lateral head tilt shifts the indicator.
         let faceAngle = -.pi / 2.0 + tilt
         let faceDist = radius * 0.50
         let faceDotX = center.x + cos(faceAngle) * faceDist
@@ -999,7 +1186,7 @@ private struct StickFigureKinematicsView: View {
             Circle()
                 .fill(glowColor)
                 .frame(width: radius * 2.4, height: radius * 2.4)
-                .blur(radius: radius * 0.5)
+                .blur(radius: radius * (highlighted ? 0.7 : 0.5))
                 .position(center)
 
             Circle()
@@ -1027,15 +1214,16 @@ private struct StickFigureKinematicsView: View {
         }
     }
 
-    /// Filled torso volume: cubic-Bezier tapered shape with waist pinch.
     @ViewBuilder
     private func torsoVolume(
         neck: CGPoint, pelvis: CGPoint, spineMid: CGPoint,
         leftShoulder: CGPoint, rightShoulder: CGPoint,
         leftHip: CGPoint, rightHip: CGPoint,
-        size: CGFloat, hue: Double
+        size: CGFloat, hue: Double,
+        highlighted: Set<BodyRegion>
     ) -> some View {
-        let bodyColor = Color(hue: hue, saturation: 0.10, brightness: 0.95)
+        let spineHighlight = highlighted.contains(.spine) || highlighted.contains(.back) || highlighted.contains(.core)
+        let bodyColor = Color(hue: hue, saturation: spineHighlight ? 0.20 : 0.10, brightness: 0.95)
         let directMidX = (pelvis.x + neck.x) / 2.0
         let spineOffset = (spineMid.x - directMidX) * size * 0.004
 
@@ -1071,8 +1259,8 @@ private struct StickFigureKinematicsView: View {
         .fill(
             RadialGradient(
                 colors: [
-                    bodyColor.opacity(0.28),
-                    bodyColor.opacity(0.12),
+                    bodyColor.opacity(spineHighlight ? 0.38 : 0.28),
+                    bodyColor.opacity(spineHighlight ? 0.18 : 0.12),
                     bodyColor.opacity(0.04)
                 ],
                 center: UnitPoint(x: 0.5, y: 0.35),
@@ -1088,12 +1276,11 @@ private struct StickFigureKinematicsView: View {
             p.addLine(to: rightHip)
         }
         .stroke(
-            Color.white.opacity(0.75),
-            style: StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
+            Color.white.opacity(spineHighlight ? 0.90 : 0.75),
+            style: StrokeStyle(lineWidth: spineHighlight ? 2.5 : 2.0, lineCap: .round, lineJoin: .round)
         )
     }
 
-    /// Elliptical ground shadow.
     private func groundShadow(
         leftFoot: CGPoint, rightFoot: CGPoint,
         pelvis: CGPoint, size: CGFloat
@@ -1122,7 +1309,7 @@ private struct StickFigureKinematicsView: View {
 private struct StickFigureMotionProfile {
     let torsoTiltRadians: Double
     let verticalBob: Double
-    let lateralSway: Double
+    let lateralSwayAmplitude: Double
     let armSwingRadians: Double
     let elbowFlexRadians: Double
     let elbowFlexVarianceRadians: Double
@@ -1143,7 +1330,7 @@ private struct StickFigureMotionProfile {
         case .spine, .back:
             torsoTiltRadians = 0.18 * difficultyScale * phaseScale
             verticalBob = 0.030 * difficultyScale * phaseScale
-            lateralSway = 0.018 * phaseScale
+            lateralSwayAmplitude = 0.018 * phaseScale
             armSwingRadians = 0.15 * difficultyScale * phaseScale
             elbowFlexRadians = 0.95
             elbowFlexVarianceRadians = 0.20 * phaseScale
@@ -1154,7 +1341,7 @@ private struct StickFigureMotionProfile {
         case .hips, .legs:
             torsoTiltRadians = 0.10 * difficultyScale * phaseScale
             verticalBob = 0.024 * difficultyScale * phaseScale
-            lateralSway = 0.045 * difficultyScale * phaseScale
+            lateralSwayAmplitude = 0.045 * difficultyScale * phaseScale
             armSwingRadians = 0.10 * phaseScale
             elbowFlexRadians = 1.10
             elbowFlexVarianceRadians = 0.12 * phaseScale
@@ -1165,7 +1352,7 @@ private struct StickFigureMotionProfile {
         case .shoulders, .arms, .chest:
             torsoTiltRadians = 0.08 * phaseScale
             verticalBob = 0.018 * phaseScale
-            lateralSway = 0.012 * phaseScale
+            lateralSwayAmplitude = 0.012 * phaseScale
             armSwingRadians = 0.42 * difficultyScale * phaseScale
             elbowFlexRadians = 1.28
             elbowFlexVarianceRadians = 0.32 * difficultyScale * phaseScale
@@ -1176,7 +1363,7 @@ private struct StickFigureMotionProfile {
         case .neck:
             torsoTiltRadians = 0.14 * difficultyScale * phaseScale
             verticalBob = 0.012 * phaseScale
-            lateralSway = 0.016 * phaseScale
+            lateralSwayAmplitude = 0.016 * phaseScale
             armSwingRadians = 0.06 * phaseScale
             elbowFlexRadians = 1.02
             elbowFlexVarianceRadians = 0.09 * phaseScale
@@ -1187,7 +1374,7 @@ private struct StickFigureMotionProfile {
         case .balance:
             torsoTiltRadians = 0.12 * difficultyScale * phaseScale
             verticalBob = 0.020 * phaseScale
-            lateralSway = 0.052 * difficultyScale * phaseScale
+            lateralSwayAmplitude = 0.052 * difficultyScale * phaseScale
             armSwingRadians = 0.20 * difficultyScale * phaseScale
             elbowFlexRadians = 1.15
             elbowFlexVarianceRadians = 0.16 * phaseScale
@@ -1198,7 +1385,7 @@ private struct StickFigureMotionProfile {
         case .core, .fullBody, .inversion:
             torsoTiltRadians = 0.20 * difficultyScale * phaseScale
             verticalBob = 0.026 * difficultyScale * phaseScale
-            lateralSway = 0.026 * phaseScale
+            lateralSwayAmplitude = 0.026 * phaseScale
             armSwingRadians = 0.26 * difficultyScale * phaseScale
             elbowFlexRadians = 1.20
             elbowFlexVarianceRadians = 0.22 * phaseScale
@@ -1209,7 +1396,7 @@ private struct StickFigureMotionProfile {
         case .breathing, .relaxation:
             torsoTiltRadians = 0.05 * phaseScale
             verticalBob = 0.014 * phaseScale
-            lateralSway = 0.010 * phaseScale
+            lateralSwayAmplitude = 0.010 * phaseScale
             armSwingRadians = 0.05 * phaseScale
             elbowFlexRadians = 1.05
             elbowFlexVarianceRadians = 0.08 * phaseScale
@@ -1219,8 +1406,6 @@ private struct StickFigureMotionProfile {
         }
     }
 }
-
-// MARK: - Limb arc path
 
 private struct LimbArcView: View {
     let profile: MotionCoachProfile
@@ -1249,8 +1434,6 @@ private struct LimbArcView: View {
         }
     }
 }
-
-// MARK: - Profile
 
 private struct MotionCoachProfile {
     let accentHue: Double
@@ -1282,7 +1465,6 @@ private struct MotionCoachProfile {
         }
     }
 
-    /// Returns (offsetX, offsetY, rotationDegrees) for the central figure.
     func limbOffset(smooth: Double, wave: Double) -> (CGFloat, CGFloat, Double) {
         let d = Double(difficulty.dotCount)
 
@@ -1329,7 +1511,6 @@ private struct MotionCoachProfile {
         }
     }
 
-    /// Generates the limb arc Path for the category's movement envelope.
     func limbArcPath(size: CGFloat, progress: Double) -> Path {
         let r = size * Proportion.limbArcRadius
 

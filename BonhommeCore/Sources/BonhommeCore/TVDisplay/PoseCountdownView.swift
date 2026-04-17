@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Displays the current pose name, illustration placeholder, and a circular countdown timer.
-/// Volumetric ring glow, radial ambient light, spring interpolation.
 public struct PoseCountdownView: View {
     public let pose: Pose
     public let remaining: TimeInterval
@@ -17,70 +15,74 @@ public struct PoseCountdownView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let pulse = (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
+            let kinematics = pose.kinematics
+            let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
 
             VStack(spacing: 24) {
                 Spacer()
 
                 ZStack {
-                    // Ambient glow behind icon
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [Color.cyan.opacity(0.12 + pulse * 0.06), .clear],
+                                colors: [catColor.opacity(0.12 + pulse * 0.06), .clear],
                                 center: .center, startRadius: 10, endRadius: 80
                             )
                         )
                         .frame(width: 160, height: 160)
 
-                    Image(systemName: "figure.yoga")
-                        .font(.system(size: 120))
-                        .foregroundStyle(.cyan.opacity(0.8))
+                    MotionCoachView(pose: pose, phase: .active, cornerRadius: 20)
+                        .frame(width: 120, height: 120)
                         .scaleEffect(0.97 + pulse * 0.04)
-                        .shadow(color: .cyan.opacity(0.4), radius: 8)
-                        .shadow(color: .cyan.opacity(0.15), radius: 20)
+                        .shadow(color: catColor.opacity(0.4), radius: 8)
+                        .shadow(color: catColor.opacity(0.15), radius: 20)
+                }
+
+                if !kinematics.setupSteps.isEmpty {
+                    Text(kinematics.setupSteps.first?.localized ?? "")
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
                 }
 
                 Text(pose.name.localized)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .shadow(color: .cyan.opacity(0.3), radius: 8)
+                    .shadow(color: catColor.opacity(0.3), radius: 8)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
                 // Volumetric countdown ring
                 ZStack {
-                    // Ambient ring glow
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [Color.cyan.opacity(0.05), .clear],
+                                colors: [catColor.opacity(0.05), .clear],
                                 center: .center, startRadius: 50, endRadius: 90
                             )
                         )
                         .frame(width: 180, height: 180)
 
-                    // Outer blurred glow ring
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(Color.cyan.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                        .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .blur(radius: 6)
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
 
-                    // Background track
                     Circle()
                         .stroke(Color.white.opacity(0.08), lineWidth: 8)
 
-                    // Main ring
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(Color.cyan, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .stroke(catColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .shadow(color: .cyan.opacity(0.6), radius: 10)
-                        .shadow(color: .cyan.opacity(0.3), radius: 3)
+                        .shadow(color: catColor.opacity(0.6), radius: 10)
+                        .shadow(color: catColor.opacity(0.3), radius: 3)
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
 
-                    // Inner highlight ring
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
                         .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
@@ -91,7 +93,7 @@ public struct PoseCountdownView: View {
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
-                        .shadow(color: .cyan.opacity(0.3), radius: 6)
+                        .shadow(color: catColor.opacity(0.3), radius: 6)
                         .contentTransition(.numericText())
                 }
                 .frame(width: 140, height: 140)

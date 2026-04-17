@@ -276,4 +276,87 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertEqual(meditation.durationSeconds, 60)
         XCTAssertEqual(meditation.category, .breathing)
     }
+
+    // MARK: - PoseKinematics
+
+    func testAllPosesHaveKinematics() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertFalse(k.highlightedRegions.isEmpty,
+                           "Pose \(pose.id) has no highlighted regions")
+        }
+    }
+
+    func testKinematicsCatalogCoversAllPoses() {
+        for pose in PoseCatalog.allPoses {
+            let k = PoseKinematicsCatalog.kinematics(for: pose.id)
+            let neutral = PoseKinematics.neutral
+            let isDifferent = k.forwardLean != neutral.forwardLean
+                || k.leftUpperArmAngle != neutral.leftUpperArmAngle
+                || k.rightUpperArmAngle != neutral.rightUpperArmAngle
+                || k.leftForearmBend != neutral.leftForearmBend
+                || k.rightForearmBend != neutral.rightForearmBend
+                || k.sideLean != neutral.sideLean
+                || k.leftThighOffset != neutral.leftThighOffset
+                || k.rightThighOffset != neutral.rightThighOffset
+                || k.leftKneeSpread != neutral.leftKneeSpread
+                || k.rightKneeSpread != neutral.rightKneeSpread
+            XCTAssertTrue(isDifferent,
+                          "Pose \(pose.id) returned neutral kinematics (likely unmapped)")
+        }
+    }
+
+    func testPoseKinematicsHasSetupSteps() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertFalse(k.setupSteps.isEmpty,
+                           "Pose \(pose.id) has no setup steps")
+            for step in k.setupSteps {
+                XCTAssertFalse(step.en.isEmpty, "Pose \(pose.id) has empty EN step")
+                XCTAssertFalse(step.fr.isEmpty, "Pose \(pose.id) has empty FR step")
+            }
+        }
+    }
+
+    func testKinematicsHoldOscillationScale() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertGreaterThanOrEqual(k.holdOscillationScale, 0)
+            XCTAssertLessThanOrEqual(k.holdOscillationScale, 1.0)
+        }
+    }
+
+    func testAnimationPhaseStateSetup() {
+        let state = AnimationPhaseState.compute(elapsed: 0, duration: 30)
+        XCTAssertEqual(state.phase, .setup)
+        XCTAssertEqual(state.poseBlend, 0)
+    }
+
+    func testAnimationPhaseStateHold() {
+        let state = AnimationPhaseState.compute(elapsed: 10, duration: 30)
+        XCTAssertEqual(state.phase, .hold)
+        XCTAssertEqual(state.poseBlend, 1.0)
+        XCTAssertEqual(state.oscillationBlend, 1.0)
+    }
+
+    func testAnimationPhaseStateRelease() {
+        let state = AnimationPhaseState.compute(elapsed: 29, duration: 30)
+        XCTAssertEqual(state.phase, .release)
+        XCTAssertLessThan(state.poseBlend, 1.0)
+        XCTAssertGreaterThan(state.poseBlend, 0)
+    }
+
+    func testAnimationPhaseStatePreview() {
+        let state = AnimationPhaseState.compute(elapsed: 0, duration: 30, phase: .preview)
+        XCTAssertEqual(state.phase, .hold)
+        XCTAssertLessThan(state.poseBlend, 1.0)
+    }
+
+    func testKinematicsBlending() {
+        let a = PoseKinematics.neutral
+        let b = PoseKinematics(forwardLean: 0.5, leftUpperArmAngle: 0.0)
+        let mid = b.blended(with: a, factor: 0.5)
+        XCTAssertEqual(mid.forwardLean, 0.25, accuracy: 0.001)
+        XCTAssertEqual(mid.leftUpperArmAngle, (.pi * 0.55 + 0.0) / 2.0, accuracy: 0.001)
+    }
 }
