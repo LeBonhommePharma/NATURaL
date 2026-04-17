@@ -107,15 +107,15 @@ public struct CrossDomainValidator: Sendable {
             let sigAr = isSignificant ? "ذات دلالة إحصائية" : "غير ذات دلالة إحصائية"
 
             return LocalizedString(
-                en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlation is \(sigText).",
-                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Corrélation \(sigFr).",
-                es: "Validación interdominio (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) bits. Correlación \(sigEs).",
-                ja: "クロスドメイン検証（n=\(n)）：r = \(rText)、R² = \(r2Text)、MAE = \(maeText) ビット。相関は\(sigJa)。",
-                zh: "跨域验证（n=\(n)）：r = \(rText)，R² = \(r2Text)，MAE = \(maeText) 比特。相关性\(sigZh)。",
-                ko: "교차 도메인 검증 (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) 비트. 상관관계 \(sigKo).",
-                ru: "Кросс-доменная валидация (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) бит. Корреляция \(sigRu).",
-                de: "Domänenübergreifende Validierung (n=\(n)): r = \(rText), R² = \(r2Text), MAE = \(maeText) Bits. Korrelation \(sigDe).",
-                ar: "التحقق عبر المجالات (n=\(n)): r = \(rText)، R² = \(r2Text)، MAE = \(maeText) بت. الارتباط \(sigAr)."
+                en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Correlation is \(sigText).",
+                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Corrélation \(sigFr).",
+                es: "Validación interdominio (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Correlación \(sigEs).",
+                ja: "クロスドメイン検証（n=\(n)）：r = \(rText)、R² = \(r2Text)、p = \(pText)、MAE = \(maeText) ビット。相関は\(sigJa)。",
+                zh: "跨域验证（n=\(n)）：r = \(rText)，R² = \(r2Text)，p = \(pText)，MAE = \(maeText) 比特。相关性\(sigZh)。",
+                ko: "교차 도메인 검증 (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) 비트. 상관관계 \(sigKo).",
+                ru: "Кросс-доменная валидация (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) бит. Корреляция \(sigRu).",
+                de: "Domänenübergreifende Validierung (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) Bits. Korrelation \(sigDe).",
+                ar: "التحقق عبر المجالات (n=\(n)): r = \(rText)، R² = \(r2Text)، p = \(pText)، MAE = \(maeText) بت. الارتباط \(sigAr)."
             )
         }
 

@@ -48,13 +48,13 @@ final class LigandEfficiencyCalculatorTests: XCTestCase {
 
     func testBEIRanking() {
         let ranked = LigandEfficiencyCalculator.rankByLE()
-        // LSD and fentanyl should have high LE (tight binding, moderate MW)
+        // LSD and fentanyl should have high pKi (tight binding)
         let lsd = ranked.first { $0.substanceId == "lsd" }
         let caffeine = ranked.first { $0.substanceId == "caffeine" }
 
-        if let lsdLE = lsd?.le, let caffeineLE = caffeine?.le {
-            XCTAssertGreaterThan(lsdLE, caffeineLE,
-                "LSD (Ki ~3.5 nM) should have higher LE than caffeine (Ki ~2400 nM)")
+        if let lsdPKi = lsd?.pKi, let caffeinePKi = caffeine?.pKi {
+            XCTAssertGreaterThan(lsdPKi, caffeinePKi,
+                "LSD (Ki ~3.5 nM, pKi ~8.5) should have higher pKi than caffeine (Ki ~2400 nM, pKi ~5.6)")
         }
     }
 

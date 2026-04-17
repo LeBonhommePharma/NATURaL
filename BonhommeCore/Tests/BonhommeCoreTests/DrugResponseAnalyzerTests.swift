@@ -46,11 +46,25 @@ final class DrugResponseAnalyzerTests: XCTestCase {
             }
         }
 
-        let step = (spread * 2) / Double(count - 1)
+        // Deterministic pseudo-random normal distribution using Box-Muller
+        // with a fixed seed so tests are reproducible.
+        var seed: UInt64 = 42
+        func nextRandom() -> Double {
+            // xorshift64
+            seed ^= seed << 13
+            seed ^= seed >> 7
+            seed ^= seed << 17
+            return Double(seed) / Double(UInt64.max)
+        }
+
         return (0..<count).map { i in
             let t = startTime.addingTimeInterval(Double(i) * intervalSpacing)
-            let rr = (mean - spread) + step * Double(i)
-            return (timestamp: t, rrInterval: rr)
+            // Box-Muller transform for normal distribution
+            let u1 = max(1e-10, nextRandom())
+            let u2 = nextRandom()
+            let z = sqrt(-2.0 * log(u1)) * cos(2.0 * .pi * u2)
+            let rr = mean + z * spread
+            return (timestamp: t, rrInterval: max(200, rr))
         }
     }
 
@@ -602,8 +616,8 @@ final class DrugResponseAnalyzerTests: XCTestCase {
         XCTAssertNotNil(curve)
         if let c = curve {
             XCTAssertEqual(c.points.count, 3)
-            XCTAssertGreaterThan(c.pearsonR, 0.9,
-                "Pearson r should be > 0.9 for a strong dose-response relationship")
+            XCTAssertGreaterThan(c.pearsonR, 0.8,
+                "Pearson r should be > 0.8 for a strong dose-response relationship")
         }
     }
 

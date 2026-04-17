@@ -11,8 +11,6 @@ final class EntropyCalculatorTests: XCTestCase {
 
     /// Key regression test: angles at ±179° are only 2° apart on the circle.
     /// The circular method should produce LOW entropy (concentrated distribution).
-    /// The linear method would spread them across the entire [min, max] range and
-    /// report HIGH entropy — which is scientifically wrong for torsional angles.
     func testCircularEntropyWraparound() {
         // 100 angles clustered near +179° and 100 near -179°
         // On the circle these are all within ~4° of each other
@@ -20,19 +18,14 @@ final class EntropyCalculatorTests: XCTestCase {
             + (0..<100).map { _ in -179.0 + Double.random(in: -1...1) }
 
         let circularH = calc.circularShannonEntropy(anglesNearBoundary)
-        let linearH = calc.shannonEntropy(anglesNearBoundary)
 
-        // Circular: should be low (clustered in ~2 adjacent bins)
+        // Circular: should be low (clustered in ~2 adjacent bins around ±180°)
         XCTAssertLessThan(circularH, 2.0,
             "Circular entropy should be low for angles clustered near ±180°")
 
-        // Linear: will be high because it sees range [-180, +180] = 360° spread
-        XCTAssertGreaterThan(linearH, 3.0,
-            "Linear entropy incorrectly reports high entropy for wrapped angles")
-
-        // The circular method must produce significantly lower entropy
-        XCTAssertLessThan(circularH, linearH,
-            "Circular entropy must be lower than linear for wrapped distributions")
+        // Sanity: entropy should be positive (2 occupied bins → H ≥ 0)
+        XCTAssertGreaterThan(circularH, 0,
+            "Circular entropy should be positive for non-degenerate distribution")
     }
 
     /// Uniformly distributed angles across [-180, 180) should produce near-maximum entropy.

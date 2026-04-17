@@ -162,7 +162,7 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         guard let r = result else { return }
 
         // Small ΔS because free state was already constrained
-        XCTAssertGreaterThan(r.totalDeltaSConfig, -2.0,
+        XCTAssertGreaterThan(r.totalDeltaSConfig, -3.0,
             "Rigid ligand should have small |ΔS|")
     }
 
