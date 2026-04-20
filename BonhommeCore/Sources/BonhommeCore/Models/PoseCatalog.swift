@@ -2348,6 +2348,32 @@ public enum PoseCatalog {
             transitionSeconds: 4,
             isFree: true
         ),
+        WorkoutPlan(
+            id: "lower-back-relief",
+            name: LocalizedString(
+                en: "Lower Back Relief", fr: "Soulagement du bas du dos",
+                es: "Alivio de la espalda baja", ja: "腰痛緩和", zh: "下背部舒缓",
+                ko: "허리 통증 완화", ru: "Облегчение поясницы", de: "Linderung des unteren Rückens",
+                ar: "تخفيف آلام أسفل الظهر", it: "Sollievo per la parte bassa della schiena", pt: "Alívio para a lombar"
+            ),
+            description: LocalizedString(
+                en: "A soothing sequence focused on relieving tension in the lower back.",
+                fr: "Une séquence apaisante axée sur le soulagement de la tension dans le bas du dos.",
+                es: "Una secuencia calmante enfocada en aliviar la tensión en la parte baja de la espalda.",
+                ja: "腰の緊張を和らげることに焦点を当てたリラックスシークエンス。",
+                zh: "专注于缓解下背部紧张的舒缓序列。",
+                ko: "허리 긴장 완화에 초점을 맞춘 편안한 시퀀스.",
+                ru: "Успокаивающая последовательность для снятия напряжения в пояснице.",
+                de: "Eine beruhigende Sequenz zur Linderung von Verspannungen im unteren Rücken.",
+                ar: "تسلسل مهدئ يركز على تخفيف التوتر في أسفل الظهر.",
+                it: "Una sequenza rilassante focalizzata sul sollievo della tensione nella parte bassa della schiena.",
+                pt: "Uma sequência suave focada em aliviar a tensão na lombar."
+            ),
+            style: .chairYoga,
+            poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedForwardFold, seatedSideBend, seatedThreadTheNeedle, seatedMeditation],
+            transitionSeconds: 6,
+            isFree: true
+        ),
     ]
 
     public static let vinyasaPlans: [WorkoutPlan] = [
