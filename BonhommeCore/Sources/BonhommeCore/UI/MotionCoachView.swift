@@ -46,7 +46,7 @@ private func clamp01(_ v: Double) -> Double {
     max(0, min(1, v))
 }
 
-private struct SkeletonState {
+private struct SkeletonPose {
     let pelvis: CGPoint
     let neck: CGPoint
     let spineMid: CGPoint
@@ -190,6 +190,29 @@ private struct SkeletonState {
         frontHand = leftIsFront ? leftHand : rightHand
         backDepth = leftIsFront ? (1.0 - armDepthPhase) : armDepthPhase
         frontDepth = leftIsFront ? armDepthPhase : (1.0 - armDepthPhase)
+    }
+
+    /// Factory: builds a fully-resolved SkeletonPose (all joint positions + depth sort)
+    /// from animation inputs. Mirrors the designated init so call sites read as
+    /// `SkeletonPose.from(...)` rather than raw construction.
+    static func from(
+        profile: StickFigureMotionProfile,
+        kinematics: PoseKinematics,
+        phaseState: AnimationPhaseState,
+        smooth: Double,
+        t: Double,
+        size: CGFloat,
+        center: CGPoint
+    ) -> SkeletonPose {
+        SkeletonPose(
+            profile: profile,
+            kinematics: kinematics,
+            phaseState: phaseState,
+            smooth: smooth,
+            t: t,
+            size: size,
+            center: center
+        )
     }
 
     private struct CoreData {
@@ -779,7 +802,7 @@ private struct StickFigureKinematicsView: View {
                 difficulty: pose.difficulty,
                 phase: phase
             )
-            let skel = SkeletonState(
+            let skel = SkeletonPose.from(
                 profile: profile,
                 kinematics: kinematics,
                 phaseState: phaseState,
@@ -927,7 +950,7 @@ private struct StickFigureKinematicsView: View {
 
     @ViewBuilder
     private func motionArrows(
-        skel: SkeletonState,
+        skel: SkeletonPose,
         profile: StickFigureMotionProfile,
         size: CGFloat, hue: Double,
         phaseState: AnimationPhaseState
