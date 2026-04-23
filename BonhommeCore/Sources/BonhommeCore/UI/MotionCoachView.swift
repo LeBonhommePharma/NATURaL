@@ -34,6 +34,17 @@ private enum Proportion {
     static let arrowheadBarbAngle: Double = 2.6
 }
 
+/// Default period (seconds) of the front/back arm depth-sort oscillation
+/// when no breath-synced value is supplied. Use `SkeletonPose.from(...,
+/// armSwingPeriod:)` to pass a breath-synced period instead (typically
+/// `2 · breathPeriod`, so the front/back swap completes once per pair of
+/// breaths and doesn't clash with the per-breath angular arm swing).
+///
+/// Must be driven from absolute time `t` (not an accumulator) so views
+/// that mount late, pause, or re-render at different rates still agree
+/// on which side is forward.
+private let defaultArmSwingPeriod: Double = 6.0
+
 private func skelPoint(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
     CGPoint(x: origin.x + cos(angle) * length, y: origin.y + sin(angle) * length)
 }
@@ -46,7 +57,7 @@ private func clamp01(_ v: Double) -> Double {
     max(0, min(1, v))
 }
 
-private struct SkeletonState {
+private struct SkeletonPose {
     let pelvis: CGPoint
     let neck: CGPoint
     let spineMid: CGPoint
@@ -99,7 +110,8 @@ private struct SkeletonState {
         smooth: Double,
         t: Double,
         size: CGFloat,
-        center: CGPoint
+        center: CGPoint,
+        armSwingPeriod: Double = defaultArmSwingPeriod
     ) {
         let c = smooth * .pi * 2.0
         cycle = c
@@ -126,8 +138,14 @@ private struct SkeletonState {
         tertWave = sin(c - 1.8)
         tertWaveRight = sin(c - 2.0)
 
-        let depthCycle = t * 0.08
-        armDepthPhase = sin(depthCycle) * 0.5 + 0.5
+        // Absolute-time driver — keeps front/back arm sort stable across
+        // view remounts, pauses, and ghost/reflection renders offset by a lag.
+        // `armSwingPeriod` is typically `2 · breathPeriod` so the front/back
+        // depth swap cycles once per pair of breaths, staying musically in
+        // phase with breathing without clashing with the per-breath angular
+        // arm swing driven by `sin(c)` above.
+        let depthCycle = sin(2.0 * .pi * t / armSwingPeriod)
+        armDepthPhase = depthCycle * 0.5 + 0.5
 
         let lateralSway = kinematics.sideLean * phaseState.poseBlend
             + profile.lateralSwayAmplitude * sin(c) * oscAmp * torsoOsc
@@ -190,6 +208,80 @@ private struct SkeletonState {
         frontHand = leftIsFront ? leftHand : rightHand
         backDepth = leftIsFront ? (1.0 - armDepthPhase) : armDepthPhase
         frontDepth = leftIsFront ? armDepthPhase : (1.0 - armDepthPhase)
+    }
+
+    /// Factory: builds a fully-resolved SkeletonPose (all joint positions + depth sort)
+    /// from animation inputs. Mirrors the designated init so call sites read as
+    /// `SkeletonPose.from(...)` rather than raw construction.
+    ///
+    /// Pass `armSwingPeriod: breathPeriod * 2.0` to keep the front/back arm
+    /// depth swap in phase with breathing; omit to use a 6 s default.
+    static func from(
+        profile: StickFigureMotionProfile,
+        kinematics: PoseKinematics,
+        phaseState: AnimationPhaseState,
+        smooth: Double,
+        t: Double,
+        size: CGFloat,
+        center: CGPoint,
+        armSwingPeriod: Double = defaultArmSwingPeriod
+    ) -> SkeletonPose {
+        SkeletonPose(
+            profile: profile,
+            kinematics: kinematics,
+            phaseState: phaseState,
+            smooth: smooth,
+            t: t,
+            size: size,
+            center: center,
+            armSwingPeriod: armSwingPeriod
+        )
+    }
+
+    /// Entropy-driven convenience factory — produces a deterministic
+    /// `SkeletonPose` without wiring up a full `Pose` + `MotionCoachProfile`
+    /// pipeline. For previews, unit tests, and headless validation where the
+    /// caller has a time value and a Shannon-entropy measurement but no
+    /// yoga-specific context.
+    ///
+    /// - Parameters:
+    ///   - t: absolute time (seconds). Drives breathing phase and the
+    ///     front/back arm depth cycle.
+    ///   - h: Shannon entropy (bits). Expected range ~0–4. Linearly clamped
+    ///     to `[0, 1]` against 4 bits and used as the oscillation blend:
+    ///     higher entropy (chaotic HRV) ⇒ livelier movement, lower entropy
+    ///     (rigid / collapsed) ⇒ stiller pose. Matches the SCI convention
+    ///     used elsewhere in BonhommeCore.
+    static func from(t: Double, entropy h: Double) -> SkeletonPose {
+        let oscBlend = max(0.0, min(1.0, h / 4.0))
+        let phaseState = AnimationPhaseState(
+            phase: .hold,
+            progress: 0.5,
+            poseBlend: 1.0,
+            oscillationBlend: oscBlend
+        )
+        let profile = StickFigureMotionProfile(
+            category: .spine,
+            difficulty: .beginner,
+            phase: .active
+        )
+        // Canonical breath cadence — 4 s inhale/exhale; depth swap at 2x so
+        // arms alternate front/back every two breaths (matches the live
+        // `MotionCoachView` call site).
+        let breathPeriod: Double = 4.0
+        let phase01 = fmod(t / breathPeriod, 1.0)
+        let s = phase01 < 0 ? phase01 + 1.0 : phase01
+        let smooth = s * s * s * (s * (s * 6.0 - 15.0) + 10.0)
+        return SkeletonPose(
+            profile: profile,
+            kinematics: .neutral,
+            phaseState: phaseState,
+            smooth: smooth,
+            t: t,
+            size: 200,
+            center: CGPoint(x: 100, y: 100),
+            armSwingPeriod: breathPeriod * 2.0
+        )
     }
 
     private struct CoreData {
@@ -779,12 +871,16 @@ private struct StickFigureKinematicsView: View {
                 difficulty: pose.difficulty,
                 phase: phase
             )
-            let skel = SkeletonState(
+            // Breath period mirrors MotionCoachProfile.breathPeriod so the
+            // front/back arm depth-swap stays in musical phase with breathing.
+            let breathPeriod = max(2.8, min(7.0, pose.durationSeconds / 10.0))
+            let skel = SkeletonPose.from(
                 profile: profile,
                 kinematics: kinematics,
                 phaseState: phaseState,
                 smooth: smooth, t: time,
-                size: size, center: center
+                size: size, center: center,
+                armSwingPeriod: breathPeriod * 2.0
             )
             let baseHue = pose.category.accentHue
             let isFull = detail == .full
@@ -910,9 +1006,10 @@ private struct StickFigureKinematicsView: View {
                 }
 
                 if isFull, phase == .active {
-                    motionArrows(skel: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
+                    motionArrows(pose: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
                 }
             }
+            .drawingGroup()  // Metal-backed rasterization — required for 60fps with 7+ nested ZStacks
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
@@ -926,7 +1023,7 @@ private struct StickFigureKinematicsView: View {
 
     @ViewBuilder
     private func motionArrows(
-        skel: SkeletonState,
+        pose: SkeletonPose,
         profile: StickFigureMotionProfile,
         size: CGFloat, hue: Double,
         phaseState: AnimationPhaseState
@@ -938,66 +1035,66 @@ private struct StickFigureKinematicsView: View {
         let r = size * Proportion.arrowArcRadius * arrowScale
 
         ZStack {
-            let lsArcStart = -.pi / 2.0 + skel.torsoTilt - profile.armSwingRadians
-            let lsArcEnd   = -.pi / 2.0 + skel.torsoTilt + profile.armSwingRadians
+            let lsArcStart = -.pi / 2.0 + pose.torsoTilt - profile.armSwingRadians
+            let lsArcEnd   = -.pi / 2.0 + pose.torsoTilt + profile.armSwingRadians
             arcArrow(
-                center: skel.leftShoulder, radius: r * 1.4,
+                center: pose.leftShoulder, radius: r * 1.4,
                 startAngle: lsArcStart, endAngle: lsArcEnd,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt + skel.armSwing,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt + pose.armSwing,
                 color: arrowColor.opacity(arrowAlpha)
             )
-            let rsArcStart = -.pi / 2.0 + skel.torsoTilt + profile.armSwingRadians
-            let rsArcEnd   = -.pi / 2.0 + skel.torsoTilt - profile.armSwingRadians
+            let rsArcStart = -.pi / 2.0 + pose.torsoTilt + profile.armSwingRadians
+            let rsArcEnd   = -.pi / 2.0 + pose.torsoTilt - profile.armSwingRadians
             arcArrow(
-                center: skel.rightShoulder, radius: r * 1.4,
+                center: pose.rightShoulder, radius: r * 1.4,
                 startAngle: rsArcStart, endAngle: rsArcEnd,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt - skel.armSwing,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt - pose.armSwing,
                 color: arrowColor.opacity(arrowAlpha)
             )
 
             let elbowArcR = r * 1.1
             arcArrow(
-                center: skel.leftElbow, radius: elbowArcR,
+                center: pose.leftElbow, radius: elbowArcR,
                 startAngle: 0, endAngle: profile.elbowFlexVarianceRadians,
-                currentAngle: profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(skel.cycle)),
+                currentAngle: profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(pose.cycle)),
                 color: arrowColor.opacity(arrowAlpha * 0.7)
             )
             arcArrow(
-                center: skel.rightElbow, radius: elbowArcR,
+                center: pose.rightElbow, radius: elbowArcR,
                 startAngle: -.pi, endAngle: -.pi + profile.elbowFlexVarianceRadians,
-                currentAngle: -.pi + profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(skel.cycle)),
+                currentAngle: -.pi + profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(pose.cycle)),
                 color: arrowColor.opacity(arrowAlpha * 0.7)
             )
 
             arcArrow(
-                center: skel.pelvis, radius: r * 1.8,
+                center: pose.pelvis, radius: r * 1.8,
                 startAngle: -.pi / 2.0 - profile.torsoTiltRadians,
                 endAngle:   -.pi / 2.0 + profile.torsoTiltRadians,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt,
                 color: arrowColor.opacity(arrowAlpha * 0.8)
             )
 
             arcArrow(
-                center: skel.headCenter, radius: r * 1.0,
+                center: pose.headCenter, radius: r * 1.0,
                 startAngle: -.pi / 2.0 - profile.torsoTiltRadians * 0.5,
                 endAngle:   -.pi / 2.0 + profile.torsoTiltRadians * 0.5,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt,
                 color: arrowColor.opacity(arrowAlpha * 0.6)
             )
 
             if profile.kneeDriftRadians > 0.04 {
                 arcArrow(
-                    center: skel.leftKnee, radius: r * 1.0,
+                    center: pose.leftKnee, radius: r * 1.0,
                     startAngle: .pi / 2.0 - profile.kneeDriftRadians,
                     endAngle:   .pi / 2.0 + profile.kneeDriftRadians,
-                    currentAngle: .pi / 2.0 - skel.kneeDrift,
+                    currentAngle: .pi / 2.0 - pose.kneeDrift,
                     color: arrowColor.opacity(arrowAlpha * 0.6)
                 )
                 arcArrow(
-                    center: skel.rightKnee, radius: r * 1.0,
+                    center: pose.rightKnee, radius: r * 1.0,
                     startAngle: .pi / 2.0 - profile.kneeDriftRadians,
                     endAngle:   .pi / 2.0 + profile.kneeDriftRadians,
-                    currentAngle: .pi / 2.0 + skel.kneeDrift,
+                    currentAngle: .pi / 2.0 + pose.kneeDrift,
                     color: arrowColor.opacity(arrowAlpha * 0.6)
                 )
             }
