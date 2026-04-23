@@ -933,7 +933,7 @@ private struct StickFigureKinematicsView: View {
                 }
 
                 if isFull, phase == .active {
-                    motionArrows(skel: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
+                    motionArrows(pose: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
                 }
             }
             .drawingGroup()  // Metal-backed rasterization — required for 60fps with 7+ nested ZStacks
@@ -950,7 +950,7 @@ private struct StickFigureKinematicsView: View {
 
     @ViewBuilder
     private func motionArrows(
-        skel: SkeletonPose,
+        pose: SkeletonPose,
         profile: StickFigureMotionProfile,
         size: CGFloat, hue: Double,
         phaseState: AnimationPhaseState
@@ -962,66 +962,66 @@ private struct StickFigureKinematicsView: View {
         let r = size * Proportion.arrowArcRadius * arrowScale
 
         ZStack {
-            let lsArcStart = -.pi / 2.0 + skel.torsoTilt - profile.armSwingRadians
-            let lsArcEnd   = -.pi / 2.0 + skel.torsoTilt + profile.armSwingRadians
+            let lsArcStart = -.pi / 2.0 + pose.torsoTilt - profile.armSwingRadians
+            let lsArcEnd   = -.pi / 2.0 + pose.torsoTilt + profile.armSwingRadians
             arcArrow(
-                center: skel.leftShoulder, radius: r * 1.4,
+                center: pose.leftShoulder, radius: r * 1.4,
                 startAngle: lsArcStart, endAngle: lsArcEnd,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt + skel.armSwing,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt + pose.armSwing,
                 color: arrowColor.opacity(arrowAlpha)
             )
-            let rsArcStart = -.pi / 2.0 + skel.torsoTilt + profile.armSwingRadians
-            let rsArcEnd   = -.pi / 2.0 + skel.torsoTilt - profile.armSwingRadians
+            let rsArcStart = -.pi / 2.0 + pose.torsoTilt + profile.armSwingRadians
+            let rsArcEnd   = -.pi / 2.0 + pose.torsoTilt - profile.armSwingRadians
             arcArrow(
-                center: skel.rightShoulder, radius: r * 1.4,
+                center: pose.rightShoulder, radius: r * 1.4,
                 startAngle: rsArcStart, endAngle: rsArcEnd,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt - skel.armSwing,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt - pose.armSwing,
                 color: arrowColor.opacity(arrowAlpha)
             )
 
             let elbowArcR = r * 1.1
             arcArrow(
-                center: skel.leftElbow, radius: elbowArcR,
+                center: pose.leftElbow, radius: elbowArcR,
                 startAngle: 0, endAngle: profile.elbowFlexVarianceRadians,
-                currentAngle: profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(skel.cycle)),
+                currentAngle: profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(pose.cycle)),
                 color: arrowColor.opacity(arrowAlpha * 0.7)
             )
             arcArrow(
-                center: skel.rightElbow, radius: elbowArcR,
+                center: pose.rightElbow, radius: elbowArcR,
                 startAngle: -.pi, endAngle: -.pi + profile.elbowFlexVarianceRadians,
-                currentAngle: -.pi + profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(skel.cycle)),
+                currentAngle: -.pi + profile.elbowFlexVarianceRadians * (0.5 + 0.5 * cos(pose.cycle)),
                 color: arrowColor.opacity(arrowAlpha * 0.7)
             )
 
             arcArrow(
-                center: skel.pelvis, radius: r * 1.8,
+                center: pose.pelvis, radius: r * 1.8,
                 startAngle: -.pi / 2.0 - profile.torsoTiltRadians,
                 endAngle:   -.pi / 2.0 + profile.torsoTiltRadians,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt,
                 color: arrowColor.opacity(arrowAlpha * 0.8)
             )
 
             arcArrow(
-                center: skel.headCenter, radius: r * 1.0,
+                center: pose.headCenter, radius: r * 1.0,
                 startAngle: -.pi / 2.0 - profile.torsoTiltRadians * 0.5,
                 endAngle:   -.pi / 2.0 + profile.torsoTiltRadians * 0.5,
-                currentAngle: -.pi / 2.0 + skel.torsoTilt,
+                currentAngle: -.pi / 2.0 + pose.torsoTilt,
                 color: arrowColor.opacity(arrowAlpha * 0.6)
             )
 
             if profile.kneeDriftRadians > 0.04 {
                 arcArrow(
-                    center: skel.leftKnee, radius: r * 1.0,
+                    center: pose.leftKnee, radius: r * 1.0,
                     startAngle: .pi / 2.0 - profile.kneeDriftRadians,
                     endAngle:   .pi / 2.0 + profile.kneeDriftRadians,
-                    currentAngle: .pi / 2.0 - skel.kneeDrift,
+                    currentAngle: .pi / 2.0 - pose.kneeDrift,
                     color: arrowColor.opacity(arrowAlpha * 0.6)
                 )
                 arcArrow(
-                    center: skel.rightKnee, radius: r * 1.0,
+                    center: pose.rightKnee, radius: r * 1.0,
                     startAngle: .pi / 2.0 - profile.kneeDriftRadians,
                     endAngle:   .pi / 2.0 + profile.kneeDriftRadians,
-                    currentAngle: .pi / 2.0 + skel.kneeDrift,
+                    currentAngle: .pi / 2.0 + pose.kneeDrift,
                     color: arrowColor.opacity(arrowAlpha * 0.6)
                 )
             }
