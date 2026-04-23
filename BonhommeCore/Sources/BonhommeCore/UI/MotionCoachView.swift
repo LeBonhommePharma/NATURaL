@@ -913,6 +913,7 @@ private struct StickFigureKinematicsView: View {
                     motionArrows(skel: skel, profile: profile, size: size, hue: baseHue, phaseState: phaseState)
                 }
             }
+            .drawingGroup()  // Metal-backed rasterization — required for 60fps with 7+ nested ZStacks
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
