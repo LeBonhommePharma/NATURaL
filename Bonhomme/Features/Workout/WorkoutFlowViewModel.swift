@@ -35,6 +35,13 @@ final class WorkoutFlowViewModel {
     /// Tracks whether this session was restored from a killed app.
     private(set) var isRestoredSession = false
 
+    /// BUG 5 FIX: Track completed poses explicitly instead of using currentPoseIndex + 1.
+    /// Incremented only when a pose timer reaches zero naturally (i.e., pose was fully held).
+    private(set) var posesCompletedCount: Int = 0
+
+    /// Whether the session is currently paused (timer cancelled, HealthKit suspended).
+    private(set) var isPaused: Bool = false
+
     var currentPose: Pose? {
         switch phase {
         case .active(let idx): return plan.poses[safe: idx]
@@ -89,10 +96,20 @@ final class WorkoutFlowViewModel {
             vm.phase = .countdown(secondsRemaining: secs)
         case .active(let idx):
             vm.phase = .active(poseIndex: idx)
+            // BUG 5 FIX: Restore completed count — all poses before the current one are done.
+            vm.posesCompletedCount = idx
         case .transition(let nextIdx, let secs):
             vm.phase = .transition(nextPoseIndex: nextIdx, secondsRemaining: secs)
+            // BUG 3 FIX: During a transition, poseTimeRemaining should reflect the *next*
+            // pose's duration so MetricsOverlayView never shows a stale 0 during the
+            // transition window. The previous pose is already complete.
+            vm.poseTimeRemaining = plan.poses[safe: nextIdx]?.durationSeconds ?? 0
+            // BUG 5 FIX: All poses up to (but not including) nextIdx are completed.
+            vm.posesCompletedCount = nextIdx
         case .cooldown:
             vm.phase = .cooldown
+            // BUG 5 FIX: All poses are done when we reach cooldown.
+            vm.posesCompletedCount = plan.poseCount
         case .complete:
             store.clear()
             return nil
@@ -107,10 +124,10 @@ final class WorkoutFlowViewModel {
         guard isRestoredSession else { return }
 
         Task {
-            // Attempt to recover the existing HealthKit workout session
+            // Attempt to recover the existing HealthKit workout session.
             await recoverHealthKitSession()
 
-            // Resume at the current phase
+            // Resume at the current phase.
             switch phase {
             case .active(let idx):
                 startPoseTimer(for: idx)
@@ -132,7 +149,9 @@ final class WorkoutFlowViewModel {
         // The WorkoutRecorder will attempt to reconnect to any active session.
         // If no session is found, we start a fresh one.
         do {
-            try await recorder.start()
+            // BUG 1 FIX: Pass `plan.style` so the restored HKWorkout is logged under
+            // the correct HKWorkoutActivityType, not the `.chairYoga` default.
+            try await recorder.start(style: plan.style)
         } catch {
             // Session may already be active from the previous launch;
             // WorkoutRecorder handles this gracefully.
@@ -165,12 +184,17 @@ final class WorkoutFlowViewModel {
     // MARK: - Controls
 
     func start() {
+        // BUG 8 (minor) FIX: Reset persistence counter so the first persist fires
+        // predictably at tick 5, regardless of any prior session on this VM instance.
+        persistenceCounter = 0
+        posesCompletedCount = 0
         sessionStartDate = Date()
         phase = .countdown(secondsRemaining: 3)
         startCountdownSequence()
     }
 
     func pause() {
+        isPaused = true
         recorder.pause()
         musicService.pause()
         timerTask?.cancel()
@@ -178,10 +202,39 @@ final class WorkoutFlowViewModel {
     }
 
     func resume() {
+        isPaused = false
         recorder.resume()
-        Task { await musicService.playWorkoutMusic(mood: musicService.adaptiveMood, style: plan.style) }
-        if case .active(let idx) = phase {
-            startPoseTimer(for: idx)
+        Task { [weak self] in
+            guard let self else { return }
+            await self.musicService.playWorkoutMusic(mood: self.musicService.adaptiveMood, style: self.plan.style)
+        }
+
+        // BUG 2 FIX: Original code only restarted the timer for the .active phase,
+        // leaving the session permanently frozen if the user paused mid-transition
+        // or (edge case) mid-countdown. Handle all timer-bearing phases.
+        switch phase {
+        case .active(let idx):
+            // BUG 4 FIX: If poseTimeRemaining somehow hit 0 exactly at the pause
+            // boundary, restarting the while-loop would exit immediately and silently
+            // advance the sequence. Detect this and advance explicitly instead.
+            if poseTimeRemaining > 0 {
+                startPoseTimer(for: idx)
+            } else {
+                let next = idx + 1
+                if next < plan.poses.count {
+                    startTransition(to: next)
+                } else {
+                    startCooldown()
+                }
+            }
+        case .transition(let nextIdx, _):
+            // Session was paused during a transition window — resume the countdown.
+            startTransition(to: nextIdx)
+        case .countdown:
+            // Unlikely but guard against a pause hitting right during the 3-2-1.
+            startCountdownSequence()
+        default:
+            break
         }
     }
 
@@ -214,7 +267,7 @@ final class WorkoutFlowViewModel {
                 feedbackInsights: insights
             ),
             sessionElapsed: elapsedTime,
-            isPaused: false,
+            isPaused: isPaused,
             sequenceIndex: currentPoseIndex,
             sequenceTotal: plan.poseCount
         )
@@ -242,7 +295,11 @@ final class WorkoutFlowViewModel {
             startDate: sessionStartDate ?? Date(),
             endDate: Date(),
             totalDuration: elapsedTime,
-            posesCompleted: currentPoseIndex + 1,
+            // BUG 5 FIX: Use the explicitly tracked counter instead of currentPoseIndex + 1.
+            // currentPoseIndex + 1 over-counts when stop() is called before any pose completes
+            // and under-counts after transitions. posesCompletedCount is incremented only when
+            // a pose timer reaches zero naturally inside startPoseTimer.
+            posesCompleted: posesCompletedCount,
             totalPoses: plan.poseCount,
             activeCalories: recorder.activeCalories,
             averageHeartRate: recorder.averageHeartRate,
@@ -341,17 +398,35 @@ final class WorkoutFlowViewModel {
                 guard !Task.isCancelled else { return }
             }
 
-            // Start HealthKit recording with style-aware activity type
-            try? await recorder.start(style: plan.style)
+            // FIX: Start HealthKit recording in background — don't block workout flow.
+            // The workout MUST proceed even if HealthKit initialization is slow or fails.
+            // This prevents the countdown-freezes-at-1 bug when HealthKit or WatchConnectivity
+            // is not properly initialized.
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    try await self.recorder.start(style: self.plan.style)
+                    print("✅ HealthKit workout session started successfully")
+                } catch {
+                    print("⚠️ HealthKit workout session failed to start: \(error)")
+                    // Continue workout without HealthKit recording
+                }
+            }
 
-            // Start adaptive music with style-aware playlists
-            await musicService.requestAuthorization()
-            await musicService.playWorkoutMusic(mood: .calm, style: plan.style)
+            // Music is fire-and-forget — MusicAuthorization.request() and
+            // the Apple Music catalog search can both block indefinitely on
+            // simulator or without an active Apple Music subscription.
+            // The workout flow must NEVER await music.
+            Task { [weak self] in
+                guard let self else { return }
+                await self.musicService.requestAuthorization()
+                await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
+            }
 
             // Start Live Activity for Dynamic Island
             startLiveActivity()
 
-            // Begin first pose
+            // Begin first pose IMMEDIATELY — don't wait for HealthKit or Music
             beginPose(at: 0)
         }
     }
@@ -390,6 +465,9 @@ final class WorkoutFlowViewModel {
                     await adaptMusicToCurrentSCI()
                 }
             }
+
+            // BUG 5 FIX: Pose reached zero naturally — it was fully held. Count it.
+            posesCompletedCount += 1
 
             // Transition to next pose
             let nextIndex = index + 1

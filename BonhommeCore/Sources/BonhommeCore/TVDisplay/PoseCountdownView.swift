@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Animated circular countdown timer for the current pose.
 public struct PoseCountdownView: View {
     public let pose: Pose
     public let remaining: TimeInterval
@@ -12,97 +11,103 @@ public struct PoseCountdownView: View {
         self.total = total
     }
 
-    private var progress: Double {
-        guard total > 0 else { return 0 }
-        return max(0, min(1, 1.0 - remaining / total))
-    }
-
-    private var categoryColor: Color {
-        Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
-    }
-
     public var body: some View {
-        VStack(spacing: 20) {
-            // Category icon
-            Image(systemName: pose.category.symbolName)
-                .font(.system(size: 36))
-                .foregroundStyle(categoryColor.opacity(0.6))
-                .padding(.bottom, -8)
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let pulse = (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
+            let kinematics = pose.kinematics
+            let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
 
-            // Pose name
-            Text(pose.name.localized)
-                .font(.system(size: 36, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+            VStack(spacing: 24) {
+                Spacer()
 
-            // Difficulty dots
-            HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { i in
+                ZStack {
                     Circle()
-                        .fill(i < pose.difficulty.dotCount ? categoryColor : Color.white.opacity(0.15))
-                        .frame(width: 8, height: 8)
+                        .fill(
+                            RadialGradient(
+                                colors: [catColor.opacity(0.12 + pulse * 0.06), .clear],
+                                center: .center, startRadius: 10, endRadius: 80
+                            )
+                        )
+                        .frame(width: 160, height: 160)
+
+                    MotionCoachView(pose: pose, phase: .active, cornerRadius: 20)
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(0.97 + pulse * 0.04)
+                        .shadow(color: catColor.opacity(0.4), radius: 8)
+                        .shadow(color: catColor.opacity(0.15), radius: 20)
                 }
-            }
 
-            // Countdown ring
-            ZStack {
-                // Outer ambient glow
-                Circle()
-                    .stroke(categoryColor.opacity(0.08), lineWidth: 24)
+                if !kinematics.setupSteps.isEmpty {
+                    Text(kinematics.setupSteps.first?.localized ?? "")
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
 
-                // Background ring
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 12)
-
-                // Progress ring
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        progressGradient,
-                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: categoryColor.opacity(0.4), radius: 6)
-                    .animation(.linear(duration: 0.5), value: progress)
-
-                // Countdown number
-                Text("\(Int(remaining))")
-                    .font(.system(size: 96, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+                Text(pose.name.localized)
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-            }
-            .frame(width: 280, height: 280)
+                    .shadow(color: catColor.opacity(0.3), radius: 8)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
 
-            // Breathing pattern
-            if !pose.breathingPattern.localized.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "wind")
-                        .font(.system(size: 14))
-                        .foregroundStyle(categoryColor.opacity(0.7))
-                    Text(pose.breathingPattern.localized)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
+                // Volumetric countdown ring
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [catColor.opacity(0.05), .clear],
+                                center: .center, startRadius: 50, endRadius: 90
+                            )
+                        )
+                        .frame(width: 180, height: 180)
+
+                    Circle()
+                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
+                        .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .blur(radius: 6)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+
+                    Circle()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 8)
+
+                    Circle()
+                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
+                        .stroke(catColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .shadow(color: catColor.opacity(0.6), radius: 10)
+                        .shadow(color: catColor.opacity(0.3), radius: 3)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+
+                    Circle()
+                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
+                        .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+
+                    Text(timeString)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .shadow(color: catColor.opacity(0.3), radius: 6)
+                        .contentTransition(.numericText())
                 }
-                .lineLimit(1)
-                .padding(.horizontal, 32)
-            }
+                .frame(width: 140, height: 140)
 
-            // Voice cue
-            Text(pose.voiceCueText.localized)
-                .font(.system(size: 18, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .lineLimit(2)
+                Spacer()
+            }
         }
     }
 
-    private var progressGradient: AngularGradient {
-        AngularGradient(
-            colors: [categoryColor, .blue, .purple, categoryColor],
-            center: .center,
-            startAngle: .degrees(0),
-            endAngle: .degrees(360)
-        )
+    private var timeString: String {
+        let seconds = Int(remaining)
+        if seconds >= 60 {
+            return String(format: "%d:%02d", seconds / 60, seconds % 60)
+        }
+        return "\(seconds)"
     }
 }

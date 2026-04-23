@@ -63,7 +63,7 @@ final class LocalizedStringTests: XCTestCase {
     }
 
     func testSupportedLanguages() {
-        XCTAssertEqual(LocalizedString.supportedLanguages.count, 9)
+        XCTAssertEqual(LocalizedString.supportedLanguages.count, 11)
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("en"))
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("fr"))
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("es"))
@@ -97,7 +97,7 @@ final class LocalizedStringTests: XCTestCase {
     func testLocalizedStringCodableBackwardsCompatibility() throws {
         // Test decoding JSON with only en/fr (older format) still works
         let json = """
-        {"en":"Hello","fr":"Bonjour","es":"","ja":"","zh":"","ko":"","ru":"","de":"","ar":""}
+        {"en":"Hello","fr":"Bonjour","es":"","ja":"","zh":"","ko":"","ru":"","de":"","ar":"","it":"","pt":""}
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(LocalizedString.self, from: json)
         XCTAssertEqual(decoded.en, "Hello")

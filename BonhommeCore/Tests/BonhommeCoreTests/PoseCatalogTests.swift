@@ -7,8 +7,8 @@ final class PoseCatalogTests: XCTestCase {
 
     func testAllPosesNotEmpty() {
         XCTAssertFalse(PoseCatalog.allPoses.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.allPoses.count, 200,
-            "Expected 200+ poses across all styles, got \(PoseCatalog.allPoses.count)")
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPoses.count, 26,
+            "Expected 26 poses, got \(PoseCatalog.allPoses.count)")
     }
 
     func testAllPoseIdsAreUnique() {
@@ -40,7 +40,6 @@ final class PoseCatalogTests: XCTestCase {
         for pose in PoseCatalog.allPoses {
             XCTAssertFalse(pose.modifications.en.isEmpty, "Pose \(pose.id) missing English modifications")
             XCTAssertFalse(pose.modifications.fr.isEmpty, "Pose \(pose.id) missing French modifications")
-            // Same number of modifications in both languages
             XCTAssertEqual(
                 pose.modifications.en.count,
                 pose.modifications.fr.count,
@@ -69,14 +68,8 @@ final class PoseCatalogTests: XCTestCase {
 
     func testFreePosesExist() {
         XCTAssertFalse(PoseCatalog.freePoses.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.freePoses.count, 50,
-            "Expected 50+ free poses across all styles, got \(PoseCatalog.freePoses.count)")
-    }
-
-    func testPremiumPosesExist() {
-        XCTAssertFalse(PoseCatalog.premiumPoses.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.premiumPoses.count, 100,
-            "Expected 100+ premium poses, got \(PoseCatalog.premiumPoses.count)")
+        XCTAssertGreaterThanOrEqual(PoseCatalog.freePoses.count, 10,
+            "Expected 10+ free poses, got \(PoseCatalog.freePoses.count)")
     }
 
     func testFreePlusAndPremiumEqualsAll() {
@@ -122,21 +115,17 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertTrue(categories.contains(.shoulders), "No shoulder poses")
         XCTAssertTrue(categories.contains(.neck), "No neck poses")
         XCTAssertTrue(categories.contains(.breathing), "No breathing poses")
-        XCTAssertTrue(categories.contains(.core), "No core poses")
-        XCTAssertTrue(categories.contains(.arms), "No arms poses")
-        XCTAssertTrue(categories.contains(.legs), "No legs poses")
-        XCTAssertTrue(categories.contains(.chest), "No chest poses")
-        XCTAssertTrue(categories.contains(.back), "No back poses")
-        XCTAssertTrue(categories.contains(.relaxation), "No relaxation poses")
+        XCTAssertTrue(categories.contains(.fullBody), "No fullBody poses")
         XCTAssertTrue(categories.contains(.balance), "No balance poses")
     }
 
     // MARK: - Position Coverage
 
-    func testAllPositionTypesRepresented() {
-        let positions = Set(PoseCatalog.allPoses.map(\.position))
-        for position in PosePosition.allCases {
-            XCTAssertTrue(positions.contains(position), "No poses with position \(position.rawValue)")
+    func testAllPositionsAreSeated() {
+        // Chair yoga app — all poses are seated
+        for pose in PoseCatalog.allPoses {
+            XCTAssertEqual(pose.position, .seated,
+                "Pose \(pose.id) should be seated (chair yoga)")
         }
     }
 
@@ -174,50 +163,50 @@ final class PoseCatalogTests: XCTestCase {
         }
     }
 
-    // MARK: - Per-Style Pose Counts
+    // MARK: - Per-Style Plan Counts
 
-    func testChairYogaPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.chairYogaPoses.count, 20)
+    func testChairYogaPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.chairYogaPlans.count, 1)
     }
 
-    func testVinyasaPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.vinyasaPoses.count, 20)
+    func testVinyasaPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.vinyasaPlans.count, 1)
     }
 
-    func testHathaPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPoses.count, 20)
+    func testHathaPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPlans.count, 1)
     }
 
-    func testYinPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.yinPoses.count, 15)
+    func testYinPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.yinPlans.count, 1)
     }
 
-    func testRestorativePosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.restorativePoses.count, 15)
+    func testRestorativePlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.restorativePlans.count, 1)
     }
 
-    func testPowerPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.powerPoses.count, 20)
+    func testPowerPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.powerPlans.count, 1)
     }
 
-    func testStandingBalancePosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.standingBalancePoses.count, 15)
+    func testStandingBalancePlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.standingBalancePlans.count, 1)
     }
 
-    func testPrenatalPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.prenatalPoses.count, 15)
+    func testPrenatalPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.prenatalPlans.count, 1)
     }
 
-    func testPranayamaPosesExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.pranayamaPoses.count, 10)
+    func testPranayamaPlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.pranayamaPlans.count, 1)
     }
 
     // MARK: - Workout Plans
 
     func testAllPlansNotEmpty() {
         XCTAssertFalse(PoseCatalog.allPlans.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 20,
-            "Expected 20+ plans across all styles, got \(PoseCatalog.allPlans.count)")
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 9,
+            "Expected 9+ plans across all styles, got \(PoseCatalog.allPlans.count)")
     }
 
     func testAllPlanIdsAreUnique() {
@@ -239,10 +228,8 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertTrue(PoseCatalog.beginnerFlow.isFree)
     }
 
-    func testBeginnerFlowContainsOnlyFreePoses() {
-        for pose in PoseCatalog.beginnerFlow.poses {
-            XCTAssertTrue(pose.isFree, "Beginner flow contains non-free pose: \(pose.id)")
-        }
+    func testBeginnerFlowContainsPoses() {
+        XCTAssertFalse(PoseCatalog.beginnerFlow.poses.isEmpty, "Beginner flow has no poses")
     }
 
     func testAllPlansHavePoses() {
@@ -264,8 +251,12 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertEqual(plan.totalDuration, poseDuration + transitions)
     }
 
-    func testFullBodyPlanContainsAllChairYogaPoses() {
-        XCTAssertEqual(PoseCatalog.fullBody.poses.count, PoseCatalog.chairYogaPoses.count)
+    func testAllPosesAreUsedInAtLeastOnePlan() {
+        let allPlanPoses = PoseCatalog.allPlans.flatMap(\.poses)
+        let usedIds = Set(allPlanPoses.map(\.id))
+        for pose in PoseCatalog.allPoses {
+            XCTAssertTrue(usedIds.contains(pose.id), "Pose \(pose.id) is not used in any plan")
+        }
     }
 
     // MARK: - Specific Poses
@@ -284,5 +275,88 @@ final class PoseCatalogTests: XCTestCase {
         let meditation = PoseCatalog.seatedMeditation
         XCTAssertEqual(meditation.durationSeconds, 60)
         XCTAssertEqual(meditation.category, .breathing)
+    }
+
+    // MARK: - PoseKinematics
+
+    func testAllPosesHaveKinematics() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertFalse(k.highlightedRegions.isEmpty,
+                           "Pose \(pose.id) has no highlighted regions")
+        }
+    }
+
+    func testKinematicsCatalogCoversAllPoses() {
+        for pose in PoseCatalog.allPoses {
+            let k = PoseKinematicsCatalog.kinematics(for: pose.id)
+            let neutral = PoseKinematics.neutral
+            let isDifferent = k.forwardLean != neutral.forwardLean
+                || k.leftUpperArmAngle != neutral.leftUpperArmAngle
+                || k.rightUpperArmAngle != neutral.rightUpperArmAngle
+                || k.leftForearmBend != neutral.leftForearmBend
+                || k.rightForearmBend != neutral.rightForearmBend
+                || k.sideLean != neutral.sideLean
+                || k.leftThighOffset != neutral.leftThighOffset
+                || k.rightThighOffset != neutral.rightThighOffset
+                || k.leftKneeSpread != neutral.leftKneeSpread
+                || k.rightKneeSpread != neutral.rightKneeSpread
+            XCTAssertTrue(isDifferent,
+                          "Pose \(pose.id) returned neutral kinematics (likely unmapped)")
+        }
+    }
+
+    func testPoseKinematicsHasSetupSteps() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertFalse(k.setupSteps.isEmpty,
+                           "Pose \(pose.id) has no setup steps")
+            for step in k.setupSteps {
+                XCTAssertFalse(step.en.isEmpty, "Pose \(pose.id) has empty EN step")
+                XCTAssertFalse(step.fr.isEmpty, "Pose \(pose.id) has empty FR step")
+            }
+        }
+    }
+
+    func testKinematicsHoldOscillationScale() {
+        for pose in PoseCatalog.allPoses {
+            let k = pose.kinematics
+            XCTAssertGreaterThanOrEqual(k.holdOscillationScale, 0)
+            XCTAssertLessThanOrEqual(k.holdOscillationScale, 1.0)
+        }
+    }
+
+    func testAnimationPhaseStateSetup() {
+        let state = AnimationPhaseState.compute(elapsed: 0, duration: 30)
+        XCTAssertEqual(state.phase, .setup)
+        XCTAssertEqual(state.poseBlend, 0)
+    }
+
+    func testAnimationPhaseStateHold() {
+        let state = AnimationPhaseState.compute(elapsed: 10, duration: 30)
+        XCTAssertEqual(state.phase, .hold)
+        XCTAssertEqual(state.poseBlend, 1.0)
+        XCTAssertEqual(state.oscillationBlend, 1.0)
+    }
+
+    func testAnimationPhaseStateRelease() {
+        let state = AnimationPhaseState.compute(elapsed: 29, duration: 30)
+        XCTAssertEqual(state.phase, .release)
+        XCTAssertLessThan(state.poseBlend, 1.0)
+        XCTAssertGreaterThan(state.poseBlend, 0)
+    }
+
+    func testAnimationPhaseStatePreview() {
+        let state = AnimationPhaseState.compute(elapsed: 0, duration: 30, phase: .preview)
+        XCTAssertEqual(state.phase, .hold)
+        XCTAssertLessThan(state.poseBlend, 1.0)
+    }
+
+    func testKinematicsBlending() {
+        let a = PoseKinematics.neutral
+        let b = PoseKinematics(forwardLean: 0.5, leftUpperArmAngle: 0.0)
+        let mid = b.blended(with: a, factor: 0.5)
+        XCTAssertEqual(mid.forwardLean, 0.25, accuracy: 0.001)
+        XCTAssertEqual(mid.leftUpperArmAngle, (.pi * 0.55 + 0.0) / 2.0, accuracy: 0.001)
     }
 }

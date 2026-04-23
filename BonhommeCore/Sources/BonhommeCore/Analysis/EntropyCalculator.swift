@@ -179,6 +179,117 @@ public struct EntropyCalculator: Sendable {
     }
 }
 
+// MARK: - Entropy Event Classification
+
+/// Classified entropy event, mirroring Shannon's `EntropyEvent` enum.
+///
+/// The unified entropy framework recognizes four states across all three domains
+/// (molecular docking, LLM safety, physiological biofeedback):
+///
+/// | Event | FlexAIDdS | Shannon | NATURaL |
+/// |-------|-----------|---------|---------|
+/// | collapse | Binding lock-in | Evaluation awareness | Sympathomimetic onset |
+/// | expansion | Solvation release | Jailbreak / evasion | Parasympathomimetic onset |
+/// | oscillation | Unstable binding site | Adversarial probing | Autonomic instability |
+/// | none | Free in solvent | Normal generation | Resting tone |
+public enum EntropyEvent: String, Sendable {
+    case none = "none"
+    case collapse = "collapse"
+    case expansion = "expansion"
+    case oscillation = "oscillation"
+}
+
+/// Sliding-window entropy event detector.
+///
+/// Tracks entropy over a window of recent measurements and detects three classes
+/// of anomaly: collapse (ordering), expansion (disordering), and oscillation
+/// (rapid alternation). This mirrors the `CollapseDetector` in Shannon and
+/// the `detect_entropy_plateau` in FlexAIDdS.
+public struct EntropyEventDetector: Sendable {
+    public let windowSize: Int
+    public let collapseThreshold: Double
+    public let expansionThreshold: Double
+    public let oscillationWindow: Int
+
+    private var window: [Double]
+    private var eventHistory: [EntropyEvent]
+
+    public init(
+        windowSize: Int = 8,
+        collapseThreshold: Double = -3.2,
+        expansionThreshold: Double = 3.2,
+        oscillationWindow: Int = 5
+    ) {
+        self.windowSize = max(1, windowSize)
+        self.collapseThreshold = collapseThreshold
+        self.expansionThreshold = expansionThreshold
+        self.oscillationWindow = max(1, oscillationWindow)
+        self.window = []
+        self.eventHistory = []
+    }
+
+    /// Push an entropy value and classify the event.
+    public mutating func push(_ entropy: Double) -> (event: EntropyEvent, delta: Double, zScore: Double) {
+        window.append(entropy)
+        if window.count > windowSize {
+            window.removeFirst()
+        }
+
+        let count = window.count
+        guard count >= 2 else {
+            eventHistory.append(.none)
+            if eventHistory.count > oscillationWindow { eventHistory.removeFirst() }
+            return (.none, 0, 0)
+        }
+
+        let mean = window.reduce(0, +) / Double(count)
+        let variance = window.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(count)
+        let std = sqrt(max(0, variance))
+        let delta = entropy - mean
+        let z = std > 1e-12 ? delta / std : 0.0
+
+        let windowReady = count >= windowSize
+
+        var event: EntropyEvent = .none
+        if windowReady && delta < collapseThreshold {
+            event = .collapse
+        } else if windowReady && delta > expansionThreshold {
+            event = .expansion
+        }
+
+        eventHistory.append(event)
+        if eventHistory.count > oscillationWindow { eventHistory.removeFirst() }
+
+        if windowReady && event != .none {
+            let alternations = countAlternations()
+            if alternations >= 2 {
+                event = .oscillation
+            }
+        }
+
+        return (event, delta, z)
+    }
+
+    /// Reset detector state.
+    public mutating func reset() {
+        window.removeAll()
+        eventHistory.removeAll()
+    }
+
+    private func countAlternations() -> Int {
+        var count = 0
+        for i in 1..<eventHistory.count {
+            let prev = eventHistory[i - 1]
+            let curr = eventHistory[i]
+            if (prev == .collapse && curr == .expansion) ||
+               (prev == .expansion && curr == .collapse) {
+                count += 1
+            }
+        }
+        return count
+    }
+}
+
 // MARK: - Shared Statistical Utilities
 
 /// Pearson product-moment correlation coefficient.

@@ -815,20 +815,23 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     /// Bimodal energy distribution produces two binding modes.
     func testMultipleBindingModes() {
         let calc = PartitionFunctionCalculator()
+        // Energies close enough that all poses are thermodynamically relevant (essential),
+        // but with a clear gap between two clusters when using energyRadius=0.5.
         let results = [
-            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
-            makeResult(deltaSBits: -4.5, dockingScore: -9.8),
-            makeResult(deltaSBits: -1.0, dockingScore: -5.0),
-            makeResult(deltaSBits: -0.5, dockingScore: -4.8),
+            makeResult(deltaSBits: -5.0, dockingScore: -8.0),
+            makeResult(deltaSBits: -4.5, dockingScore: -7.9),
+            makeResult(deltaSBits: -1.0, dockingScore: -7.0),
+            makeResult(deltaSBits: -0.5, dockingScore: -6.9),
         ]
 
         let ensemble = calc.computeEnsemble(results: results)!
-        let modes = ensemble.bindingModes(energyRadius: 1.0)
+        let modes = ensemble.bindingModes(energyRadius: 0.5)
 
-        // Two clusters: {-10.0, -9.8} and {-5.0, -4.8}
+        // Two clusters: {-8.0, -7.9} and {-7.0, -6.9}
         XCTAssertEqual(modes.count, 2)
 
-        // Both modes should have 2 poses each
+        // Both modes should be essential
+        guard modes.count == 2 else { return }
         XCTAssertEqual(modes[0].count + modes[1].count, ensemble.attributions.filter(\.isEssential).count)
     }
 

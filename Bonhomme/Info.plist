@@ -24,39 +24,45 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSHealthShareUsageDescription</key>
-	<string>NATURaL reads heart rate and HRV data during chair yoga sessions to compute your Shannon Collapse Index biofeedback score.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>NATURaL saves your chair yoga workout sessions, heart rate data, and medication schedules to Apple Health.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>NATURaL uses the local network to stream your workout display to Apple TV via Bonjour.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>NATURaL saves completed yoga sessions as workouts and mindful sessions so they appear in the Health and Fitness apps.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonhomme._tcp</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>NATURaL uses the local network to stream your workout display to Apple TV via Bonjour.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 		<key>UISceneConfigurations</key>
-		<dict/>
+		<dict>
+			<key>UIWindowSceneSessionRoleExternalDisplayNonInteractive</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>External Display</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).ExternalDisplaySceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
 	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

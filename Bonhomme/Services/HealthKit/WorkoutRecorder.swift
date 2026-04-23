@@ -12,45 +12,74 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     @Published var heartRateSamples: [HeartRateSample] = []
 
     private let healthStore = HKHealthStore()
-    private var session: HKWorkoutSession?
-    private var builder: HKLiveWorkoutBuilder?
+    private var session: AnyObject?
+    private var builder: AnyObject?
 
     func start(style: YogaStyle = .chairYoga) async throws {
+        guard #available(iOS 26.0, *) else {
+            isRecording = false
+            return
+        }
+
         let config = HKWorkoutConfiguration()
         config.activityType = style.healthKitActivityType
         config.locationType = .indoor
 
-        session = try HKWorkoutSession(healthStore: healthStore, configuration: config)
-        session?.delegate = self
+        let session = try HKWorkoutSession(healthStore: healthStore, configuration: config)
+        session.delegate = self
+        self.session = session
 
-        builder = session?.associatedWorkoutBuilder()
-        builder?.delegate = self
-        builder?.dataSource = HKLiveWorkoutDataSource(
+        let builder = session.associatedWorkoutBuilder()
+        builder.delegate = self
+        builder.dataSource = HKLiveWorkoutDataSource(
             healthStore: healthStore,
             workoutConfiguration: config
         )
+        self.builder = builder
 
-        session?.startActivity(with: Date())
-        try await builder?.beginCollection(at: Date())
+        session.startActivity(with: Date())
+
+        // beginCollection(at:) waits for the HKWorkoutSession delegate to signal
+        // .running, which can stall indefinitely on simulator or when HealthKit
+        // authorization is incomplete. Race it against a 3-second timeout so the
+        // workout flow is never blocked — HR/cal streaming just won't start live.
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { try? await builder.beginCollection(at: Date()) }
+            group.addTask { try? await Task.sleep(for: .seconds(3)) }
+            _ = await group.next()
+            group.cancelAll()
+        }
+
         isRecording = true
     }
 
     func pause() {
-        session?.pause()
+        if #available(iOS 26.0, *), let session = session as? HKWorkoutSession {
+            session.pause()
+        }
     }
 
     func resume() {
-        session?.resume()
+        if #available(iOS 26.0, *), let session = session as? HKWorkoutSession {
+            session.resume()
+        }
     }
 
     /// Ends the workout using the correct ordering:
     /// 1. session.end()  2. builder.endCollection()  3. builder.addMetadata()  4. builder.finishWorkout()
     func end(metadata: WorkoutMetadata? = nil) async throws {
-        session?.end()
-        try await builder?.endCollection(at: Date())
+        guard #available(iOS 26.0, *),
+              let session = session as? HKWorkoutSession,
+              let builder = builder as? HKLiveWorkoutBuilder else {
+            isRecording = false
+            return
+        }
+
+        session.end()
+        try await builder.endCollection(at: Date())
 
         if let metadata {
-            try await builder?.addMetadata([
+            try await builder.addMetadata([
                 HKMetadataKeyWorkoutBrandName: "NATURaL",
                 "NATURaLYogaStyle": metadata.styleName,
                 "NATURaLPlanId": metadata.planId,
@@ -59,11 +88,12 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             ])
         }
 
-        _ = try await builder?.finishWorkout()
+        _ = try await builder.finishWorkout()
         isRecording = false
     }
 }
 
+@available(iOS 26.0, *)
 extension WorkoutRecorder: HKWorkoutSessionDelegate {
     nonisolated func workoutSession(
         _ workoutSession: HKWorkoutSession,
@@ -82,6 +112,7 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
     }
 }
 
+@available(iOS 26.0, *)
 extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilder(
         _ workoutBuilder: HKLiveWorkoutBuilder,

@@ -172,84 +172,48 @@ struct ImmersivePoseSpace: View {
     // MARK: - Pose Updates
 
     /// Updates the 3D figure to reflect the current pose.
-    /// Animates arm and torso positions based on pose category.
+    /// Uses per-pose kinematics for arm and torso positioning.
     private func updatePoseVisualization() {
         guard let plan = selectedPlan,
               let figure = currentPoseEntity else { return }
 
-        // Determine current pose index from plan progress
-        // In a full implementation, this would be driven by the SpatialWorkoutViewModel
-        // For now, it responds to plan selection
         guard let pose = plan.poses.first else { return }
 
-        // Apply category-specific pose modifications to the figure
-        let armRotation: Float
-        let torsoRotation: Float
+        let kinematics = pose.kinematics
+        let hue = CGFloat(pose.category.accentHue)
 
-        switch pose.category {
-        case .spine:
-            armRotation = .pi / 4    // Arms slightly raised
-            torsoRotation = .pi / 12 // Slight twist
-        case .shoulders:
-            armRotation = .pi / 2    // Arms raised high
-            torsoRotation = 0
-        case .hips:
-            armRotation = .pi / 8    // Arms at sides
-            torsoRotation = .pi / 8  // Forward lean
-        case .neck:
-            armRotation = .pi / 10   // Arms relaxed
-            torsoRotation = 0
-        case .fullBody:
-            armRotation = .pi / 3    // Arms extended
-            torsoRotation = .pi / 16
-        case .breathing:
-            armRotation = .pi / 6    // Gentle arm position
-            torsoRotation = 0
-        case .balance:
-            armRotation = .pi / 4
-            torsoRotation = 0
-        case .core:
-            armRotation = .pi / 6    // Arms close to body for core engagement
-            torsoRotation = .pi / 10 // Slight forward lean
-        case .arms:
-            armRotation = .pi / 2.5  // Arms extended outward
-            torsoRotation = 0
-        case .legs:
-            armRotation = .pi / 8    // Arms relaxed at sides
-            torsoRotation = .pi / 16 // Slight lean for leg work
-        case .chest:
-            armRotation = .pi / 3    // Arms open wide for chest expansion
-            torsoRotation = -.pi / 16 // Slight backbend
-        case .back:
-            armRotation = .pi / 5    // Arms moderately raised
-            torsoRotation = .pi / 10 // Forward fold emphasis
-        case .relaxation:
-            armRotation = .pi / 10   // Arms resting low
-            torsoRotation = 0        // Neutral torso
-        case .inversion:
-            armRotation = .pi / 3    // Arms supporting weight
-            torsoRotation = .pi / 6  // Tilted forward for inversion
-        }
+        let leftArmRotation = Float(kinematics.leftUpperArmAngle - .pi / 2.0)
+        let rightArmRotation = Float(-(kinematics.rightUpperArmAngle - .pi / 2.0))
+        let torsoRotation = Float(kinematics.forwardLean) * 0.5
+        let leftLegSpread = Float(kinematics.leftKneeSpread)
+        let rightLegSpread = Float(kinematics.rightKneeSpread)
 
-        // Animate arm positions
         for child in figure.children {
-            if child.position.x < -0.1 {
-                // Left arm
+            if child.position.x < -0.1 && child.position.y > 0.3 {
                 var transform = child.transform
-                transform.rotation = simd_quatf(angle: armRotation, axis: SIMD3<Float>(0, 0, 1))
+                transform.rotation = simd_quatf(angle: leftArmRotation, axis: SIMD3<Float>(0, 0, 1))
                 child.move(to: transform, relativeTo: child.parent, duration: 1.0)
             } else if child.position.x > 0.1, child.position.y > 0.4 {
-                // Right arm
                 var transform = child.transform
-                transform.rotation = simd_quatf(angle: -armRotation, axis: SIMD3<Float>(0, 0, 1))
+                transform.rotation = simd_quatf(angle: rightArmRotation, axis: SIMD3<Float>(0, 0, 1))
                 child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+            }
+
+            if child.position.y < 0.1 {
+                if child.position.x < 0 {
+                    var transform = child.transform
+                    transform.rotation = simd_quatf(angle: .pi / 2 - leftLegSpread, axis: SIMD3<Float>(1, 0, 0))
+                    child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                } else {
+                    var transform = child.transform
+                    transform.rotation = simd_quatf(angle: .pi / 2 + rightLegSpread, axis: SIMD3<Float>(1, 0, 0))
+                    child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                }
             }
         }
 
-        // Update ring color based on pose category
         if let ring = biofeedbackRingEntity?.children.first as? ModelEntity {
             var material = SimpleMaterial()
-            let hue = CGFloat(pose.category.accentHue)
             material.color = .init(tint: UIColor(hue: hue, saturation: 0.7, brightness: 0.9, alpha: 0.4))
             ring.model?.materials = [material]
         }

@@ -442,7 +442,12 @@ public struct DrugResponseAnalyzer: Sendable {
 
         guard baselineRR.count >= minimumRRCount else { return nil }
 
-        let baselineEntropy = entropyCalc.shannonEntropy(baselineRR)
+        // Fixed domain range for consistent binning across baseline and post-dose windows.
+        // Physiological RR range: 300ms (200 bpm, tachycardia) to 1500ms (40 bpm, bradycardia).
+        let domainMin = 300.0
+        let domainMax = 1500.0
+
+        let baselineEntropy = entropyCalc.shannonEntropy(baselineRR, domainMin: domainMin, domainMax: domainMax)
 
         // 2. Determine measurement windows
         let windows: [Double]
@@ -469,7 +474,7 @@ public struct DrugResponseAnalyzer: Sendable {
 
             guard windowRR.count >= minimumRRCount else { continue }
 
-            let entropy = entropyCalc.shannonEntropy(windowRR)
+            let entropy = entropyCalc.shannonEntropy(windowRR, domainMin: domainMin, domainMax: domainMax)
             let deltaH = entropy - baselineEntropy
             let coherence = entropyCalc.entropyToScore(entropy)
 
@@ -571,7 +576,7 @@ public struct DrugResponseAnalyzer: Sendable {
 
         return DrugResponseAggregate(
             medicationId: results.first?.doseEvent.medicationId ?? "",
-            medicationName: results.first?.doseEvent.name.en ?? "",
+            medicationName: results.first?.doseEvent.name ?? "",
             n: n,
             meanDeltaH: meanDelta,
             sdDeltaH: sqrt(variance),
@@ -702,13 +707,5 @@ public struct DrugResponseAnalyzer: Sendable {
         }
 
         return best
-    }
-
-    // MARK: - Statistics Helpers
-
-    /// Pearson correlation coefficient — delegates to shared global implementation
-    /// which uses C++ accelerator when available.
-    private func pearsonCorrelation(_ x: [Double], _ y: [Double]) -> Double {
-        BonhommeCore.pearsonCorrelation(x, y)
     }
 }

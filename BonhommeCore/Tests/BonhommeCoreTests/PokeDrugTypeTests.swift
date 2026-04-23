@@ -10,7 +10,7 @@ final class PokeDrugTypeTests: XCTestCase {
     }
 
     func testMolecularScaffoldCount() {
-        XCTAssertEqual(MolecularScaffold.allCases.count, 10, "PokeDrug system has exactly 10 scaffolds")
+        XCTAssertEqual(MolecularScaffold.allCases.count, 13, "PokeDrug system has exactly 13 scaffolds")
     }
 
     func testPokeDrugHabitatCount() {

@@ -5,6 +5,7 @@ let package = Package(
     name: "BonhommeCore",
     platforms: [
         .iOS(.v17),
+        .macOS(.v14),
         .watchOS(.v10),
         .tvOS(.v17),
         .visionOS(.v1)
@@ -28,13 +29,8 @@ let package = Package(
         // Main library — conditionally uses BonhommeAccelSwift when available
         .target(
             name: "BonhommeCore",
-            dependencies: [
-                "BonhommeAccelSwift",
-            ],
+            dependencies: [],
             path: "Sources/BonhommeCore",
-            swiftSettings: [
-                .define("BONHOMME_ACCEL"),
-            ]
         ),
         .testTarget(
             name: "BonhommeCoreTests",

@@ -1,6 +1,21 @@
 import Foundation
 
-/// Summary data produced at the end of a completed workout session.
+// MARK: - HeartRateSample
+
+/// A single heart-rate measurement captured during a workout.
+public struct HeartRateSample: Codable, Sendable, Hashable {
+    public let bpm: Double
+    public let timestamp: Date
+
+    public init(bpm: Double, timestamp: Date = Date()) {
+        self.bpm = bpm
+        self.timestamp = timestamp
+    }
+}
+
+// MARK: - WorkoutResult
+
+/// Summary of a completed guided workout session.
 public struct WorkoutResult: Codable, Sendable {
     public let workoutPlanId: String
     public let workoutPlanName: String
@@ -25,9 +40,9 @@ public struct WorkoutResult: Codable, Sendable {
         posesCompleted: Int,
         totalPoses: Int,
         activeCalories: Double,
-        averageHeartRate: Double? = nil,
-        maxHeartRate: Double? = nil,
-        heartRateSamples: [HeartRateSample] = [],
+        averageHeartRate: Double?,
+        maxHeartRate: Double?,
+        heartRateSamples: [HeartRateSample],
         yogaStyle: YogaStyle = .chairYoga,
         yogaStyleName: String = ""
     ) {
@@ -44,16 +59,5 @@ public struct WorkoutResult: Codable, Sendable {
         self.heartRateSamples = heartRateSamples
         self.yogaStyle = yogaStyle
         self.yogaStyleName = yogaStyleName
-    }
-}
-
-/// A timestamped heart rate reading for post-workout charting.
-public struct HeartRateSample: Codable, Sendable {
-    public let bpm: Double
-    public let timestamp: Date
-
-    public init(bpm: Double, timestamp: Date) {
-        self.bpm = bpm
-        self.timestamp = timestamp
     }
 }

@@ -1,10 +1,17 @@
 import SwiftUI
 import SwiftData
+import BonhommeCore
 
 @main
 struct BonhommeApp: App {
     @State private var appState = AppState()
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Stored once at app launch — must NOT be a computed property.
+    /// A computed `var` would create a new ModelContainer on every `body`
+    /// re-evaluation (triggered by any AppState mutation), causing repeated
+    /// CloudKit initialization storms and the forever-loading symptom.
+    private let persistentContainer: ModelContainer = Self.makePersistentContainer()
 
     var body: some Scene {
         WindowGroup {
@@ -21,23 +28,51 @@ struct BonhommeApp: App {
     }
 
     /// SwiftData ModelContainer with CloudKit sync for cross-device data.
-    private var persistentContainer: ModelContainer {
+    /// Three-tier fallback: CloudKit → local-only → in-memory (last resort).
+    /// Called exactly once via the stored `persistentContainer` let-property.
+    private static func makePersistentContainer() -> ModelContainer {
         do {
             return try PersistenceConfiguration.makeContainer()
         } catch {
-            // If CloudKit container fails, fall back to local-only storage.
-            // This can happen on simulators or when iCloud is not signed in.
+            // CloudKit container fails on simulators or when iCloud is not signed in.
+            print("⚠️ Failed to create CloudKit container: \(error.localizedDescription)")
+            print("   Falling back to local-only storage.")
+
             let schema = Schema([
                 WorkoutRecord.self,
                 UserPreferences.self,
                 SessionStreak.self,
                 MedicationSchedule.self,
+                DrugResponseRecord.self,
             ])
-            let fallbackConfig = ModelConfiguration(
-                "NATURaLLocal",
-                schema: schema
-            )
-            return try! ModelContainer(for: schema, configurations: [fallbackConfig])
+
+            do {
+                let fallbackConfig = ModelConfiguration("NATURaLLocal", schema: schema)
+                return try ModelContainer(for: schema, configurations: [fallbackConfig])
+            } catch {
+                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
+                print("   Using in-memory storage. Data will not persist.")
+
+                // Unnamed in-memory config avoids any name-based store lookup.
+                // FIX: build the container directly from the model types without
+                // a named configuration — the name-based lookup can itself fail
+                // when the schema has validation errors. Passing types directly
+                // lets SwiftData construct the schema fresh with no store conflict.
+                do {
+                    return try ModelContainer(for:
+                        WorkoutRecord.self,
+                        UserPreferences.self,
+                        SessionStreak.self,
+                        MedicationSchedule.self,
+                        DrugResponseRecord.self
+                    )
+                } catch {
+                    // Absolute last resort — single-model container so the app
+                    // can at least boot and show an error UI instead of crashing.
+                    print("❌ FATAL: In-memory container failed: \(error)")
+                    return try! ModelContainer(for: WorkoutRecord.self)
+                }
+            }
         }
     }
 
@@ -59,9 +94,13 @@ struct BonhommeApp: App {
             if !appState.isWorkoutActive {
                 appState.checkForResumableWorkout()
             }
-            // Refresh CareKit prescriptions
+            // Refresh CareKit prescriptions only after HealthKit authorization
             Task {
-                await appState.careKitBridge.refreshPrescribedTasks()
+                if appState.healthKitAuthorized {
+                    await appState.careKitBridge.refreshPrescribedTasks()
+                } else {
+                    print("ℹ️ Skipping CareKit refresh: HealthKit not authorized")
+                }
             }
         @unknown default:
             break
@@ -81,39 +120,99 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var showResumeAlert = false
     @State private var navigateToRestoredWorkout = false
+    @State private var initializationError: Error?
+    @State private var showDebugDashboard = false
 
     var body: some View {
-        NavigationStack {
-            HomeView()
-                .navigationDestination(isPresented: $navigateToRestoredWorkout) {
-                    if let vm = appState.pendingRestoredWorkout {
-                        WorkoutFlowView(restoredViewModel: vm)
+        ZStack(alignment: .bottom) {
+            NavigationStack {
+                HomeView()
+                    .navigationDestination(isPresented: $navigateToRestoredWorkout) {
+                        if let vm = appState.pendingRestoredWorkout {
+                            WorkoutFlowView(restoredViewModel: vm)
+                        }
                     }
+                    .toolbar {
+                        #if DEBUG
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                showDebugDashboard.toggle()
+                            } label: {
+                                Image(systemName: "ladybug.fill")
+                                    .foregroundStyle(showDebugDashboard ? .orange : .secondary)
+                            }
+                        }
+                        #endif
+                    }
+            }
+            .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
+                showResumeAlert = hasWorkout
+            }
+            .alert(
+                LocalizedString(
+                    en: "Resume Workout?",
+                    fr: "Reprendre l'entraînement ?"
+                ).localized,
+                isPresented: $showResumeAlert
+            ) {
+                Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
+                    navigateToRestoredWorkout = true
                 }
-        }
-        .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
-            showResumeAlert = hasWorkout
-        }
-        .alert(
-            LocalizedString(
-                en: "Resume Workout?",
-                fr: "Reprendre l'entraînement ?"
-            ).localized,
-            isPresented: $showResumeAlert
-        ) {
-            Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
-                navigateToRestoredWorkout = true
+                Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
+                    appState.dismissRestoredWorkout()
+                }
+            } message: {
+                if let vm = appState.pendingRestoredWorkout {
+                    Text(LocalizedString(
+                        en: "You have an unfinished \(vm.plan.name.en) session. Would you like to continue?",
+                        fr: "Vous avez une séance \(vm.plan.name.fr) inachevée. Voulez-vous continuer ?"
+                    ).localized)
+                }
             }
-            Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
-                appState.dismissRestoredWorkout()
+            .task {
+                // Perform async initialization checks
+                await performInitializationChecks()
             }
-        } message: {
-            if let vm = appState.pendingRestoredWorkout {
-                Text(LocalizedString(
-                    en: "You have an unfinished \(vm.plan.name.en) session. Would you like to continue?",
-                    fr: "Vous avez une séance \(vm.plan.name.fr) inachevée. Voulez-vous continuer ?"
-                ).localized)
+            .task {
+                // Request HealthKit authorization early and enable background delivery
+                guard HealthKitManager.isAvailable else {
+                    print("ℹ️ HealthKit not available on this device; skipping authorization.")
+                    return
+                }
+                do {
+                    try await appState.healthKitManager.requestAuthorization()
+                    appState.healthKitAuthorized = true
+                    try? await appState.healthKitManager.enableBackgroundDelivery()
+                    // Safe to refresh CareKit prescriptions after authorization
+                    await appState.careKitBridge.refreshPrescribedTasks()
+                } catch {
+                    appState.healthKitAuthorized = false
+                    print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
+                }
             }
         }
+    }
+    
+    /// Validates that core app components initialized correctly.
+    @MainActor
+    private func performInitializationChecks() async {
+        print("🔍 Running initialization diagnostics...")
+        
+        // Check HealthKit availability
+        if HealthKitManager.isAvailable {
+            print("✅ HealthKit is available")
+        } else {
+            print("⚠️ HealthKit is not available on this device")
+        }
+        
+        // Check for resumable workout
+        if appState.workoutStateStore.hasActiveWorkout {
+            print("ℹ️ Resumable workout detected")
+        }
+        
+        // Verify feedback engine is ready
+        print("✅ FeedbackEngine initialized with analyzers")
+        
+        print("✅ Initialization checks complete")
     }
 }

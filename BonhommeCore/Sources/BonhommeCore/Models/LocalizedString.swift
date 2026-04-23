@@ -1,7 +1,7 @@
 import Foundation
 
 /// A string with multilingual translations.
-/// Supports: English, French, Spanish, Japanese, Chinese, Korean, Russian, German, Arabic.
+/// Supports: English, French, Spanish, Japanese, Chinese, Korean, Russian, German, Arabic, Italian, Portuguese.
 /// Resolves automatically based on the current locale.
 public struct LocalizedString: Codable, Sendable, Hashable {
     public let en: String
@@ -13,10 +13,12 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     public let ru: String
     public let de: String
     public let ar: String
+    public let it: String
+    public let pt: String
 
     public init(en: String, fr: String, es: String = "", ja: String = "",
                 zh: String = "", ko: String = "", ru: String = "",
-                de: String = "", ar: String = "") {
+                de: String = "", ar: String = "", it: String = "", pt: String = "") {
         self.en = en
         self.fr = fr
         self.es = es
@@ -26,10 +28,12 @@ public struct LocalizedString: Codable, Sendable, Hashable {
         self.ru = ru
         self.de = de
         self.ar = ar
+        self.it = it
+        self.pt = pt
     }
 
     /// All supported language codes.
-    public static let supportedLanguages = ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar"]
+    public static let supportedLanguages = ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]
 
     /// Returns the appropriate translation for the current locale.
     /// Falls back to English if the locale's language is not supported or translation is empty.
@@ -51,6 +55,8 @@ public struct LocalizedString: Codable, Sendable, Hashable {
         case languageCode.hasPrefix("ru"): resolved = ru
         case languageCode.hasPrefix("de"): resolved = de
         case languageCode.hasPrefix("ar"): resolved = ar
+        case languageCode.hasPrefix("it"): resolved = it
+        case languageCode.hasPrefix("pt"): resolved = pt
         default: resolved = en
         }
         return resolved.isEmpty ? en : resolved
@@ -68,10 +74,12 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
     public let ru: [String]
     public let de: [String]
     public let ar: [String]
+    public let it: [String]
+    public let pt: [String]
 
     public init(en: [String], fr: [String], es: [String] = [], ja: [String] = [],
                 zh: [String] = [], ko: [String] = [], ru: [String] = [],
-                de: [String] = [], ar: [String] = []) {
+                de: [String] = [], ar: [String] = [], it: [String] = [], pt: [String] = []) {
         self.en = en
         self.fr = fr
         self.es = es
@@ -81,6 +89,8 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
         self.ru = ru
         self.de = de
         self.ar = ar
+        self.it = it
+        self.pt = pt
     }
 
     public var localized: [String] {
@@ -99,6 +109,8 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
         case languageCode.hasPrefix("ru"): resolved = ru
         case languageCode.hasPrefix("de"): resolved = de
         case languageCode.hasPrefix("ar"): resolved = ar
+        case languageCode.hasPrefix("it"): resolved = it
+        case languageCode.hasPrefix("pt"): resolved = pt
         default: resolved = en
         }
         return resolved.isEmpty ? en : resolved

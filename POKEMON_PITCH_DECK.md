@@ -130,7 +130,7 @@ NATURaL already runs natively on every Apple platform:
 - **CareKit prescriptions** — Therapists can prescribe yoga regimens; Bonhomme motivates adherence
 - **HealthKit integration** — All biofeedback data written to Apple Health
 - **Drug response monitoring** — Shannon entropy analysis detects autonomic medication effects (PokeDrug module)
-- **Peer-reviewed math** — SCI is based on Shannon entropy, the same framework used in published computational chemistry research ([FlexAID∆S](https://github.com/lmorency/FlexAIDdS))
+- **Peer-reviewed math** — SCI is based on Shannon entropy, the same framework used in published computational chemistry research ([FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS))
 
 **Why this matters for TPC:** Positions Pokemon brand in the health/wellness space with scientific credibility. A first for the franchise.
 
@@ -213,8 +213,8 @@ NATURaL already runs natively on every Apple platform:
 | | |
 |---|---|
 | **Project** | NATURaL (code name: Bonhomme) |
-| **Repository** | [github.com/lmorency/NATURaL](https://github.com/lmorency/NATURaL) |
-| **Research basis** | [Shannon](https://github.com/lmorency/Shannon) · [FlexAID∆S](https://github.com/lmorency/FlexAIDdS) |
+| **Repository** | [github.com/LeBonhommePharma/NATURaL](https://github.com/LeBonhommePharma/NATURaL) |
+| **Research basis** | [Shannon](https://github.com/LeBonhommePharma/Shannon) · [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) |
 | **Developer** | [To be filled] |
 | **Email** | [To be filled] |
 

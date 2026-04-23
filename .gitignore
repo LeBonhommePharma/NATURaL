@@ -1,1 +1,15 @@
 BonhommeAccel/build/
+BonhommeCore/.build/
+
+# Xcode user-specific data
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# Scratch / temp files
+*.patch
+*.test
+pbcopy
+session-*.md

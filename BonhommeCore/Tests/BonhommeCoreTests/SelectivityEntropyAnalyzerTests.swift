@@ -10,7 +10,7 @@ final class SelectivityEntropyAnalyzerTests: XCTestCase {
         let result = SelectivityEntropyAnalyzer.analyze(substanceId: "salvinorin-a")
         XCTAssertNotNil(result)
         XCTAssertEqual(result?.targetCount, 1)
-        XCTAssertEqual(result?.selectivityEntropy, 0.0, accuracy: 1e-10,
+        XCTAssertEqual(result?.selectivityEntropy ?? -1, 0.0, accuracy: 1e-10,
             "Single-target substance should have zero entropy")
     }
 

@@ -173,7 +173,16 @@ final class MedicationSchedule {
     var name: String
     var doseValue: Double
     var doseUnit: String
-    var scheduledHours: [Int]
+    /// Stored as comma-separated String because SwiftData on iOS 17 cannot
+    /// persist [Int] natively — schema validation fails even for in-memory
+    /// containers, which is the true cause of the fatal ModelContainer crash.
+    var scheduledHoursRaw: String = ""
+
+    /// Public accessor — unchanged API surface for all call sites.
+    var scheduledHours: [Int] {
+        get { scheduledHoursRaw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) } }
+        set { scheduledHoursRaw = newValue.map(String.init).joined(separator: ",") }
+    }
     var isActive: Bool = true
     var createdAt: Date
     var notes: String?
@@ -190,7 +199,7 @@ final class MedicationSchedule {
         self.name = name
         self.doseValue = doseValue
         self.doseUnit = doseUnit
-        self.scheduledHours = scheduledHours
+        self.scheduledHoursRaw = scheduledHours.map(String.init).joined(separator: ",")
         self.createdAt = Date()
         self.notes = notes
     }
@@ -319,10 +328,14 @@ enum PersistenceConfiguration {
             DrugResponseRecord.self,
         ])
 
+        // FIX: .automatic requires com.apple.developer.icloud-services entitlement
+        // (paid Apple Developer account). Without it ModelContainer throws on every
+        // launch and cascades into the fatal in-memory crash.
+        // Switch back to .automatic once your Developer subscription is active.
         let config = ModelConfiguration(
             "NATURaL",
             schema: schema,
-            cloudKitDatabase: .automatic
+            cloudKitDatabase: .none
         )
 
         return try ModelContainer(for: schema, configurations: [config])
@@ -335,11 +348,13 @@ enum PersistenceConfiguration {
             SessionStreak.self,
         ])
 
+        // FIX: groupContainer: .automatic needs App Groups entitlement;
+        // cloudKitDatabase: .automatic needs iCloud entitlement. Both require
+        // a paid account. Disabled until entitlements are provisioned.
         let config = ModelConfiguration(
             "NATURaLShared",
             schema: schema,
-            groupContainer: .automatic,
-            cloudKitDatabase: .automatic
+            cloudKitDatabase: .none
         )
 
         return try ModelContainer(for: schema, configurations: [config])
