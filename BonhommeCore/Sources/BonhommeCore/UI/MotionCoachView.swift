@@ -34,6 +34,13 @@ private enum Proportion {
     static let arrowheadBarbAngle: Double = 2.6
 }
 
+/// Period (seconds) of the front/back arm depth-sort oscillation.
+/// Drives `armDepthPhase` — which arm renders in front vs. behind the torso.
+/// Must be computed from absolute time `t` (not an accumulator) so views
+/// that mount late, pause, or re-render at different rates still agree
+/// on which side is forward.
+private let armSwingPeriod: Double = 6.0
+
 private func skelPoint(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
     CGPoint(x: origin.x + cos(angle) * length, y: origin.y + sin(angle) * length)
 }
@@ -126,8 +133,10 @@ private struct SkeletonPose {
         tertWave = sin(c - 1.8)
         tertWaveRight = sin(c - 2.0)
 
-        let depthCycle = t * 0.08
-        armDepthPhase = sin(depthCycle) * 0.5 + 0.5
+        // Absolute-time driver — keeps front/back arm sort stable across
+        // view remounts, pauses, and ghost/reflection renders offset by a lag.
+        let depthCycle = sin(2.0 * .pi * t / armSwingPeriod)
+        armDepthPhase = depthCycle * 0.5 + 0.5
 
         let lateralSway = kinematics.sideLean * phaseState.poseBlend
             + profile.lateralSwayAmplitude * sin(c) * oscAmp * torsoOsc
