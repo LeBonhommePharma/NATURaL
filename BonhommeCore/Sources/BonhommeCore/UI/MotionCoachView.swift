@@ -238,6 +238,52 @@ private struct SkeletonPose {
         )
     }
 
+    /// Entropy-driven convenience factory — produces a deterministic
+    /// `SkeletonPose` without wiring up a full `Pose` + `MotionCoachProfile`
+    /// pipeline. For previews, unit tests, and headless validation where the
+    /// caller has a time value and a Shannon-entropy measurement but no
+    /// yoga-specific context.
+    ///
+    /// - Parameters:
+    ///   - t: absolute time (seconds). Drives breathing phase and the
+    ///     front/back arm depth cycle.
+    ///   - h: Shannon entropy (bits). Expected range ~0–4. Linearly clamped
+    ///     to `[0, 1]` against 4 bits and used as the oscillation blend:
+    ///     higher entropy (chaotic HRV) ⇒ livelier movement, lower entropy
+    ///     (rigid / collapsed) ⇒ stiller pose. Matches the SCI convention
+    ///     used elsewhere in BonhommeCore.
+    static func from(t: Double, entropy h: Double) -> SkeletonPose {
+        let oscBlend = max(0.0, min(1.0, h / 4.0))
+        let phaseState = AnimationPhaseState(
+            phase: .hold,
+            progress: 0.5,
+            poseBlend: 1.0,
+            oscillationBlend: oscBlend
+        )
+        let profile = StickFigureMotionProfile(
+            category: .spine,
+            difficulty: .beginner,
+            phase: .active
+        )
+        // Canonical breath cadence — 4 s inhale/exhale; depth swap at 2x so
+        // arms alternate front/back every two breaths (matches the live
+        // `MotionCoachView` call site).
+        let breathPeriod: Double = 4.0
+        let phase01 = fmod(t / breathPeriod, 1.0)
+        let s = phase01 < 0 ? phase01 + 1.0 : phase01
+        let smooth = s * s * s * (s * (s * 6.0 - 15.0) + 10.0)
+        return SkeletonPose(
+            profile: profile,
+            kinematics: .neutral,
+            phaseState: phaseState,
+            smooth: smooth,
+            t: t,
+            size: 200,
+            center: CGPoint(x: 100, y: 100),
+            armSwingPeriod: breathPeriod * 2.0
+        )
+    }
+
     private struct CoreData {
         let spineMid: CGPoint; let neck: CGPoint; let headCenter: CGPoint; let headRadius: CGFloat
     }
