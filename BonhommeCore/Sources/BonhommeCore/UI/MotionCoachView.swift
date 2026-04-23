@@ -34,12 +34,16 @@ private enum Proportion {
     static let arrowheadBarbAngle: Double = 2.6
 }
 
-/// Period (seconds) of the front/back arm depth-sort oscillation.
-/// Drives `armDepthPhase` — which arm renders in front vs. behind the torso.
-/// Must be computed from absolute time `t` (not an accumulator) so views
+/// Default period (seconds) of the front/back arm depth-sort oscillation
+/// when no breath-synced value is supplied. Use `SkeletonPose.from(...,
+/// armSwingPeriod:)` to pass a breath-synced period instead (typically
+/// `2 · breathPeriod`, so the front/back swap completes once per pair of
+/// breaths and doesn't clash with the per-breath angular arm swing).
+///
+/// Must be driven from absolute time `t` (not an accumulator) so views
 /// that mount late, pause, or re-render at different rates still agree
 /// on which side is forward.
-private let armSwingPeriod: Double = 6.0
+private let defaultArmSwingPeriod: Double = 6.0
 
 private func skelPoint(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
     CGPoint(x: origin.x + cos(angle) * length, y: origin.y + sin(angle) * length)
@@ -106,7 +110,8 @@ private struct SkeletonPose {
         smooth: Double,
         t: Double,
         size: CGFloat,
-        center: CGPoint
+        center: CGPoint,
+        armSwingPeriod: Double = defaultArmSwingPeriod
     ) {
         let c = smooth * .pi * 2.0
         cycle = c
@@ -135,6 +140,10 @@ private struct SkeletonPose {
 
         // Absolute-time driver — keeps front/back arm sort stable across
         // view remounts, pauses, and ghost/reflection renders offset by a lag.
+        // `armSwingPeriod` is typically `2 · breathPeriod` so the front/back
+        // depth swap cycles once per pair of breaths, staying musically in
+        // phase with breathing without clashing with the per-breath angular
+        // arm swing driven by `sin(c)` above.
         let depthCycle = sin(2.0 * .pi * t / armSwingPeriod)
         armDepthPhase = depthCycle * 0.5 + 0.5
 
@@ -204,6 +213,9 @@ private struct SkeletonPose {
     /// Factory: builds a fully-resolved SkeletonPose (all joint positions + depth sort)
     /// from animation inputs. Mirrors the designated init so call sites read as
     /// `SkeletonPose.from(...)` rather than raw construction.
+    ///
+    /// Pass `armSwingPeriod: breathPeriod * 2.0` to keep the front/back arm
+    /// depth swap in phase with breathing; omit to use a 6 s default.
     static func from(
         profile: StickFigureMotionProfile,
         kinematics: PoseKinematics,
@@ -211,7 +223,8 @@ private struct SkeletonPose {
         smooth: Double,
         t: Double,
         size: CGFloat,
-        center: CGPoint
+        center: CGPoint,
+        armSwingPeriod: Double = defaultArmSwingPeriod
     ) -> SkeletonPose {
         SkeletonPose(
             profile: profile,
@@ -220,7 +233,8 @@ private struct SkeletonPose {
             smooth: smooth,
             t: t,
             size: size,
-            center: center
+            center: center,
+            armSwingPeriod: armSwingPeriod
         )
     }
 
@@ -811,12 +825,16 @@ private struct StickFigureKinematicsView: View {
                 difficulty: pose.difficulty,
                 phase: phase
             )
+            // Breath period mirrors MotionCoachProfile.breathPeriod so the
+            // front/back arm depth-swap stays in musical phase with breathing.
+            let breathPeriod = max(2.8, min(7.0, pose.durationSeconds / 10.0))
             let skel = SkeletonPose.from(
                 profile: profile,
                 kinematics: kinematics,
                 phaseState: phaseState,
                 smooth: smooth, t: time,
-                size: size, center: center
+                size: size, center: center,
+                armSwingPeriod: breathPeriod * 2.0
             )
             let baseHue = pose.category.accentHue
             let isFull = detail == .full
