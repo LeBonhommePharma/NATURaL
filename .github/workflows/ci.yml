@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [PokéDrug]
+  pull_request:
+    branches: [PokéDrug]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        scheme:
+          - BonhommeCore
+          - Bonhomme
+        destination:
+          - "platform=iOS Simulator,name=iPhone 16 Pro,OS=latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            .build
+          key: spm-${{ runner.os }}-${{ hashFiles('BonhommeCore/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: deriveddata-${{ runner.os }}-${{ matrix.scheme }}-${{ hashFiles('**/*.swift') }}
+          restore-keys: |
+            deriveddata-${{ runner.os }}-${{ matrix.scheme }}-
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project NATURaL.xcodeproj \
+            -scheme ${{ matrix.scheme }}
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project NATURaL.xcodeproj \
+            -scheme ${{ matrix.scheme }} \
+            -destination '${{ matrix.destination }}' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify || true
+
+      - name: Test with coverage
+        run: |
+          xcodebuild test \
+            -project NATURaL.xcodeproj \
+            -scheme ${{ matrix.scheme }} \
+            -destination '${{ matrix.destination }}' \
+            -configuration Debug \
+            -enableCodeCoverage YES \
+            CODE_SIGNING_ALLOWED=NO \
+            -resultBundlePath TestResults.xcresult \
+            | xcbeautify || true
+
+      - name: Extract coverage report
+        if: always()
+        run: |
+          if [ -d TestResults.xcresult ]; then
+            xcrun xccov view --report TestResults.xcresult > coverage-report.txt 2>/dev/null || true
+            xcrun xccov view --report --json TestResults.xcresult > coverage-report.json 2>/dev/null || true
+            echo "### Coverage Report (${{ matrix.scheme }})" >> $GITHUB_STEP_SUMMARY
+            head -50 coverage-report.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.scheme }}
+          path: |
+            TestResults.xcresult
+            coverage-report.txt
+            coverage-report.json
+          retention-days: 14
+
+  spm-test:
+    name: SPM Tests (BonhommeCore)
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            BonhommeCore/.build
+          key: spm-core-${{ runner.os }}-${{ hashFiles('BonhommeCore/Package.swift') }}
+          restore-keys: |
+            spm-core-${{ runner.os }}-
+
+      - name: Build package
+        run: swift build --package-path BonhommeCore
+
+      - name: Run tests with coverage
+        run: swift test --package-path BonhommeCore --enable-code-coverage
+
+      - name: Extract SPM coverage
+        if: always()
+        run: |
+          PROF_DATA=$(find BonhommeCore/.build -name 'default.profdata' 2>/dev/null | head -1)
+          if [ -n "$PROF_DATA" ]; then
+            BIN=$(find BonhommeCore/.build -name 'BonhommeCorePackageTests.xctest' -o -name 'BonhommeCorePackageTests' 2>/dev/null | head -1)
+            if [ -n "$BIN" ]; then
+              xcrun llvm-cov report "$BIN" -instr-profile="$PROF_DATA" > spm-coverage.txt 2>/dev/null || true
+              echo "### SPM Coverage Report" >> $GITHUB_STEP_SUMMARY
+              cat spm-coverage.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            fi
+          fi
+
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-15
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint
+        run: swiftlint lint --reporter github-actions-logging
