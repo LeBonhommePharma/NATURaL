@@ -1,0 +1,53 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Swift source
+*.swift text diff=swift
+
+# Xcode project files — union merge to reduce conflicts
+*.pbxproj binary merge=union
+
+# Property lists
+*.plist binary
+
+# Storyboards and XIBs (XML-based)
+*.storyboard text
+*.xib text
+
+# Interface Builder
+*.xcscheme text
+*.xcworkspacedata text
+
+# Entitlements
+*.entitlements text
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# Fonts
+*.ttf binary
+*.otf binary
+
+# Archives
+*.zip binary
+*.tar.gz binary
+
+# Documentation
+*.md text diff=markdown
+*.txt text
+
+# Configuration
+*.yml text
+*.yaml text
+*.json text
+
+# Shell scripts
+*.sh text eol=lf
+
+# Python
+*.py text diff=python
