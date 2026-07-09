@@ -35,7 +35,7 @@ double circular_shannon_entropy(const double* angles, size_t count, int bin_coun
 
 /**
  * Shannon entropy with fixed domain [domain_min, domain_max].
- * Clamps values to domain. Does NOT filter NaN/Inf.
+ * Clamps values to domain. Filters non-finite values (NaN/Inf).
  */
 double shannon_entropy_fixed(const double* values, size_t count, int bin_count,
                               double domain_min, double domain_max);

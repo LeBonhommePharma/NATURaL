@@ -129,7 +129,7 @@ BAStatus ba_circular_shannon_entropy(
  * Shannon entropy with caller-specified fixed domain [domain_min, domain_max].
  *
  * Values outside the domain are clamped to the nearest edge.
- * Does NOT filter NaN/Inf — caller is responsible for clean input.
+ * Filters non-finite values (NaN, Inf), matching the adaptive/circular paths.
  *
  * @param values     Input array.
  * @param count      Number of elements.
