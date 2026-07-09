@@ -214,8 +214,19 @@ public actor CrooksCycleController {
             didFlip = true
         }
 
-        // One multiplexed beat: bus owns UniversalBeatSync + crown/AirPods dial mirrors.
-        await actuators.broadcastBeat(bpm: safeBPM, beta: safeBeta, grounding: didGround)
+        // One multiplexed beat — sole end-of-tick authority.
+        // After grounding, preserve recovery tempo (92 BPM) and damped β; do not
+        // re-broadcast the pre-ground input BPM/β (that undoes executeGrounding).
+        if didGround {
+            let dampedBeta = await crown.currentBeta()
+            await actuators.broadcastBeat(
+                bpm: CrooksCycleDefaults.groundingBPM,
+                beta: dampedBeta,
+                grounding: true
+            )
+        } else {
+            await actuators.broadcastBeat(bpm: safeBPM, beta: safeBeta, grounding: false)
+        }
 
         return CrooksCycleUpdateResult(
             work: work,

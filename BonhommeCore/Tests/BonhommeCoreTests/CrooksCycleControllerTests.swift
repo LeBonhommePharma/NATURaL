@@ -301,6 +301,64 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(snap.sigmaIrr, 0)
     }
 
+    /// After a full `update()` that grounds, beat sync and crown must retain recovery policy.
+    /// Regression: end-of-tick broadcast used to overwrite groundingBPM/β with the input.
+    func testGroundingPolicyPersistsOnBeatAndCrown() async {
+        let beat = UniversalBeatSync()
+        let crown = CrownController(beatSync: beat)
+        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        let bus = ActuatorBus(channels: [
+            BeatSyncActuatorChannel(beatSync: beat),
+            CrownActuatorChannel(crown: crown),
+            AirPodsCrownActuatorChannel(airPods: airPods),
+            BreathingGuideActuatorChannel(),
+            SessionLogActuatorChannel()
+        ])
+        let controller = CrooksCycleController(
+            deltaG: -0.01,
+            actuators: bus,
+            crown: crown,
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+
+        let inputBeta = 0.80
+        let inputBPM = 170.0
+        var grounded = false
+
+        for _ in 0..<50 {
+            let r = await controller.update(
+                deltaHRV: 3.0,
+                flexAIDDeltaS: 3.0,
+                crownBeta: inputBeta,
+                bpm: inputBPM
+            )
+            if r.didGround {
+                grounded = true
+                let beatSnap = await beat.current()
+                let betaAfter = await crown.currentBeta()
+                let airSnap = await airPods.snapshot()
+
+                XCTAssertEqual(
+                    beatSnap.bpm, CrooksCycleDefaults.groundingBPM, accuracy: 1e-9,
+                    "grounding must leave UniversalBeatSync at recovery BPM, not input \(inputBPM)"
+                )
+                XCTAssertTrue(beatSnap.isGrounding, "beat snapshot must flag grounding")
+                XCTAssertLessThan(
+                    abs(betaAfter), abs(inputBeta) - 1e-6,
+                    "crown β must remain damped after full update (was \(betaAfter), input \(inputBeta))"
+                )
+                XCTAssertEqual(
+                    airSnap.bpm, CrooksCycleDefaults.groundingBPM, accuracy: 1e-9,
+                    "AirPods route state must adopt grounding BPM"
+                )
+                XCTAssertTrue(airSnap.isGrounding)
+                XCTAssertLessThan(abs(airSnap.beta), abs(inputBeta) - 1e-6)
+                break
+            }
+        }
+        XCTAssertTrue(grounded, "expected grounding under high work")
+    }
+
     /// σ_irr minimization must keep accumulated irreversibility bounded under sustained high work.
     /// Without damp, 80 ticks × ~4 work would grow without bound.
     func testGroundingBoundsSigmaIrrUnderSustainedLoad() async {
