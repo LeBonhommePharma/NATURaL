@@ -107,14 +107,27 @@ struct HomeView: View {
                     prescribedCardsSection
                 }
 
-                // Restored workout banner
+                // Secondary re-entry / discard affordance when restored session is pending
+                // (primary path auto-loads on launch/active; banner is not the sole load gate).
                 if let restoredVM = appState.pendingRestoredWorkout {
-                    NavigationLink {
-                        WorkoutFlowView(restoredViewModel: restoredVM)
-                    } label: {
-                        resumeBanner(plan: restoredVM.plan)
+                    HStack(spacing: 12) {
+                        NavigationLink {
+                            WorkoutFlowView(restoredViewModel: restoredVM)
+                        } label: {
+                            resumeBanner(plan: restoredVM.plan)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            appState.dismissRestoredWorkout()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(LocalizedString(en: "Discard", fr: "Annuler").localized)
                     }
-                    .buttonStyle(.plain)
                     .padding(.horizontal)
                 }
 
@@ -374,7 +387,7 @@ struct HomeView: View {
                 .foregroundStyle(.orange)
 
             VStack(alignment: .leading) {
-                Text(LocalizedString(en: "Resume Workout", fr: "Reprendre l'entraînement").localized)
+                Text(LocalizedString(en: "Continuing session", fr: "Séance en cours").localized)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text(plan.name.localized)

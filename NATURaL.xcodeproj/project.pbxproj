@@ -34,7 +34,6 @@
 		681122FD9CFB44DF7B145C3E /* NATURaLLiveActivity.appex in Embed Extensions */ = {isa = PBXBuildFile; fileRef = 7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		68C5637B03670C35407D1EF8 /* BonhommeWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CB8293F97DAD6558CA2C6 /* BonhommeWatchApp.swift */; };
 		70F5341A6A010D747DE471EA /* CareKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64AFE2D3D12ACF817073A5C8 /* CareKitBridge.swift */; };
-		77901275F880C3F29BC84974 /* WorkoutStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */; };
 		8269669262800477717015BA /* ChairYogaActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31B55F0E33E1894538ED708 /* ChairYogaActivity.swift */; };
 		83120F65EF14CED3B7D8EAC8 /* WatchHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */; };
 		869F462978A05FB70A457EEE /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9148A73EAA731B5C6F2FAD21 /* BonhommeCore */; };
@@ -174,7 +173,6 @@
 		929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlaySecondScreen.swift; sourceTree = "<group>"; };
 		96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NATURaLWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateMonitor.swift; sourceTree = "<group>"; };
-		9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStateStore.swift; sourceTree = "<group>"; };
 		9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		9A6B2F908F0917D19A145A0C /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		9B23F8A7D5EF64D66A594E8D /* ExternalDisplaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplaySceneDelegate.swift; sourceTree = "<group>"; };
@@ -475,7 +473,6 @@
 			isa = PBXGroup;
 			children = (
 				C77F1417FDEA535CCFB59899 /* PersistentModels.swift */,
-				9A53B468E8757E05D22B14DA /* WorkoutStateStore.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -906,7 +903,6 @@
 				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,
 				EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */,
 				E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */,
-				77901275F880C3F29BC84974 /* WorkoutStateStore.swift in Sources */,
 				8269669262800477717015BA /* ChairYogaActivity.swift in Sources */,
 				0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */,
 				00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */,

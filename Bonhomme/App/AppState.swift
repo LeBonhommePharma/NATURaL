@@ -9,8 +9,12 @@ final class AppState {
     var isPremium = true
     var healthKitAuthorized = false
 
-    /// Set when a killed-app workout state is detected on launch.
+    /// Set when a killed-app workout state is detected and auto-loaded on launch/active.
     var pendingRestoredWorkout: WorkoutFlowViewModel?
+
+    /// When true, the UI should auto-present the restored session (not wait on confirm-only gate).
+    /// Consumed by ContentView after navigation is triggered.
+    var shouldAutoPresentRestoredSession = false
 
     let healthKitManager = HealthKitManager()
     let subscriptionManager = SubscriptionManager()
@@ -43,14 +47,49 @@ final class AppState {
         }
     }
 
-    /// Checks for a recoverable workout on app launch.
-    func checkForResumableWorkout() {
-        pendingRestoredWorkout = WorkoutFlowViewModel.restoreIfAvailable(feedbackEngine: feedbackEngine)
+    /// Detects recoverable local activity and auto-loads it into a runnable restored session.
+    /// Called on launch and when returning to active. Does not require a manual confirm step to load.
+    func detectAndAutoLoadLocalActivity() {
+        // Skip while a workout UI is already presenting to avoid re-entrant navigation.
+        if isWorkoutActive { return }
+
+        let loader = LocalActivitySessionLoader(store: workoutStateStore)
+        guard loader.hasRecoverableActivity(),
+              let vm = WorkoutFlowViewModel.restoreIfAvailable(
+                feedbackEngine: feedbackEngine,
+                store: workoutStateStore
+              ) else {
+            pendingRestoredWorkout = nil
+            shouldAutoPresentRestoredSession = false
+            return
+        }
+
+        pendingRestoredWorkout = vm
+        shouldAutoPresentRestoredSession = true
     }
 
-    /// Clears the pending restored workout (user declined to resume).
+    /// Checks for a recoverable workout on app launch / become-active and auto-loads it.
+    /// Kept as the historical entry name used by BonhommeApp scene wiring.
+    func checkForResumableWorkout() {
+        detectAndAutoLoadLocalActivity()
+    }
+
+    /// Marks that the restored session has been auto-presented (navigation triggered).
+    func noteRestoredSessionPresented() {
+        shouldAutoPresentRestoredSession = false
+        isWorkoutActive = true
+    }
+
+    /// Clears the pending restored workout (user discarded / declined).
     func dismissRestoredWorkout() {
         pendingRestoredWorkout = nil
+        shouldAutoPresentRestoredSession = false
+        isWorkoutActive = false
         workoutStateStore.clear()
+    }
+
+    /// Called when the restored-session UI is dismissed without discarding persistence.
+    func noteRestoredSessionUIDismissed() {
+        isWorkoutActive = false
     }
 }

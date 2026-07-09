@@ -118,7 +118,6 @@ extension Notification.Name {
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
-    @State private var showResumeAlert = false
     @State private var navigateToRestoredWorkout = false
     @State private var initializationError: Error?
     @State private var showDebugDashboard = false
@@ -145,28 +144,25 @@ struct ContentView: View {
                         #endif
                     }
             }
-            .onChange(of: appState.pendingRestoredWorkout != nil) { _, hasWorkout in
-                showResumeAlert = hasWorkout
-            }
-            .alert(
-                LocalizedString(
-                    en: "Resume Workout?",
-                    fr: "Reprendre l'entraînement ?"
-                ).localized,
-                isPresented: $showResumeAlert
-            ) {
-                Button(LocalizedString(en: "Resume", fr: "Reprendre").localized) {
+            // Auto-load: when detect→load finds recoverable local activity, present the session
+            // without a confirm-only gate. Discard remains secondary (home banner / stop).
+            .onChange(of: appState.shouldAutoPresentRestoredSession) { _, shouldPresent in
+                if shouldPresent {
                     navigateToRestoredWorkout = true
+                    appState.noteRestoredSessionPresented()
                 }
-                Button(LocalizedString(en: "Discard", fr: "Annuler").localized, role: .destructive) {
-                    appState.dismissRestoredWorkout()
+            }
+            .onChange(of: navigateToRestoredWorkout) { _, isShowing in
+                if !isShowing {
+                    appState.noteRestoredSessionUIDismissed()
                 }
-            } message: {
-                if let vm = appState.pendingRestoredWorkout {
-                    Text(LocalizedString(
-                        en: "You have an unfinished \(vm.plan.name.en) session. Would you like to continue?",
-                        fr: "Vous avez une séance \(vm.plan.name.fr) inachevée. Voulez-vous continuer ?"
-                    ).localized)
+            }
+            .onAppear {
+                // If detect already ran in BonhommeApp.onAppear before ContentView mounted,
+                // consume any pending auto-present flag immediately.
+                if appState.shouldAutoPresentRestoredSession {
+                    navigateToRestoredWorkout = true
+                    appState.noteRestoredSessionPresented()
                 }
             }
             .task {
@@ -205,9 +201,10 @@ struct ContentView: View {
             print("⚠️ HealthKit is not available on this device")
         }
         
-        // Check for resumable workout
-        if appState.workoutStateStore.hasActiveWorkout {
-            print("ℹ️ Resumable workout detected")
+        // Detect local activity (same store as launch path)
+        let loader = LocalActivitySessionLoader(store: appState.workoutStateStore)
+        if loader.hasRecoverableActivity() {
+            print("ℹ️ Recoverable local activity detected — auto-load path engaged")
         }
         
         // Verify feedback engine is ready

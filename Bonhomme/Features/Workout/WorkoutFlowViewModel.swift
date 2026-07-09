@@ -81,49 +81,44 @@ final class WorkoutFlowViewModel {
 
     // MARK: - State Restoration
 
-    /// Attempt to restore a killed-app workout session.
+    /// Attempt to restore a killed-app workout session from local activity.
+    /// Uses `LocalActivitySessionLoader` (detect → load) so the same path is unit-tested in BonhommeCore.
     /// Returns a configured ViewModel if recoverable state exists, nil otherwise.
-    static func restoreIfAvailable(feedbackEngine: FeedbackEngine = FeedbackEngine()) -> WorkoutFlowViewModel? {
-        let store = WorkoutStateStore()
-        guard let persisted = store.load(),
-              let plan = persisted.resolvePlan() else {
+    static func restoreIfAvailable(
+        feedbackEngine: FeedbackEngine = FeedbackEngine(),
+        store: WorkoutStateStore = WorkoutStateStore()
+    ) -> WorkoutFlowViewModel? {
+        let loader = LocalActivitySessionLoader(store: store)
+        guard let session = loader.detectAndLoad() else {
             return nil
         }
+        return WorkoutFlowViewModel(restoredSession: session, feedbackEngine: feedbackEngine)
+    }
 
-        let vm = WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine)
-        vm.isRestoredSession = true
-        vm.sessionStartDate = persisted.sessionStartDate
-        vm.elapsedTime = persisted.elapsedTime
-        vm.poseTimeRemaining = persisted.poseTimeRemaining
+    /// Builds a ViewModel from a previously loaded `RestoredLocalSession` (auto-load path).
+    convenience init(restoredSession session: RestoredLocalSession, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+        self.init(plan: session.plan, feedbackEngine: feedbackEngine)
+        self.isRestoredSession = true
+        self.sessionStartDate = session.sessionStartDate
+        self.elapsedTime = session.elapsedTime
+        self.poseTimeRemaining = session.poseTimeRemaining
+        self.posesCompletedCount = session.posesCompletedCount
 
-        // Map persisted phase back to VM phase
-        switch persisted.phase {
+        switch session.phase {
         case .ready:
-            vm.phase = .ready
+            self.phase = .ready
         case .countdown(let secs):
-            vm.phase = .countdown(secondsRemaining: secs)
+            self.phase = .countdown(secondsRemaining: secs)
         case .active(let idx):
-            vm.phase = .active(poseIndex: idx)
-            // BUG 5 FIX: Restore completed count — all poses before the current one are done.
-            vm.posesCompletedCount = idx
+            self.phase = .active(poseIndex: idx)
         case .transition(let nextIdx, let secs):
-            vm.phase = .transition(nextPoseIndex: nextIdx, secondsRemaining: secs)
-            // BUG 3 FIX: During a transition, poseTimeRemaining should reflect the *next*
-            // pose's duration so MetricsOverlayView never shows a stale 0 during the
-            // transition window. The previous pose is already complete.
-            vm.poseTimeRemaining = plan.poses[safe: nextIdx]?.durationSeconds ?? 0
-            // BUG 5 FIX: All poses up to (but not including) nextIdx are completed.
-            vm.posesCompletedCount = nextIdx
+            self.phase = .transition(nextPoseIndex: nextIdx, secondsRemaining: secs)
+            self.poseTimeRemaining = session.poseTimeRemaining
         case .cooldown:
-            vm.phase = .cooldown
-            // BUG 5 FIX: All poses are done when we reach cooldown.
-            vm.posesCompletedCount = plan.poseCount
+            self.phase = .cooldown
         case .complete:
-            store.clear()
-            return nil
+            self.phase = .complete
         }
-
-        return vm
     }
 
     /// Resume a restored session: reconnect to the HealthKit workout session
