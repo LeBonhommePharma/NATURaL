@@ -211,13 +211,51 @@ final class CrooksCycleControllerTests: XCTestCase {
         let result = kernel.evaluate(CrooksFeatureVector(
             deltaHRV: -1, flexAIDDeltaS: -2, crownBeta: 0.1, bpm: 120
         ))
+        // Acceleration claim must match the real compile-time vDSP path.
+        XCTAssertEqual(result.usedANEPath, EigenMetalWorkKernel.accelerateAvailable)
         #if canImport(Accelerate)
         XCTAssertTrue(result.usedANEPath)
         XCTAssertTrue(result.backendLabel.contains("ANE") || result.backendLabel.contains("Accelerate"))
         #else
         XCTAssertFalse(result.usedANEPath)
+        XCTAssertEqual(result.backendLabel, "Scalar/Eigen")
         #endif
         XCTAssertTrue(result.work.isFinite)
+    }
+
+    /// Work-history entropy must call shipped `EntropyCalculator` (not a reimplementation).
+    func testWorkHistoryEntropyMatchesEntropyCalculator() {
+        let kernel = EigenMetalWorkKernel()
+        var works = [Double]()
+        works.reserveCapacity(128)
+        for i in 0..<128 {
+            let di = Double(i)
+            let features = CrooksFeatureVector(
+                deltaHRV: sin(di) * 1.5,
+                flexAIDDeltaS: cos(di) * 0.8,
+                crownBeta: Double(i % 7) * 0.1 - 0.3,
+                bpm: 110 + Double(i % 20)
+            )
+            works.append(kernel.evaluate(features).work)
+        }
+        let viaKernel = kernel.workHistoryEntropy(works)
+        let viaCalc = EntropyCalculator(binCount: 32).shannonEntropy(works)
+        XCTAssertEqual(viaKernel, viaCalc, accuracy: 1e-12)
+        XCTAssertGreaterThanOrEqual(viaKernel, 0)
+    }
+
+    /// Non-finite features must not poison work (production clamp).
+    func testExtremeNaNInputsProduceFiniteWork() {
+        let kernel = EigenMetalWorkKernel()
+        let result = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: .nan,
+            flexAIDDeltaS: .infinity,
+            crownBeta: -.infinity,
+            bpm: .nan
+        ))
+        XCTAssertTrue(result.work.isFinite)
+        XCTAssertEqual(result.work, 0, accuracy: 1e-12)
+        XCTAssertTrue(result.eigenCoords.allSatisfy(\.isFinite))
     }
 
     // MARK: - CrooksCycleController
@@ -263,6 +301,91 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(snap.sigmaIrr, 0)
     }
 
+    /// σ_irr minimization must keep accumulated irreversibility bounded under sustained high work.
+    /// Without damp, 80 ticks × ~4 work would grow without bound.
+    func testGroundingBoundsSigmaIrrUnderSustainedLoad() async {
+        let controller = CrooksCycleController(
+            deltaG: -0.01,
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        var maxSigma = 0.0
+        var groundCount = 0
+        for _ in 0..<80 {
+            let r = await controller.update(
+                deltaHRV: 3.0,
+                flexAIDDeltaS: 3.0,
+                crownBeta: 1.0,
+                bpm: 180
+            )
+            XCTAssertTrue(r.work.isFinite)
+            XCTAssertTrue(r.sigmaIrr.isFinite)
+            XCTAssertGreaterThanOrEqual(r.sigmaIrr, 0)
+            maxSigma = max(maxSigma, r.sigmaIrr)
+            if r.didGround { groundCount += 1 }
+        }
+        XCTAssertGreaterThan(groundCount, 0, "grounding must fire under load")
+        // Undamped: 80 * maxAbsWork ≈ 320. Production damp must keep σ_irr far below that.
+        XCTAssertLessThan(maxSigma, 50.0, "σ_irr minimization must bound accumulated irreversibility")
+    }
+
+    /// Grounding tick must reduce σ_irr vs the pre-minimize post-accumulation value.
+    func testGroundingReducesSigmaIrrOnFire() async {
+        let controller = CrooksCycleController(
+            deltaG: -0.01,
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        var reduced = false
+        for _ in 0..<50 {
+            let before = await controller.snapshot()
+            let r = await controller.update(
+                deltaHRV: 2.5,
+                flexAIDDeltaS: 2.5,
+                crownBeta: 1.0,
+                bpm: 170
+            )
+            if r.didGround {
+                // After add-work + minimize: sigma must be strictly less than
+                // pre-tick sigma + |work| (undamped upper bound).
+                let undampedUpper = before.sigmaIrr + abs(r.work) + 1e-9
+                XCTAssertLessThan(r.sigmaIrr, undampedUpper)
+                // And when pre-tick was already above threshold, post-minimize should drop.
+                if before.sigmaIrr > CrooksCycleDefaults.groundingThreshold {
+                    XCTAssertLessThan(r.sigmaIrr, before.sigmaIrr + abs(r.work) * 0.5)
+                    reduced = true
+                    break
+                }
+                // First ground from below threshold: still prove damp vs undamped.
+                reduced = r.sigmaIrr < undampedUpper
+                if reduced { break }
+            }
+        }
+        XCTAssertTrue(reduced, "expected at least one grounding reduction event")
+    }
+
+    func testControllerSurvivesNaNInfInputs() async {
+        let controller = CrooksCycleController(
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        let r = await controller.update(
+            deltaHRV: .nan,
+            flexAIDDeltaS: .infinity,
+            crownBeta: .nan,
+            bpm: -.infinity
+        )
+        XCTAssertTrue(r.work.isFinite)
+        XCTAssertTrue(r.sigmaIrr.isFinite)
+        XCTAssertGreaterThanOrEqual(r.sigmaIrr, 0)
+        let snap = await controller.snapshot()
+        XCTAssertTrue(snap.wFwd.isFinite)
+        XCTAssertTrue(snap.wRev.isFinite)
+    }
+
     func testPhaseFlipOnNearReversible() async {
         let controller = CrooksCycleController(
             deltaG: -8.7,
@@ -277,8 +400,10 @@ final class CrooksCycleControllerTests: XCTestCase {
             crownBeta: 0,
             bpm: CrooksCycleDefaults.nominalBPM
         )
-        // With zero work, σ_irr ≈ 0 < 0.03 → phase flip expected.
-        XCTAssertTrue(r.didFlipPhase || r.sigmaIrr < CrooksCycleDefaults.reversibilityThreshold)
+        // With zero work, σ_irr ≈ 0 < 0.03 → phase flip expected (no grounding).
+        XCTAssertFalse(r.didGround)
+        XCTAssertTrue(r.didFlipPhase, "near-reversible tick must flip phase")
+        XCTAssertEqual(r.phase, .reverse)
     }
 
     func testResetClearsState() async {
@@ -295,6 +420,24 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(snap.phase, .forward)
         XCTAssertEqual(snap.cycleCount, 0)
         XCTAssertEqual(snap.sigmaIrr, 0, accuracy: 1e-12)
+    }
+
+    func testCrownBetaRejectsNaN() {
+        var dial = CrownBetaDial(beta: 0.5)
+        dial.setBeta(.nan)
+        XCTAssertEqual(dial.beta, 0, accuracy: 1e-12)
+        dial.setBeta(0.4)
+        dial.applyCrownDelta(.infinity)
+        XCTAssertTrue(dial.beta.isFinite)
+        XCTAssertLessThanOrEqual(abs(dial.beta), 1)
+    }
+
+    func testBeatSyncRejectsNaNBPM() async {
+        let sync = UniversalBeatSync()
+        let snap = await sync.broadcast(bpm: .nan, beta: .nan, grounding: false)
+        XCTAssertTrue(snap.bpm.isFinite)
+        XCTAssertEqual(snap.bpm, CrooksCycleDefaults.nominalBPM, accuracy: 1e-9)
+        XCTAssertEqual(snap.crownBeta, 0, accuracy: 1e-9)
     }
 
     // MARK: - PharmaControlSessionManager

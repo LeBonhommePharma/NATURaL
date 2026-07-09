@@ -196,23 +196,26 @@ public actor PharmaControlSessionManager {
         substanceId: String? = nil,
         crownBeta: Double? = nil
     ) async -> CrooksCycleUpdateResult {
-        let sci = sciScore ?? lastSCI ?? 0.5
+        let rawSCI = sciScore ?? lastSCI ?? 0.5
+        let sci = rawSCI.isFinite ? max(0, min(1, rawSCI)) : 0.5
         let prev = lastSCI ?? sci
         let deltaHRV = -(sci - prev) * Self.sciToDeltaHRVScale
         lastSCI = sci
 
         let beta: Double
-        if let crownBeta {
+        if let crownBeta, crownBeta.isFinite {
             beta = crownBeta
         } else {
             beta = await crown.currentBeta()
         }
+        let safeBPM = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+        let safeFlex = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
 
         return await tick(PharmaControlTick(
-            deltaHRV: deltaHRV,
-            flexAIDDeltaS: flexAIDDeltaS,
+            deltaHRV: deltaHRV.isFinite ? deltaHRV : 0,
+            flexAIDDeltaS: safeFlex,
             crownBeta: beta,
-            bpm: bpm,
+            bpm: safeBPM,
             substanceId: substanceId,
             sciScore: sci
         ))

@@ -72,8 +72,10 @@ public actor UniversalBeatSync {
     public func broadcast(bpm: Double, beta: Double, grounding: Bool = false) async -> BeatSyncSnapshot {
         let now = Date()
         advancePhase(to: now)
-        snapshot.bpm = max(Self.minBPM, min(Self.maxBPM, bpm))
-        snapshot.crownBeta = max(-1, min(1, beta))
+        let safeBPM = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+        let safeBeta = beta.isFinite ? beta : 0
+        snapshot.bpm = max(Self.minBPM, min(Self.maxBPM, safeBPM))
+        snapshot.crownBeta = max(-1, min(1, safeBeta))
         snapshot.isGrounding = grounding
         snapshot.lastTick = now
 

@@ -58,7 +58,8 @@ public struct CrownBetaDial: Sendable, Equatable {
     }
 
     private static func clamp(_ v: Double) -> Double {
-        max(-1, min(1, v))
+        guard v.isFinite else { return 0 }
+        return max(-1, min(1, v))
     }
 }
 

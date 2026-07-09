@@ -2,9 +2,10 @@ import Foundation
 
 // MARK: - Update Result
 
-/// Result of one Crooks-cycle control tick.
+/// Result of one Crooks-inspired control tick.
 public struct CrooksCycleUpdateResult: Sendable, Equatable {
     public let work: Double
+    /// Heuristic irreversibility index used for control policy (not a verified FT σ_irr).
     public let sigmaIrr: Double
     public let phase: ThermodynamicPhase
     public let didGround: Bool
@@ -36,20 +37,23 @@ public struct CrooksCycleUpdateResult: Sendable, Equatable {
 
 // MARK: - Crooks Cycle Controller
 
-/// Crooks-cycle controller for non-equilibrium work and irreversible entropy production (σ_irr).
+/// Crooks-inspired session controller: heuristic work accumulation and σ_irr index.
 ///
-/// ## Theory
-/// Crooks fluctuation theorem relates forward and reverse path work to free energy:
+/// ## Scope (not a verified fluctuation theorem)
+/// This is a **control heuristic** inspired by Crooks-style forward/reverse half-cycles.
+/// It does **not** compute Crooks FT path averages ⟨e^{−βW}⟩, does not estimate free
+/// energy from trajectory ensembles, and does not claim thermodynamic equality with
+/// laboratory non-equilibrium work theorems.
 ///
-/// ```
-///   ⟨e^{−βW}⟩_fwd / ⟨e^{−βW}⟩_rev = e^{−βΔG}
-/// ```
-///
-/// For a closed pair of half-cycles (work units = EigenMetal-weighted features):
+/// Instantaneous “work” is an EigenMetal-weighted feature score (ΔH_hrv, FlexAID ΔS,
+/// crown β, BPM). Accumulated half-cycle totals feed a scalar **heuristic σ_irr**:
 ///
 /// ```
 ///   σ_irr = max(0, |W_fwd + W_rev| − 2|ΔG|_work)
 /// ```
+///
+/// where `|ΔG|_work` is a scaled free-energy budget in the same ad-hoc work units.
+/// Treat σ_irr as a session control index for grounding / phase-flip policy only.
 ///
 /// ## Control policy
 /// | Condition | Action |
@@ -80,10 +84,12 @@ public actor CrooksCycleController {
     private let crown: CrownController
     private let mapper: DeltaHRVFlexAIDMapper
 
+    /// Heuristic irreversibility index (control only; not FT-derived).
     public private(set) var sigmaIrr: Double = 0
 
-    /// Maps kcal/mol free energy into EigenMetal work units so control thresholds
-    /// (0.03 / 0.12) share scale with feature-weighted ticks.
+    /// Maps a kcal/mol free-energy scale into EigenMetal work units so control
+    /// thresholds (0.03 / 0.12) share scale with feature-weighted ticks.
+    /// Ad-hoc unit bridge only — not a thermodynamic conversion from path work.
     /// Example: 8.7 kcal × 0.002 ≈ 0.017 work units of reversible budget.
     private static let kcalToWorkScale: Double = 0.002
 
@@ -136,7 +142,7 @@ public actor CrooksCycleController {
 
     // MARK: - Control tick
 
-    /// Ingest ΔH_hrv, FlexAID ΔS_config, crown β, and BPM; apply Crooks policy.
+    /// Ingest ΔH_hrv, FlexAID ΔS_config, crown β, and BPM; apply Crooks-inspired policy.
     @discardableResult
     public func update(
         deltaHRV: Double,
@@ -145,22 +151,28 @@ public actor CrooksCycleController {
         bpm: Double,
         substanceId: String? = nil
     ) async -> CrooksCycleUpdateResult {
-        _ = await crown.setBeta(crownBeta)
+        // Sanitize at the boundary (feature vector also sanitizes; belt-and-suspenders).
+        let safeHRV = deltaHRV.isFinite ? deltaHRV : 0
+        let safeFlex = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
+        let safeBeta = crownBeta.isFinite ? max(-1, min(1, crownBeta)) : 0
+        let safeBPM = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+
+        _ = await crown.setBeta(safeBeta)
 
         let prediction = await mapper.predict(
-            deltaHRV: deltaHRV,
-            flexAIDDeltaS: flexAIDDeltaS,
+            deltaHRV: safeHRV,
+            flexAIDDeltaS: safeFlex,
             substanceId: substanceId
         )
 
         let features = CrooksFeatureVector(
-            deltaHRV: deltaHRV,
-            flexAIDDeltaS: flexAIDDeltaS,
-            crownBeta: crownBeta,
-            bpm: bpm
+            deltaHRV: safeHRV,
+            flexAIDDeltaS: safeFlex,
+            crownBeta: safeBeta,
+            bpm: safeBPM
         )
         let eval = kernel.evaluate(features)
-        let work = eval.work
+        let work = eval.work.isFinite ? eval.work : 0
         lastWork = work
         lastUpdate = Date()
         appendWork(work)
@@ -169,6 +181,9 @@ public actor CrooksCycleController {
         case .forward: wFwd += work
         case .reverse: wRev += work
         }
+        // Guard accumulation against any residual non-finite state.
+        if !wFwd.isFinite { wFwd = 0 }
+        if !wRev.isFinite { wRev = 0 }
 
         recomputeSigma()
 
@@ -176,11 +191,13 @@ public actor CrooksCycleController {
         var didFlip = false
 
         if sigmaIrr > CrooksCycleDefaults.groundingThreshold || prediction.shouldGround {
-            await minimizeSigmaIrr(bpm: bpm, beta: crownBeta)
+            await minimizeSigmaIrr(bpm: safeBPM, beta: safeBeta)
             didGround = true
         }
 
-        if sigmaIrr < CrooksCycleDefaults.reversibilityThreshold {
+        // Phase flip only when near-reversible *and* we did not just ground
+        // (grounding already damped work; flipping on the same tick confuses cycle accounting).
+        if !didGround && sigmaIrr < CrooksCycleDefaults.reversibilityThreshold {
             let from = phase
             phase = phase.flipped
             if phase == .forward {
@@ -198,7 +215,7 @@ public actor CrooksCycleController {
         }
 
         // One multiplexed beat: bus owns UniversalBeatSync + crown/AirPods dial mirrors.
-        await actuators.broadcastBeat(bpm: bpm, beta: crownBeta, grounding: didGround)
+        await actuators.broadcastBeat(bpm: safeBPM, beta: safeBeta, grounding: didGround)
 
         return CrooksCycleUpdateResult(
             work: work,
@@ -217,39 +234,52 @@ public actor CrooksCycleController {
         kernel.workHistoryEntropy(workHistory)
     }
 
-    // MARK: - σ_irr
+    // MARK: - Heuristic σ_irr
 
+    /// Heuristic control index (not Crooks FT path-average entropy production):
     /// ```
     ///   σ_irr = max(0, |W_fwd + W_rev| − 2|ΔG|_work)
     /// ```
-    /// Near-reversible protocols keep W_fwd ≈ −W_rev → σ_irr → 0 → phase flip.
+    /// When feature work nearly cancels across half-cycles, the index → 0 → phase flip.
     private func recomputeSigma() {
         let totalWork = wFwd + wRev
-        let deltaGWork = abs(deltaG) * Self.kcalToWorkScale
+        guard totalWork.isFinite else {
+            sigmaIrr = 0
+            return
+        }
+        let deltaGWork = abs(deltaG.isFinite ? deltaG : 0) * Self.kcalToWorkScale
         sigmaIrr = max(0, abs(totalWork) - 2.0 * deltaGWork)
     }
 
     /// Damp accumulated half-cycle work and fire grounding actuators once via the bus.
-    private func minimizeSigmaIrr(bpm: Double, beta: Double) async {
+    ///
+    /// Returns the pre-damp σ_irr so callers/tests can prove minimization reduces irreversibility.
+    @discardableResult
+    private func minimizeSigmaIrr(bpm: Double, beta: Double) async -> Double {
+        let sigmaBefore = sigmaIrr
         let gain = CrooksCycleDefaults.groundingCorrectiveGain
         switch phase {
         case .forward: wFwd *= (1 - gain)
         case .reverse: wRev *= (1 - gain)
         }
 
-        // Cross-term pull: both half-cycles toward their mean.
+        // Cross-term pull: both half-cycles toward their mean (cancels opposing residuals).
         let mean = 0.5 * (wFwd + wRev)
         let cross = gain * 0.5
         wFwd = wFwd * (1 - cross) + mean * cross
         wRev = wRev * (1 - cross) + mean * cross
+        if !wFwd.isFinite { wFwd = 0 }
+        if !wRev.isFinite { wRev = 0 }
 
         recomputeSigma()
 
         await actuators.executeGrounding(sigmaIrr: sigmaIrr, bpm: bpm, beta: beta)
         await actuators.logMicroSurvey(sigmaIrr: sigmaIrr, work: lastWork)
+        return sigmaBefore
     }
 
     private func appendWork(_ work: Double) {
+        guard work.isFinite else { return }
         workHistory.append(work)
         if workHistory.count > Self.maxWorkHistory {
             workHistory.removeFirst(workHistory.count - Self.maxWorkHistory)

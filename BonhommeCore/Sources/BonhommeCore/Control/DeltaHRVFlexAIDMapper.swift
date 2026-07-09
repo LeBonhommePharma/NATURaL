@@ -84,10 +84,13 @@ public actor DeltaHRVFlexAIDMapper {
         flexAIDDeltaS: Double,
         substanceId: String? = nil
     ) -> DeltaHRVFlexAIDPrediction {
-        var observedFlex = flexAIDDeltaS
+        let safeHRV = deltaHRV.isFinite ? deltaHRV : 0
+        let safeFlexIn = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
+
+        var observedFlex = safeFlexIn
         var source = "live"
         if let id = substanceId, let profile = BindingEntropyProfile.profile(for: id) {
-            if abs(flexAIDDeltaS) < 1e-9 {
+            if abs(safeFlexIn) < 1e-9 {
                 observedFlex = profile.expectedDeltaSBits
                 source = "BindingEntropyProfile"
             } else {
@@ -97,19 +100,19 @@ public actor DeltaHRVFlexAIDMapper {
 
         // Invert regression: |ΔH| ≈ slope × |ΔS| + intercept
         // → |ΔS| ≈ (|ΔH| − intercept) / slope
-        let absHRV = abs(deltaHRV)
+        let absHRV = abs(safeHRV)
         let absPred = max(0, (absHRV - calibratedIntercept) / max(calibratedSlope, 1e-6))
-        let sign: Double = (deltaHRV < 0 || observedFlex < 0) ? -1 : (deltaHRV > 0 ? 1 : -1)
+        let sign: Double = (safeHRV < 0 || observedFlex < 0) ? -1 : (safeHRV > 0 ? 1 : -1)
         let predicted = sign * absPred
 
         let soft = softResidual(abs(predicted - observedFlex))
 
         let prediction = DeltaHRVFlexAIDPrediction(
-            deltaHRV: deltaHRV,
+            deltaHRV: safeHRV,
             flexAIDDeltaS: observedFlex,
-            predictedDeltaS: predicted,
-            residual: soft,
-            shouldGround: soft > Self.residualGroundingThreshold,
+            predictedDeltaS: predicted.isFinite ? predicted : 0,
+            residual: soft.isFinite ? soft : 0,
+            shouldGround: soft.isFinite && soft > Self.residualGroundingThreshold,
             substanceId: substanceId,
             source: source
         )
