@@ -1,0 +1,351 @@
+import XCTest
+@testable import BonhommeCore
+
+/// Production validation for Session 1 Crooks-cycle control stack.
+/// Covers σ_irr math, EigenMetal/ANE work, ActuatorBus, beat sync, crown β,
+/// DeltaHRV↔FlexAID mapping, and zero-stub grounding minimization.
+final class CrooksCycleControllerTests: XCTestCase {
+
+    // MARK: - EigenMetal Work Kernel
+
+    func testProductionWeightsSumToOne() {
+        let sum = EigenMetalWorkKernel.productionWeights.reduce(0, +)
+        XCTAssertEqual(sum, 1.0, accuracy: 1e-12)
+    }
+
+    func testEigenBasisIsOrthonormal() {
+        let basis = EigenMetalWorkKernel.eigenBasis
+        XCTAssertEqual(basis.count, 4)
+        for i in 0..<4 {
+            let norm = sqrt(basis[i].map { $0 * $0 }.reduce(0, +))
+            XCTAssertEqual(norm, 1.0, accuracy: 1e-9, "basis[\(i)] should be unit")
+            for j in (i + 1)..<4 {
+                let dot = zip(basis[i], basis[j]).map(*).reduce(0, +)
+                XCTAssertEqual(dot, 0, accuracy: 1e-9, "basis[\(i)]·basis[\(j)] should be 0")
+            }
+        }
+    }
+
+    func testWorkEvaluationIsFiniteAndClamped() {
+        let kernel = EigenMetalWorkKernel()
+        let features = CrooksFeatureVector(
+            deltaHRV: -2.5,
+            flexAIDDeltaS: -3.0,
+            crownBeta: 0.5,
+            bpm: 140
+        )
+        let result = kernel.evaluate(features)
+        XCTAssertTrue(result.work.isFinite)
+        XCTAssertLessThanOrEqual(abs(result.work), CrooksCycleDefaults.maxAbsWorkPerTick)
+        XCTAssertEqual(result.eigenCoords.count, 4)
+        XCTAssertFalse(result.backendLabel.isEmpty)
+    }
+
+    func testWorkMonotonicWithPositiveDeltaHRV() {
+        let kernel = EigenMetalWorkKernel()
+        let low = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: 0.1, flexAIDDeltaS: 0, crownBeta: 0, bpm: CrooksCycleDefaults.nominalBPM
+        )).work
+        let high = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: 1.0, flexAIDDeltaS: 0, crownBeta: 0, bpm: CrooksCycleDefaults.nominalBPM
+        )).work
+        XCTAssertGreaterThan(high, low)
+    }
+
+    func testWorkHistoryEntropyNonNegative() {
+        let kernel = EigenMetalWorkKernel()
+        let works = (0..<64).map { i in
+            kernel.evaluate(CrooksFeatureVector(
+                deltaHRV: Double(i % 5) * 0.2 - 0.4,
+                flexAIDDeltaS: -1.0,
+                crownBeta: 0,
+                bpm: 120 + Double(i % 10)
+            )).work
+        }
+        let h = kernel.workHistoryEntropy(works)
+        XCTAssertGreaterThanOrEqual(h, 0)
+    }
+
+    // MARK: - Crown β Dial
+
+    func testCrownBetaClampAndScene() {
+        var dial = CrownBetaDial(beta: 0)
+        dial.setBeta(2.0)
+        XCTAssertEqual(dial.beta, 1.0, accuracy: 1e-12)
+        XCTAssertEqual(dial.sceneLabel, "heating")
+
+        dial.setBeta(-2.0)
+        XCTAssertEqual(dial.beta, -1.0, accuracy: 1e-12)
+        XCTAssertEqual(dial.sceneLabel, "binding")
+
+        dial.setBeta(0)
+        XCTAssertEqual(dial.sceneLabel, "neutral")
+    }
+
+    func testCrownDeltaSmoothing() {
+        var dial = CrownBetaDial(beta: 0, sensitivity: 0.1, smoothing: 0.5)
+        let b1 = dial.applyCrownDelta(1.0)
+        XCTAssertGreaterThan(b1, 0)
+        XCTAssertLessThan(b1, 0.1) // smoothed step
+        dial.dampTowardNeutral(gain: 1.0)
+        XCTAssertEqual(dial.beta, 0, accuracy: 1e-6)
+    }
+
+    // MARK: - Universal Beat Sync
+
+    func testBeatSyncBroadcastAndPhase() async {
+        let sync = UniversalBeatSync()
+        let snap = await sync.broadcast(bpm: 92, beta: -0.2, grounding: true)
+        XCTAssertEqual(snap.bpm, 92, accuracy: 1e-9)
+        XCTAssertTrue(snap.isGrounding)
+        XCTAssertEqual(snap.crownBeta, -0.2, accuracy: 1e-9)
+
+        // Advance phase with a tick in the future.
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        let ticked = await sync.tick()
+        XCTAssertGreaterThanOrEqual(ticked.phase, 0)
+        XCTAssertLessThan(ticked.phase, 1)
+    }
+
+    func testBeatSyncClampsBPM() async {
+        let sync = UniversalBeatSync()
+        let high = await sync.broadcast(bpm: 999, beta: 0)
+        XCTAssertEqual(high.bpm, 220, accuracy: 1e-9)
+        let low = await sync.broadcast(bpm: 1, beta: 0)
+        XCTAssertEqual(low.bpm, 40, accuracy: 1e-9)
+    }
+
+    // MARK: - DeltaHRV FlexAID Mapper
+
+    func testMapperPredictsFromProfile() async {
+        let mapper = DeltaHRVFlexAIDMapper()
+        let pred = await mapper.predict(
+            deltaHRV: -1.5,
+            flexAIDDeltaS: 0,
+            substanceId: "fentanyl"
+        )
+        XCTAssertEqual(pred.flexAIDDeltaS, -10.2, accuracy: 0.01)
+        XCTAssertTrue(pred.source.contains("profile") || pred.source == "BindingEntropyProfile")
+        XCTAssertGreaterThanOrEqual(pred.residual, 0)
+        XCTAssertEqual(pred.substanceId, "fentanyl")
+    }
+
+    func testMapperEntropyPenaltyMatchesThermodynamicConstants() async {
+        let mapper = DeltaHRVFlexAIDMapper()
+        let bits = -3.0
+        let kcal = mapper.entropyPenaltyKcal(deltaSBits: bits)
+        let expected = ThermodynamicConstants.entropyPenaltyKcal(deltaSBits: bits)
+        XCTAssertEqual(kcal, expected, accuracy: 1e-12)
+    }
+
+    // MARK: - ActuatorBus (zero stubs)
+
+    func testActuatorBusProductionChannelsPresent() async {
+        let bus = ActuatorBus.makeProduction()
+        let ids = await bus.channelIds()
+        XCTAssertTrue(ids.contains("universal_beat_sync"))
+        XCTAssertTrue(ids.contains("crown_beta_dial"))
+        XCTAssertTrue(ids.contains("airpods_crown_beta"))
+        XCTAssertTrue(ids.contains("delta_hrv_flexaid"))
+        XCTAssertTrue(ids.contains("session_log"))
+        XCTAssertTrue(ids.contains("breathing_guide"))
+        XCTAssertEqual(ids.count, 6)
+    }
+
+    func testActuatorBusGroundingAllSucceed() async {
+        let bus = ActuatorBus.makeProduction()
+        let results = await bus.executeGrounding(sigmaIrr: 0.2, bpm: 140, beta: 0.5)
+        XCTAssertEqual(results.count, 6)
+        for r in results {
+            XCTAssertTrue(r.success, "channel \(r.channelId) failed: \(r.detail)")
+            XCTAssertFalse(r.detail.isEmpty)
+        }
+        let log = await SessionEventLog.shared.all()
+        XCTAssertFalse(log.isEmpty)
+    }
+
+    // MARK: - AirPods Crown β (beta)
+
+    func testAirPodsVolumeDeltaAndStemPress() async {
+        let airPods = AirPodsCrownBetaController(beatSync: UniversalBeatSync())
+        await airPods.setRouteActive(true)
+        let betaUp = await airPods.applyVolumeDelta(1.0)
+        XCTAssertGreaterThan(betaUp, 0)
+        let afterStem = await airPods.applyStemPress(gain: 1.0)
+        XCTAssertEqual(afterStem, 0, accuracy: 1e-6)
+        let snap = await airPods.snapshot()
+        XCTAssertTrue(snap.routeActive)
+        XCTAssertEqual(snap.sceneLabel, "neutral")
+    }
+
+    func testAirPodsMirrorsWatchCrownAndBroadcasts() async {
+        let beat = UniversalBeatSync()
+        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        await airPods.setRouteActive(true)
+        _ = await airPods.mirrorWatchCrown(beta: 0.75)
+        let beatSnap = await airPods.broadcastBeat(bpm: 110, beta: 0.75, grounding: false)
+        XCTAssertEqual(beatSnap.bpm, 110, accuracy: 1e-9)
+        XCTAssertEqual(beatSnap.crownBeta, 0.75, accuracy: 1e-9)
+        let snap = await airPods.snapshot()
+        XCTAssertEqual(snap.beta, 0.75, accuracy: 1e-9)
+        XCTAssertEqual(snap.sceneLabel, "heating")
+    }
+
+    func testANEWorkPathLabelPresent() {
+        let kernel = EigenMetalWorkKernel()
+        let result = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: -1, flexAIDDeltaS: -2, crownBeta: 0.1, bpm: 120
+        ))
+        #if canImport(Accelerate)
+        XCTAssertTrue(result.usedANEPath)
+        XCTAssertTrue(result.backendLabel.contains("ANE") || result.backendLabel.contains("Accelerate"))
+        #else
+        XCTAssertFalse(result.usedANEPath)
+        #endif
+        XCTAssertTrue(result.work.isFinite)
+    }
+
+    // MARK: - CrooksCycleController
+
+    func testSigmaIrrNonNegative() async {
+        let controller = CrooksCycleController(
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper(),
+            beatSync: UniversalBeatSync()
+        )
+        let result = await controller.update(
+            deltaHRV: 0.5,
+            flexAIDDeltaS: -1.0,
+            crownBeta: 0.2,
+            bpm: 130
+        )
+        XCTAssertGreaterThanOrEqual(result.sigmaIrr, 0)
+        XCTAssertTrue(result.work.isFinite)
+    }
+
+    func testGroundingFiresWhenWorkAccumulates() async {
+        let controller = CrooksCycleController(
+            deltaG: -0.01, // tiny free-energy floor → easy grounding
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper(),
+            beatSync: UniversalBeatSync()
+        )
+        var grounded = false
+        for _ in 0..<40 {
+            let r = await controller.update(
+                deltaHRV: 2.0,
+                flexAIDDeltaS: 2.0,
+                crownBeta: 1.0,
+                bpm: 160
+            )
+            if r.didGround {
+                grounded = true
+                break
+            }
+        }
+        XCTAssertTrue(grounded, "expected grounding after sustained high work")
+        let snap = await controller.snapshot()
+        XCTAssertGreaterThanOrEqual(snap.sigmaIrr, 0)
+    }
+
+    func testPhaseFlipOnNearReversible() async {
+        let controller = CrooksCycleController(
+            deltaG: -8.7,
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper(),
+            beatSync: UniversalBeatSync()
+        )
+        // Single tiny update → total work near 0 → below reversibility threshold.
+        let r = await controller.update(
+            deltaHRV: 0,
+            flexAIDDeltaS: 0,
+            crownBeta: 0,
+            bpm: CrooksCycleDefaults.nominalBPM
+        )
+        // With zero work, σ_irr ≈ 0 < 0.03 → phase flip expected.
+        XCTAssertTrue(r.didFlipPhase || r.sigmaIrr < CrooksCycleDefaults.reversibilityThreshold)
+    }
+
+    func testResetClearsState() async {
+        let controller = CrooksCycleController(
+            actuators: ActuatorBus.makeProduction(),
+            crown: CrownController(),
+            mapper: DeltaHRVFlexAIDMapper(),
+            beatSync: UniversalBeatSync()
+        )
+        _ = await controller.update(deltaHRV: 1, flexAIDDeltaS: -1, crownBeta: 0.3, bpm: 140)
+        await controller.reset()
+        let snap = await controller.snapshot()
+        XCTAssertEqual(snap.wFwd, 0, accuracy: 1e-12)
+        XCTAssertEqual(snap.wRev, 0, accuracy: 1e-12)
+        XCTAssertEqual(snap.phase, .forward)
+        XCTAssertEqual(snap.cycleCount, 0)
+        XCTAssertEqual(snap.sigmaIrr, 0, accuracy: 1e-12)
+    }
+
+    // MARK: - PharmaControlSessionManager
+
+    func testSessionManagerTickFromSCI() async {
+        let manager = PharmaControlSessionManager(
+            controller: CrooksCycleController(
+                actuators: ActuatorBus.makeProduction(),
+                crown: CrownController(),
+                mapper: DeltaHRVFlexAIDMapper(),
+                beatSync: UniversalBeatSync()
+            ),
+            crown: CrownController(),
+            beatSync: UniversalBeatSync(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        await manager.start()
+        let r1 = await manager.tickFromSCI(sciScore: 0.4, bpm: 120)
+        XCTAssertTrue(r1.work.isFinite)
+        let r2 = await manager.tickFromSCI(sciScore: 0.8, bpm: 118)
+        // Rising SCI → negative deltaHRV (collapse) → work changes
+        XCTAssertTrue(r2.work.isFinite)
+
+        let snap = await manager.snapshot()
+        XCTAssertTrue(snap.isRunning)
+        XCTAssertEqual(snap.tickCount, 2)
+        XCTAssertFalse(snap.sigmaIrrDisplay.isEmpty)
+
+        await manager.stop()
+        let stopped = await manager.snapshot()
+        XCTAssertFalse(stopped.isRunning)
+    }
+
+    func testSessionManagerCrownDelta() async {
+        let crown = CrownController()
+        let manager = PharmaControlSessionManager(
+            controller: CrooksCycleController(
+                actuators: ActuatorBus(channels: []),
+                crown: crown,
+                mapper: DeltaHRVFlexAIDMapper(),
+                beatSync: UniversalBeatSync()
+            ),
+            crown: crown,
+            beatSync: UniversalBeatSync(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        let beta = await manager.applyCrownDelta(5.0)
+        XCTAssertNotEqual(beta, 0)
+    }
+
+    func testReferenceDeltaSFromProfiles() async {
+        let manager = PharmaControlSessionManager()
+        let morphine = manager.referenceDeltaS(for: "morphine")
+        XCTAssertEqual(morphine, -2.4, accuracy: 0.01)
+        let unknown = manager.referenceDeltaS(for: "not_a_drug_xyz")
+        XCTAssertEqual(unknown, 0, accuracy: 1e-12)
+    }
+
+    // MARK: - Thermodynamic phase
+
+    func testPhaseFlipHelper() {
+        XCTAssertEqual(ThermodynamicPhase.forward.flipped, .reverse)
+        XCTAssertEqual(ThermodynamicPhase.reverse.flipped, .forward)
+    }
+}

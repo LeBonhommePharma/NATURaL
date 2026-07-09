@@ -32,6 +32,14 @@ final class WorkoutFlowViewModel {
     let musicService = MusicService()
     private let stateStore = WorkoutStateStore()
 
+    /// Crooks-cycle pharma control session (σ_irr minimization, universal beat sync).
+    private let pharmaControl = PharmaControlSessionManager.shared
+
+    /// Latest σ_irr snapshot for metrics / debug overlays.
+    private(set) var sigmaIrr: Double = 0
+    private(set) var crooksPhase: ThermodynamicPhase = .forward
+    private(set) var crownBeta: Double = 0
+
     /// Tracks whether this session was restored from a killed app.
     private(set) var isRestoredSession = false
 
@@ -190,6 +198,8 @@ final class WorkoutFlowViewModel {
         posesCompletedCount = 0
         sessionStartDate = Date()
         phase = .countdown(secondsRemaining: 3)
+        musicService.bindUniversalBeatSync()
+        Task { await pharmaControl.start() }
         startCountdownSequence()
     }
 
@@ -245,6 +255,7 @@ final class WorkoutFlowViewModel {
         musicService.stop()
         endLiveActivity()
         Task {
+            await pharmaControl.stop()
             let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
             let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
             try? await recorder.end(metadata: metadata)
@@ -463,6 +474,7 @@ final class WorkoutFlowViewModel {
                 if persistenceCounter % 5 == 0 {
                     persistState()
                     await adaptMusicToCurrentSCI()
+                    await tickPharmaControl()
                 }
             }
 
@@ -507,7 +519,32 @@ final class WorkoutFlowViewModel {
             musicService.stop()
             endLiveActivity()
             stateStore.clear()
+            await pharmaControl.stop()
             phase = .complete
+        }
+    }
+
+    // MARK: - Crooks Pharma Control
+
+    /// Feed SCI + HR into CrooksCycleController for σ_irr minimization and beat sync.
+    private func tickPharmaControl() async {
+        feedbackEngine.analyzeAll()
+        let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+        let bpm = recorder.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+        let result = await pharmaControl.tickFromSCI(sciScore: sci, bpm: bpm)
+        sigmaIrr = result.sigmaIrr
+        crooksPhase = result.phase
+        let snap = await pharmaControl.snapshot()
+        crownBeta = snap.crownBeta
+
+        // Push beat directly so AirPods route stays locked even if listener races.
+        if let beat = snap.beat {
+            await musicService.applyBeatSync(beat)
+        }
+
+        // When grounding fires, nudge adaptive music toward meditative recovery.
+        if result.didGround {
+            await musicService.adaptToSCI(score: 0.2, trend: .declining, style: plan.style)
         }
     }
 

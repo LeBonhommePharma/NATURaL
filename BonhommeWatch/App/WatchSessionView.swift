@@ -15,6 +15,9 @@ struct WatchSessionView: View {
 
     @State private var selectedTab = 0
     @State private var relayTask: Task<Void, Never>?
+    @State private var crownRotationalDelta: Double = 0
+    @State private var sigmaIrr: Double = 0
+    @State private var crownBeta: Double = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -23,6 +26,33 @@ struct WatchSessionView: View {
             controlsTab.tag(2)
         }
         .tabViewStyle(.verticalPage)
+        .focusable()
+        .digitalCrownRotation(
+            $crownRotationalDelta,
+            from: -20,
+            through: 20,
+            by: 0.25,
+            sensitivity: .medium,
+            isContinuous: true,
+            isHapticFeedbackEnabled: true
+        )
+        .onChange(of: crownRotationalDelta) { oldValue, newValue in
+            let delta = newValue - oldValue
+            guard abs(delta) > 1e-6 else { return }
+            Task {
+                let beta = await PharmaControlSessionManager.shared.applyCrownDelta(delta)
+                crownBeta = beta
+                // Drive Crooks update with current HR + crown β.
+                let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+                let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+                let result = await PharmaControlSessionManager.shared.tickFromSCI(
+                    sciScore: sci,
+                    bpm: bpm,
+                    crownBeta: beta
+                )
+                sigmaIrr = result.sigmaIrr
+            }
+        }
         .onAppear { startWorkout() }
         .onDisappear { relayTask?.cancel() }
         .onChange(of: manager.phase) { _, newPhase in
@@ -203,6 +233,16 @@ struct WatchSessionView: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.white.opacity(0.7))
             }
+
+            // Crooks σ_irr + crown β (Session 1 production control)
+            HStack(spacing: 8) {
+                Text(String(format: "σ_irr: %.3f", sigmaIrr))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(sigmaIrr > CrooksCycleDefaults.groundingThreshold ? .orange : .cyan)
+                Text(String(format: "β: %.2f", crownBeta))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -278,12 +318,14 @@ struct WatchSessionView: View {
 
     private func startWorkout() {
         Task {
+            await PharmaControlSessionManager.shared.start()
             try? await manager.start(plan: plan)
             startBiofeedbackRelay()
         }
     }
 
-    /// Periodically sends biofeedback snapshots to iOS via WCSession.
+    /// Periodically sends biofeedback snapshots to iOS via WCSession and
+    /// advances the Crooks-cycle pharma control tick (σ_irr minimization + beat sync).
     private func startBiofeedbackRelay() {
         relayTask = Task {
             while !Task.isCancelled {
@@ -292,12 +334,25 @@ struct WatchSessionView: View {
 
                 let snapshot = manager.buildBiofeedbackSnapshot()
                 connectivity.sendBiofeedback(snapshot)
+
+                // Continuous Crooks tick: SCI → ΔHRV, crown β, universal beat, AirPods mirror.
+                manager.feedbackEngine.analyzeAll()
+                let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+                let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+                let result = await PharmaControlSessionManager.shared.tickFromSCI(
+                    sciScore: sci,
+                    bpm: bpm
+                )
+                sigmaIrr = result.sigmaIrr
+                let snap = await PharmaControlSessionManager.shared.snapshot()
+                crownBeta = snap.crownBeta
             }
         }
     }
 
     private func handleWorkoutComplete() {
         relayTask?.cancel()
+        Task { await PharmaControlSessionManager.shared.stop() }
         if let result = manager.buildResult() {
             connectivity.transferWorkoutResult(result)
         }
