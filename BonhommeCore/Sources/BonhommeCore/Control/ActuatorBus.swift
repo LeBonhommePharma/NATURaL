@@ -2,15 +2,15 @@ import Foundation
 
 // MARK: - Commands
 
-/// Production actuator commands issued by Crooks-cycle control.
+/// Side-effect commands issued by Crooks-cycle control.
 public enum ActuatorCommand: Sendable, Equatable {
-    /// High σ_irr recovery: lower BPM, damp β, log micro-event, cross-domain ground.
+    /// High σ_irr recovery: lower BPM, damp β, log, cross-domain ground.
     case grounding(sigmaIrr: Double, bpm: Double, beta: Double)
-    /// Universal beat broadcast (crown / session tempo).
+    /// Universal tempo lock (single broadcast authority → `UniversalBeatSync`).
     case beatBroadcast(bpm: Double, beta: Double, grounding: Bool)
     /// Phase flip after near-reversible cycle closure.
     case phaseFlip(from: ThermodynamicPhase, to: ThermodynamicPhase, cycleCount: Int)
-    /// Micro-survey / session log hook for HealthKit app layer.
+    /// Micro-survey / session log hook for the HealthKit app layer.
     case microSurveyLog(sigmaIrr: Double, work: Double)
 }
 
@@ -31,8 +31,7 @@ public struct ActuatorChannelResult: Sendable, Equatable {
 
 // MARK: - Channel Protocol
 
-/// Production actuator channel. Implementations must perform real side-effects
-/// (state mutation, beat sync, logs) — no empty stubs.
+/// Actuator channel. Implementations perform real side-effects (state, beat, logs).
 public protocol ActuatorChannel: Sendable {
     var id: String { get }
     func execute(_ command: ActuatorCommand) async -> ActuatorChannelResult
@@ -40,7 +39,7 @@ public protocol ActuatorChannel: Sendable {
 
 // MARK: - Production Channels
 
-/// Drives `UniversalBeatSync` for all-device tempo lock.
+/// Sole owner of `UniversalBeatSync.broadcast` — all other channels only mutate local state.
 public struct BeatSyncActuatorChannel: ActuatorChannel {
     public let id = "universal_beat_sync"
     private let beatSync: UniversalBeatSync
@@ -57,26 +56,25 @@ public struct BeatSyncActuatorChannel: ActuatorChannel {
                 beta: beta * 0.5,
                 grounding: true
             )
-            return result(command, true, "grounding bpm=\(snap.bpm) phase=\(String(format: "%.3f", snap.phase))")
+            return ok(command, "grounding bpm=\(snap.bpm) phase=\(fmt(snap.phase))")
         case .beatBroadcast(let bpm, let beta, let grounding):
             let snap = await beatSync.broadcast(bpm: bpm, beta: beta, grounding: grounding)
-            return result(command, true, "broadcast bpm=\(snap.bpm) beta=\(snap.crownBeta)")
+            return ok(command, "broadcast bpm=\(snap.bpm) beta=\(fmt(snap.crownBeta))")
         case .phaseFlip:
-            // Re-assert current tempo on phase flip for continuity.
             let snap = await beatSync.current()
             _ = await beatSync.broadcast(bpm: snap.bpm, beta: snap.crownBeta, grounding: false)
-            return result(command, true, "phase-flip re-sync bpm=\(snap.bpm)")
+            return ok(command, "phase-flip re-sync bpm=\(snap.bpm)")
         case .microSurveyLog:
-            return result(command, true, "beat channel: no-op for survey")
+            return ok(command, "idle")
         }
     }
 
-    private func result(_ command: ActuatorCommand, _ ok: Bool, _ detail: String) -> ActuatorChannelResult {
-        ActuatorChannelResult(channelId: id, command: command, success: ok, detail: detail)
+    private func ok(_ command: ActuatorCommand, _ detail: String) -> ActuatorChannelResult {
+        ActuatorChannelResult(channelId: id, command: command, success: true, detail: detail)
     }
 }
 
-/// Crown β damping + beat scene broadcast (heating / binding / neutral).
+/// Watch Digital Crown β dial — state only; beat is owned by `BeatSyncActuatorChannel`.
 public struct CrownActuatorChannel: ActuatorChannel {
     public let id = "crown_beta_dial"
     private let crown: CrownController
@@ -89,13 +87,12 @@ public struct CrownActuatorChannel: ActuatorChannel {
         switch command {
         case .grounding(let sigma, let bpm, _):
             let beta = await crown.dampTowardNeutral(gain: CrooksCycleDefaults.groundingCorrectiveGain)
-            await crown.broadcastBeat(bpm: CrooksCycleDefaults.groundingBPM, beta: beta, grounding: true)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
-                detail: "damped β=\(String(format: "%.3f", beta)) σ_irr=\(String(format: "%.3f", sigma)) bpm→\(CrooksCycleDefaults.groundingBPM) from \(bpm)"
+                detail: "damped β=\(fmt(beta)) σ_irr=\(fmt(sigma)) bpm→\(CrooksCycleDefaults.groundingBPM) from \(bpm)"
             )
-        case .beatBroadcast(let bpm, let beta, let grounding):
-            await crown.broadcastBeat(bpm: bpm, beta: beta, grounding: grounding)
+        case .beatBroadcast(_, let beta, _):
+            _ = await crown.setBeta(beta)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: "scene=\(await crown.dialSnapshot().sceneLabel)"
@@ -111,7 +108,7 @@ public struct CrownActuatorChannel: ActuatorChannel {
     }
 }
 
-/// Cross-domain ΔHRV ↔ FlexAID residual check (reuses BindingEntropyProfile / mapper).
+/// Cross-domain ΔH_hrv ↔ FlexAID residual (BindingEntropyProfile / calibrated slope).
 public struct CrossDomainActuatorChannel: ActuatorChannel {
     public let id = "delta_hrv_flexaid"
     private let mapper: DeltaHRVFlexAIDMapper
@@ -123,11 +120,10 @@ public struct CrossDomainActuatorChannel: ActuatorChannel {
     public func execute(_ command: ActuatorCommand) async -> ActuatorChannelResult {
         switch command {
         case .grounding(let sigma, _, _):
-            // Re-run last prediction path with neutral features to refresh residual.
             let pred = await mapper.predictAndGround(deltaHRV: 0, flexAIDDeltaS: 0)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
-                detail: "residual=\(String(format: "%.3f", pred.residual)) σ_irr=\(String(format: "%.3f", sigma)) source=\(pred.source)"
+                detail: "residual=\(fmt(pred.residual)) σ_irr=\(fmt(sigma)) source=\(pred.source)"
             )
         case .beatBroadcast, .phaseFlip, .microSurveyLog:
             return ActuatorChannelResult(channelId: id, command: command, success: true, detail: "idle")
@@ -135,24 +131,26 @@ public struct CrossDomainActuatorChannel: ActuatorChannel {
     }
 }
 
-/// In-memory session event log (app layer mirrors to HealthKit / CareKit).
+/// Ring buffer of session control events (app layer may mirror to HealthKit / CareKit).
 public actor SessionEventLog {
     public static let shared = SessionEventLog()
     public private(set) var events: [String] = []
 
+    private static let capacity = 500
+
     public func append(_ line: String) {
         events.append(line)
-        if events.count > 500 {
-            events.removeFirst(events.count - 500)
+        if events.count > Self.capacity {
+            events.removeFirst(events.count - Self.capacity)
         }
     }
 
     public func all() -> [String] { events }
 
-    public func clear() { events.removeAll() }
+    public func clear() { events.removeAll(keepingCapacity: true) }
 }
 
-/// Production micro-survey / session log channel.
+/// Session event log channel.
 public struct SessionLogActuatorChannel: ActuatorChannel {
     public let id = "session_log"
     private let log: SessionEventLog
@@ -178,23 +176,28 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
     }
 }
 
-/// Breathing-guide tempo channel (6 breaths/min ≈ 92 BPM half-cadence cue).
+/// Breathing-guide tempo derived from session BPM.
+///
+/// Conversion: `breaths/min ≈ bpm / bpmPerBreath`.
+/// At grounding (92 BPM): 92 / 15.2 ≈ 6.05 breaths/min — clinical recovery cadence.
 public struct BreathingGuideActuatorChannel: ActuatorChannel {
     public let id = "breathing_guide"
+
+    /// BPM divided by this yields seated breath rate (~6/min at grounding tempo).
+    public static let bpmPerBreath: Double = 15.2
 
     public init() {}
 
     public func execute(_ command: ActuatorCommand) async -> ActuatorChannelResult {
         switch command {
         case .grounding:
-            // 92 BPM → breath period ~ 2.6s inhale/exhale pairs for seated recovery.
-            let breathsPerMin = CrooksCycleDefaults.groundingBPM / 15.2
+            let rate = CrooksCycleDefaults.groundingBPM / Self.bpmPerBreath
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
-                detail: String(format: "breathe %.1f/min grounding", breathsPerMin)
+                detail: String(format: "breathe %.1f/min grounding", rate)
             )
         case .beatBroadcast(let bpm, _, let grounding):
-            let rate = bpm / 15.2
+            let rate = bpm / Self.bpmPerBreath
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: String(format: "breathe %.1f/min g=%@", rate, String(grounding))
@@ -207,9 +210,10 @@ public struct BreathingGuideActuatorChannel: ActuatorChannel {
 
 // MARK: - Actuator Bus
 
-/// Multiplexes Crooks-cycle commands to all registered production channels.
+/// Multiplexes Crooks commands to all registered channels.
 ///
-/// Default bus is fully wired (beat, crown, cross-domain, log, breathing) — zero stubs.
+/// Default wiring: beat · crown · AirPods · cross-domain · log · breathing.
+/// `BeatSyncActuatorChannel` is the only path that calls `UniversalBeatSync.broadcast`.
 public actor ActuatorBus {
     public static let shared = ActuatorBus.makeProduction()
 
@@ -220,7 +224,6 @@ public actor ActuatorBus {
         self.channels = channels
     }
 
-    /// Production bus with all NATURaL-reuse channels (zero stubs).
     public static func makeProduction() -> ActuatorBus {
         ActuatorBus(channels: [
             BeatSyncActuatorChannel(),
@@ -244,25 +247,25 @@ public actor ActuatorBus {
         lastResults
     }
 
-    /// Execute grounding recovery for high σ_irr (σ_irr minimization assist).
     @discardableResult
     public func executeGrounding(sigmaIrr: Double, bpm: Double, beta: Double) async -> [ActuatorChannelResult] {
         await dispatch(.grounding(sigmaIrr: sigmaIrr, bpm: bpm, beta: beta))
     }
 
-    /// Broadcast universal beat.
     @discardableResult
     public func broadcastBeat(bpm: Double, beta: Double, grounding: Bool = false) async -> [ActuatorChannelResult] {
         await dispatch(.beatBroadcast(bpm: bpm, beta: beta, grounding: grounding))
     }
 
-    /// Phase flip after cycle closure.
     @discardableResult
-    public func executePhaseFlip(from: ThermodynamicPhase, to: ThermodynamicPhase, cycleCount: Int) async -> [ActuatorChannelResult] {
+    public func executePhaseFlip(
+        from: ThermodynamicPhase,
+        to: ThermodynamicPhase,
+        cycleCount: Int
+    ) async -> [ActuatorChannelResult] {
         await dispatch(.phaseFlip(from: from, to: to, cycleCount: cycleCount))
     }
 
-    /// Micro-survey log.
     @discardableResult
     public func logMicroSurvey(sigmaIrr: Double, work: Double) async -> [ActuatorChannelResult] {
         await dispatch(.microSurveyLog(sigmaIrr: sigmaIrr, work: work))
@@ -273,10 +276,15 @@ public actor ActuatorBus {
         var results: [ActuatorChannelResult] = []
         results.reserveCapacity(channels.count)
         for channel in channels {
-            let r = await channel.execute(command)
-            results.append(r)
+            results.append(await channel.execute(command))
         }
         lastResults = results
         return results
     }
+}
+
+// MARK: - Formatting
+
+private func fmt(_ v: Double) -> String {
+    String(format: "%.3f", v)
 }

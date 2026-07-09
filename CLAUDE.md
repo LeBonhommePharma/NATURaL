@@ -77,10 +77,24 @@ Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends:
 
 `CrossDomainValidator` correlates molecular entropy (FlexAID dS) with physiological entropy (HRV) for the PokeDrug framework.
 
+### Crooks Control Layer (`BonhommeCore/Sources/BonhommeCore/Control/`)
+Non-equilibrium session control: SCI/HRV + FlexAID ΔS + crown β → work → σ_irr → actuators.
+
+```
+PharmaControlSessionManager
+  → CrooksCycleController.update(ΔH_hrv, ΔS_config, β, bpm)
+      → EigenMetalWorkKernel (Accelerate/ANE eigen work)
+      → DeltaHRVFlexAIDMapper (BindingEntropyProfile residual)
+      → ActuatorBus (single multiplex; BeatSyncActuatorChannel owns UniversalBeatSync)
+          → crown β · AirPods dial · breathing · session log · cross-domain ground
+```
+
+Policy: σ_irr > 0.12 → grounding (92 BPM, damp β); σ_irr < 0.03 → phase flip. Universal beat locks Music / Watch / AirPods tempo once per tick.
+
 ### Service Layer (`Bonhomme/Services/`)
 - **HealthKit** — HRV, heart rate, workout sessions, activity rings
 - **CareKit** — therapist-prescribed plans, adherence tracking
-- **Music** — SCI-driven adaptive playlist switching (3s crossfade, 30s debounce)
+- **Music** — SCI-driven adaptive playlist switching (3s crossfade, 30s debounce) + UniversalBeatSync playback-rate lock
 - **Persistence** — SwiftData models with CloudKit sync, 5-second state saving for crash recovery
 - **WatchConnectivity** — iOS <-> Watch real-time messaging
 - **SharePlay** — collaborative workout sessions
@@ -113,7 +127,7 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 
 ## Testing
 
-Swift unit tests are in `BonhommeCore/Tests/BonhommeCoreTests/` (22 test files covering analysis, models, and poses). Xcode-level tests in `Tests/BonhommeTests/` and `Tests/BonhommeUITests/`. C++ tests in `BonhommeAccel/tests/` (5 Catch2 test files).
+Swift unit tests are in `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control). Xcode-level tests in `Tests/BonhommeTests/` and `Tests/BonhommeUITests/`. C++ tests in `BonhommeAccel/tests/` (5 Catch2 test files).
 
 Run Swift tests: `cd BonhommeCore && swift test`
 Run a single Swift test: `cd BonhommeCore && swift test --filter EntropyCalculatorTests`

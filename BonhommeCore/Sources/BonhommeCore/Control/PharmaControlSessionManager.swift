@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Session Tick Input
 
-/// One sample of multi-domain inputs for pharma-control session loop.
+/// One multi-domain sample for the pharma-control session loop.
 public struct PharmaControlTick: Sendable, Equatable {
     public var deltaHRV: Double
     public var flexAIDDeltaS: Double
@@ -58,7 +58,6 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
         self.lastPrediction = lastPrediction
     }
 
-    /// Formatted σ_irr for RemoteControlView-style UI.
     public var sigmaIrrDisplay: String {
         String(format: "%.3f", thermodynamic.sigmaIrr)
     }
@@ -66,14 +65,19 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
 
 // MARK: - Pharma Control Session Manager
 
-/// Session orchestrator wiring SCI / HRV / FlexAID / Crown into `CrooksCycleController`.
+/// Session orchestrator: SCI / HRV / FlexAID / Crown → `CrooksCycleController`.
 ///
-/// Integration points (production):
-/// - `WorkoutFlowViewModel` timer → `tick(fromSCI:bpm:)`
-/// - Watch Digital Crown → `applyCrownDelta`
-/// - Remote / Debug UI → `snapshot().sigmaIrrDisplay`
+/// | Integration | Path |
+/// |---|---|
+/// | `WorkoutFlowViewModel` timer | `tickFromSCI(sciScore:bpm:)` |
+/// | Watch Digital Crown | `applyCrownDelta` |
+/// | AirPods volume / stem | `applyAirPodsVolumeDelta` / `applyAirPodsStemPress` |
+/// | Remote / Debug UI | `snapshot().sigmaIrrDisplay` |
 public actor PharmaControlSessionManager {
     public static let shared = PharmaControlSessionManager()
+
+    /// SCI → ΔH_hrv scale: rising coherence → negative ΔH (collapse).
+    private static let sciToDeltaHRVScale: Double = 4.0
 
     private let controller: CrooksCycleController
     private let crown: CrownController
@@ -84,7 +88,6 @@ public actor PharmaControlSessionManager {
     private var isRunning = false
     private var tickCount = 0
     private var lastResult: CrooksCycleUpdateResult?
-    private var baselineEntropy: Double?
     private var lastSCI: Double?
 
     public init(
@@ -105,7 +108,8 @@ public actor PharmaControlSessionManager {
         isRunning = true
         tickCount = 0
         lastResult = nil
-        self.baselineEntropy = baselineEntropy
+        lastSCI = nil
+        _ = baselineEntropy // reserved for future baseline-relative ΔH
         await controller.reset()
         await SessionEventLog.shared.append("pharma_session_start")
     }
@@ -115,7 +119,7 @@ public actor PharmaControlSessionManager {
         await SessionEventLog.shared.append("pharma_session_stop ticks=\(tickCount)")
     }
 
-    /// Digital Crown gesture (Watch SessionView). Mirrors β to AirPods route.
+    /// Digital Crown gesture (Watch). Mirrors β to AirPods dial.
     @discardableResult
     public func applyCrownDelta(_ delta: Double) async -> Double {
         let beta = await crown.applyCrownDelta(delta)
@@ -123,25 +127,26 @@ public actor PharmaControlSessionManager {
         return beta
     }
 
+    @discardableResult
     public func setCrownBeta(_ beta: Double) async -> Double {
         let b = await crown.setBeta(beta)
         _ = await airPodsCrown.mirrorWatchCrown(beta: b)
         return b
     }
 
-    /// AirPods volume rocker as crown-equivalent (beta).
+    /// AirPods volume rocker as crown-equivalent.
     @discardableResult
     public func applyAirPodsVolumeDelta(_ delta: Double) async -> Double {
         await airPodsCrown.applyVolumeDelta(delta)
     }
 
-    /// AirPods stem Force Sensor press → soft β damp (beta).
+    /// AirPods stem Force Sensor press → soft β damp.
     @discardableResult
     public func applyAirPodsStemPress(gain: Double = 0.25) async -> Double {
         await airPodsCrown.applyStemPress(gain: gain)
     }
 
-    /// App layer: report AirPods / Bluetooth headphone route presence.
+    /// App layer: AirPods / Bluetooth headphone route presence.
     public func setAirPodsRouteActive(_ active: Bool) async {
         await airPodsCrown.setRouteActive(active)
     }
@@ -176,11 +181,13 @@ public actor PharmaControlSessionManager {
         return result
     }
 
-    /// Convenience: derive ΔHRV from SCI score change and optional FlexAID ΔS.
+    /// Derive ΔH_hrv from SCI change and optional FlexAID ΔS.
     ///
-    /// SCI is 0–1 coherence (1 = low entropy). ΔHRV proxy:
-    ///   deltaHRV ≈ −(sci − lastSCI) * scale
-    /// so rising coherence → negative ΔH (collapse), matching DrugResponseAnalyzer sign.
+    /// SCI is 0–1 coherence (1 = low entropy). Proxy:
+    /// ```
+    ///   deltaHRV ≈ −(sci − lastSCI) × 4
+    /// ```
+    /// Rising coherence → negative ΔH (collapse), matching `DrugResponseAnalyzer`.
     @discardableResult
     public func tickFromSCI(
         sciScore: Double?,
@@ -191,7 +198,7 @@ public actor PharmaControlSessionManager {
     ) async -> CrooksCycleUpdateResult {
         let sci = sciScore ?? lastSCI ?? 0.5
         let prev = lastSCI ?? sci
-        let deltaHRV = -(sci - prev) * 4.0  // bits-scale proxy
+        let deltaHRV = -(sci - prev) * Self.sciToDeltaHRVScale
         lastSCI = sci
 
         let beta: Double
@@ -200,6 +207,7 @@ public actor PharmaControlSessionManager {
         } else {
             beta = await crown.currentBeta()
         }
+
         return await tick(PharmaControlTick(
             deltaHRV: deltaHRV,
             flexAIDDeltaS: flexAIDDeltaS,
@@ -210,7 +218,6 @@ public actor PharmaControlSessionManager {
         ))
     }
 
-    /// Full session snapshot for UI.
     public func snapshot() async -> PharmaControlSessionSnapshot {
         let thermo = await controller.snapshot()
         let beat = await beatSync.current()
@@ -227,7 +234,7 @@ public actor PharmaControlSessionManager {
         )
     }
 
-    /// Resolve FlexAID ΔS from BindingEntropyProfile when docking data is offline.
+    /// FlexAID ΔS from `BindingEntropyProfile` when docking data is offline.
     public nonisolated func referenceDeltaS(for substanceId: String) -> Double {
         BindingEntropyProfile.profile(for: substanceId)?.expectedDeltaSBits ?? 0
     }

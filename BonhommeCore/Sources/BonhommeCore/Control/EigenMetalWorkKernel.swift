@@ -7,11 +7,13 @@ import Accelerate
 
 /// Four-channel control feature vector for Crooks work estimation.
 ///
-/// Components (production weights sum to 1.0):
-/// - ΔH_hrv (physiological entropy delta)  — 0.42
-/// - FlexAID ΔS_config (molecular)        — 0.31
-/// - Crown β dial                         — 0.18
-/// - BPM deviation from nominal           — 0.09
+/// Components (weights sum to 1.0):
+/// | Channel | Weight |
+/// |---|---|
+/// | ΔH_hrv (physiological entropy delta) | 0.42 |
+/// | FlexAID ΔS_config (molecular) | 0.31 |
+/// | Crown β dial | 0.18 |
+/// | BPM deviation from nominal | 0.09 |
 public struct CrooksFeatureVector: Sendable, Equatable {
     public var deltaHRV: Double
     public var flexAIDDeltaS: Double
@@ -25,7 +27,7 @@ public struct CrooksFeatureVector: Sendable, Equatable {
         self.bpm = bpm
     }
 
-    /// Feature components as a 4-vector ready for eigen / Accelerate projection.
+    /// Feature components as a 4-vector for eigen / Accelerate projection.
     public var components: [Double] {
         [
             deltaHRV,
@@ -46,35 +48,39 @@ public struct EigenMetalWorkResult: Sendable, Equatable {
     public let eigenCoords: [Double]
     /// Backend used for the dot product / projection.
     public let backendLabel: String
-    /// Whether the ANE-class (Accelerate) path was used.
+    /// Whether the Accelerate (ANE-class) path was used.
     public let usedANEPath: Bool
 }
 
 // MARK: - EigenMetal Work Kernel
 
-/// Production work kernel: eigen-basis control projection + on-device linear map.
+/// Work kernel: orthonormal eigen-basis projection + on-device linear map.
 ///
-/// **EigenMetal** — fixed orthonormal control basis (Householder-style rotation of the
-/// production weight axis) evaluated via Accelerate `vDSP` when available, else pure Swift.
-/// When BonhommeAccel is linked and Metal is the active backend, large work-history entropy
-/// reuses `EntropyCalculator` → Metal/SIMD path (NATURaL/FlexAID parity).
+/// **EigenMetal** — fixed control basis (Gram–Schmidt with e₀ ∥ production weights)
+/// evaluated via Accelerate `vDSP` when available, else pure Swift.
 ///
-/// **ANE** — on-device inference path uses Accelerate (BNNS/vDSP foundation for Apple Neural
-/// Engine class linear maps). No stub: the linear + soft-threshold map always runs for real.
+/// **ANE-class** — Accelerate linear + soft-threshold residual on higher modes
+/// (σ_irr noise rejection). Always executes a real map — no placeholder path.
+///
+/// Work-history entropy reuses `EntropyCalculator` (Metal/SIMD under `BONHOMME_ACCEL`).
 public struct EigenMetalWorkKernel: Sendable {
 
-    /// Production weights: [ΔHRV, FlexAID ΔS, crown β, BPM-dev]. Sum = 1.0.
+    /// [ΔHRV, FlexAID ΔS, crown β, BPM-dev]. Sum = 1.0.
     public static let productionWeights: [Double] = [0.42, 0.31, 0.18, 0.09]
 
-    /// Orthonormal eigen-basis (columns) spanning ℝ⁴ with e₀ ∥ production weight axis.
-    /// Built once: Gram–Schmidt on {w, e1, e2, e3}.
+    /// Orthonormal eigen-basis (rows) spanning ℝ⁴ with e₀ ∥ weight axis.
     public static let eigenBasis: [[Double]] = buildEigenBasis(weights: productionWeights)
+
+    /// Soft-threshold λ for residual eigen modes (noise rejection).
+    private static let residualLambda: Double = 0.05
+
+    /// Scale on soft-thresholded residual modes.
+    private static let residualScale: Double = 0.08
 
     public init() {}
 
     // MARK: - Public API
 
-    /// Compute instantaneous Crooks work from a feature vector.
     public func evaluate(_ features: CrooksFeatureVector) -> EigenMetalWorkResult {
         let x = features.components
         let coords = projectOntoEigenBasis(x)
@@ -97,24 +103,17 @@ public struct EigenMetalWorkKernel: Sendable {
         )
     }
 
-    /// Batch-evaluate work for a history of feature vectors (vectorized when Accelerate present).
     public func evaluateBatch(_ batch: [CrooksFeatureVector]) -> [Double] {
-        guard !batch.isEmpty else { return [] }
-        #if canImport(Accelerate)
-        return batch.map { evaluate($0).work }
-        #else
-        return batch.map { evaluate($0).work }
-        #endif
+        batch.map { evaluate($0).work }
     }
 
-    /// Shannon entropy of a work history (reuses NATURaL `EntropyCalculator`, Metal/SIMD when linked).
+    /// Shannon entropy of a work history (`EntropyCalculator` / Metal when linked).
     public func workHistoryEntropy(_ works: [Double], binCount: Int = 32) -> Double {
         EntropyCalculator(binCount: binCount).shannonEntropy(works)
     }
 
     // MARK: - Eigen projection
 
-    /// Project feature vector onto the fixed eigen control basis.
     public func projectOntoEigenBasis(_ x: [Double]) -> [Double] {
         precondition(x.count == 4)
         var coords = [Double](repeating: 0, count: 4)
@@ -126,22 +125,17 @@ public struct EigenMetalWorkKernel: Sendable {
 
     // MARK: - ANE-class linear map
 
-    /// On-device linear map: w·x + soft residual on eigen modes 1…3.
-    /// Soft-threshold damps high-order eigen modes (σ_irr noise rejection).
+    /// w·x + soft residual on eigen modes 1…3.
     private func aneLinearMap(features x: [Double], eigenCoords: [Double]) -> Double {
-        // Primary: production weight axis (eigen mode 0 scaled back to weight norm).
         let primary = dot(x, Self.productionWeights)
-
-        // Residual eigen modes (orthogonal to w) with soft-threshold λ = 0.05.
-        let lambda = 0.05
         var residual = 0.0
         for i in 1..<4 {
-            residual += softThreshold(eigenCoords[i], lambda: lambda) * 0.08
+            residual += softThreshold(eigenCoords[i], lambda: Self.residualLambda) * Self.residualScale
         }
         return primary + residual
     }
 
-    // MARK: - Linear algebra helpers
+    // MARK: - Linear algebra
 
     private func softThreshold(_ v: Double, lambda: Double) -> Double {
         if v > lambda { return v - lambda }
@@ -168,15 +162,11 @@ public struct EigenMetalWorkKernel: Sendable {
 
     // MARK: - Basis construction
 
-    /// Gram–Schmidt orthonormalization with first vector = normalized weights.
+    /// Gram–Schmidt with first vector = normalized weights.
     private static func buildEigenBasis(weights: [Double]) -> [[Double]] {
         let n = weights.count
-        var basis: [[Double]] = []
+        var basis: [[Double]] = [normalize(weights)]
 
-        // e0 = w / ||w||
-        basis.append(normalize(weights))
-
-        // Seed vectors for remaining dimensions.
         let seeds: [[Double]] = [
             [1, 0, 0, 0],
             [0, 1, 0, 0],
@@ -196,7 +186,6 @@ public struct EigenMetalWorkKernel: Sendable {
             if basis.count == n { break }
         }
 
-        // Pad if needed (degenerate).
         while basis.count < n {
             basis.append([Double](repeating: 0, count: n))
         }

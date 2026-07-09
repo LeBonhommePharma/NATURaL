@@ -36,7 +36,7 @@ public struct CrooksCycleUpdateResult: Sendable, Equatable {
 
 // MARK: - Crooks Cycle Controller
 
-/// Production Crooks-cycle controller for non-equilibrium work and σ_irr minimization.
+/// Crooks-cycle controller for non-equilibrium work and irreversible entropy production (σ_irr).
 ///
 /// ## Theory
 /// Crooks fluctuation theorem relates forward and reverse path work to free energy:
@@ -45,29 +45,27 @@ public struct CrooksCycleUpdateResult: Sendable, Equatable {
 ///   ⟨e^{−βW}⟩_fwd / ⟨e^{−βW}⟩_rev = e^{−βΔG}
 /// ```
 ///
-/// Irreversible entropy production for a closed pair of half-cycles:
+/// For a closed pair of half-cycles (work units = EigenMetal-weighted features):
 ///
 /// ```
-///   σ_irr = max(0, W_fwd + W_rev − 2ΔG)
+///   σ_irr = max(0, |W_fwd + W_rev| − 2|ΔG|_work)
 /// ```
 ///
-/// (with ΔG ≤ 0 for binding; work units are EigenMetal-weighted feature work).
+/// ## Control policy
+/// | Condition | Action |
+/// |---|---|
+/// | σ_irr > groundingThreshold **or** cross-domain residual high | Ground via `ActuatorBus` + damp phase work |
+/// | σ_irr < reversibilityThreshold | Phase flip (cycle closure) |
+/// | every tick | Single beat broadcast (Watch crown β · AirPods · Music · breathing) |
 ///
-/// ## Control
-/// - σ_irr > groundingThreshold → `ActuatorBus.executeGrounding` + corrective work
-/// - σ_irr < reversibilityThreshold → phase flip (cycle closure)
-/// - Every tick → universal beat broadcast via crown β
-///
-/// ## NATURaL reuse (zero stubs)
-/// - `EigenMetalWorkKernel` — Accelerate/ANE + eigen basis work
-/// - `DeltaHRVFlexAIDMapper` — BindingEntropyProfile / cross-domain residual
-/// - `ActuatorBus` — beat sync, crown, AirPods β, breathing, session log
-/// - `AirPodsCrownBetaController` — headphone route crown-β mirror (beta)
-/// - `EntropyCalculator` — work-history entropy (Metal/SIMD when BONHOMME_ACCEL)
+/// ## Stack (all live, no placeholders)
+/// - `EigenMetalWorkKernel` — Accelerate/ANE eigen projection
+/// - `DeltaHRVFlexAIDMapper` — BindingEntropyProfile / residual grounding assist
+/// - `ActuatorBus` — sole side-effect multiplex (beat, crown, AirPods, log, breath)
+/// - `EntropyCalculator` — work-history Shannon entropy (Metal/SIMD under `BONHOMME_ACCEL`)
 public actor CrooksCycleController {
     public static let shared = CrooksCycleController()
 
-    // Accumulated half-cycle work
     private var wFwd: Double = 0
     private var wRev: Double = 0
     private var deltaG: Double
@@ -80,28 +78,29 @@ public actor CrooksCycleController {
     private let kernel: EigenMetalWorkKernel
     private let actuators: ActuatorBus
     private let crown: CrownController
-    private let airPodsCrown: AirPodsCrownBetaController
     private let mapper: DeltaHRVFlexAIDMapper
-    private let beatSync: UniversalBeatSync
 
     public private(set) var sigmaIrr: Double = 0
+
+    /// Maps kcal/mol free energy into EigenMetal work units so control thresholds
+    /// (0.03 / 0.12) share scale with feature-weighted ticks.
+    /// Example: 8.7 kcal × 0.002 ≈ 0.017 work units of reversible budget.
+    private static let kcalToWorkScale: Double = 0.002
+
+    private static let maxWorkHistory = 256
 
     public init(
         deltaG: Double = CrooksCycleDefaults.deltaG,
         kernel: EigenMetalWorkKernel = EigenMetalWorkKernel(),
         actuators: ActuatorBus = .shared,
         crown: CrownController = .shared,
-        airPodsCrown: AirPodsCrownBetaController = .shared,
-        mapper: DeltaHRVFlexAIDMapper = .shared,
-        beatSync: UniversalBeatSync = .shared
+        mapper: DeltaHRVFlexAIDMapper = .shared
     ) {
         self.deltaG = deltaG
         self.kernel = kernel
         self.actuators = actuators
         self.crown = crown
-        self.airPodsCrown = airPodsCrown
         self.mapper = mapper
-        self.beatSync = beatSync
     }
 
     // MARK: - Public state
@@ -132,12 +131,12 @@ public actor CrooksCycleController {
         sigmaIrr = 0
         lastWork = 0
         lastUpdate = nil
-        workHistory.removeAll()
+        workHistory.removeAll(keepingCapacity: true)
     }
 
     // MARK: - Control tick
 
-    /// Primary update path: ingest ΔHRV, FlexAID ΔS, crown β, BPM.
+    /// Ingest ΔH_hrv, FlexAID ΔS_config, crown β, and BPM; apply Crooks policy.
     @discardableResult
     public func update(
         deltaHRV: Double,
@@ -146,10 +145,8 @@ public actor CrooksCycleController {
         bpm: Double,
         substanceId: String? = nil
     ) async -> CrooksCycleUpdateResult {
-        // Sync crown dial to provided β.
         _ = await crown.setBeta(crownBeta)
 
-        // Cross-domain residual (assists grounding decision).
         let prediction = await mapper.predict(
             deltaHRV: deltaHRV,
             flexAIDDeltaS: flexAIDDeltaS,
@@ -166,12 +163,8 @@ public actor CrooksCycleController {
         let work = eval.work
         lastWork = work
         lastUpdate = Date()
-        workHistory.append(work)
-        if workHistory.count > 256 {
-            workHistory.removeFirst(workHistory.count - 256)
-        }
+        appendWork(work)
 
-        // Accumulate phase work.
         switch phase {
         case .forward: wFwd += work
         case .reverse: wRev += work
@@ -182,33 +175,29 @@ public actor CrooksCycleController {
         var didGround = false
         var didFlip = false
 
-        // High irreversibility → grounding actuators + σ_irr minimization.
         if sigmaIrr > CrooksCycleDefaults.groundingThreshold || prediction.shouldGround {
             await minimizeSigmaIrr(bpm: bpm, beta: crownBeta)
             didGround = true
         }
 
-        // Near-reversible → cycle closure (phase flip).
         if sigmaIrr < CrooksCycleDefaults.reversibilityThreshold {
             let from = phase
             phase = phase.flipped
             if phase == .forward {
-                // Completed a full fwd+rev pair.
+                // Full fwd+rev pair closed — soft-halve residual so long sessions stay bounded.
                 cycleCount += 1
-                // Soft reset residual work to keep long sessions bounded.
                 wFwd *= 0.5
                 wRev *= 0.5
                 recomputeSigma()
             }
             await actuators.executePhaseFlip(from: from, to: phase, cycleCount: cycleCount)
-            await logClosure(from: from, to: phase)
+            await SessionEventLog.shared.append(
+                "crooks_closure \(from.rawValue)→\(phase.rawValue) σ_irr=\(String(format: "%.4f", sigmaIrr)) cycle=\(cycleCount)"
+            )
             didFlip = true
         }
 
-        // Always broadcast universal beat (Watch crown + AirPods route + all actuators).
-        await crown.broadcastBeat(bpm: bpm, beta: crownBeta, grounding: didGround)
-        _ = await airPodsCrown.mirrorWatchCrown(beta: crownBeta)
-        _ = await airPodsCrown.broadcastBeat(bpm: bpm, beta: crownBeta, grounding: didGround)
+        // One multiplexed beat: bus owns UniversalBeatSync + crown/AirPods dial mirrors.
         await actuators.broadcastBeat(bpm: bpm, beta: crownBeta, grounding: didGround)
 
         return CrooksCycleUpdateResult(
@@ -223,71 +212,47 @@ public actor CrooksCycleController {
         )
     }
 
-    /// Work-history Shannon entropy (NATURaL EntropyCalculator / Metal path).
+    /// Shannon entropy of the work history (Metal/SIMD path when linked).
     public func workEntropy() -> Double {
         kernel.workHistoryEntropy(workHistory)
     }
 
-    // MARK: - σ_irr math
+    // MARK: - σ_irr
 
-    /// Irreversible entropy production from Crooks cycle half-works.
-    ///
     /// ```
     ///   σ_irr = max(0, |W_fwd + W_rev| − 2|ΔG|_work)
     /// ```
-    ///
-    /// `deltaG` is stored in kcal/mol (binding convention, typically negative).
-    /// It is mapped into EigenMetal work units via `kcalToWorkScale` so control
-    /// thresholds (0.03 / 0.12) sit on the same scale as feature-weighted work ticks.
-    ///
-    /// Near-reversible protocols keep W_fwd ≈ −W_rev (or both near zero after
-    /// minimization), so σ_irr → 0 and the cycle closes (phase flip).
+    /// Near-reversible protocols keep W_fwd ≈ −W_rev → σ_irr → 0 → phase flip.
     private func recomputeSigma() {
         let totalWork = wFwd + wRev
         let deltaGWork = abs(deltaG) * Self.kcalToWorkScale
         sigmaIrr = max(0, abs(totalWork) - 2.0 * deltaGWork)
     }
 
-    /// Maps kcal/mol free energy into Crooks work units.
-    /// 8.7 kcal × 0.002 ≈ 0.017 work units of reversible budget per half-cycle.
-    private static let kcalToWorkScale: Double = 0.002
-
-    /// Corrective grounding: reduce accumulated phase work and fire actuators.
+    /// Damp accumulated half-cycle work and fire grounding actuators once via the bus.
     private func minimizeSigmaIrr(bpm: Double, beta: Double) async {
         let gain = CrooksCycleDefaults.groundingCorrectiveGain
         switch phase {
-        case .forward:
-            wFwd *= (1 - gain)
-        case .reverse:
-            wRev *= (1 - gain)
+        case .forward: wFwd *= (1 - gain)
+        case .reverse: wRev *= (1 - gain)
         }
-        // Cross-term damping pulls both half-cycles toward each other.
+
+        // Cross-term pull: both half-cycles toward their mean.
         let mean = 0.5 * (wFwd + wRev)
-        wFwd = wFwd * (1 - gain * 0.5) + mean * (gain * 0.5)
-        wRev = wRev * (1 - gain * 0.5) + mean * (gain * 0.5)
+        let cross = gain * 0.5
+        wFwd = wFwd * (1 - cross) + mean * cross
+        wRev = wRev * (1 - cross) + mean * cross
 
         recomputeSigma()
 
         await actuators.executeGrounding(sigmaIrr: sigmaIrr, bpm: bpm, beta: beta)
         await actuators.logMicroSurvey(sigmaIrr: sigmaIrr, work: lastWork)
-        _ = await mapper.predictAndGround(deltaHRV: 0, flexAIDDeltaS: 0)
-        let damped = await crown.dampTowardNeutral(gain: gain)
-        _ = await airPodsCrown.dampTowardNeutral(gain: gain)
-        _ = await airPodsCrown.broadcastBeat(
-            bpm: CrooksCycleDefaults.groundingBPM,
-            beta: damped,
-            grounding: true
-        )
-        _ = await beatSync.broadcast(
-            bpm: CrooksCycleDefaults.groundingBPM,
-            beta: damped,
-            grounding: true
-        )
     }
 
-    private func logClosure(from: ThermodynamicPhase, to: ThermodynamicPhase) async {
-        await SessionEventLog.shared.append(
-            "crooks_closure \(from.rawValue)→\(to.rawValue) σ_irr=\(String(format: "%.4f", sigmaIrr)) cycle=\(cycleCount)"
-        )
+    private func appendWork(_ work: Double) {
+        workHistory.append(work)
+        if workHistory.count > Self.maxWorkHistory {
+            workHistory.removeFirst(workHistory.count - Self.maxWorkHistory)
+        }
     }
 }

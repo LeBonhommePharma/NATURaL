@@ -1,25 +1,18 @@
 import Foundation
 
-// MARK: - AirPods Crown β Snapshot
+// MARK: - Snapshot
 
-/// Production β state for AirPods-class headphone control (beta).
+/// Headphone-route crown-equivalent β state (AirPods / Bluetooth audio).
 ///
-/// AirPods have no Digital Crown; this controller maps crown-equivalent inputs
-/// (volume rocker, stem press, Watch Digital Crown while AirPods are the audio
-/// route) onto the same β ∈ [-1, 1] dial used by `CrownController`, and drives
-/// `UniversalBeatSync` for tempo lock on the headphone route.
+/// AirPods have no Digital Crown. This maps crown-equivalent inputs
+/// (volume rocker, stem press, mirrored Watch crown) onto β ∈ [-1, 1]
+/// and participates in universal beat lock via `ActuatorBus`.
 public struct AirPodsCrownBetaSnapshot: Sendable, Equatable {
-    /// Crown-equivalent β in [-1, 1].
     public var beta: Double
-    /// Whether an AirPods / Bluetooth headphone route is active.
     public var routeActive: Bool
-    /// Last broadcast BPM on the AirPods route.
     public var bpm: Double
-    /// Grounding (recovery) tempo active.
     public var isGrounding: Bool
-    /// Scene label: heating / binding / neutral.
     public var sceneLabel: String
-    /// Wall-clock of last input or broadcast.
     public var lastUpdate: Date
 
     public init(
@@ -39,19 +32,20 @@ public struct AirPodsCrownBetaSnapshot: Sendable, Equatable {
     }
 }
 
-// MARK: - AirPods Crown β Controller (beta)
+// MARK: - Controller
 
-/// Production AirPods crown-β controller — zero stubs.
+/// AirPods crown-β controller.
 ///
 /// ## Inputs
-/// - `applyVolumeDelta` — volume rocker / accessibility volume as crown proxy
-/// - `applyStemPress` — Force Sensor stem press → soft damp toward neutral
-/// - `mirrorWatchCrown` — copy Watch Digital Crown β while AirPods are route
+/// - `applyVolumeDelta` — volume rocker as crown proxy
+/// - `applyStemPress` — Force Sensor → soft damp toward neutral
+/// - `mirrorWatchCrown` — copy Watch Digital Crown β while route is live
 /// - `setRouteActive` — AVAudioSession route change (app layer)
 ///
-/// ## Outputs
-/// - Updates internal dial + `UniversalBeatSync` for all-device tempo
-/// - `CrownController` stays authoritative for Watch; this mirrors for headphones
+/// ## Beat authority
+/// Direct `broadcastBeat` is for standalone / debug paths.
+/// In session control, `BeatSyncActuatorChannel` owns `UniversalBeatSync`;
+/// this controller only holds dial state unless called explicitly.
 public actor AirPodsCrownBetaController {
     public static let shared = AirPodsCrownBetaController()
 
@@ -62,7 +56,7 @@ public actor AirPodsCrownBetaController {
     private var lastUpdate = Date()
     private let beatSync: UniversalBeatSync
 
-    /// Volume-delta → crown scale (louder → heating β, quieter → binding β).
+    /// Volume step → crown scale (up → heating, down → binding).
     public var volumeSensitivity: Double = 0.08
 
     public init(beatSync: UniversalBeatSync = .shared) {
@@ -84,14 +78,12 @@ public actor AirPodsCrownBetaController {
 
     public func isRouteActive() -> Bool { routeActive }
 
-    /// App layer reports AirPods / Bluetooth headphone route presence.
     public func setRouteActive(_ active: Bool) {
         routeActive = active
         lastUpdate = Date()
     }
 
-    /// Volume rocker / system volume step as crown-equivalent delta.
-    /// Positive delta (volume up) drives heating β; negative drives binding β.
+    /// Positive delta (volume up) → heating β; negative → binding β.
     @discardableResult
     public func applyVolumeDelta(_ delta: Double) async -> Double {
         let scaled = delta * volumeSensitivity / max(dial.sensitivity, 1e-6)
@@ -103,7 +95,7 @@ public actor AirPodsCrownBetaController {
         return beta
     }
 
-    /// Stem Force Sensor press → damp β toward neutral (micro-grounding).
+    /// Stem Force Sensor → damp β (micro-grounding).
     @discardableResult
     public func applyStemPress(gain: Double = 0.25) async -> Double {
         let beta = dial.dampTowardNeutral(gain: gain)
@@ -114,32 +106,26 @@ public actor AirPodsCrownBetaController {
         return beta
     }
 
-    /// Mirror Watch Digital Crown β onto the AirPods route (universal crown lock).
+    /// Mirror Watch Digital Crown β onto the headphone dial (no re-broadcast from bus path).
     @discardableResult
-    public func mirrorWatchCrown(beta: Double) async -> Double {
-        let b = dial.setBeta(beta)
+    public func mirrorWatchCrown(beta: Double) -> Double {
         lastUpdate = Date()
-        if routeActive {
-            _ = await beatSync.broadcast(bpm: lastBPM, beta: b, grounding: isGrounding)
-        }
-        return b
+        return dial.setBeta(beta)
     }
 
-    /// Absolute β set (RemoteControl / Debug).
     @discardableResult
     public func setBeta(_ value: Double) -> Double {
         lastUpdate = Date()
         return dial.setBeta(value)
     }
 
-    /// Soft-return toward zero during σ_irr grounding.
     @discardableResult
     public func dampTowardNeutral(gain: Double = 0.4) -> Double {
         lastUpdate = Date()
         return dial.dampTowardNeutral(gain: gain)
     }
 
-    /// Broadcast tempo + β to universal beat bus (AirPods-class playback lock).
+    /// Standalone broadcast (debug / direct callers). Session path uses ActuatorBus.
     @discardableResult
     public func broadcastBeat(bpm: Double, beta: Double, grounding: Bool = false) async -> BeatSyncSnapshot {
         _ = dial.setBeta(beta)
@@ -148,11 +134,20 @@ public actor AirPodsCrownBetaController {
         lastUpdate = Date()
         return await beatSync.broadcast(bpm: lastBPM, beta: dial.beta, grounding: grounding)
     }
+
+    /// Record tempo metadata without touching UniversalBeatSync (bus path).
+    public func adoptBeatState(bpm: Double, beta: Double, grounding: Bool) {
+        _ = dial.setBeta(beta)
+        lastBPM = max(40, min(220, bpm))
+        isGrounding = grounding
+        lastUpdate = Date()
+    }
 }
 
 // MARK: - Actuator Channel
 
-/// Production ActuatorBus channel for AirPods crown β + headphone beat lock.
+/// AirPods dial + route metadata. Does **not** call `UniversalBeatSync`
+/// (that is sole duty of `BeatSyncActuatorChannel`).
 public struct AirPodsCrownActuatorChannel: ActuatorChannel {
     public let id = "airpods_crown_beta"
     private let airPods: AirPodsCrownBetaController
@@ -165,7 +160,7 @@ public struct AirPodsCrownActuatorChannel: ActuatorChannel {
         switch command {
         case .grounding(let sigma, let bpm, _):
             let beta = await airPods.dampTowardNeutral(gain: CrooksCycleDefaults.groundingCorrectiveGain)
-            let snap = await airPods.broadcastBeat(
+            await airPods.adoptBeatState(
                 bpm: CrooksCycleDefaults.groundingBPM,
                 beta: beta,
                 grounding: true
@@ -176,22 +171,20 @@ public struct AirPodsCrownActuatorChannel: ActuatorChannel {
                 success: true,
                 detail: String(
                     format: "airpods ground β=%.3f σ_irr=%.3f bpm→%.0f (was %.0f) route=%@",
-                    beta, sigma, snap.bpm, bpm, String(await airPods.isRouteActive())
+                    beta, sigma, CrooksCycleDefaults.groundingBPM, bpm,
+                    String(await airPods.isRouteActive())
                 )
             )
         case .beatBroadcast(let bpm, let beta, let grounding):
-            let snap = await airPods.broadcastBeat(bpm: bpm, beta: beta, grounding: grounding)
-            // Keep AirPods β mirrored to session crown when route is live.
-            if await airPods.isRouteActive() {
-                _ = await airPods.mirrorWatchCrown(beta: beta)
-            }
+            await airPods.adoptBeatState(bpm: bpm, beta: beta, grounding: grounding)
+            let scene = await airPods.snapshot().sceneLabel
             return ActuatorChannelResult(
                 channelId: id,
                 command: command,
                 success: true,
                 detail: String(
                     format: "airpods beat bpm=%.0f β=%.3f g=%@ scene=%@",
-                    snap.bpm, snap.crownBeta, String(grounding), await airPods.snapshot().sceneLabel
+                    bpm, beta, String(grounding), scene
                 )
             )
         case .phaseFlip(let from, let to, let cycle):

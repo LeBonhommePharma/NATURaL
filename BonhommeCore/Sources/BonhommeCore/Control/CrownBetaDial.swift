@@ -9,15 +9,15 @@ import Foundation
 /// - β < 0 → binding / reverse drive
 /// - β ≈ 0 → neutral (minimum work contribution)
 ///
-/// Production path used by Watch Digital Crown, RemoteControl, and session manager.
+/// Shared by Watch Digital Crown, RemoteControl, and AirPods crown-equivalent inputs.
 public struct CrownBetaDial: Sendable, Equatable {
     /// Current β in [-1, 1].
     public private(set) var beta: Double
 
-    /// Sensitivity: crown rotation delta → Δβ scale.
+    /// Crown rotation delta → Δβ scale.
     public var sensitivity: Double
 
-    /// Low-pass smoothing coefficient in (0, 1]. 1 = no smoothing.
+    /// Low-pass coefficient in (0, 1]. 1 = no smoothing.
     public var smoothing: Double
 
     public init(beta: Double = 0, sensitivity: Double = 0.04, smoothing: Double = 0.35) {
@@ -35,14 +35,14 @@ public struct CrownBetaDial: Sendable, Equatable {
         return beta
     }
 
-    /// Set absolute β (e.g. from UI slider or remote).
+    /// Absolute β (UI slider / remote / mirrored crown).
     @discardableResult
     public mutating func setBeta(_ value: Double) -> Double {
         beta = Self.clamp(value)
         return beta
     }
 
-    /// Soft-return toward zero (used during grounding σ_irr minimization).
+    /// Soft return toward zero (grounding σ_irr minimization).
     @discardableResult
     public mutating func dampTowardNeutral(gain: Double = 0.4) -> Double {
         let g = max(0, min(1, gain))
@@ -51,7 +51,6 @@ public struct CrownBetaDial: Sendable, Equatable {
         return beta
     }
 
-    /// Scene label for actuators / UI.
     public var sceneLabel: String {
         if beta > 0.05 { return "heating" }
         if beta < -0.05 { return "binding" }
@@ -65,7 +64,8 @@ public struct CrownBetaDial: Sendable, Equatable {
 
 // MARK: - Crown Controller
 
-/// Broadcasts crown-driven beat + scene state to the universal beat bus.
+/// Watch crown dial state. Beat broadcasts go through `ActuatorBus` /
+/// `UniversalBeatSync` — this type only owns β.
 public actor CrownController {
     public static let shared = CrownController()
 
@@ -80,25 +80,22 @@ public actor CrownController {
 
     public func dialSnapshot() -> CrownBetaDial { dial }
 
-    /// Digital Crown gesture update.
     @discardableResult
     public func applyCrownDelta(_ delta: Double) -> Double {
         dial.applyCrownDelta(delta)
     }
 
-    /// Absolute β set.
     @discardableResult
     public func setBeta(_ value: Double) -> Double {
         dial.setBeta(value)
     }
 
-    /// Damp β during grounding.
     @discardableResult
     public func dampTowardNeutral(gain: Double = 0.4) -> Double {
         dial.dampTowardNeutral(gain: gain)
     }
 
-    /// Broadcast tempo + β to all beat-synced channels.
+    /// Direct broadcast for standalone callers; session control prefers ActuatorBus.
     public func broadcastBeat(bpm: Double, beta: Double, grounding: Bool = false) async {
         _ = dial.setBeta(beta)
         _ = await beatSync.broadcast(bpm: bpm, beta: dial.beta, grounding: grounding)

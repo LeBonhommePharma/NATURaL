@@ -234,7 +234,7 @@ struct WatchSessionView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
 
-            // Crooks σ_irr + crown β (Session 1 production control)
+            // Crooks σ_irr + crown β
             HStack(spacing: 8) {
                 Text(String(format: "σ_irr: %.3f", sigmaIrr))
                     .font(.system(size: 11, design: .monospaced))
@@ -324,8 +324,7 @@ struct WatchSessionView: View {
         }
     }
 
-    /// Periodically sends biofeedback snapshots to iOS via WCSession and
-    /// advances the Crooks-cycle pharma control tick (σ_irr minimization + beat sync).
+    /// WCSession biofeedback relay + Crooks control tick (σ_irr, β, beat).
     private func startBiofeedbackRelay() {
         relayTask = Task {
             while !Task.isCancelled {
@@ -335,7 +334,6 @@ struct WatchSessionView: View {
                 let snapshot = manager.buildBiofeedbackSnapshot()
                 connectivity.sendBiofeedback(snapshot)
 
-                // Continuous Crooks tick: SCI → ΔHRV, crown β, universal beat, AirPods mirror.
                 manager.feedbackEngine.analyzeAll()
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
                 let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM

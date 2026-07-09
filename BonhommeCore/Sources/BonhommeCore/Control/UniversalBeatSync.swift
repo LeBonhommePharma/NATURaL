@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Beat Sync State
 
-/// Snapshot of the universal beat clock used across actuators and UI.
+/// Snapshot of the universal beat clock shared across actuators and UI.
 public struct BeatSyncSnapshot: Sendable, Equatable {
     /// Target BPM for all channels.
     public var bpm: Double
@@ -42,36 +42,37 @@ public struct BeatSyncSnapshot: Sendable, Equatable {
 
 // MARK: - Universal Beat Sync
 
-/// Production universal beat synchronizer.
+/// Single source of truth for tempo across Music, Watch haptics, TV, and AirPods.
 ///
-/// Single source of truth for tempo across Music, Watch haptics, TV display,
-/// and AirPods-class playback. No stubs — phase is continuously integrable from BPM.
+/// Phase is continuously integrable from BPM. Prefer one `broadcast` per control
+/// tick (via `BeatSyncActuatorChannel`) so listeners fire exactly once.
 public actor UniversalBeatSync {
     public static let shared = UniversalBeatSync()
+
+    public static let minBPM: Double = 40
+    public static let maxBPM: Double = 220
 
     private var snapshot = BeatSyncSnapshot()
     private var listeners: [@Sendable (BeatSyncSnapshot) async -> Void] = []
 
     public init() {}
 
-    /// Current beat snapshot.
     public func current() -> BeatSyncSnapshot {
         advancePhase(to: Date())
         return snapshot
     }
 
-    /// Register an async listener for beat broadcasts (music, haptics, TV).
+    /// Register an async listener (music, haptics, TV).
     public func addListener(_ listener: @escaping @Sendable (BeatSyncSnapshot) async -> Void) {
         listeners.append(listener)
     }
 
-    /// Force all channels to a BPM / β pair and broadcast.
+    /// Force all channels to a BPM / β pair and notify listeners once.
     @discardableResult
     public func broadcast(bpm: Double, beta: Double, grounding: Bool = false) async -> BeatSyncSnapshot {
         let now = Date()
         advancePhase(to: now)
-        let clampedBPM = max(40, min(220, bpm))
-        snapshot.bpm = clampedBPM
+        snapshot.bpm = max(Self.minBPM, min(Self.maxBPM, bpm))
         snapshot.crownBeta = max(-1, min(1, beta))
         snapshot.isGrounding = grounding
         snapshot.lastTick = now
@@ -83,14 +84,14 @@ public actor UniversalBeatSync {
         return out
     }
 
-    /// Advance phase by wall-clock time; increments beatCount on wrap.
+    /// Advance phase by wall-clock time.
     @discardableResult
     public func tick(now: Date = Date()) -> BeatSyncSnapshot {
         advancePhase(to: now)
         return snapshot
     }
 
-    /// Instant phase at a given date without mutating (for UI sampling).
+    /// Instant phase at a date without mutating (UI sampling).
     public func phase(at date: Date) -> Double {
         let elapsed = date.timeIntervalSince(snapshot.lastTick)
         let spb = snapshot.secondsPerBeat
@@ -107,8 +108,7 @@ public actor UniversalBeatSync {
         let spb = snapshot.secondsPerBeat
         guard spb > 0 else { return }
 
-        let delta = elapsed / spb
-        let total = snapshot.phase + delta
+        let total = snapshot.phase + elapsed / spb
         let whole = Int(floor(total))
         if whole > 0 {
             snapshot.beatCount += whole

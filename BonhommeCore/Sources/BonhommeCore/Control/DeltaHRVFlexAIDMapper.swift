@@ -10,13 +10,13 @@ public struct DeltaHRVFlexAIDPrediction: Sendable, Equatable {
     public let flexAIDDeltaS: Double
     /// Predicted ΔS_config from ΔHRV via calibrated slope.
     public let predictedDeltaS: Double
-    /// Residual |predicted − observed| (bits).
+    /// Soft residual |predicted − observed| (bits).
     public let residual: Double
     /// Whether residual exceeds grounding threshold.
     public let shouldGround: Bool
     /// Optional substance id when profile-backed.
     public let substanceId: String?
-    /// Backend label (profile / live docking / ANE map).
+    /// Source label: live · BindingEntropyProfile · live+profile.
     public let source: String
 
     public init(
@@ -40,29 +40,29 @@ public struct DeltaHRVFlexAIDPrediction: Sendable, Equatable {
 
 // MARK: - DeltaHRV ↔ FlexAID Mapper
 
-/// Production mapper between HRV entropy collapse and FlexAID configurational entropy.
+/// Maps HRV entropy collapse onto FlexAID configurational entropy.
 ///
-/// Reuses NATURaL machinery:
+/// Reuses:
 /// - `BindingEntropyProfile` reference ΔS_config database
 /// - `CrossDomainValidator` regression slope when paired observations exist
 /// - `ThermodynamicConstants` for bits ↔ kcal/mol
-/// - `EigenMetalWorkKernel` ANE path for residual soft-threshold
 ///
-/// Zero stubs: all predictions are numerical; grounding is a real control decision.
+/// Sign convention: negative = collapse / binding constraint (both domains).
 public actor DeltaHRVFlexAIDMapper {
     public static let shared = DeltaHRVFlexAIDMapper()
 
-    /// Default cross-domain slope: |ΔH_hrv| ≈ slope × |ΔS_config|
-    /// (from CrossDomainValidator literature-scale prior; refined when live pairs available).
+    /// Default |ΔH_hrv| ≈ slope × |ΔS_config| (literature-scale prior).
     public static let defaultSlope: Double = 0.85
 
     /// Residual (bits) above which grounding is recommended.
     public static let residualGroundingThreshold: Double = 0.45
 
+    /// Soft-threshold floor on residual (noise rejection).
+    private static let residualLambda: Double = 0.02
+
     private var calibratedSlope: Double = DeltaHRVFlexAIDMapper.defaultSlope
     private var calibratedIntercept: Double = 0
     private var lastPrediction: DeltaHRVFlexAIDPrediction?
-    private let kernel = EigenMetalWorkKernel()
 
     public init() {}
 
@@ -70,7 +70,7 @@ public actor DeltaHRVFlexAIDMapper {
 
     public func slope() -> Double { calibratedSlope }
 
-    /// Calibrate from a `CrossDomainValidator.ValidationResult` (live or profile-backed).
+    /// Calibrate from a `CrossDomainValidator.ValidationResult`.
     public func calibrate(from validation: CrossDomainValidator.ValidationResult) {
         guard validation.n >= 3, validation.regressionSlope.isFinite else { return }
         calibratedSlope = max(0.05, min(5.0, validation.regressionSlope))
@@ -84,7 +84,6 @@ public actor DeltaHRVFlexAIDMapper {
         flexAIDDeltaS: Double,
         substanceId: String? = nil
     ) -> DeltaHRVFlexAIDPrediction {
-        // Prefer profile-backed ΔS when substance known and flexAID is zero/unknown.
         var observedFlex = flexAIDDeltaS
         var source = "live"
         if let id = substanceId, let profile = BindingEntropyProfile.profile(for: id) {
@@ -96,16 +95,14 @@ public actor DeltaHRVFlexAIDMapper {
             }
         }
 
-        // Invert regression: |ΔH| ≈ slope × |ΔS| + intercept → |ΔS| ≈ (|ΔH| − intercept) / slope
+        // Invert regression: |ΔH| ≈ slope × |ΔS| + intercept
+        // → |ΔS| ≈ (|ΔH| − intercept) / slope
         let absHRV = abs(deltaHRV)
         let absPred = max(0, (absHRV - calibratedIntercept) / max(calibratedSlope, 1e-6))
-        // Sign: both domains use negative = collapse / binding constraint.
-        let sign: Double = deltaHRV < 0 || observedFlex < 0 ? -1 : (deltaHRV > 0 ? 1 : -1)
+        let sign: Double = (deltaHRV < 0 || observedFlex < 0) ? -1 : (deltaHRV > 0 ? 1 : -1)
         let predicted = sign * absPred
 
-        // ANE soft residual on the mismatch (noise rejection).
-        let rawResidual = abs(predicted - observedFlex)
-        let soft = softResidual(rawResidual)
+        let soft = softResidual(abs(predicted - observedFlex))
 
         let prediction = DeltaHRVFlexAIDPrediction(
             deltaHRV: deltaHRV,
@@ -120,7 +117,7 @@ public actor DeltaHRVFlexAIDMapper {
         return prediction
     }
 
-    /// Predict and return whether grounding should run (σ_irr minimization assist).
+    /// Alias for grounding assist paths (identical to `predict`).
     @discardableResult
     public func predictAndGround(
         deltaHRV: Double,
@@ -130,7 +127,7 @@ public actor DeltaHRVFlexAIDMapper {
         predict(deltaHRV: deltaHRV, flexAIDDeltaS: flexAIDDeltaS, substanceId: substanceId)
     }
 
-    /// Convert ΔS bits to entropy penalty kcal/mol (NATURaL thermodynamic parity).
+    /// ΔS bits → entropy penalty kcal/mol (thermodynamic parity with FlexAID).
     public nonisolated func entropyPenaltyKcal(deltaSBits: Double) -> Double {
         ThermodynamicConstants.entropyPenaltyKcal(deltaSBits: deltaSBits)
     }
@@ -138,9 +135,7 @@ public actor DeltaHRVFlexAIDMapper {
     // MARK: - Private
 
     private func softResidual(_ r: Double) -> Double {
-        // Soft-threshold via ANE-class map: reuses kernel thresholding idea.
-        let lambda = 0.02
-        if r > lambda { return r - lambda }
+        if r > Self.residualLambda { return r - Self.residualLambda }
         return 0
     }
 }

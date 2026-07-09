@@ -1,9 +1,8 @@
 import XCTest
 @testable import BonhommeCore
 
-/// Production validation for Session 1 Crooks-cycle control stack.
-/// Covers σ_irr math, EigenMetal/ANE work, ActuatorBus, beat sync, crown β,
-/// DeltaHRV↔FlexAID mapping, and zero-stub grounding minimization.
+/// Crooks-cycle control stack: σ_irr math, EigenMetal/ANE work, ActuatorBus,
+/// universal beat, crown β, AirPods mirror, and ΔHRV↔FlexAID mapping.
 final class CrooksCycleControllerTests: XCTestCase {
 
     // MARK: - EigenMetal Work Kernel
@@ -138,7 +137,7 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(kcal, expected, accuracy: 1e-12)
     }
 
-    // MARK: - ActuatorBus (zero stubs)
+    // MARK: - ActuatorBus
 
     func testActuatorBusProductionChannelsPresent() async {
         let bus = ActuatorBus.makeProduction()
@@ -164,7 +163,7 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertFalse(log.isEmpty)
     }
 
-    // MARK: - AirPods Crown β (beta)
+    // MARK: - AirPods Crown β
 
     func testAirPodsVolumeDeltaAndStemPress() async {
         let airPods = AirPodsCrownBetaController(beatSync: UniversalBeatSync())
@@ -191,6 +190,22 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(snap.sceneLabel, "heating")
     }
 
+    func testBeatSyncChannelIsSoleBroadcastOnBusTick() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        let bus = ActuatorBus(channels: [
+            BeatSyncActuatorChannel(beatSync: beat),
+            CrownActuatorChannel(crown: CrownController(beatSync: beat)),
+            AirPodsCrownActuatorChannel(airPods: AirPodsCrownBetaController(beatSync: beat)),
+            BreathingGuideActuatorChannel()
+        ])
+        _ = await bus.broadcastBeat(bpm: 100, beta: 0.2, grounding: false)
+        // Crown + AirPods adopt state only; one UniversalBeatSync.broadcast → one listener fire.
+        let count = await counter.value
+        XCTAssertEqual(count, 1)
+    }
+
     func testANEWorkPathLabelPresent() {
         let kernel = EigenMetalWorkKernel()
         let result = kernel.evaluate(CrooksFeatureVector(
@@ -211,8 +226,7 @@ final class CrooksCycleControllerTests: XCTestCase {
         let controller = CrooksCycleController(
             actuators: ActuatorBus.makeProduction(),
             crown: CrownController(),
-            mapper: DeltaHRVFlexAIDMapper(),
-            beatSync: UniversalBeatSync()
+            mapper: DeltaHRVFlexAIDMapper()
         )
         let result = await controller.update(
             deltaHRV: 0.5,
@@ -229,8 +243,7 @@ final class CrooksCycleControllerTests: XCTestCase {
             deltaG: -0.01, // tiny free-energy floor → easy grounding
             actuators: ActuatorBus.makeProduction(),
             crown: CrownController(),
-            mapper: DeltaHRVFlexAIDMapper(),
-            beatSync: UniversalBeatSync()
+            mapper: DeltaHRVFlexAIDMapper()
         )
         var grounded = false
         for _ in 0..<40 {
@@ -255,8 +268,7 @@ final class CrooksCycleControllerTests: XCTestCase {
             deltaG: -8.7,
             actuators: ActuatorBus.makeProduction(),
             crown: CrownController(),
-            mapper: DeltaHRVFlexAIDMapper(),
-            beatSync: UniversalBeatSync()
+            mapper: DeltaHRVFlexAIDMapper()
         )
         // Single tiny update → total work near 0 → below reversibility threshold.
         let r = await controller.update(
@@ -273,8 +285,7 @@ final class CrooksCycleControllerTests: XCTestCase {
         let controller = CrooksCycleController(
             actuators: ActuatorBus.makeProduction(),
             crown: CrownController(),
-            mapper: DeltaHRVFlexAIDMapper(),
-            beatSync: UniversalBeatSync()
+            mapper: DeltaHRVFlexAIDMapper()
         )
         _ = await controller.update(deltaHRV: 1, flexAIDDeltaS: -1, crownBeta: 0.3, bpm: 140)
         await controller.reset()
@@ -293,8 +304,7 @@ final class CrooksCycleControllerTests: XCTestCase {
             controller: CrooksCycleController(
                 actuators: ActuatorBus.makeProduction(),
                 crown: CrownController(),
-                mapper: DeltaHRVFlexAIDMapper(),
-                beatSync: UniversalBeatSync()
+                mapper: DeltaHRVFlexAIDMapper()
             ),
             crown: CrownController(),
             beatSync: UniversalBeatSync(),
@@ -323,8 +333,7 @@ final class CrooksCycleControllerTests: XCTestCase {
             controller: CrooksCycleController(
                 actuators: ActuatorBus(channels: []),
                 crown: crown,
-                mapper: DeltaHRVFlexAIDMapper(),
-                beatSync: UniversalBeatSync()
+                mapper: DeltaHRVFlexAIDMapper()
             ),
             crown: crown,
             beatSync: UniversalBeatSync(),
@@ -348,4 +357,11 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(ThermodynamicPhase.forward.flipped, .reverse)
         XCTAssertEqual(ThermodynamicPhase.reverse.flipped, .forward)
     }
+}
+
+// MARK: - Test helpers
+
+private actor ListenerCounter {
+    private(set) var value = 0
+    func increment() { value += 1 }
 }

@@ -526,7 +526,7 @@ final class WorkoutFlowViewModel {
 
     // MARK: - Crooks Pharma Control
 
-    /// Feed SCI + HR into CrooksCycleController for σ_irr minimization and beat sync.
+    /// SCI + HR → Crooks tick (σ_irr, phase, universal beat).
     private func tickPharmaControl() async {
         feedbackEngine.analyzeAll()
         let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
@@ -537,12 +537,11 @@ final class WorkoutFlowViewModel {
         let snap = await pharmaControl.snapshot()
         crownBeta = snap.crownBeta
 
-        // Push beat directly so AirPods route stays locked even if listener races.
+        // Direct apply covers listener race on first bind.
         if let beat = snap.beat {
             await musicService.applyBeatSync(beat)
         }
 
-        // When grounding fires, nudge adaptive music toward meditative recovery.
         if result.didGround {
             await musicService.adaptToSCI(score: 0.2, trend: .declining, style: plan.style)
         }
