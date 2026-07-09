@@ -111,3 +111,54 @@ public struct LocalActivitySessionLoader: @unchecked Sendable {
         loadIfAvailable()
     }
 }
+
+// MARK: - Launch / become-active auto-load policy
+
+/// Decision outcome for launch/scene-active auto-load (re-entrancy aware).
+public enum LocalActivityAutoLoadDecision: Sendable, Equatable {
+    /// A workout UI is already presenting — do not rebuild/auto-present a second session.
+    case skipAlreadyPresenting
+    /// No recoverable local activity (or load failed).
+    case skipNoRecoverableActivity
+    /// Safe to auto-load this restored session.
+    case autoLoad(RestoredLocalSession)
+}
+
+/// Pure policy for whether launch/active should detect→load and auto-present.
+/// Used by `AppState.detectAndAutoLoadLocalActivity` so re-entrancy is unit-testable.
+public enum LocalActivityAutoLoadPolicy {
+    /// Returns true only when no workout UI is already presenting.
+    public static func shouldAttemptAutoLoad(isWorkoutAlreadyPresenting: Bool) -> Bool {
+        !isWorkoutAlreadyPresenting
+    }
+
+    /// Full detect→load decision used on launch and scenePhase.active.
+    /// When `isWorkoutAlreadyPresenting` is true, never loads — even if the store has recoverable state
+    /// (e.g. 5s persist mid-session). This prevents duplicating a live workout on become-active.
+    public static func decide(
+        isWorkoutAlreadyPresenting: Bool,
+        loader: LocalActivitySessionLoader
+    ) -> LocalActivityAutoLoadDecision {
+        guard shouldAttemptAutoLoad(isWorkoutAlreadyPresenting: isWorkoutAlreadyPresenting) else {
+            return .skipAlreadyPresenting
+        }
+        guard let session = loader.detectAndLoad() else {
+            return .skipNoRecoverableActivity
+        }
+        return .autoLoad(session)
+    }
+
+    /// Session to auto-load, or nil when auto-load must not run.
+    public static func sessionToAutoLoad(
+        isWorkoutAlreadyPresenting: Bool,
+        loader: LocalActivitySessionLoader
+    ) -> RestoredLocalSession? {
+        if case .autoLoad(let session) = decide(
+            isWorkoutAlreadyPresenting: isWorkoutAlreadyPresenting,
+            loader: loader
+        ) {
+            return session
+        }
+        return nil
+    }
+}

@@ -5,6 +5,8 @@ import BonhommeCore
 @Observable
 @MainActor
 final class AppState {
+    /// True while any workout UI (new or restored) is on-screen.
+    /// Guards scenePhase.active re-detect so mid-session 5s persist does not spawn a second auto-load.
     var isWorkoutActive = false
     var isPremium = true
     var healthKitAuthorized = false
@@ -49,23 +51,29 @@ final class AppState {
 
     /// Detects recoverable local activity and auto-loads it into a runnable restored session.
     /// Called on launch and when returning to active. Does not require a manual confirm step to load.
+    /// Re-entrancy: when `isWorkoutActive` (any live workout UI), policy skips so become-active
+    /// does not rebuild a second VM from the mid-session persist store.
     func detectAndAutoLoadLocalActivity() {
-        // Skip while a workout UI is already presenting to avoid re-entrant navigation.
-        if isWorkoutActive { return }
-
         let loader = LocalActivitySessionLoader(store: workoutStateStore)
-        guard loader.hasRecoverableActivity(),
-              let vm = WorkoutFlowViewModel.restoreIfAvailable(
-                feedbackEngine: feedbackEngine,
-                store: workoutStateStore
-              ) else {
+        let decision = LocalActivityAutoLoadPolicy.decide(
+            isWorkoutAlreadyPresenting: isWorkoutActive,
+            loader: loader
+        )
+
+        switch decision {
+        case .skipAlreadyPresenting:
+            // Leave pending/presenting state alone — live session owns the UI.
+            return
+        case .skipNoRecoverableActivity:
             pendingRestoredWorkout = nil
             shouldAutoPresentRestoredSession = false
-            return
+        case .autoLoad(let session):
+            pendingRestoredWorkout = WorkoutFlowViewModel(
+                restoredSession: session,
+                feedbackEngine: feedbackEngine
+            )
+            shouldAutoPresentRestoredSession = true
         }
-
-        pendingRestoredWorkout = vm
-        shouldAutoPresentRestoredSession = true
     }
 
     /// Checks for a recoverable workout on app launch / become-active and auto-loads it.
@@ -74,22 +82,33 @@ final class AppState {
         detectAndAutoLoadLocalActivity()
     }
 
+    /// Marks that any workout UI (new plan or restored) is presenting.
+    /// Must be called from `WorkoutFlowView` onAppear for *all* entry paths.
+    func noteWorkoutPresented() {
+        isWorkoutActive = true
+    }
+
+    /// Marks that the workout UI left the screen (dismiss / complete / pop).
+    func noteWorkoutDismissed() {
+        isWorkoutActive = false
+    }
+
     /// Marks that the restored session has been auto-presented (navigation triggered).
     func noteRestoredSessionPresented() {
         shouldAutoPresentRestoredSession = false
-        isWorkoutActive = true
+        noteWorkoutPresented()
     }
 
     /// Clears the pending restored workout (user discarded / declined).
     func dismissRestoredWorkout() {
         pendingRestoredWorkout = nil
         shouldAutoPresentRestoredSession = false
-        isWorkoutActive = false
+        noteWorkoutDismissed()
         workoutStateStore.clear()
     }
 
-    /// Called when the restored-session UI is dismissed without discarding persistence.
+    /// Called when the restored-session navigation path is dismissed without discarding persistence.
     func noteRestoredSessionUIDismissed() {
-        isWorkoutActive = false
+        noteWorkoutDismissed()
     }
 }

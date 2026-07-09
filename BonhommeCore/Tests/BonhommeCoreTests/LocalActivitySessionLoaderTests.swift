@@ -221,4 +221,91 @@ final class LocalActivitySessionLoaderTests: XCTestCase {
         XCTAssertEqual(session.phase, .cooldown)
         XCTAssertEqual(session.posesCompletedCount, plan.poseCount)
     }
+
+    // MARK: - Launch / become-active re-entrancy (shipped policy)
+
+    /// Become-active while a live workout is presenting must NOT auto-load a second session,
+    /// even when the 5s mid-session persist has written recoverable state into the store.
+    func testBecomeActiveWhileWorkoutPresenting_SkipsAutoLoad_DespiteSeededStore() {
+        let plan = PoseCatalog.beginnerFlow
+        // Simulate mid-session 5s persist while UI is live.
+        store.save(
+            planId: plan.id,
+            phase: .active(poseIndex: 1),
+            poseTimeRemaining: 18,
+            elapsedTime: 45,
+            sessionStartDate: Date().addingTimeInterval(-45),
+            currentPoseIndex: 1
+        )
+        let loader = LocalActivitySessionLoader(store: store)
+        XCTAssertTrue(loader.hasRecoverableActivity(), "precondition: store looks recoverable")
+
+        let decision = LocalActivityAutoLoadPolicy.decide(
+            isWorkoutAlreadyPresenting: true,
+            loader: loader
+        )
+
+        XCTAssertEqual(decision, .skipAlreadyPresenting)
+        XCTAssertNil(
+            LocalActivityAutoLoadPolicy.sessionToAutoLoad(
+                isWorkoutAlreadyPresenting: true,
+                loader: loader
+            ),
+            "Must not return a second session while workout UI is presenting"
+        )
+        XCTAssertFalse(
+            LocalActivityAutoLoadPolicy.shouldAttemptAutoLoad(isWorkoutAlreadyPresenting: true)
+        )
+    }
+
+    func testBecomeActiveWhenIdle_WithSeededStore_AutoLoadsMatchingSession() {
+        let plan = PoseCatalog.beginnerFlow
+        store.save(
+            planId: plan.id,
+            phase: .active(poseIndex: 3),
+            poseTimeRemaining: 12,
+            elapsedTime: 100,
+            sessionStartDate: Date().addingTimeInterval(-100),
+            currentPoseIndex: 3
+        )
+        let loader = LocalActivitySessionLoader(store: store)
+
+        let decision = LocalActivityAutoLoadPolicy.decide(
+            isWorkoutAlreadyPresenting: false,
+            loader: loader
+        )
+
+        guard case .autoLoad(let session) = decision else {
+            return XCTFail("Expected autoLoad when idle + recoverable; got \(decision)")
+        }
+        XCTAssertEqual(session.plan.id, plan.id)
+        XCTAssertEqual(session.phase, .active(poseIndex: 3))
+        XCTAssertEqual(session.posesCompletedCount, 3)
+        XCTAssertEqual(session.poseTimeRemaining, 12, accuracy: 0.001)
+    }
+
+    func testBecomeActiveWhenIdle_EmptyStore_SkipsNoActivity() {
+        let loader = LocalActivitySessionLoader(store: store)
+        let decision = LocalActivityAutoLoadPolicy.decide(
+            isWorkoutAlreadyPresenting: false,
+            loader: loader
+        )
+        XCTAssertEqual(decision, .skipNoRecoverableActivity)
+        XCTAssertNil(
+            LocalActivityAutoLoadPolicy.sessionToAutoLoad(
+                isWorkoutAlreadyPresenting: false,
+                loader: loader
+            )
+        )
+    }
+
+    func testBecomeActiveWhilePresenting_EmptyStore_StillSkipsAlreadyPresenting() {
+        // Guard fires before store inspection; outcome must be skipAlreadyPresenting, not no-activity.
+        let loader = LocalActivitySessionLoader(store: store)
+        let decision = LocalActivityAutoLoadPolicy.decide(
+            isWorkoutAlreadyPresenting: true,
+            loader: loader
+        )
+        XCTAssertEqual(decision, .skipAlreadyPresenting)
+    }
 }

@@ -7,6 +7,9 @@ struct WorkoutFlowView: View {
     @State private var viewModel: WorkoutFlowViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Shared app state — used to mark any live workout as presenting so scene-active
+    /// auto-load cannot re-enter and spawn a second session from 5s persist state.
+    @Environment(AppState.self) private var appState
 
     init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
         _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine))
@@ -47,9 +50,15 @@ struct WorkoutFlowView: View {
         .navigationBarBackButtonHidden()
         .statusBarHidden()
         .onAppear {
+            // All entry paths (catalog start, banner, auto-restore navigation) mark active
+            // so BonhommeApp scenePhase.active does not re-run detect→auto-load mid-session.
+            appState.noteWorkoutPresented()
             if viewModel.isRestoredSession {
                 viewModel.resumeRestoredSession()
             }
+        }
+        .onDisappear {
+            appState.noteWorkoutDismissed()
         }
         .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
             viewModel.persistState()
