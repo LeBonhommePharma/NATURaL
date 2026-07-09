@@ -57,20 +57,32 @@ RegressionResult linear_regression(const double* x, const double* y, size_t coun
     RegressionResult result{0.0, 0.0, 0.0};
     if (!x || !y || count < 2) return result;
 
-    double n = static_cast<double>(count);
-    double mean_x = 0.0, mean_y = 0.0;
-
+    // Filter non-finite pairs (parity with pearson_correlation)
+    std::vector<double> cx, cy;
+    cx.reserve(count);
+    cy.reserve(count);
     for (size_t i = 0; i < count; ++i) {
-        mean_x += x[i];
-        mean_y += y[i];
+        if (std::isfinite(x[i]) && std::isfinite(y[i])) {
+            cx.push_back(x[i]);
+            cy.push_back(y[i]);
+        }
+    }
+
+    double n = static_cast<double>(cx.size());
+    if (n < 2.0) return result;
+
+    double mean_x = 0.0, mean_y = 0.0;
+    for (size_t i = 0; i < cx.size(); ++i) {
+        mean_x += cx[i];
+        mean_y += cy[i];
     }
     mean_x /= n;
     mean_y /= n;
 
     double sum_xy = 0.0, sum_x2 = 0.0;
-    for (size_t i = 0; i < count; ++i) {
-        double dx = x[i] - mean_x;
-        sum_xy += dx * (y[i] - mean_y);
+    for (size_t i = 0; i < cx.size(); ++i) {
+        double dx = cx[i] - mean_x;
+        sum_xy += dx * (cy[i] - mean_y);
         sum_x2 += dx * dx;
     }
 
@@ -78,9 +90,9 @@ RegressionResult linear_regression(const double* x, const double* y, size_t coun
     result.intercept = mean_y - result.slope * mean_x;
 
     double total_error = 0.0;
-    for (size_t i = 0; i < count; ++i) {
-        double predicted = result.slope * x[i] + result.intercept;
-        total_error += std::abs(y[i] - predicted);
+    for (size_t i = 0; i < cx.size(); ++i) {
+        double predicted = result.slope * cx[i] + result.intercept;
+        total_error += std::abs(cy[i] - predicted);
     }
     result.mae = total_error / n;
 
