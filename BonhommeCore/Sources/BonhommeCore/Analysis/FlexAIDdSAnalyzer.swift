@@ -169,17 +169,29 @@ public struct FlexAIDdSResult: Sendable {
     /// Docking score from the input pose.
     public let dockingScore: Double
 
+    /// |ΔS_config| significance floor used for `bindingDetected` (from `AnalysisConfiguration`).
+    public let significanceThreshold: Double
+
     /// Total free-state entropy (sum over all bonds, bits).
+    ///
+    /// Additive 1D approximation: Σ H(φᵢ). Ignores torsional correlations
+    /// (mutual information / joint entropy between bonds).
     public var totalFreeEntropy: Double {
         bondResults.reduce(0) { $0 + $1.freeEntropy }
     }
 
     /// Total bound-state entropy (sum over all bonds, bits).
+    ///
+    /// Additive 1D approximation: Σ H(φᵢ). Ignores torsional correlations
+    /// (mutual information / joint entropy between bonds).
     public var totalBoundEntropy: Double {
         bondResults.reduce(0) { $0 + $1.boundEntropy }
     }
 
     /// Total ΔS_config (bits). Negative = binding imposes entropy penalty.
+    ///
+    /// Computed as Σ ΔSᵢ over independent per-bond 1D Shannon entropies.
+    /// This additive approximation ignores torsional correlations between bonds.
     public var totalDeltaSConfig: Double {
         totalBoundEntropy - totalFreeEntropy
     }
@@ -195,7 +207,7 @@ public struct FlexAIDdSResult: Sendable {
 
     /// Whether a significant binding entropy penalty was detected.
     public var bindingDetected: Bool {
-        totalDeltaSConfig < -FlexAIDdSAnalyzer.significanceThreshold
+        totalDeltaSConfig < -significanceThreshold
     }
 
     /// Most constrained bond (largest |ΔS|).
@@ -246,12 +258,14 @@ public struct FlexAIDdSResult: Sendable {
         substanceId: String,
         receptorId: String,
         bondResults: [BondEntropyResult],
-        dockingScore: Double
+        dockingScore: Double,
+        significanceThreshold: Double = AnalysisConfiguration.default.dockingSignificanceThreshold
     ) {
         self.substanceId = substanceId
         self.receptorId = receptorId
         self.bondResults = bondResults
         self.dockingScore = dockingScore
+        self.significanceThreshold = significanceThreshold
     }
 }
 
@@ -313,22 +327,45 @@ public struct FlexAIDdSAnalyzer: Sendable {
     /// For each rotatable bond, computes H_free and H_bound using the shared
     /// EntropyCalculator, then aggregates across all bonds.
     ///
+    /// Free and bound bonds are paired by `bondId`, not by array order. If the
+    /// sets of bond IDs differ (or contain duplicates), returns `nil`.
+    ///
+    /// **Additive 1D approximation:** Total ΔS_config is the sum of independent
+    /// per-bond Shannon entropies (Σ ΔSᵢ). This ignores torsional correlations
+    /// between bonds (mutual information / higher-order joint entropy terms).
+    /// Full configurational entropy would require the joint distribution over
+    /// all torsions, which is not available from per-bond angle samples alone.
+    ///
     /// - Parameters:
     ///   - freeConformation: Torsional angle distributions from solution/MD sampling.
     ///   - dockingPose: Bound-state conformation from FlexAID docking.
-    /// - Returns: FlexAIDdSResult with per-bond and total entropy, or nil if bond counts mismatch.
+    /// - Returns: FlexAIDdSResult with per-bond and total entropy, or nil if
+    ///   bond ID sets mismatch (including count or identity differences).
     public func analyze(
         freeConformation: LigandConformation,
         dockingPose: DockingPose
     ) -> FlexAIDdSResult? {
         let boundConf = dockingPose.boundConformation
 
-        guard freeConformation.bonds.count == boundConf.bonds.count else { return nil }
         guard !freeConformation.bonds.isEmpty else { return nil }
+        guard freeConformation.bonds.count == boundConf.bonds.count else { return nil }
+
+        // Pair free/bound by bondId (order-independent). Reject on set mismatch
+        // or duplicate IDs within either conformation.
+        let freeIds = Set(freeConformation.bonds.map(\.bondId))
+        let boundIds = Set(boundConf.bonds.map(\.bondId))
+        guard freeIds.count == freeConformation.bonds.count else { return nil }
+        guard boundIds.count == boundConf.bonds.count else { return nil }
+        guard freeIds == boundIds else { return nil }
+
+        let boundById = Dictionary(uniqueKeysWithValues: boundConf.bonds.map { ($0.bondId, $0) })
 
         var bondResults: [BondEntropyResult] = []
+        bondResults.reserveCapacity(freeConformation.bonds.count)
 
-        for (freeBond, boundBond) in zip(freeConformation.bonds, boundConf.bonds) {
+        for freeBond in freeConformation.bonds {
+            // freeIds == boundIds guarantees every free bondId exists in boundById
+            let boundBond = boundById[freeBond.bondId]!
             let hFree = entropyCalc.circularShannonEntropy(freeBond.angles)
             let hBound = entropyCalc.circularShannonEntropy(boundBond.angles)
             bondResults.append(BondEntropyResult(
@@ -342,7 +379,8 @@ public struct FlexAIDdSAnalyzer: Sendable {
             substanceId: freeConformation.substanceId,
             receptorId: dockingPose.receptorId,
             bondResults: bondResults,
-            dockingScore: dockingPose.dockingScore
+            dockingScore: dockingPose.dockingScore,
+            significanceThreshold: configuration.dockingSignificanceThreshold
         )
     }
 

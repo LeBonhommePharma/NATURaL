@@ -1,14 +1,16 @@
-.PHONY: all build test lint lint-fix clean coverage xcode-build xcode-test help
+.PHONY: all build test lint lint-fix clean coverage xcode-build xcode-test \
+	accel-configure accel-build accel-test accel accel-clean help
 
 # Default target
 all: lint test build
 
-# --- BonhommeCore (Swift Package) ---
+# --- BonhommeCore (Swift Package) — Path A: Swift-only (default) ---
+# Does NOT build or link BonhommeAccel C++. Keep it that way.
 
 build: ## Build BonhommeCore package
 	swift build --package-path BonhommeCore
 
-test: ## Run BonhommeCore tests
+test: ## Run BonhommeCore tests (Swift-only; no Accel CMake)
 	swift test --package-path BonhommeCore
 
 coverage: ## Run tests with code coverage
@@ -20,6 +22,27 @@ coverage: ## Run tests with code coverage
 	else \
 		echo "Coverage data not found"; \
 	fi
+
+# --- BonhommeAccel (C++20) — Path B: CMake + ctest (opt-in) ---
+# Separate from `make test`. Full docs: BonhommeAccel/TESTING.md
+
+ACCEL_DIR := BonhommeAccel
+ACCEL_BUILD := $(ACCEL_DIR)/build
+ACCEL_JOBS := $(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
+
+accel-configure: ## Configure BonhommeAccel (CMake, tests ON)
+	cmake -B $(ACCEL_BUILD) -S $(ACCEL_DIR) -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON
+
+accel-build: ## Build BonhommeAccel library + ba_tests
+	cmake --build $(ACCEL_BUILD) -j $(ACCEL_JOBS)
+
+accel-test: ## Run BonhommeAccel Catch2 suite via ctest
+	ctest --test-dir $(ACCEL_BUILD) --output-on-failure
+
+accel: accel-configure accel-build accel-test ## Configure, build, and ctest Accel
+
+accel-clean: ## Remove BonhommeAccel build tree
+	rm -rf $(ACCEL_BUILD)
 
 # --- Xcode Project ---
 
@@ -50,8 +73,9 @@ lint-fix: ## Run SwiftLint with auto-fix
 
 # --- Cleanup ---
 
-clean: ## Remove build artifacts
+clean: ## Remove build artifacts (Swift + Accel + Xcode debris)
 	rm -rf BonhommeCore/.build
+	rm -rf $(ACCEL_BUILD)
 	rm -rf DerivedData
 	rm -rf ~/Library/Developer/Xcode/DerivedData/NATURaL-*
 	rm -rf TestResults.xcresult

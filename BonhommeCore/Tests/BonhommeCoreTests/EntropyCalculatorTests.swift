@@ -120,4 +120,91 @@ final class EntropyCalculatorTests: XCTestCase {
         XCTAssertEqual(calc.shannonEntropy([42.0]), 0)
         XCTAssertEqual(calc.circularShannonEntropy([42.0]), 0)
     }
+
+    // MARK: - SCI maxEntropy = log₂(binCount)
+
+    /// Default maxEntropy is log₂(binCount); near-uniform → score ≈ 0, concentrated → near 1.
+    func testEntropyToScoreDefaultMaxEntropyIsLog2BinCount() {
+        let calc32 = EntropyCalculator(binCount: 32)
+        let theoreticalMax = log2(Double(calc32.binCount)) // 5.0
+        XCTAssertEqual(theoreticalMax, 5.0, accuracy: 1e-12)
+
+        // Near-uniform samples across many adaptive bins → H ≈ log₂(32) → score ≈ 0
+        let uniform = (0..<1024).map { Double($0) }
+        let hUniform = calc32.shannonEntropy(uniform)
+        let scoreUniform = calc32.entropyToScore(hUniform)
+        XCTAssertGreaterThan(hUniform, theoreticalMax * 0.9,
+            "Near-uniform sample should approach max entropy")
+        XCTAssertLessThan(scoreUniform, 0.15,
+            "Near-uniform sample should yield coherence score ≈ 0")
+
+        guard let analyzedUniform = calc32.analyze(uniform) else {
+            return XCTFail("analyze should succeed for uniform sample")
+        }
+        XCTAssertEqual(analyzedUniform.score, scoreUniform, accuracy: 1e-12,
+            "analyze() must use the same default maxEntropy as entropyToScore")
+        XCTAssertLessThan(analyzedUniform.score, 0.15)
+
+        // Identical values → H = 0 → score = 1 (adaptive range collapses)
+        let concentrated = Array(repeating: 100.0, count: 200)
+        let hConcentrated = calc32.shannonEntropy(concentrated)
+        let scoreConcentrated = calc32.entropyToScore(hConcentrated)
+        XCTAssertEqual(hConcentrated, 0, accuracy: 1e-12,
+            "Degenerate sample should have zero entropy")
+        XCTAssertEqual(scoreConcentrated, 1.0, accuracy: 1e-12,
+            "Degenerate sample should yield coherence score 1")
+
+        guard let analyzedConcentrated = calc32.analyze(concentrated) else {
+            return XCTFail("analyze should succeed for concentrated sample")
+        }
+        XCTAssertEqual(analyzedConcentrated.score, scoreConcentrated, accuracy: 1e-12)
+        XCTAssertEqual(analyzedConcentrated.score, 1.0, accuracy: 1e-12)
+
+        // Perfect coherence: H = 0 → score = 1
+        XCTAssertEqual(calc32.entropyToScore(0), 1.0, accuracy: 1e-12)
+        // At theoretical max: score = 0
+        XCTAssertEqual(calc32.entropyToScore(theoreticalMax), 0.0, accuracy: 1e-12)
+    }
+
+    /// Explicit maxEntropy override still normalizes against the provided ceiling.
+    func testEntropyToScoreOverrideStillWorks() {
+        let calc32 = EntropyCalculator(binCount: 32)
+
+        // Override to 10: entropy 5 → score 0.5
+        XCTAssertEqual(calc32.entropyToScore(5.0, maxEntropy: 10.0), 0.5, accuracy: 0.001)
+        // Override to 8 (legacy constant): entropy 4 → score 0.5
+        XCTAssertEqual(calc32.entropyToScore(4.0, maxEntropy: 8.0), 0.5, accuracy: 0.001)
+
+        let values = [700.0, 750.0, 800.0, 850.0, 900.0]
+        guard let overridden = calc32.analyze(values, maxEntropy: 10.0) else {
+            return XCTFail("analyze with override should succeed")
+        }
+        let expectedScore = calc32.entropyToScore(overridden.entropy, maxEntropy: 10.0)
+        XCTAssertEqual(overridden.score, expectedScore, accuracy: 1e-12)
+
+        // Default path must differ from a deliberately wrong ceiling when H is non-zero
+        guard let defaulted = calc32.analyze(values) else {
+            return XCTFail("analyze with default should succeed")
+        }
+        XCTAssertNotEqual(defaulted.score, overridden.score, accuracy: 1e-6,
+            "Default log₂(binCount) normalization should differ from maxEntropy: 10 override")
+    }
+
+    // MARK: - Fixed-domain NaN / Inf filter
+
+    /// Fixed-domain path filters non-finite values; result matches finite-only input.
+    func testFixedDomainNaNInfMixedEqualsFiniteOnly() {
+        let finite = [400.0, 600.0, 800.0, 1000.0, 1200.0, 700.0, 900.0]
+        let mixed = [400.0, .nan, 600.0, .infinity, 800.0, 1000.0, -.infinity, 1200.0, 700.0, 900.0]
+        let hFinite = calc.shannonEntropy(finite, domainMin: 300, domainMax: 1500)
+        let hMixed = calc.shannonEntropy(mixed, domainMin: 300, domainMax: 1500)
+        XCTAssertEqual(hMixed, hFinite, accuracy: 1e-12)
+        XCTAssertFalse(hMixed.isNaN)
+    }
+
+    /// Fewer than two finite values → 0.
+    func testFixedDomainFewerThanTwoFiniteReturnsZero() {
+        XCTAssertEqual(calc.shannonEntropy([.nan, .infinity, 500.0], domainMin: 300, domainMax: 1500), 0)
+        XCTAssertEqual(calc.shannonEntropy([.nan, .nan], domainMin: 300, domainMax: 1500), 0)
+    }
 }

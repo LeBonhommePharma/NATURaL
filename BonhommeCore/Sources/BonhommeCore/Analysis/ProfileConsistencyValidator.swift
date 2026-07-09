@@ -40,6 +40,26 @@ public struct ConsistencyIssue: Sendable {
     }
 }
 
+/// Substances called out by the science audit as missing published thermodynamic
+/// binding profiles in-registry. Values are **not** invented here — fill only with
+/// sourced ITC/ΔH/−TΔS literature entries in `ThermodynamicBindingProfile`.
+///
+/// Tests assert this list is non-empty and stable so gaps stay visible.
+public enum KnownThermoProfileGaps {
+    /// Audit list (2026-07): missing primary-target thermodynamic decompositions.
+    public static let substanceIds: [String] = [
+        "diazepam",
+        "psilocin",
+        "mda",
+        "scopolamine",
+        "muscimol",
+        "ephedrine",
+        "mitragynine",
+        "cbd",
+        "harmine"
+    ]
+}
+
 /// Report from cross-validating the three profile registries + PokeDrug stats.
 public struct ConsistencyReport: Sendable {
     public let issues: [ConsistencyIssue]

@@ -125,6 +125,13 @@ double shannon_entropy_fixed(const double* values, size_t count, int bin_count,
                               double domain_min, double domain_max) {
     if (!values || count < 2 || bin_count < 1) return 0.0;
 
+    // Filter non-finite (NaN/Inf) — mirrors adaptive/circular paths and Swift
+    size_t clean_count = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (std::isfinite(values[i])) ++clean_count;
+    }
+    if (clean_count < 2) return 0.0;
+
     double range = domain_max - domain_min;
     if (range <= 0.0) return 0.0;
 
@@ -133,13 +140,15 @@ double shannon_entropy_fixed(const double* values, size_t count, int bin_count,
     std::vector<int> bins(static_cast<size_t>(bin_count), 0);
 
     for (size_t i = 0; i < count; ++i) {
-        double v = std::max(domain_min, std::min(domain_max, values[i]));
+        double v = values[i];
+        if (!std::isfinite(v)) continue;
+        v = std::max(domain_min, std::min(domain_max, v));
         int idx = std::min(bin_count - 1,
                            static_cast<int>((v - domain_min) / bin_width));
         bins[static_cast<size_t>(idx)]++;
     }
 
-    double total = static_cast<double>(count);
+    double total = static_cast<double>(clean_count);
     double entropy = 0.0;
     for (int i = 0; i < bin_count; ++i) {
         if (bins[static_cast<size_t>(i)] > 0) {

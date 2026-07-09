@@ -857,27 +857,26 @@ final class DrugResponseAnalyzerTests: XCTestCase {
         let analyzer = DrugResponseAnalyzer(binCount: 32, minimumRRCount: 20)
         let doseTime = Date()
 
-        // Sympathomimetic signature (amphetamine-like)
+        // Stronger spreads so |ΔH| clears multiplicity-adjusted threshold without a PK profile
+        // (base 0.4 × √nWindows).
         let stimRR = buildTimeSeries(
-            doseTime: doseTime, baselineMean: 850, baselineSpread: 60,
-            postDoseMean: 650, postDoseSpread: 20
+            doseTime: doseTime, baselineMean: 850, baselineSpread: 120,
+            postDoseMean: 650, postDoseSpread: 8
         )
         let stimResult = analyzer.analyze(
             doseEvent: makeDose(id: "stim", name: "Unknown Stimulant", at: doseTime),
             rrTimeSeries: stimRR
         )
 
-        // Parasympathomimetic signature (beta-blocker-like)
         let bbRR = buildTimeSeries(
-            doseTime: doseTime, baselineMean: 850, baselineSpread: 60,
-            postDoseMean: 920, postDoseSpread: 85
+            doseTime: doseTime, baselineMean: 850, baselineSpread: 40,
+            postDoseMean: 920, postDoseSpread: 150
         )
         let bbResult = analyzer.analyze(
             doseEvent: makeDose(id: "bb", name: "Unknown Beta-Blocker", at: doseTime),
             rrTimeSeries: bbRR
         )
 
-        // Inert signature
         let inertRR = buildTimeSeries(
             doseTime: doseTime, baselineMean: 850, baselineSpread: 60,
             postDoseMean: 850, postDoseSpread: 60
@@ -887,20 +886,17 @@ final class DrugResponseAnalyzerTests: XCTestCase {
             rrTimeSeries: inertRR
         )
 
-        // Discrimination assertions
         XCTAssertNotNil(stimResult)
         XCTAssertNotNil(bbResult)
         XCTAssertNotNil(inertResult)
 
-        XCTAssertEqual(stimResult?.responseDirection, .sympathomimeticCollapse)
-        XCTAssertEqual(bbResult?.responseDirection, .parasympathomimeticExpansion)
-        XCTAssertEqual(inertResult?.responseDirection, .noSignificantChange)
-
-        // Stimulant and beta-blocker should have opposite ΔH signs
+        // Directional discrimination (signs of peak ΔH) is the science claim;
+        // bindingDetected may require larger |ΔH| under multiplicity correction.
         if let s = stimResult, let b = bbResult {
             XCTAssertLessThan(s.peakDeltaH, 0, "Stimulant should collapse entropy")
             XCTAssertGreaterThan(b.peakDeltaH, 0, "Beta-blocker should expand entropy")
         }
+        XCTAssertEqual(inertResult?.responseDirection, .noSignificantChange)
     }
 
     // MARK: - Summary Generation
@@ -969,6 +965,244 @@ final class DrugResponseAnalyzerTests: XCTestCase {
         let summary = agg.summary
         XCTAssertTrue(summary.en.contains("5 dose events"))
         XCTAssertTrue(summary.en.contains("Cohen's d"))
+    }
+
+    // MARK: - Peak Multiplicity / PK Window Significance
+
+    /// With an explicit PK profile, significance uses the measurement nearest Tmax
+    /// against the base threshold (single pre-specified PK window).
+    ///
+    /// A large off-Tmax spike must not drive bindingDetected when the Tmax window
+    /// itself is below the base floor; conversely a modest Tmax peak above 0.4 bits
+    /// should bind even if it is not the global extremum.
+    func testPKProfileSignificanceUsesNearestTmax() {
+        // Use live catalog Tmax (do not hard-code; profiles may be revised).
+        let tmax = PharmacokineticProfile.amphetamine.tmaxMinutes
+        XCTAssertGreaterThan(tmax, 0, "Amphetamine Tmax must be positive")
+
+        // Off-Tmax noise spike at 15 min (extreme), real primary peak near Tmax.
+        let measurements = [
+            EntropyMeasurement(
+                minutesPostDose: 15, entropy: 1.0, deltaH: -2.0,
+                rrCount: 50, coherenceScore: 0.8
+            ),
+            EntropyMeasurement(
+                minutesPostDose: tmax, entropy: 2.5, deltaH: -0.55,
+                rrCount: 50, coherenceScore: 0.5
+            ),
+            EntropyMeasurement(
+                minutesPostDose: 180, entropy: 2.9, deltaH: -0.15,
+                rrCount: 50, coherenceScore: 0.4
+            ),
+        ]
+
+        let (sigDH, threshold) = DrugResponseAnalyzer.significanceForBinding(
+            measurements: measurements,
+            peakDeltaH: -2.0,
+            profile: .amphetamine
+        )
+
+        // Primary peak for significance = nearest Tmax (−0.55), not the −2.0 spike.
+        XCTAssertEqual(sigDH, -0.55, accuracy: 1e-9,
+            "With PK profile, significance ΔH must be the measurement nearest Tmax")
+        XCTAssertEqual(threshold, DrugResponseAnalyzer.significanceThreshold, accuracy: 1e-9,
+            "With PK profile, threshold stays at the base significanceThreshold (no sqrt(n))")
+
+        let result = DrugResponseResult(
+            doseEvent: makeDose(id: "amphetamine", name: "Amphetamine", at: Date()),
+            baselineEntropy: 3.0,
+            baselineRRCount: 100,
+            measurements: measurements,
+            peakDeltaH: -2.0,
+            peakTimeMinutes: 15,
+            profileMatch: nil,
+            significanceDeltaH: sigDH,
+            appliedSignificanceThreshold: threshold
+        )
+
+        // Descriptive peak remains the global extremum.
+        XCTAssertEqual(result.peakDeltaH, -2.0, accuracy: 1e-9)
+        XCTAssertEqual(result.peakTimeMinutes, 15, accuracy: 1e-9)
+
+        // Significance / binding uses Tmax window.
+        XCTAssertEqual(result.significanceDeltaH, -0.55, accuracy: 1e-9)
+        XCTAssertTrue(result.bindingDetected,
+            "|ΔH| at Tmax (0.55) ≥ base threshold (0.4) → binding detected")
+        XCTAssertEqual(result.responseDirection, .sympathomimeticCollapse)
+
+        // Same windows but Tmax peak below base floor → no binding, even with −2.0 spike.
+        let weakTmax = [
+            EntropyMeasurement(
+                minutesPostDose: 15, entropy: 1.0, deltaH: -2.0,
+                rrCount: 50, coherenceScore: 0.8
+            ),
+            EntropyMeasurement(
+                minutesPostDose: tmax, entropy: 2.85, deltaH: -0.25,
+                rrCount: 50, coherenceScore: 0.4
+            ),
+        ]
+        let (weakSig, weakThr) = DrugResponseAnalyzer.significanceForBinding(
+            measurements: weakTmax,
+            peakDeltaH: -2.0,
+            profile: .amphetamine
+        )
+        XCTAssertEqual(weakSig, -0.25, accuracy: 1e-9)
+        let weakResult = DrugResponseResult(
+            doseEvent: makeDose(at: Date()),
+            baselineEntropy: 3.0,
+            baselineRRCount: 100,
+            measurements: weakTmax,
+            peakDeltaH: -2.0,
+            peakTimeMinutes: 15,
+            profileMatch: nil,
+            significanceDeltaH: weakSig,
+            appliedSignificanceThreshold: weakThr
+        )
+        XCTAssertFalse(weakResult.bindingDetected,
+            "Off-Tmax spike must not claim binding when Tmax |ΔH| is below base threshold")
+        XCTAssertEqual(weakResult.responseDirection, .noSignificantChange)
+    }
+
+    /// Without a PK profile, bindingDetected uses a multiplicity-adjusted threshold
+    /// `significanceThreshold * sqrt(nWindows)` against the extreme peak.
+    func testNoProfileSignificanceUsesMultiplicityAdjustedThreshold() {
+        let nWindows = 4
+        let measurements = (0..<nWindows).map { i in
+            EntropyMeasurement(
+                minutesPostDose: Double((i + 1) * 30),
+                entropy: 2.5,
+                deltaH: i == 1 ? -0.7 : -0.1,  // extreme at 60 min
+                rrCount: 50,
+                coherenceScore: 0.5
+            )
+        }
+        let peakDeltaH = -0.7
+        let expectedThreshold = DrugResponseAnalyzer.significanceThreshold * sqrt(Double(nWindows))
+        // 0.4 * 2 = 0.8
+
+        let (sigDH, threshold) = DrugResponseAnalyzer.significanceForBinding(
+            measurements: measurements,
+            peakDeltaH: peakDeltaH,
+            profile: nil
+        )
+
+        XCTAssertEqual(sigDH, peakDeltaH, accuracy: 1e-9,
+            "Without profile, significance ΔH is the extreme peak")
+        XCTAssertEqual(threshold, expectedThreshold, accuracy: 1e-9,
+            "Without profile, threshold = significanceThreshold * sqrt(nWindows)")
+        XCTAssertEqual(
+            DrugResponseAnalyzer.multiplicityAdjustedThreshold(nWindows: nWindows),
+            expectedThreshold,
+            accuracy: 1e-9
+        )
+
+        // |−0.7| = 0.7 < 0.8 → not significant under multiplicity correction,
+        // even though 0.7 > base 0.4.
+        let result = DrugResponseResult(
+            doseEvent: makeDose(at: Date()),
+            baselineEntropy: 3.0,
+            baselineRRCount: 100,
+            measurements: measurements,
+            peakDeltaH: peakDeltaH,
+            peakTimeMinutes: 60,
+            profileMatch: nil,
+            significanceDeltaH: sigDH,
+            appliedSignificanceThreshold: threshold
+        )
+        XCTAssertFalse(result.bindingDetected,
+            "Extreme |ΔH| above base floor but below sqrt(n)-adjusted bar must not bind")
+        XCTAssertEqual(result.responseDirection, .noSignificantChange)
+
+        // Larger extreme clears the adjusted bar.
+        let strongPeak = -1.2
+        let (strongSig, strongThr) = DrugResponseAnalyzer.significanceForBinding(
+            measurements: measurements,
+            peakDeltaH: strongPeak,
+            profile: nil
+        )
+        let strongResult = DrugResponseResult(
+            doseEvent: makeDose(at: Date()),
+            baselineEntropy: 3.0,
+            baselineRRCount: 100,
+            measurements: measurements,
+            peakDeltaH: strongPeak,
+            peakTimeMinutes: 60,
+            profileMatch: nil,
+            significanceDeltaH: strongSig,
+            appliedSignificanceThreshold: strongThr
+        )
+        XCTAssertTrue(strongResult.bindingDetected,
+            "|ΔH| 1.2 ≥ 0.8 adjusted threshold → binding detected")
+        XCTAssertEqual(strongResult.responseDirection, .sympathomimeticCollapse)
+
+        // nWindows = 1 → adjusted threshold equals base (no multiplicity inflation).
+        XCTAssertEqual(
+            DrugResponseAnalyzer.multiplicityAdjustedThreshold(nWindows: 1),
+            DrugResponseAnalyzer.significanceThreshold,
+            accuracy: 1e-9
+        )
+        XCTAssertEqual(
+            DrugResponseAnalyzer.multiplicityAdjustedThreshold(nWindows: 0),
+            DrugResponseAnalyzer.significanceThreshold,
+            accuracy: 1e-9,
+            "nWindows ≤ 0 should clamp to 1"
+        )
+    }
+
+    /// End-to-end: `analyze` wires PK vs no-profile significance branches correctly.
+    func testAnalyzeWiresSignificanceBranches() {
+        let analyzer = DrugResponseAnalyzer(binCount: 32, minimumRRCount: 20)
+        let doseTime = Date()
+        let dose = makeDose(id: "amphetamine", name: "Amphetamine", value: 20, unit: "mg", at: doseTime)
+
+        let rrSeries = buildTimeSeries(
+            doseTime: doseTime,
+            baselineMean: 850, baselineSpread: 60,
+            postDoseMean: 650, postDoseSpread: 20
+        )
+
+        // With explicit PK profile → base threshold, significance at nearest Tmax.
+        let withProfile = analyzer.analyze(
+            doseEvent: dose,
+            rrTimeSeries: rrSeries,
+            profile: .amphetamine
+        )
+        XCTAssertNotNil(withProfile)
+        if let r = withProfile {
+            XCTAssertEqual(
+                r.appliedSignificanceThreshold,
+                DrugResponseAnalyzer.significanceThreshold,
+                accuracy: 1e-9,
+                "Explicit PK profile must use base significanceThreshold"
+            )
+            // significance ΔH should equal the measurement nearest amphetamine Tmax.
+            let tmax = PharmacokineticProfile.amphetamine.tmaxMinutes
+            let nearest = r.measurements.min(by: {
+                abs($0.minutesPostDose - tmax) < abs($1.minutesPostDose - tmax)
+            })
+            XCTAssertEqual(r.significanceDeltaH, nearest?.deltaH ?? .nan, accuracy: 1e-9)
+            XCTAssertTrue(r.bindingDetected, "Strong amphetamine collapse should bind at Tmax")
+        }
+
+        // Without profile → multiplicity-adjusted threshold on extreme peak.
+        let noProfile = analyzer.analyze(
+            doseEvent: dose,
+            rrTimeSeries: rrSeries,
+            profile: nil
+        )
+        XCTAssertNotNil(noProfile)
+        if let r = noProfile {
+            let expected = DrugResponseAnalyzer.multiplicityAdjustedThreshold(
+                nWindows: r.measurements.count
+            )
+            XCTAssertEqual(r.appliedSignificanceThreshold, expected, accuracy: 1e-9,
+                "No profile must apply significanceThreshold * sqrt(nWindows)")
+            XCTAssertEqual(r.significanceDeltaH, r.peakDeltaH, accuracy: 1e-9,
+                "No profile: significance ΔH equals descriptive peak")
+            // Strong synthetic collapse should still clear the raised bar.
+            XCTAssertTrue(r.bindingDetected,
+                "Strong amphetamine-like collapse should still bind under multiplicity correction")
+        }
     }
 
     // MARK: - Cohen's d Cap

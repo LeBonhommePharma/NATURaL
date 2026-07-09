@@ -49,22 +49,24 @@ open NATURaL.xcodeproj
 ```
 Requires Xcode 15+, Swift 5.9+.
 
-### BonhommeCore Swift Package (shared library)
+### BonhommeCore Swift Package (shared library) — Path A (default)
 ```bash
 cd BonhommeCore
 swift build
-swift test   # runs all XCTest suites
+swift test   # Swift-only XCTest; does NOT build or link BonhommeAccel C++
 ```
+`make test` is the same path. `BonhommeCore` has no SPM dependency on Accel, so default tests stay Swift-only.
 
-### BonhommeAccel C++20 library (standalone)
+### BonhommeAccel C++20 library (standalone) — Path B (opt-in)
 ```bash
 cd BonhommeAccel
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
-Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends: SIMD (AVX2/NEON auto-detected), OpenMP, CUDA, ROCm, Metal (all optional flags in CMakeLists.txt).
+Or from repo root: `make accel` (configure + build + ctest). Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends: SIMD (AVX2/NEON auto-detected), OpenMP, CUDA, ROCm, Metal (all optional flags in CMakeLists.txt).
 
+**Dual path:** Path A (`swift test` / `make test`) validates Swift math and app logic. Path B (`cmake` + `ctest` / `make accel-test`) validates the C++ Accel kernels. Full details: `BonhommeAccel/TESTING.md`.
 ## Architecture
 
 ### Three-Layer Stack
@@ -78,18 +80,18 @@ Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends:
 `CrossDomainValidator` correlates molecular entropy (FlexAID dS) with physiological entropy (HRV) for the PokeDrug framework.
 
 ### Crooks Control Layer (`BonhommeCore/Sources/BonhommeCore/Control/`)
-Non-equilibrium session control: SCI/HRV + FlexAID ΔS + crown β → work → σ_irr → actuators.
+Crooks-**inspired** session control (heuristic σ_irr index — **not** a verified fluctuation-theorem estimator): SCI/HRV + FlexAID ΔS + crown β → feature work → control policy → actuators.
 
 ```
 PharmaControlSessionManager
   → CrooksCycleController.update(ΔH_hrv, ΔS_config, β, bpm)
-      → EigenMetalWorkKernel (Accelerate/ANE eigen work)
+      → EigenMetalWorkKernel (Accelerate eigen work; control features, not path FT)
       → DeltaHRVFlexAIDMapper (BindingEntropyProfile residual)
       → ActuatorBus (single multiplex; BeatSyncActuatorChannel owns UniversalBeatSync)
           → crown β · AirPods dial · breathing · session log · cross-domain ground
 ```
 
-Policy: σ_irr > 0.12 → grounding (92 BPM, damp β); σ_irr < 0.03 → phase flip. Universal beat locks Music / Watch / AirPods tempo once per tick.
+Policy: heuristic σ_irr > 0.12 → grounding (92 BPM, damp β); σ_irr < 0.03 → phase flip. Universal beat locks Music / Watch / AirPods tempo once per tick.
 
 ### Service Layer (`Bonhomme/Services/`)
 - **HealthKit** — HRV, heart rate, workout sessions, activity rings
@@ -127,14 +129,35 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 
 ## Testing
 
-Swift unit tests are in `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control). Xcode-level tests in `Tests/BonhommeTests/` and `Tests/BonhommeUITests/`. C++ tests in `BonhommeAccel/tests/` (5 Catch2 test files).
+### Dual path (Swift vs Accel)
 
-Run Swift tests: `cd BonhommeCore && swift test`
-Run a single Swift test: `cd BonhommeCore && swift test --filter EntropyCalculatorTests`
-Run C++ tests: `cd BonhommeAccel/build && ctest --output-on-failure`
-Run Xcode tests from CLI: `xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
-Run Xcode tests from IDE: Cmd+U with appropriate scheme selected.
+| Path | Scope | Default | Commands |
+|------|--------|---------|----------|
+| **A — Swift-only** | `BonhommeCore` XCTest | Yes (`make test`) | `cd BonhommeCore && swift test` |
+| **B — Accel C++** | Catch2 via CMake/CTest | Opt-in | `make accel` or cmake/build/ctest under `BonhommeAccel/` |
 
+Default SPM `swift test` must remain Swift-only: do not wire Accel into the `BonhommeCore` test target. Accel product linkage is Xcode/`BONHOMME_ACCEL`, not the default package test graph. See `BonhommeAccel/TESTING.md`.
+
+Swift unit tests: `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control). Xcode-level: `Tests/BonhommeTests/`, `Tests/BonhommeUITests/`. C++ Catch2: `BonhommeAccel/tests/` (entropy, correlation, pairwise, incomplete_beta + `reference_values.h`).
+
+```bash
+# Path A — Swift-only (default; must not require Accel build)
+cd BonhommeCore && swift test
+cd BonhommeCore && swift test --filter EntropyCalculatorTests
+make test
+
+# Path B — Accel CMake + ctest (opt-in)
+cd BonhommeAccel
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+# or: make accel-configure && make accel-build && make accel-test
+# or: make accel
+
+# Xcode
+xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+# IDE: Cmd+U with appropriate scheme
+```
 ## Code Conventions
 
 - Swift concurrency throughout: `async/await`, `@MainActor`, `Sendable`

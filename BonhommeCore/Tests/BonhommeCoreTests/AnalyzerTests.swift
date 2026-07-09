@@ -18,15 +18,77 @@ final class AnalyzerTests: XCTestCase {
     func testHRVAnalyzerShannonEntropy() {
         let analyzer = HRVAnalyzer(binCount: 8)
 
-        // Uniform distribution: maximum entropy
-        let uniform = Array(stride(from: 700.0, through: 900.0, by: 1.0))
+        // Uniform over the full fixed domain [300, 1500]: near-max entropy (log₂8 = 3)
+        let uniform = Array(stride(from: 300.0, through: 1500.0, by: 5.0))
         let highEntropy = analyzer.shannonEntropy(uniform)
-        XCTAssertGreaterThan(highEntropy, 2.0, "Uniform RR intervals should have high entropy")
+        XCTAssertGreaterThan(highEntropy, 2.0, "Uniform RR intervals over full domain should have high entropy")
 
-        // Nearly constant: minimum entropy
+        // Nearly constant: minimum entropy (fixed domain concentrates into few bins)
         let constant = Array(repeating: 800.0, count: 100) + [801.0]
         let lowEntropy = analyzer.shannonEntropy(constant)
         XCTAssertLessThan(lowEntropy, 1.0, "Constant RR intervals should have near-zero entropy")
+    }
+
+    func testHRVAnalyzerFixedRRDomainConstants() {
+        XCTAssertEqual(HRVAnalyzer.rrDomainMinMs, 300, accuracy: 0)
+        XCTAssertEqual(HRVAnalyzer.rrDomainMaxMs, 1500, accuracy: 0)
+        XCTAssertLessThan(HRVAnalyzer.rrDomainMinMs, HRVAnalyzer.rrDomainMaxMs)
+    }
+
+    func testHRVAnalyzerUsesFixedDomainNotAdaptive() {
+        let binCount = 32
+        let analyzer = HRVAnalyzer(binCount: binCount)
+        let calc = EntropyCalculator(binCount: binCount)
+
+        // Tight cluster well inside [300, 1500]: adaptive bins hug the data,
+        // so the same spread fills many adaptive bins but only ~1 fixed-domain bin.
+        // Deterministic ±5 ms around 800 ms (bin width fixed ≈ 37.5 ms for 32 bins).
+        let tight = (0..<200).map { i in 800.0 + Double((i % 11) - 5) }
+        let fixedH = analyzer.shannonEntropy(tight)
+        let adaptiveH = calc.shannonEntropy(tight)
+
+        XCTAssertLessThan(
+            fixedH, adaptiveH,
+            "Fixed [300,1500] domain should report lower entropy for a tight RR cluster than adaptive binning"
+        )
+
+        // Match EntropyCalculator fixed-domain API exactly
+        let expected = calc.shannonEntropy(
+            tight,
+            domainMin: HRVAnalyzer.rrDomainMinMs,
+            domainMax: HRVAnalyzer.rrDomainMaxMs
+        )
+        XCTAssertEqual(fixedH, expected, accuracy: 1e-12,
+                       "HRVAnalyzer must call shannonEntropy(_:domainMin:domainMax:) with [300,1500]")
+    }
+
+    func testHRVAnalyzerFixedDomainClampsOutliers() {
+        let binCount = 16
+        let analyzer = HRVAnalyzer(binCount: binCount)
+        let calc = EntropyCalculator(binCount: binCount)
+
+        // Values outside the physiological domain must clamp like the fixed-domain API
+        let withOutliers = [200.0, 800.0, 800.0, 800.0, 2000.0, 810.0, 790.0, 805.0]
+        let hrvH = analyzer.shannonEntropy(withOutliers)
+        let fixedH = calc.shannonEntropy(
+            withOutliers,
+            domainMin: HRVAnalyzer.rrDomainMinMs,
+            domainMax: HRVAnalyzer.rrDomainMaxMs
+        )
+        XCTAssertEqual(hrvH, fixedH, accuracy: 1e-12)
+
+        // Adaptive expands to the raw min/max including outliers; fixed domain clamps.
+        // A second series with the same interior points but no outliers should match fixed H.
+        let interiorOnly = [800.0, 800.0, 800.0, 810.0, 790.0, 805.0]
+        let interiorFixed = analyzer.shannonEntropy(interiorOnly)
+        // Clamped outliers land at domain edges, so H may differ from pure interior —
+        // but must still equal EntropyCalculator fixed-domain (already asserted).
+        // Adaptive on outliers must differ from adaptive on interior (range expanded).
+        let adaptiveOut = calc.shannonEntropy(withOutliers)
+        let adaptiveIn = calc.shannonEntropy(interiorOnly)
+        XCTAssertNotEqual(adaptiveOut, adaptiveIn, accuracy: 1e-9,
+                          "Adaptive binning expands with outliers; fixed domain does not")
+        _ = interiorFixed
     }
 
     func testHRVAnalyzerWithSignals() {
@@ -200,15 +262,16 @@ final class AnalyzerTests: XCTestCase {
 
     func testEntropyToScore() {
         let calc = EntropyCalculator(binCount: 32)
+        let maxH = log2(32.0) // 5.0 — theoretical max for 32 bins
 
         // Zero entropy → score 1.0 (maximally coherent)
         XCTAssertEqual(calc.entropyToScore(0), 1.0)
 
-        // Max entropy (8 bits) → score 0.0
-        XCTAssertEqual(calc.entropyToScore(8.0), 0.0)
+        // Theoretical max → score 0.0
+        XCTAssertEqual(calc.entropyToScore(maxH), 0.0, accuracy: 1e-12)
 
-        // Mid-range
-        XCTAssertEqual(calc.entropyToScore(4.0), 0.5, accuracy: 0.001)
+        // Mid-range: H = 2.5 → score 0.5 under log₂(32)
+        XCTAssertEqual(calc.entropyToScore(2.5), 0.5, accuracy: 0.001)
 
         // Beyond max → clamped to 0.0
         XCTAssertEqual(calc.entropyToScore(10.0), 0.0)
@@ -238,17 +301,21 @@ final class AnalyzerTests: XCTestCase {
     }
 
     func testEntropyCalculatorMatchesHRVAnalyzer() {
-        // Verify that HRVAnalyzer's delegated entropy matches EntropyCalculator
+        // HRVAnalyzer uses fixed RR domain [300, 1500] ms — match that overload
         let binCount = 8
         let calc = EntropyCalculator(binCount: binCount)
         let analyzer = HRVAnalyzer(binCount: binCount)
 
         let values = Array(stride(from: 700.0, through: 900.0, by: 1.0))
-        let calcEntropy = calc.shannonEntropy(values)
+        let calcEntropy = calc.shannonEntropy(
+            values,
+            domainMin: HRVAnalyzer.rrDomainMinMs,
+            domainMax: HRVAnalyzer.rrDomainMaxMs
+        )
         let analyzerEntropy = analyzer.shannonEntropy(values)
 
         XCTAssertEqual(calcEntropy, analyzerEntropy, accuracy: 0.0001,
-                       "EntropyCalculator and HRVAnalyzer should produce identical results")
+                       "EntropyCalculator fixed-domain and HRVAnalyzer should produce identical results")
     }
 
     // MARK: - BiofeedbackSnapshot with Insights

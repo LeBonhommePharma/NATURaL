@@ -149,6 +149,90 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         XCTAssertNil(result, "Mismatched bond counts should return nil")
     }
 
+    /// Free/bound bonds are paired by bondId, not array order.
+    /// Reversing bound bond order must yield the same total ΔS_config.
+    func testBondIdPairingIgnoresOrder() {
+        let analyzer = FlexAIDdSAnalyzer()
+
+        let freeBonds = [
+            makeAngles(bondId: "b0", spread: 180),
+            makeAngles(bondId: "b1", spread: 180),
+            makeAngles(bondId: "b2", spread: 180),
+        ]
+        // Same bond IDs, distinct spreads — order matches free
+        let boundInOrder = [
+            makeAngles(bondId: "b0", spread: 5),
+            makeAngles(bondId: "b1", spread: 60),
+            makeAngles(bondId: "b2", spread: 150),
+        ]
+        // Same bonds and spreads, reversed array order
+        let boundReversed = [
+            makeAngles(bondId: "b2", spread: 150),
+            makeAngles(bondId: "b1", spread: 60),
+            makeAngles(bondId: "b0", spread: 5),
+        ]
+
+        let free = LigandConformation(
+            substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"),
+            bonds: freeBonds
+        )
+        let poseInOrder = makePose(conformation: LigandConformation(
+            substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"),
+            bonds: boundInOrder
+        ))
+        let poseReversed = makePose(conformation: LigandConformation(
+            substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"),
+            bonds: boundReversed
+        ))
+
+        let resultInOrder = analyzer.analyze(freeConformation: free, dockingPose: poseInOrder)
+        let resultReversed = analyzer.analyze(freeConformation: free, dockingPose: poseReversed)
+
+        XCTAssertNotNil(resultInOrder)
+        XCTAssertNotNil(resultReversed)
+        guard let ordered = resultInOrder, let reversed = resultReversed else { return }
+
+        XCTAssertEqual(ordered.totalDeltaSConfig, reversed.totalDeltaSConfig, accuracy: 1e-9,
+            "Reversed bond order must produce identical total ΔS_config when paired by bondId")
+        XCTAssertEqual(ordered.bondCount, reversed.bondCount)
+
+        // Per-bond results should match when keyed by bondId
+        let orderedById = Dictionary(uniqueKeysWithValues: ordered.bondResults.map { ($0.bondId, $0) })
+        for br in reversed.bondResults {
+            guard let match = orderedById[br.bondId] else {
+                XCTFail("Missing bondId \(br.bondId) in ordered result")
+                continue
+            }
+            XCTAssertEqual(br.deltaSBits, match.deltaSBits, accuracy: 1e-9,
+                "Per-bond ΔS for \(br.bondId) should match regardless of input order")
+        }
+    }
+
+    /// Same bond count but different bondId sets must return nil.
+    func testMismatchedBondIdsReturnsNil() {
+        let analyzer = FlexAIDdSAnalyzer()
+
+        let free = LigandConformation(
+            substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"),
+            bonds: [
+                makeAngles(bondId: "b0", spread: 180),
+                makeAngles(bondId: "b1", spread: 180),
+            ]
+        )
+        // Same count (2), but b1 replaced by b2 — ID sets differ
+        let bound = LigandConformation(
+            substanceId: "test", name: LocalizedString(en: "Test", fr: "Test"),
+            bonds: [
+                makeAngles(bondId: "b0", spread: 15),
+                makeAngles(bondId: "b2", spread: 15),
+            ]
+        )
+        let pose = makePose(conformation: bound)
+
+        let result = analyzer.analyze(freeConformation: free, dockingPose: pose)
+        XCTAssertNil(result, "Mismatched bondId sets should return nil even when counts match")
+    }
+
     /// Rigid ligand (all bonds narrow even in free state) → minimal ΔS.
     func testRigidLigandMinimalDeltaS() {
         let analyzer = FlexAIDdSAnalyzer()

@@ -6,20 +6,35 @@ import Foundation
 /// docking simulations, enabling Boltzmann-weighted ensemble thermodynamics
 /// and pose importance attribution for discovery and patent claims.
 ///
+/// ## Energy Units Honesty
+///
+/// Boltzmann weighting requires an energy (or score) per pose. Two inputs exist:
+///
+/// | Source | Field | Units | Ensemble path |
+/// |--------|-------|-------|---------------|
+/// | True ΔG | `DockingPose.bindingFreeEnergy` | kcal/mol | `.kcalPerMol` |
+/// | FlexAID score | `dockingScore` only | arbitrary | `.scoreEnsemble` |
+///
+/// **Prefer `bindingFreeEnergy` when available for every pose** (kcal path).
+/// If any pose lacks it, fall back to docking scores and label the result as a
+/// **score-ensemble** — relative ranking only, not absolute free energy in kcal/mol.
+/// Never mix the two unit systems in a single ensemble.
+///
 /// ## Statistical Mechanics Foundation
 ///
-/// Each independent docking simulation produces a pose with free energy ΔGᵢ.
+/// Each independent docking simulation produces a pose with energy Eᵢ
+/// (ΔGᵢ in kcal/mol, or a docking score treated as a relative energy).
 /// The global partition function aggregates all poses into a canonical ensemble:
 ///
 /// ```
-///   Z = Σᵢ gᵢ · exp(-βΔGᵢ)       where β = 1/(kT)
+///   Z = Σᵢ gᵢ · exp(-βEᵢ)       where β = 1/(kT)
 /// ```
 ///
 /// From Z, we derive:
-///   - **Population fraction** (Boltzmann weight): pᵢ = gᵢ · exp(-βΔGᵢ) / Z
-///   - **Ensemble free energy**: ΔG_ens = -kT · ln(Z)
+///   - **Population fraction** (Boltzmann weight): pᵢ = gᵢ · exp(-βEᵢ) / Z
+///   - **Ensemble free energy**: ΔG_ens = -kT · ln(Z)  (kcal/mol only when units are `.kcalPerMol`)
 ///   - **Ensemble entropy**: S_ens = -k · Σᵢ pᵢ · ln(pᵢ)
-///   - **Internal energy**: ⟨E⟩ = Σᵢ pᵢ · ΔGᵢ
+///   - **Internal energy**: ⟨E⟩ = Σᵢ pᵢ · Eᵢ
 ///
 /// ## Massive Parallelism
 ///
@@ -91,20 +106,32 @@ public struct PartitionFunctionCalculator: Sendable {
     /// Compute the global partition function and Boltzmann weights from independent
     /// FlexAID∆S docking results.
     ///
-    /// Each result contributes one microstate. The energy ΔGᵢ used for Boltzmann
-    /// weighting is the docking score from the FlexAID scoring function (lower = better
-    /// binding = higher Boltzmann weight). Configurational entropy data (ΔS_config)
-    /// is preserved in each `PoseAttribution` as metadata.
+    /// Each result contributes one microstate. Energy for Boltzmann weighting is
+    /// resolved as follows (units honesty):
+    ///
+    /// 1. **kcal path** — if `bindingFreeEnergies` provides a non-nil kcal/mol value
+    ///    for **every** pose, those values are used and `EnsembleResult.energyUnits`
+    ///    is `.kcalPerMol`.
+    /// 2. **Score-ensemble path** — otherwise, each pose's `dockingScore` is used
+    ///    (arbitrary FlexAID units) and `energyUnits` is `.scoreEnsemble`.
+    ///    Ensemble free energy is then a relative score, not absolute ΔG in kcal/mol.
+    ///
+    /// Configurational entropy data (ΔS_config) is preserved in each
+    /// `PoseAttribution` as metadata.
     ///
     /// - Parameters:
     ///   - results: FlexAID∆S analysis results from independent simulations.
     ///   - degeneracies: Optional degeneracy factors gᵢ for each pose (default 1.0 each).
     ///     Use > 1.0 when a single representative pose stands for a cluster of similar conformations.
     ///     All values must be positive.
+    ///   - bindingFreeEnergies: Optional per-pose binding free energies in kcal/mol
+    ///     (aligned to `results`). Prefer this for thermodynamic ensembles; when every
+    ///     entry is non-nil the kcal path is taken.
     /// - Returns: `EnsembleResult` with partition function, Boltzmann weights, and thermodynamic summary.
     public func computeEnsemble(
         results: [FlexAIDdSResult],
-        degeneracies: [Double]? = nil
+        degeneracies: [Double]? = nil,
+        bindingFreeEnergies: [Double?]? = nil
     ) -> EnsembleResult? {
         guard !results.isEmpty else { return nil }
         guard temperatureK > 0 else { return nil }
@@ -113,14 +140,17 @@ public struct PartitionFunctionCalculator: Sendable {
         guard g.count == results.count else { return nil }
         guard g.allSatisfy({ $0 > 0 }) else { return nil }
 
-        // Step 1: Energy for Boltzmann weighting — docking score (lower = better binding)
-        let freeEnergies = results.map { $0.dockingScore }
+        // Step 1: Resolve energies + units (prefer bindingFreeEnergy → kcal/mol)
+        let (freeEnergies, energyUnits) = Self.resolveEnsembleEnergies(
+            results: results,
+            bindingFreeEnergies: bindingFreeEnergies
+        )
 
         // Step 2: Shift energies so the minimum is zero (numerical stability for exp)
         let minG = freeEnergies.min()!
         let shifted = freeEnergies.map { $0 - minG }
 
-        // Step 3: Boltzmann factors  wᵢ = gᵢ · exp(-β · (ΔGᵢ - ΔG_min))
+        // Step 3: Boltzmann factors  wᵢ = gᵢ · exp(-β · (Eᵢ - E_min))
         let boltzmannFactors = zip(g, shifted).map { gi, dGi in
             gi * exp(-beta * dGi)
         }
@@ -132,9 +162,10 @@ public struct PartitionFunctionCalculator: Sendable {
         // Step 5: Population fractions  pᵢ = wᵢ / Z
         let populations = boltzmannFactors.map { $0 / Z }
 
-        // Step 6: Ensemble free energy  ΔG_ens = -kT · ln(Z_shifted) + ΔG_min
+        // Step 6: Ensemble free energy  ΔG_ens = -kT · ln(Z_shifted) + E_min
         // (undo the shift: ln(Z_true) = ln(Z_shifted) + (-β·minG) isn't needed;
         // ΔG_ens = -kT·ln(Z_true) = -kT·ln(Z_shifted) - kT·(-β·minG) = -kT·ln(Z_shifted) + minG)
+        // Units: kcal/mol only when energyUnits == .kcalPerMol; else score units.
         let ensembleFreeEnergy = -(Self.kB * temperatureK) * log(Z) + minG
 
         // Steps 7-9 fused: ensemble entropy, Shannon entropy, mean energy.
@@ -177,10 +208,29 @@ public struct PartitionFunctionCalculator: Sendable {
             meanEnergy: meanEnergy,
             temperatureK: temperatureK,
             poseCount: results.count,
+            energyUnits: energyUnits,
             attributions: attributions,
             sourceResults: results,
-            sourceDegeneracies: g
+            sourceDegeneracies: g,
+            sourceBoltzmannEnergies: freeEnergies
         )
+    }
+
+    /// Resolve Boltzmann energies and their unit label.
+    ///
+    /// - Prefer `bindingFreeEnergies` when every pose has a non-nil kcal/mol value.
+    /// - Otherwise use `dockingScore` (arbitrary units) → score-ensemble.
+    /// - Partial binding free energies are **not** mixed with scores.
+    static func resolveEnsembleEnergies(
+        results: [FlexAIDdSResult],
+        bindingFreeEnergies: [Double?]?
+    ) -> (energies: [Double], units: EnsembleEnergyUnits) {
+        if let bfe = bindingFreeEnergies,
+           bfe.count == results.count,
+           bfe.allSatisfy({ $0 != nil }) {
+            return (bfe.map { $0! }, .kcalPerMol)
+        }
+        return (results.map(\.dockingScore), .scoreEnsemble)
     }
 
     /// Compute the ensemble from raw docking poses and their free-state reference.
@@ -214,7 +264,15 @@ public struct PartitionFunctionCalculator: Sendable {
         } else {
             effectiveDegeneracies = nil
         }
-        return computeEnsemble(results: results, degeneracies: effectiveDegeneracies)
+        // Prefer DockingPose.bindingFreeEnergy (kcal/mol) when present for all survivors.
+        let bindingFreeEnergies: [Double?] = survivingIndices.map {
+            dockingPoses[$0].bindingFreeEnergy
+        }
+        return computeEnsemble(
+            results: results,
+            degeneracies: effectiveDegeneracies,
+            bindingFreeEnergies: bindingFreeEnergies
+        )
     }
 
     // MARK: - Parallel Batch (Swift Concurrency)
@@ -272,7 +330,7 @@ public struct PartitionFunctionCalculator: Sendable {
         let sorted = indexed.sorted { $0.0 < $1.0 }
         let results = sorted.map(\.1)
 
-        // Align degeneracies to surviving indices.
+        // Align degeneracies and binding free energies to surviving indices.
         let effectiveDegeneracies: [Double]?
         if let g = degeneracies {
             let survivingG = sorted.map { g[$0.0] }
@@ -280,8 +338,16 @@ public struct PartitionFunctionCalculator: Sendable {
         } else {
             effectiveDegeneracies = nil
         }
+        // Prefer DockingPose.bindingFreeEnergy (kcal/mol) when present for all survivors.
+        let bindingFreeEnergies: [Double?] = sorted.map {
+            dockingPoses[$0.0].bindingFreeEnergy
+        }
 
-        return computeEnsemble(results: results, degeneracies: effectiveDegeneracies)
+        return computeEnsemble(
+            results: results,
+            degeneracies: effectiveDegeneracies,
+            bindingFreeEnergies: bindingFreeEnergies
+        )
     }
 
     // MARK: - Pose Importance Attribution
@@ -400,10 +466,12 @@ public struct PartitionFunctionCalculator: Sendable {
     ///
     /// - Parameters:
     ///   - results: FlexAID∆S analysis results.
-    ///   - binWidth: Energy bin width in kcal/mol. Default: kT at current temperature
-    ///     (≈ 0.59 kcal/mol at 298K), meaning poses within one thermal fluctuation
-    ///     are grouped together.
+    ///   - binWidth: Energy bin width in the same units as `dockingScore` (arbitrary score
+    ///     units for this auto-degeneracy path). Default: kT at current temperature
+    ///     (≈ 0.59 at 298K when scores happen to be kcal-like). Poses within one
+    ///     thermal-scale bin width are grouped together.
     /// - Returns: `EnsembleResult` with degeneracies derived from bin counts.
+    ///   Energy units are score-ensemble (docking scores only; no bindingFreeEnergy path).
     public func computeEnsembleWithAutoDegeneracy(
         results: [FlexAIDdSResult],
         binWidth: Double? = nil
@@ -456,11 +524,16 @@ public struct PartitionFunctionCalculator: Sendable {
     ///   - newResults: Additional FlexAID∆S results to absorb.
     ///   - existing: The current ensemble to extend.
     ///   - newDegeneracies: Optional degeneracy factors for the new results.
+    ///   - newBindingFreeEnergies: Optional kcal/mol free energies for `newResults`.
+    ///     To preserve a kcal-path ensemble, every existing energy must already be
+    ///     kcal/mol (`existing.energyUnits == .kcalPerMol`) and every new free energy
+    ///     must be non-nil. Otherwise the merged ensemble falls back to score-ensemble.
     /// - Returns: Updated ensemble incorporating both old and new results.
     public func absorb(
         newResults: [FlexAIDdSResult],
         into existing: EnsembleResult,
-        newDegeneracies: [Double]? = nil
+        newDegeneracies: [Double]? = nil,
+        newBindingFreeEnergies: [Double?]? = nil
     ) -> EnsembleResult? {
         guard !newResults.isEmpty else { return existing }
 
@@ -473,14 +546,63 @@ public struct PartitionFunctionCalculator: Sendable {
         let combinedResults = existing.sourceResults + newResults
         let combinedDegeneracies = existing.sourceDegeneracies + newG
 
-        return computeEnsemble(results: combinedResults, degeneracies: combinedDegeneracies)
+        // Preserve kcal path only when existing was kcal and all new FEs are present.
+        let combinedBindingFreeEnergies: [Double?]?
+        if existing.energyUnits == .kcalPerMol {
+            let existingFE: [Double?] = existing.sourceBoltzmannEnergies.map { $0 }
+            let newFE = newBindingFreeEnergies ?? Array(repeating: nil as Double?, count: newResults.count)
+            guard newFE.count == newResults.count else { return nil }
+            let merged = existingFE + newFE
+            combinedBindingFreeEnergies = merged.allSatisfy({ $0 != nil }) ? merged : nil
+        } else {
+            combinedBindingFreeEnergies = nil
+        }
+
+        return computeEnsemble(
+            results: combinedResults,
+            degeneracies: combinedDegeneracies,
+            bindingFreeEnergies: combinedBindingFreeEnergies
+        )
     }
+}
+
+// MARK: - Energy Units
+
+/// Units of the energies used for Boltzmann weighting and ensemble free energy.
+///
+/// Distinguishes thermodynamically meaningful kcal/mol ensembles from relative
+/// docking-score ensembles so callers never misread score-ensemble values as ΔG.
+public enum EnsembleEnergyUnits: String, Sendable, Equatable, Codable {
+    /// Boltzmann energies are true binding free energies ΔG in kcal/mol.
+    /// `ensembleFreeEnergy` and `meanEnergy` are absolute free energies.
+    case kcalPerMol = "kcal/mol"
+
+    /// Boltzmann energies are raw docking scores (arbitrary FlexAID units).
+    /// `ensembleFreeEnergy` is a **score-ensemble** relative value — not absolute
+    /// free energy in kcal/mol. Use for ranking poses only.
+    case scoreEnsemble = "score-ensemble"
+
+    /// Human-readable unit label for summaries and diagnostics.
+    public var displayLabel: String {
+        switch self {
+        case .kcalPerMol: return "kcal/mol"
+        case .scoreEnsemble: return "score units"
+        }
+    }
+
+    /// Whether ensemble free energy is interpretable as thermodynamic ΔG (kcal/mol).
+    public var isThermodynamic: Bool { self == .kcalPerMol }
 }
 
 // MARK: - Result Types
 
 /// Complete result of a global partition function calculation over an ensemble
 /// of independent docking simulations.
+///
+/// ## Units honesty
+/// Inspect `energyUnits` before interpreting `ensembleFreeEnergy` or `meanEnergy`:
+/// - `.kcalPerMol` — true thermodynamic ensemble free energy (kcal/mol)
+/// - `.scoreEnsemble` — relative docking-score ensemble (not absolute ΔG)
 public struct EnsembleResult: Sendable {
     /// Natural logarithm of the global partition function: ln(Z).
     ///
@@ -489,20 +611,27 @@ public struct EnsembleResult: Sendable {
     /// is within representable range, but for most downstream uses (free energy,
     /// population fractions) log-space is sufficient and numerically safer.
     ///
-    /// Relationship: ΔG_ens = -kT · logPartitionFunction.
+    /// Relationship: E_ens = -kT · logPartitionFunction (units follow `energyUnits`).
     public let logPartitionFunction: Double
 
-    /// Numerically-stabilized Z (shifted so ΔG_min = 0). Used internally.
-    /// This is always representable because it equals Σ gᵢ·exp(-β·(ΔGᵢ - ΔG_min))
+    /// Numerically-stabilized Z (shifted so E_min = 0). Used internally.
+    /// This is always representable because it equals Σ gᵢ·exp(-β·(Eᵢ - E_min))
     /// where all exponents are ≤ 0.
     let effectivePartitionFunction: Double
 
-    /// Ensemble binding free energy: ΔG_ens = -kT · ln(Z) in kcal/mol.
-    /// Always ≤ min(ΔGᵢ) because the ensemble captures all accessible states.
+    /// Ensemble free energy: E_ens = -kT · ln(Z) + shift correction.
+    ///
+    /// **Units follow `energyUnits`:**
+    /// - `.kcalPerMol` → absolute binding free energy in kcal/mol
+    /// - `.scoreEnsemble` → relative score-ensemble value (not kcal/mol)
+    ///
+    /// Always ≤ min(Eᵢ) because the ensemble captures all accessible states.
     public let ensembleFreeEnergy: Double
 
-    /// Ensemble entropy in kcal/(mol·K): S = -k · Σ pᵢ · ln(pᵢ).
+    /// Ensemble configurational entropy of the Boltzmann population:
+    /// S = -k · Σ pᵢ · ln(pᵢ), reported with k in kcal/(mol·K).
     /// Higher = more evenly distributed population (entropic binding).
+    /// Independent of whether Eᵢ are kcal or scores (depends only on {pᵢ}).
     public let ensembleEntropyKcalPerK: Double
 
     /// Shannon entropy of the Boltzmann population in bits: H = -Σ pᵢ · log₂(pᵢ).
@@ -510,7 +639,8 @@ public struct EnsembleResult: Sendable {
     /// H = 0 → single dominant pose; H = log₂(N) → all poses equally populated.
     public let shannonEntropyBits: Double
 
-    /// Mean internal energy ⟨E⟩ = Σ pᵢ · ΔGᵢ in kcal/mol.
+    /// Mean Boltzmann energy ⟨E⟩ = Σ pᵢ · Eᵢ.
+    /// Units follow `energyUnits` (kcal/mol or score units).
     public let meanEnergy: Double
 
     /// Temperature used in the calculation (Kelvin).
@@ -518,6 +648,10 @@ public struct EnsembleResult: Sendable {
 
     /// Total number of poses (microstates) in the ensemble.
     public let poseCount: Int
+
+    /// Units of Boltzmann energies / `ensembleFreeEnergy` / `meanEnergy`.
+    /// See `EnsembleEnergyUnits` — check before treating values as kcal/mol.
+    public let energyUnits: EnsembleEnergyUnits
 
     /// Per-pose attributions sorted by Boltzmann weight descending.
     /// The first entry is the most thermodynamically important pose.
@@ -528,6 +662,11 @@ public struct EnsembleResult: Sendable {
 
     /// Degeneracy factors used to compute this ensemble (preserved for incremental absorb).
     internal let sourceDegeneracies: [Double]
+
+    /// Per-pose energies actually used for Boltzmann weighting (aligned to
+    /// `sourceResults`). For kcal-path ensembles these are binding free energies;
+    /// for score-ensemble they are docking scores. Preserved for incremental absorb.
+    internal let sourceBoltzmannEnergies: [Double]
 
     /// Effective number of poses: N_eff = exp(H · ln(2)) = 2^H.
     /// Ranges from 1 (single dominant) to N (uniform distribution).
@@ -647,12 +786,13 @@ public struct EnsembleResult: Sendable {
         )
     }
 
-    /// Bilingual summary.
+    /// Bilingual summary (units label follows `energyUnits`).
     public var summary: LocalizedString {
         let zText = String(format: "%.2f", logPartitionFunction)
         let gText = String(format: "%.2f", ensembleFreeEnergy)
         let hText = String(format: "%.2f", shannonEntropyBits)
         let nEffText = String(format: "%.1f", effectivePoseCount)
+        let unitLabel = energyUnits.displayLabel
         let topPct = attributions.first.map {
             String(format: "%.1f", $0.boltzmannWeight * 100)
         } ?? "0.0"
@@ -670,11 +810,22 @@ public struct EnsembleResult: Sendable {
             bindingModeFr = "mode de liaison mixte"
         }
 
+        let ensLabelEn: String
+        let ensLabelFr: String
+        switch energyUnits {
+        case .kcalPerMol:
+            ensLabelEn = "ΔG_ens = \(gText) \(unitLabel)"
+            ensLabelFr = "ΔG_ens = \(gText) \(unitLabel)"
+        case .scoreEnsemble:
+            ensLabelEn = "E_ens = \(gText) \(unitLabel) (score-ensemble, not absolute ΔG)"
+            ensLabelFr = "E_ens = \(gText) \(unitLabel) (score-ensemble, pas un ΔG absolu)"
+        }
+
         return LocalizedString(
-            en: "Partition function ln(Z) = \(zText) over \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
+            en: "Partition function ln(Z) = \(zText) over \(poseCount) poses. \(ensLabelEn). " +
                 "Shannon H = \(hText) bits (N_eff = \(nEffText)). " +
                 "Top pose: \(topPct)% population. Binding mode: \(bindingMode).",
-            fr: "Fonction de partition ln(Z) = \(zText) sur \(poseCount) poses. ΔG_ens = \(gText) kcal/mol. " +
+            fr: "Fonction de partition ln(Z) = \(zText) sur \(poseCount) poses. \(ensLabelFr). " +
                 "Shannon H = \(hText) bits (N_eff = \(nEffText)). " +
                 "Pose principale : \(topPct) % de la population. Mode de liaison : \(bindingModeFr)."
         )
@@ -707,7 +858,9 @@ public struct PoseAttribution: Sendable {
     /// ΔS_config in bits (negative = binding constrains).
     public let deltaSConfigBits: Double
 
-    /// Docking score used for Boltzmann weighting (lower = better binding).
+    /// Energy used for Boltzmann weighting (lower = better binding).
+    /// Units match the parent `EnsembleResult.energyUnits`:
+    /// kcal/mol when that ensemble used `bindingFreeEnergy`, otherwise docking score units.
     public let freeEnergyKcal: Double
 
     /// Boltzmann population fraction pᵢ = gᵢ · exp(-βΔGᵢ) / Z.
@@ -742,6 +895,7 @@ public struct PoseAttribution: Sendable {
     public var isEssential: Bool { (cumulativeWeight - boltzmannWeight) < 0.95 }
 
     /// Bilingual summary for this single pose.
+    /// Energy is labeled generically as E (not always kcal/mol) — see parent ensemble units.
     public var summary: LocalizedString {
         let pctText = String(format: "%.1f", boltzmannWeight * 100)
         let gText = String(format: "%.2f", freeEnergyKcal)
@@ -750,10 +904,10 @@ public struct PoseAttribution: Sendable {
 
         return LocalizedString(
             en: "Pose #\(rank) [\(substanceId)→\(receptorId)]: " +
-                "p = \(pctText)%, ΔG = \(gText) kcal/mol, ΔS = \(dsText) bits. " +
+                "p = \(pctText)%, E = \(gText), ΔS = \(dsText) bits. " +
                 "Cumulative: \(cumText)%. \(isEssential ? "Essential." : "Non-essential.")",
             fr: "Pose #\(rank) [\(substanceId)→\(receptorId)] : " +
-                "p = \(pctText) %, ΔG = \(gText) kcal/mol, ΔS = \(dsText) bits. " +
+                "p = \(pctText) %, E = \(gText), ΔS = \(dsText) bits. " +
                 "Cumulatif : \(cumText) %. \(isEssential ? "Essentielle." : "Non essentielle.")"
         )
     }

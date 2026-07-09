@@ -74,9 +74,17 @@ public struct CrossDomainValidator: Sendable {
         /// Number of substances in the analysis.
         public var n: Int { observations.count }
 
+        /// p-value threshold for statistical significance (from AnalysisConfiguration).
+        public let significanceLevel: Double
+
+        /// Minimum paired observations required for significance (from AnalysisConfiguration).
+        public let minPairs: Int
+
         /// Whether the correlation is statistically significant.
-        /// Uses proper p-value testing instead of arbitrary r threshold.
-        public var isSignificant: Bool { pValue < 0.05 && n >= 5 }
+        /// Uses proper p-value testing against the configured significance level.
+        public var isSignificant: Bool {
+            pValue < significanceLevel && n >= minPairs
+        }
 
         /// Mean absolute prediction error (bits).
         /// How well |ΔS_config| predicts |ΔH_hrv| via linear regression.
@@ -125,7 +133,9 @@ public struct CrossDomainValidator: Sendable {
             pValue: Double,
             meanAbsError: Double,
             regressionSlope: Double,
-            regressionIntercept: Double
+            regressionIntercept: Double,
+            significanceLevel: Double = AnalysisConfiguration.default.crossDomainSignificanceLevel,
+            minPairs: Int = AnalysisConfiguration.default.crossDomainMinPairs
         ) {
             self.observations = observations
             self.pearsonR = pearsonR
@@ -133,6 +143,8 @@ public struct CrossDomainValidator: Sendable {
             self.meanAbsError = meanAbsError
             self.regressionSlope = regressionSlope
             self.regressionIntercept = regressionIntercept
+            self.significanceLevel = significanceLevel
+            self.minPairs = minPairs
         }
     }
 
@@ -299,7 +311,7 @@ public struct CrossDomainValidator: Sendable {
         }
     }
 
-    /// Result of three-way validation with pairwise Pearson correlations.
+    /// Result of three-way validation with pairwise Pearson correlations and p-values.
     public struct ThreeWayValidationResult: Sendable {
         /// Three-way paired observations.
         public let observations: [ThreeWayObservation]
@@ -307,44 +319,62 @@ public struct CrossDomainValidator: Sendable {
         /// Pearson r: FlexAID∆S (computational) vs SCORPIO (ITC).
         public let flexAIDvsScorpio: Double
 
+        /// Two-tailed p-value for FlexAID vs SCORPIO (t-distribution / incomplete beta).
+        public let flexAIDvsScorpioPValue: Double
+
         /// Pearson r: FlexAID∆S (computational) vs NATURaL (HRV).
         public let flexAIDvsNatural: Double
+
+        /// Two-tailed p-value for FlexAID vs NATURaL.
+        public let flexAIDvsNaturalPValue: Double
 
         /// Pearson r: SCORPIO (ITC) vs NATURaL (HRV).
         public let scorpioVsNatural: Double
 
+        /// Two-tailed p-value for SCORPIO vs NATURaL.
+        public let scorpioVsNaturalPValue: Double
+
         /// Number of substances in the three-way analysis.
         public var n: Int { observations.count }
 
-        /// Bilingual summary of pairwise correlations.
+        /// Bilingual summary of pairwise correlations and p-values.
         public var summary: LocalizedString {
             let fs = String(format: "%.3f", flexAIDvsScorpio)
             let fn = String(format: "%.3f", flexAIDvsNatural)
             let sn = String(format: "%.3f", scorpioVsNatural)
+            let pfs = String(format: "%.4f", flexAIDvsScorpioPValue)
+            let pfn = String(format: "%.4f", flexAIDvsNaturalPValue)
+            let psn = String(format: "%.4f", scorpioVsNaturalPValue)
 
             return LocalizedString(
-                en: "Three-way validation (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                fr: "Validation tripartite (n=\(n)) : FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                es: "Validación tripartita (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                ja: "三者間検証（n=\(n)）：FlexAID↔SCORPIO r=\(fs)、FlexAID↔NATURaL r=\(fn)、SCORPIO↔NATURaL r=\(sn)。",
-                zh: "三方验证（n=\(n)）：FlexAID↔SCORPIO r=\(fs)，FlexAID↔NATURaL r=\(fn)，SCORPIO↔NATURaL r=\(sn)。",
-                ko: "삼자 검증 (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                ru: "Трёхсторонняя валидация (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                de: "Drei-Wege-Validierung (n=\(n)): FlexAID↔SCORPIO r=\(fs), FlexAID↔NATURaL r=\(fn), SCORPIO↔NATURaL r=\(sn).",
-                ar: "التحقق الثلاثي (n=\(n)): FlexAID↔SCORPIO r=\(fs)، FlexAID↔NATURaL r=\(fn)، SCORPIO↔NATURaL r=\(sn)."
+                en: "Three-way validation (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                fr: "Validation tripartite (n=\(n)) : FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                es: "Validación tripartita (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                ja: "三者間検証（n=\(n)）：FlexAID↔SCORPIO r=\(fs) (p=\(pfs))、FlexAID↔NATURaL r=\(fn) (p=\(pfn))、SCORPIO↔NATURaL r=\(sn) (p=\(psn))。",
+                zh: "三方验证（n=\(n)）：FlexAID↔SCORPIO r=\(fs) (p=\(pfs))，FlexAID↔NATURaL r=\(fn) (p=\(pfn))，SCORPIO↔NATURaL r=\(sn) (p=\(psn))。",
+                ko: "삼자 검증 (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                ru: "Трёхсторонняя валидация (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                de: "Drei-Wege-Validierung (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs)), FlexAID↔NATURaL r=\(fn) (p=\(pfn)), SCORPIO↔NATURaL r=\(sn) (p=\(psn)).",
+                ar: "التحقق الثلاثي (n=\(n)): FlexAID↔SCORPIO r=\(fs) (p=\(pfs))، FlexAID↔NATURaL r=\(fn) (p=\(pfn))، SCORPIO↔NATURaL r=\(sn) (p=\(psn))."
             )
         }
 
         public init(
             observations: [ThreeWayObservation],
             flexAIDvsScorpio: Double,
+            flexAIDvsScorpioPValue: Double,
             flexAIDvsNatural: Double,
-            scorpioVsNatural: Double
+            flexAIDvsNaturalPValue: Double,
+            scorpioVsNatural: Double,
+            scorpioVsNaturalPValue: Double
         ) {
             self.observations = observations
             self.flexAIDvsScorpio = flexAIDvsScorpio
+            self.flexAIDvsScorpioPValue = flexAIDvsScorpioPValue
             self.flexAIDvsNatural = flexAIDvsNatural
+            self.flexAIDvsNaturalPValue = flexAIDvsNaturalPValue
             self.scorpioVsNatural = scorpioVsNatural
+            self.scorpioVsNaturalPValue = scorpioVsNaturalPValue
         }
     }
 
@@ -407,14 +437,20 @@ public struct CrossDomainValidator: Sendable {
         let flexAIDValues = observations.map { abs($0.flexAIDDeltaSBits) }
         let scorpioValues = observations.map { abs($0.scorpioMinusTDeltaSKcal) }
         let naturalValues = observations.map { abs($0.naturalDeltaHHRV) }
+        let n = observations.count
+
+        let rFS = pearsonCorrelation(flexAIDValues, scorpioValues)
+        let rFN = pearsonCorrelation(flexAIDValues, naturalValues)
+        let rSN = pearsonCorrelation(scorpioValues, naturalValues)
 
         return ThreeWayValidationResult(
             observations: observations,
-            flexAIDvsScorpio: pearsonCorrelation(flexAIDValues, scorpioValues),
-
-            flexAIDvsNatural: pearsonCorrelation(flexAIDValues, naturalValues),
-
-            scorpioVsNatural: pearsonCorrelation(scorpioValues, naturalValues)
+            flexAIDvsScorpio: rFS,
+            flexAIDvsScorpioPValue: Self.computePValue(r: rFS, n: n),
+            flexAIDvsNatural: rFN,
+            flexAIDvsNaturalPValue: Self.computePValue(r: rFN, n: n),
+            scorpioVsNatural: rSN,
+            scorpioVsNaturalPValue: Self.computePValue(r: rSN, n: n)
         )
     }
 
@@ -444,7 +480,9 @@ public struct CrossDomainValidator: Sendable {
             pValue: p,
             meanAbsError: regression.mae,
             regressionSlope: regression.slope,
-            regressionIntercept: regression.intercept
+            regressionIntercept: regression.intercept,
+            significanceLevel: configuration.crossDomainSignificanceLevel,
+            minPairs: configuration.crossDomainMinPairs
         )
     }
 

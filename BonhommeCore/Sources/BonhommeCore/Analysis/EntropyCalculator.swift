@@ -111,12 +111,26 @@ public struct EntropyCalculator: Sendable {
 
     /// Map entropy (bits) to a 0–1 coherence score where 1 = maximally coherent.
     ///
+    /// Uses ``binCount`` to set the theoretical maximum: log₂(binCount)
+    /// (e.g. 5.0 for the default 32-bin histogram).
+    ///
+    /// - Parameter entropy: Shannon entropy in bits.
+    /// - Returns: Score in [0.0, 1.0] where 1.0 = zero entropy (perfect coherence).
+    public func entropyToScore(_ entropy: Double) -> Double {
+        entropyToScore(entropy, maxEntropy: log2(Double(binCount)))
+    }
+
+    /// Map entropy (bits) to a 0–1 coherence score where 1 = maximally coherent.
+    ///
     /// - Parameters:
     ///   - entropy: Shannon entropy in bits.
     ///   - maxEntropy: Theoretical maximum entropy for normalization.
-    ///     Default 8.0 works for 32-bin histograms (log₂(32) ≈ 5, but practical max ~8 with noise).
+    ///     Prefer log₂(binCount) (the default when omitting this parameter via
+    ///     ``entropyToScore(_:)``). Override only when scoring against a different
+    ///     theoretical ceiling.
     /// - Returns: Score in [0.0, 1.0] where 1.0 = zero entropy (perfect coherence).
-    public func entropyToScore(_ entropy: Double, maxEntropy: Double = 8.0) -> Double {
+    public func entropyToScore(_ entropy: Double, maxEntropy: Double) -> Double {
+        guard maxEntropy > 0 else { return 1.0 }
         let clamped = max(0, min(maxEntropy, entropy))
         return 1.0 - (clamped / maxEntropy)
     }
@@ -143,20 +157,22 @@ public struct EntropyCalculator: Sendable {
         }
         #endif
 
-        guard values.count >= 2 else { return 0 }
+        // Filter non-finite before binning (parity with adaptive/circular paths and Accel).
+        let clean = values.filter { $0.isFinite }
+        guard clean.count >= 2 else { return 0 }
         let range = domainMax - domainMin
         guard range > 0 else { return 0 }
 
         let binWidth = range / Double(binCount)
         var bins = [Int](repeating: 0, count: binCount)
 
-        for value in values {
+        for value in clean {
             let clamped = max(domainMin, min(domainMax, value))
             let idx = min(binCount - 1, Int((clamped - domainMin) / binWidth))
             bins[idx] += 1
         }
 
-        let total = Double(values.count)
+        let total = Double(clean.count)
         var entropy = 0.0
         for count in bins where count > 0 {
             let p = Double(count) / total
@@ -167,11 +183,23 @@ public struct EntropyCalculator: Sendable {
 
     /// Compute both entropy and its normalized score in one call.
     ///
+    /// Score normalization defaults to maxEntropy = log₂(binCount).
+    ///
+    /// - Parameter values: Array of continuous values.
+    /// - Returns: Tuple of (entropy in bits, coherence score 0–1), or nil if insufficient data.
+    public func analyze(_ values: [Double]) -> (entropy: Double, score: Double)? {
+        analyze(values, maxEntropy: log2(Double(binCount)))
+    }
+
+    /// Compute both entropy and its normalized score in one call.
+    ///
     /// - Parameters:
     ///   - values: Array of continuous values.
     ///   - maxEntropy: Theoretical maximum for score normalization.
+    ///     Prefer log₂(binCount) (the default when omitting this parameter via
+    ///     ``analyze(_:)``). Override only when scoring against a different ceiling.
     /// - Returns: Tuple of (entropy in bits, coherence score 0–1), or nil if insufficient data.
-    public func analyze(_ values: [Double], maxEntropy: Double = 8.0) -> (entropy: Double, score: Double)? {
+    public func analyze(_ values: [Double], maxEntropy: Double) -> (entropy: Double, score: Double)? {
         guard values.count >= 2 else { return nil }
         let h = shannonEntropy(values)
         let s = entropyToScore(h, maxEntropy: maxEntropy)

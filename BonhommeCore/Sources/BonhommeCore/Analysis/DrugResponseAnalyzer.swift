@@ -5,6 +5,18 @@ import Foundation
 /// Contains the full ΔH time series (entropy delta relative to baseline)
 /// along with peak detection and optional pharmacokinetic profile matching.
 /// This is the physiological analog of FlexAID∆S binding free energy output.
+///
+/// ## Peak multiplicity / PK window policy
+/// Scanning many free post-dose windows inflates false-positive binding calls
+/// (multiple comparisons). `bindingDetected` therefore does **not** always use
+/// the raw extremum against the base noise floor:
+///
+/// - **With PK profile**: significance uses the measurement nearest Tmax
+///   (`significanceDeltaH`) against the base `significanceThreshold`
+///   (single pre-specified PK window → no multiplicity inflation).
+/// - **Without profile**: significance uses the most extreme |ΔH|
+///   (`peakDeltaH` / `significanceDeltaH`) against
+///   `significanceThreshold * sqrt(nWindows)` (root-n multiplicity correction).
 public struct DrugResponseResult: Sendable {
     /// The medication dose event that triggered this analysis.
     public let doseEvent: DoseEventSummary
@@ -18,7 +30,9 @@ public struct DrugResponseResult: Sendable {
     /// Time-series of entropy measurements at post-dose windows.
     public let measurements: [EntropyMeasurement]
 
-    /// Peak entropy delta (most extreme ΔH from baseline).
+    /// Peak entropy delta (most extreme ΔH from baseline across all windows).
+    /// Descriptive extremum — not necessarily the ΔH used for significance
+    /// (see `significanceDeltaH`).
     /// Negative = entropy collapse (sympathomimetic binding detected).
     /// Positive = entropy expansion (parasympathomimetic / vagotonic detected).
     public let peakDeltaH: Double
@@ -29,20 +43,55 @@ public struct DrugResponseResult: Sendable {
     /// If a pharmacokinetic profile was matched, the match result.
     public let profileMatch: ProfileMatchResult?
 
+    /// ΔH used for significance / `bindingDetected`.
+    /// With an explicit PK profile: ΔH of the measurement nearest Tmax.
+    /// Without a profile: same as `peakDeltaH` (most extreme window).
+    public let significanceDeltaH: Double
+
+    /// Threshold applied for `bindingDetected` and `responseDirection`.
+    /// With PK profile: base drug-response significance threshold.
+    /// Without profile: base threshold × √(nWindows).
+    public let appliedSignificanceThreshold: Double
+
     /// Whether a statistically meaningful entropy change was detected.
     /// Analogous to FlexAID∆S reporting a binding event when |ΔS_config| exceeds noise.
+    /// Uses `significanceDeltaH` and `appliedSignificanceThreshold` (PK-aware /
+    /// multiplicity-adjusted), not a naive |peakDeltaH| ≥ fixed floor.
     public var bindingDetected: Bool {
-        abs(peakDeltaH) >= DrugResponseAnalyzer.significanceThreshold
+        abs(significanceDeltaH) >= appliedSignificanceThreshold
     }
 
-    /// Direction of the autonomic shift.
+    /// Direction of the autonomic shift (uses the same significance ΔH / threshold
+    /// as `bindingDetected`).
     public var responseDirection: ResponseDirection {
-        if peakDeltaH < -DrugResponseAnalyzer.significanceThreshold {
+        if significanceDeltaH < -appliedSignificanceThreshold {
             return .sympathomimeticCollapse
-        } else if peakDeltaH > DrugResponseAnalyzer.significanceThreshold {
+        } else if significanceDeltaH > appliedSignificanceThreshold {
             return .parasympathomimeticExpansion
         }
         return .noSignificantChange
+    }
+
+    public init(
+        doseEvent: DoseEventSummary,
+        baselineEntropy: Double,
+        baselineRRCount: Int,
+        measurements: [EntropyMeasurement],
+        peakDeltaH: Double,
+        peakTimeMinutes: Double,
+        profileMatch: ProfileMatchResult?,
+        significanceDeltaH: Double? = nil,
+        appliedSignificanceThreshold: Double = DrugResponseAnalyzer.significanceThreshold
+    ) {
+        self.doseEvent = doseEvent
+        self.baselineEntropy = baselineEntropy
+        self.baselineRRCount = baselineRRCount
+        self.measurements = measurements
+        self.peakDeltaH = peakDeltaH
+        self.peakTimeMinutes = peakTimeMinutes
+        self.profileMatch = profileMatch
+        self.significanceDeltaH = significanceDeltaH ?? peakDeltaH
+        self.appliedSignificanceThreshold = appliedSignificanceThreshold
     }
 
     /// Effect size: |ΔH| / baseline_H. Dimensionless measure of response magnitude.
@@ -67,7 +116,7 @@ public struct DrugResponseResult: Sendable {
 
     /// Time to onset: first measurement where |ΔH| crosses significance threshold (minutes).
     public var onsetMinutes: Double? {
-        measurements.first { abs($0.deltaH) >= DrugResponseAnalyzer.significanceThreshold }?.minutesPostDose
+        measurements.first { abs($0.deltaH) >= appliedSignificanceThreshold }?.minutesPostDose
     }
 
     /// Time to recovery: first measurement after peak where |ΔH| drops back below threshold (minutes).
@@ -78,7 +127,7 @@ public struct DrugResponseResult: Sendable {
 
         return measurements[peakIdx...].first(where: {
             $0.minutesPostDose > peakTimeMinutes &&
-            abs($0.deltaH) < DrugResponseAnalyzer.significanceThreshold
+            abs($0.deltaH) < appliedSignificanceThreshold
         })?.minutesPostDose
     }
 
@@ -380,14 +429,70 @@ public struct DrugResponseAggregate: Sendable {
 /// an independent physiological validation of the FlexAID∆S entropy framework.
 public struct DrugResponseAnalyzer: Sendable {
 
-    /// Minimum |ΔH| in bits to consider a drug response detected.
+    /// Minimum |ΔH| in bits to consider a drug response detected at a **single**
+    /// pre-specified window (e.g. nearest Tmax when a PK profile is supplied).
+    ///
     /// Calibrated against resting HRV noise floor (~0.3 bits intra-session variation).
     /// Exceeding this threshold with p < 0.05 requires |ΔH| > 2σ of resting noise.
     /// Set to 0.4 bits — slightly below FlexAIDdSAnalyzer's 0.5-bit threshold because
     /// physiological RR-interval measurements have a higher noise floor (~0.3 bits from
     /// measurement artifacts) than molecular torsional distributions, requiring a lower
     /// detection threshold to capture genuine drug responses.
-    public static let significanceThreshold: Double = 0.4
+    ///
+    /// When no PK profile is available and multiple free windows are scanned, callers
+    /// should use `multiplicityAdjustedThreshold(nWindows:)` instead of this constant
+    /// directly — see `significanceForBinding(measurements:peakDeltaH:profile:)`.
+    public static let significanceThreshold: Double = AnalysisConfiguration.default.drugResponseSignificanceThreshold
+
+    /// Multiplicity-adjusted significance floor when scanning `nWindows` free windows
+    /// without a pre-specified PK primary peak:
+    /// `significanceThreshold * sqrt(nWindows)`.
+    ///
+    /// Root-n scaling is a simple Bonferroni-style correction under an independent-window
+    /// null: more free looks → higher bar for claiming binding from the extremum.
+    public static func multiplicityAdjustedThreshold(
+        nWindows: Int,
+        baseThreshold: Double = DrugResponseAnalyzer.significanceThreshold
+    ) -> Double {
+        let n = max(1, nWindows)
+        return baseThreshold * sqrt(Double(n))
+    }
+
+    /// Resolve the ΔH and threshold used for `bindingDetected` under the peak
+    /// multiplicity / PK window policy.
+    ///
+    /// - **With PK profile**: primary peak = measurement nearest `profile.tmaxMinutes`;
+    ///   threshold = base threshold (single pre-specified test).
+    /// - **Without profile**: primary peak = most extreme |ΔH| (`peakDeltaH`);
+    ///   threshold = base × √(nWindows).
+    ///
+    /// - Parameters:
+    ///   - measurements: Post-dose entropy windows (must be non-empty when a profile
+    ///     is supplied so a nearest-Tmax window can be chosen).
+    ///   - peakDeltaH: Descriptive extremum across windows (used when `profile == nil`).
+    ///   - profile: Optional explicit PK profile that pre-specifies the primary window.
+    ///   - baseThreshold: Noise floor from `AnalysisConfiguration.drugResponseSignificanceThreshold`.
+    /// - Returns: `(significanceDeltaH, appliedThreshold)`.
+    public static func significanceForBinding(
+        measurements: [EntropyMeasurement],
+        peakDeltaH: Double,
+        profile: PharmacokineticProfile?,
+        baseThreshold: Double = DrugResponseAnalyzer.significanceThreshold
+    ) -> (significanceDeltaH: Double, appliedThreshold: Double) {
+        if let profile, !measurements.isEmpty {
+            // Pre-specified PK primary window: measurement nearest Tmax.
+            let primary = measurements.min(by: {
+                abs($0.minutesPostDose - profile.tmaxMinutes)
+                    < abs($1.minutesPostDose - profile.tmaxMinutes)
+            })!
+            return (primary.deltaH, baseThreshold)
+        }
+        // Free multi-window scan → multiplicity-adjusted threshold.
+        return (
+            peakDeltaH,
+            multiplicityAdjustedThreshold(nWindows: measurements.count, baseThreshold: baseThreshold)
+        )
+    }
 
     /// Width of each measurement window in seconds.
     /// RR intervals within ±windowRadius of each time point are collected.
@@ -398,6 +503,9 @@ public struct DrugResponseAnalyzer: Sendable {
 
     /// Duration of baseline window before dose (seconds).
     public let baselineWindowSeconds: TimeInterval
+
+    /// Configuration for thresholds and parameters.
+    private let configuration: AnalysisConfiguration
 
     /// Entropy calculator (shared with HRVAnalyzer for mathematical parity).
     private let entropyCalc: EntropyCalculator
@@ -412,6 +520,21 @@ public struct DrugResponseAnalyzer: Sendable {
         self.windowRadius = windowRadius
         self.minimumRRCount = minimumRRCount
         self.baselineWindowSeconds = baselineWindowSeconds
+        self.configuration = AnalysisConfiguration(
+            histogramBinCount: binCount,
+            drugResponseSignificanceThreshold: AnalysisConfiguration.default.drugResponseSignificanceThreshold,
+            minimumRRCount: minimumRRCount,
+            baselineWindowSeconds: baselineWindowSeconds,
+            windowRadius: windowRadius
+        )
+    }
+
+    public init(configuration: AnalysisConfiguration) {
+        self.entropyCalc = EntropyCalculator(binCount: configuration.histogramBinCount)
+        self.windowRadius = configuration.windowRadius
+        self.minimumRRCount = configuration.minimumRRCount
+        self.baselineWindowSeconds = configuration.baselineWindowSeconds
+        self.configuration = configuration
     }
 
     // MARK: - Single Dose Analysis
@@ -489,8 +612,20 @@ public struct DrugResponseAnalyzer: Sendable {
 
         guard !measurements.isEmpty else { return nil }
 
-        // 4. Find peak ΔH (most extreme deviation from baseline)
+        // 4. Find peak ΔH (most extreme deviation from baseline) — descriptive extremum.
         let peakMeasurement = measurements.max(by: { abs($0.deltaH) < abs($1.deltaH) })!
+
+        // 4b. Peak multiplicity / PK window policy for significance:
+        //     - With explicit PK profile → primary peak = nearest Tmax, base threshold
+        //     - Without profile → extreme peak, threshold * sqrt(nWindows)
+        //     Auto profile-match below does NOT switch to the PK branch; only an
+        //     explicit `profile` argument pre-specifies the primary window.
+        let (significanceDeltaH, appliedThreshold) = Self.significanceForBinding(
+            measurements: measurements,
+            peakDeltaH: peakMeasurement.deltaH,
+            profile: profile,
+            baseThreshold: configuration.drugResponseSignificanceThreshold
+        )
 
         // 5. Match against pharmacokinetic profile
         let matchResult: ProfileMatchResult?
@@ -516,7 +651,9 @@ public struct DrugResponseAnalyzer: Sendable {
             measurements: measurements,
             peakDeltaH: peakMeasurement.deltaH,
             peakTimeMinutes: peakMeasurement.minutesPostDose,
-            profileMatch: matchResult
+            profileMatch: matchResult,
+            significanceDeltaH: significanceDeltaH,
+            appliedSignificanceThreshold: appliedThreshold
         )
     }
 

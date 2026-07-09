@@ -57,12 +57,14 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
     private func makePose(
         conformation: LigandConformation,
         receptorId: String = "1ABC",
-        dockingScore: Double = -8.5
+        dockingScore: Double = -8.5,
+        bindingFreeEnergy: Double? = nil
     ) -> DockingPose {
         DockingPose(
             boundConformation: conformation,
             receptorId: receptorId,
-            dockingScore: dockingScore
+            dockingScore: dockingScore,
+            bindingFreeEnergy: bindingFreeEnergy
         )
     }
 
@@ -663,9 +665,194 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         }
     }
 
+    // MARK: - Energy Units Honesty
+
+    /// Docking-score-only results → score-ensemble units (not kcal/mol).
+    func testScoreEnsembleUnitsWhenDockingScoreOnly() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -4.0)
+        ]
+
+        let ensemble = calc.computeEnsemble(results: results)
+        XCTAssertNotNil(ensemble)
+        guard let ens = ensemble else { return }
+
+        XCTAssertEqual(ens.energyUnits, .scoreEnsemble)
+        XCTAssertFalse(ens.energyUnits.isThermodynamic)
+        XCTAssertEqual(ens.energyUnits.displayLabel, "score units")
+        XCTAssertEqual(ens.energyUnits.rawValue, "score-ensemble")
+
+        // Boltzmann energies must be docking scores
+        if let e0 = ens.attributions.first(where: { $0.poseIndex == 0 })?.freeEnergyKcal {
+            XCTAssertEqual(e0, -10.0, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 0")
+        }
+        if let e1 = ens.attributions.first(where: { $0.poseIndex == 1 })?.freeEnergyKcal {
+            XCTAssertEqual(e1, -7.0, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 1")
+        }
+
+        // Summary must not claim absolute kcal/mol ΔG
+        XCTAssertTrue(ens.summary.en.contains("score-ensemble") || ens.summary.en.contains("score units"))
+        XCTAssertFalse(ens.summary.en.contains("kcal/mol"),
+                       "Score-ensemble summary must not claim kcal/mol")
+        XCTAssertTrue(ens.summary.fr.contains("score-ensemble") || ens.summary.fr.contains("score units"))
+    }
+
+    /// Full bindingFreeEnergy coverage → kcal/mol thermodynamic path.
+    func testKcalPerMolUnitsWhenBindingFreeEnergyAvailable() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -100.0),  // scores intentionally diverge
+            makeResult(deltaSBits: -3.0, dockingScore: -50.0),
+            makeResult(deltaSBits: -1.0, dockingScore: -10.0)
+        ]
+        // True free energies in kcal/mol (different ranking than scores)
+        let bindingFEs: [Double?] = [-8.5, -7.0, -5.5]
+
+        let ensemble = calc.computeEnsemble(
+            results: results,
+            bindingFreeEnergies: bindingFEs
+        )
+        XCTAssertNotNil(ensemble)
+        guard let ens = ensemble else { return }
+
+        XCTAssertEqual(ens.energyUnits, .kcalPerMol)
+        XCTAssertTrue(ens.energyUnits.isThermodynamic)
+        XCTAssertEqual(ens.energyUnits.displayLabel, "kcal/mol")
+        XCTAssertEqual(ens.energyUnits.rawValue, "kcal/mol")
+
+        // Boltzmann energies must be binding free energies, not docking scores
+        if let e0 = ens.attributions.first(where: { $0.poseIndex == 0 })?.freeEnergyKcal {
+            XCTAssertEqual(e0, -8.5, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 0")
+        }
+        if let e1 = ens.attributions.first(where: { $0.poseIndex == 1 })?.freeEnergyKcal {
+            XCTAssertEqual(e1, -7.0, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 1")
+        }
+        if let e2 = ens.attributions.first(where: { $0.poseIndex == 2 })?.freeEnergyKcal {
+            XCTAssertEqual(e2, -5.5, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 2")
+        }
+
+        // Dominant pose is lowest free energy (pose 0, -8.5 kcal/mol)
+        XCTAssertEqual(ens.attributions[0].poseIndex, 0)
+        XCTAssertEqual(ens.attributions[0].freeEnergyKcal, -8.5, accuracy: 1e-12)
+
+        // Summary claims kcal/mol ΔG
+        XCTAssertTrue(ens.summary.en.contains("kcal/mol"))
+        XCTAssertTrue(ens.summary.en.contains("ΔG_ens"))
+        XCTAssertFalse(ens.summary.en.contains("score-ensemble"))
+        XCTAssertTrue(ens.summary.fr.contains("kcal/mol"))
+
+        // Ensemble free energy must equal -kT ln(Z) with kcal energies
+        let kT = 1.987e-3 * ens.temperatureK
+        let expectedLogZ = -ens.ensembleFreeEnergy / kT
+        XCTAssertEqual(ens.logPartitionFunction, expectedLogZ, accuracy: 1e-8)
+    }
+
+    /// Partial bindingFreeEnergy coverage must NOT mix units → score-ensemble fallback.
+    func testPartialBindingFreeEnergyFallsBackToScoreEnsemble() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0)
+        ]
+        // One nil → cannot take kcal path
+        let partial: [Double?] = [-8.5, nil]
+
+        let ensemble = calc.computeEnsemble(
+            results: results,
+            bindingFreeEnergies: partial
+        )!
+        XCTAssertEqual(ensemble.energyUnits, .scoreEnsemble)
+        // Energies are docking scores
+        if let e0 = ensemble.attributions.first(where: { $0.poseIndex == 0 })?.freeEnergyKcal {
+            XCTAssertEqual(e0, -10.0, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 0")
+        }
+        if let e1 = ensemble.attributions.first(where: { $0.poseIndex == 1 })?.freeEnergyKcal {
+            XCTAssertEqual(e1, -7.0, accuracy: 1e-12)
+        } else {
+            XCTFail("missing pose 1")
+        }
+    }
+
+    /// From-poses path prefers DockingPose.bindingFreeEnergy when all present.
+    func testFromPosesPrefersBindingFreeEnergy() {
+        let calc = PartitionFunctionCalculator()
+        let freeConf = makeConformation(bondCount: 3, spread: 180.0)
+
+        let posesWithFE = [
+            makePose(conformation: makeConformation(bondCount: 3, spread: 10.0),
+                     dockingScore: -100.0, bindingFreeEnergy: -9.0),
+            makePose(conformation: makeConformation(bondCount: 3, spread: 50.0),
+                     dockingScore: -20.0, bindingFreeEnergy: -6.0),
+            makePose(conformation: makeConformation(bondCount: 3, spread: 120.0),
+                     dockingScore: -5.0, bindingFreeEnergy: -4.0)
+        ]
+        let kcalEns = calc.computeEnsembleFromPoses(
+            freeConformation: freeConf,
+            dockingPoses: posesWithFE
+        )!
+        XCTAssertEqual(kcalEns.energyUnits, .kcalPerMol)
+        XCTAssertEqual(kcalEns.attributions[0].freeEnergyKcal, -9.0, accuracy: 1e-12)
+
+        // Without bindingFreeEnergy → score-ensemble
+        let posesScoreOnly = [
+            makePose(conformation: makeConformation(bondCount: 3, spread: 10.0),
+                     dockingScore: -9.0),
+            makePose(conformation: makeConformation(bondCount: 3, spread: 50.0),
+                     dockingScore: -6.0)
+        ]
+        let scoreEns = calc.computeEnsembleFromPoses(
+            freeConformation: freeConf,
+            dockingPoses: posesScoreOnly
+        )!
+        XCTAssertEqual(scoreEns.energyUnits, .scoreEnsemble)
+        XCTAssertEqual(scoreEns.attributions[0].dockingScore, -9.0, accuracy: 1e-12)
+        XCTAssertEqual(scoreEns.attributions[0].freeEnergyKcal, -9.0, accuracy: 1e-12)
+    }
+
+    /// Kcal vs score paths with different energy rankings yield different populations.
+    func testKcalPathDiffersFromScoreWhenValuesDiverge() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(substanceId: "a", deltaSBits: -2.0, dockingScore: -12.0), // best score
+            makeResult(substanceId: "b", deltaSBits: -2.0, dockingScore: -6.0)   // worse score
+        ]
+        // Free energies invert ranking: b is better binder thermodynamically
+        let bindingFEs: [Double?] = [-5.0, -9.0]
+
+        let scoreEns = calc.computeEnsemble(results: results)!
+        let kcalEns = calc.computeEnsemble(
+            results: results,
+            bindingFreeEnergies: bindingFEs
+        )!
+
+        XCTAssertEqual(scoreEns.energyUnits, .scoreEnsemble)
+        XCTAssertEqual(kcalEns.energyUnits, .kcalPerMol)
+
+        XCTAssertEqual(scoreEns.attributions[0].substanceId, "a")
+        XCTAssertEqual(kcalEns.attributions[0].substanceId, "b")
+        XCTAssertNotEqual(
+            scoreEns.ensembleFreeEnergy, kcalEns.ensembleFreeEnergy, accuracy: 1e-6
+        )
+    }
+
     // MARK: - Summary Generation
 
-    /// Bilingual summary should contain key thermodynamic values.
+    /// Bilingual summary should contain key thermodynamic values (score-ensemble branch).
     func testSummaryContainsKeyValues() {
         let calc = PartitionFunctionCalculator()
         let results = [
@@ -677,17 +864,35 @@ final class PartitionFunctionCalculatorTests: XCTestCase {
         let ensemble = calc.computeEnsemble(results: results)!
 
         XCTAssertTrue(ensemble.summary.en.contains("Partition function ln(Z)"))
-        XCTAssertTrue(ensemble.summary.en.contains("kcal/mol"))
+        XCTAssertTrue(ensemble.summary.en.contains("score-ensemble") || ensemble.summary.en.contains("score units"))
         XCTAssertTrue(ensemble.summary.en.contains("Shannon"))
         XCTAssertTrue(ensemble.summary.en.contains("3 poses"))
 
         XCTAssertTrue(ensemble.summary.fr.contains("Fonction de partition ln(Z)"))
-        XCTAssertTrue(ensemble.summary.fr.contains("kcal/mol"))
+        XCTAssertTrue(ensemble.summary.fr.contains("score-ensemble") || ensemble.summary.fr.contains("score units"))
 
         // Pose attribution summary
         let topPose = ensemble.attributions[0]
         XCTAssertTrue(topPose.summary.en.contains("Pose #1"))
         XCTAssertTrue(topPose.summary.fr.contains("Pose #1"))
+    }
+
+    /// Kcal-path summary claims absolute ΔG in kcal/mol.
+    func testKcalSummaryContainsKcalUnits() {
+        let calc = PartitionFunctionCalculator()
+        let results = [
+            makeResult(deltaSBits: -5.0, dockingScore: -10.0),
+            makeResult(deltaSBits: -3.0, dockingScore: -7.0)
+        ]
+        let ensemble = calc.computeEnsemble(
+            results: results,
+            bindingFreeEnergies: [-8.0, -6.0]
+        )!
+
+        XCTAssertEqual(ensemble.energyUnits, .kcalPerMol)
+        XCTAssertTrue(ensemble.summary.en.contains("kcal/mol"))
+        XCTAssertTrue(ensemble.summary.en.contains("ΔG_ens"))
+        XCTAssertTrue(ensemble.summary.fr.contains("kcal/mol"))
     }
 
     // MARK: - Auto-Degeneracy (FOPTICS Analogy)

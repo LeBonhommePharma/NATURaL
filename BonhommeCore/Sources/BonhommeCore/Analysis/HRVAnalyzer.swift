@@ -9,8 +9,28 @@ import Foundation
 ///
 /// Methodology ported from the configurational entropy engine in FlexAIDdS,
 /// adapted from molecular torsional distributions to cardiac interval distributions.
+///
+/// ## Fixed RR domain
+/// SCI entropy uses a **fixed** physiological RR-interval domain
+/// [`rrDomainMinMs`, `rrDomainMaxMs`] (300–1500 ms), not data-adaptive binning.
+/// Fixed edges keep histograms comparable across sessions and make collapse
+/// meaningful: a narrow cluster occupies few of the full-domain bins.
 public struct HRVAnalyzer: SignalAnalyzer, Sendable {
     public let primarySignalType: SignalType = .heartRateVariability
+
+    // MARK: - Fixed RR histogram domain (ms)
+
+    /// Lower bound of the SCI RR-interval histogram domain, in milliseconds.
+    ///
+    /// 300 ms ≈ 200 BPM — extreme tachycardia. Values below this are clamped
+    /// into the first bin so outliers cannot shrink the effective domain.
+    public static let rrDomainMinMs: Double = 300
+
+    /// Upper bound of the SCI RR-interval histogram domain, in milliseconds.
+    ///
+    /// 1500 ms ≈ 40 BPM — extreme bradycardia. Values above this are clamped
+    /// into the last bin so outliers cannot expand the effective domain.
+    public static let rrDomainMaxMs: Double = 1500
 
     /// Shared entropy calculator (reusable across sleep, respiratory, activity analyzers).
     private let entropyCalc: EntropyCalculator
@@ -101,13 +121,22 @@ public struct HRVAnalyzer: SignalAnalyzer, Sendable {
 
     // MARK: - Entropy Math (delegates to EntropyCalculator)
 
-    /// Shannon entropy of RR intervals. Delegates to the shared EntropyCalculator.
+    /// Shannon entropy of RR intervals over the fixed physiological domain
+    /// [`rrDomainMinMs`, `rrDomainMaxMs`] (300–1500 ms).
+    ///
+    /// Does **not** use data-adaptive binning — identical distributions always
+    /// produce comparable histograms regardless of sample extremes.
     /// Kept as internal API so existing tests continue to work unchanged.
     func shannonEntropy(_ intervals: [Double]) -> Double {
-        entropyCalc.shannonEntropy(intervals)
+        entropyCalc.shannonEntropy(
+            intervals,
+            domainMin: Self.rrDomainMinMs,
+            domainMax: Self.rrDomainMaxMs
+        )
     }
 
     /// Map entropy (bits) to a 0–1 score where 1 = maximally focused.
+    /// Uses EntropyCalculator defaults (maxEntropy: 8.0) — do not alter.
     private func entropyToScore(_ entropy: Double) -> Double {
         entropyCalc.entropyToScore(entropy)
     }

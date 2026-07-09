@@ -174,6 +174,40 @@ TEST_CASE("Fixed-domain entropy: values clamped to domain", "[entropy][fixed]") 
     REQUIRE(result >= 0.0);
 }
 
+TEST_CASE("Fixed-domain entropy: NaN/Inf mixed equals finite-only", "[entropy][fixed]") {
+    std::vector<double> finite_only = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0};
+    std::vector<double> mixed = {10.0, NAN, 20.0, INFINITY, 30.0, 40.0, -INFINITY, 50.0,
+                                  60.0, NAN, 70.0, 80.0};
+
+    double h_finite = 0.0, h_mixed = 0.0;
+    BAStatus s1 = ba_shannon_entropy_fixed(finite_only.data(), finite_only.size(),
+                                            DEFAULT_BIN_COUNT, 0.0, 100.0, &h_finite);
+    BAStatus s2 = ba_shannon_entropy_fixed(mixed.data(), mixed.size(),
+                                            DEFAULT_BIN_COUNT, 0.0, 100.0, &h_mixed);
+    REQUIRE(s1 == BA_OK);
+    REQUIRE(s2 == BA_OK);
+    REQUIRE(!std::isnan(h_mixed));
+    REQUIRE(!std::isinf(h_mixed));
+    REQUIRE_THAT(h_mixed, WithinAbs(h_finite, ENTROPY_TOL));
+    REQUIRE(h_mixed > 0.0);
+}
+
+TEST_CASE("Fixed-domain entropy: fewer than 2 finite returns 0", "[entropy][fixed]") {
+    std::vector<double> one_finite = {1.0, NAN, INFINITY};
+    double result = -1.0;
+    BAStatus s = ba_shannon_entropy_fixed(one_finite.data(), one_finite.size(),
+                                          DEFAULT_BIN_COUNT, 0.0, 100.0, &result);
+    REQUIRE(s == BA_OK);
+    REQUIRE(result == 0.0);
+
+    std::vector<double> all_nan = {NAN, NAN, INFINITY};
+    result = -1.0;
+    s = ba_shannon_entropy_fixed(all_nan.data(), all_nan.size(),
+                                  DEFAULT_BIN_COUNT, 0.0, 100.0, &result);
+    REQUIRE(s == BA_OK);
+    REQUIRE(result == 0.0);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Batch Entropy
 // ═══════════════════════════════════════════════════════════════════════════
