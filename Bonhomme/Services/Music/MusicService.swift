@@ -6,20 +6,57 @@ import BonhommeCore
 /// Integrates with Apple Music for workout playlists with adaptive SCI-driven
 /// mood transitions. Music automatically shifts to calmer tracks when focus
 /// coherence drops and to more energizing tracks when coherence is high.
+///
+/// Universal beat sync: when bound, playback rate tracks `UniversalBeatSync` BPM
+/// so AirPods / system audio route locks to the Crooks-cycle tempo (zero stubs).
 @MainActor
 final class MusicService: ObservableObject {
     @Published var isAuthorized = false
     @Published var isPlaying = false
     @Published private(set) var adaptiveMood: WorkoutMood = .calm
+    /// Last beat snapshot applied from universal beat sync (AirPods crown β path).
+    @Published private(set) var lastBeat: BeatSyncSnapshot?
 
     /// Minimum interval between mood transitions to avoid jarring rapid switches.
     private let transitionDebounce: TimeInterval = 30
     private var lastTransitionDate: Date = .distantPast
     private var fadeTask: Task<Void, Never>?
+    private var beatBound = false
+
+    /// Nominal track BPM assumed for playback-rate scaling (MusicKit has no beat grid).
+    private let assumedTrackBPM: Double = 120
 
     func requestAuthorization() async {
         let status = await MusicAuthorization.request()
         isAuthorized = status == .authorized
+    }
+
+    /// Bind once to `UniversalBeatSync` for AirPods-class tempo lock during sessions.
+    func bindUniversalBeatSync() {
+        guard !beatBound else { return }
+        beatBound = true
+        Task { [weak self] in
+            await UniversalBeatSync.shared.addListener { snap in
+                await self?.applyBeatSync(snap)
+            }
+        }
+    }
+
+    /// Apply Crooks universal beat to MusicKit playback on the active audio route (AirPods).
+    func applyBeatSync(_ snap: BeatSyncSnapshot) async {
+        lastBeat = snap
+        guard isPlaying else { return }
+        let player = ApplicationMusicPlayer.shared
+        // Scale playback rate toward target BPM (clamped for musical sanity).
+        let rate = max(0.75, min(1.25, snap.bpm / assumedTrackBPM))
+        // Grounding → slightly slower, calmer feel.
+        let adjusted = snap.isGrounding ? min(rate, 0.92) : rate
+        player.state.playbackRate = Float(adjusted)
+    }
+
+    /// Notify AirPods crown β controller that headphone route is active/inactive.
+    func setAirPodsRouteActive(_ active: Bool) async {
+        await PharmaControlSessionManager.shared.setAirPodsRouteActive(active)
     }
 
     /// Searches Apple Music for yoga-related playlists and plays the first match.
