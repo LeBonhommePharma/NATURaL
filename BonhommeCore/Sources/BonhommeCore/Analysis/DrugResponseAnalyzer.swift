@@ -481,11 +481,12 @@ public struct DrugResponseAnalyzer: Sendable {
     ) -> (significanceDeltaH: Double, appliedThreshold: Double) {
         if let profile, !measurements.isEmpty {
             // Pre-specified PK primary window: measurement nearest Tmax.
-            let primary = measurements.min(by: {
+            if let primary = measurements.min(by: {
                 abs($0.minutesPostDose - profile.tmaxMinutes)
                     < abs($1.minutesPostDose - profile.tmaxMinutes)
-            })!
-            return (primary.deltaH, baseThreshold)
+            }) {
+                return (primary.deltaH, baseThreshold)
+            }
         }
         // Free multi-window scan → multiplicity-adjusted threshold.
         return (
@@ -613,7 +614,9 @@ public struct DrugResponseAnalyzer: Sendable {
         guard !measurements.isEmpty else { return nil }
 
         // 4. Find peak ΔH (most extreme deviation from baseline) — descriptive extremum.
-        let peakMeasurement = measurements.max(by: { abs($0.deltaH) < abs($1.deltaH) })!
+        guard let peakMeasurement = measurements.max(by: { abs($0.deltaH) < abs($1.deltaH) }) else {
+            return nil
+        }
 
         // 4b. Peak multiplicity / PK window policy for significance:
         //     - With explicit PK profile → primary peak = nearest Tmax, base threshold

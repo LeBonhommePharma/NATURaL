@@ -365,7 +365,7 @@ public struct FlexAIDdSAnalyzer: Sendable {
 
         for freeBond in freeConformation.bonds {
             // freeIds == boundIds guarantees every free bondId exists in boundById
-            let boundBond = boundById[freeBond.bondId]!
+            guard let boundBond = boundById[freeBond.bondId] else { return nil }
             let hFree = entropyCalc.circularShannonEntropy(freeBond.angles)
             let hBound = entropyCalc.circularShannonEntropy(boundBond.angles)
             bondResults.append(BondEntropyResult(

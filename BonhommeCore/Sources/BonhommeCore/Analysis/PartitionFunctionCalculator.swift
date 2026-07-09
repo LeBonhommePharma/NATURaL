@@ -147,7 +147,7 @@ public struct PartitionFunctionCalculator: Sendable {
         )
 
         // Step 2: Shift energies so the minimum is zero (numerical stability for exp)
-        let minG = freeEnergies.min()!
+        guard let minG = freeEnergies.min() else { return nil }
         let shifted = freeEnergies.map { $0 - minG }
 
         // Step 3: Boltzmann factors  wᵢ = gᵢ · exp(-β · (Eᵢ - E_min))
@@ -226,9 +226,11 @@ public struct PartitionFunctionCalculator: Sendable {
         bindingFreeEnergies: [Double?]?
     ) -> (energies: [Double], units: EnsembleEnergyUnits) {
         if let bfe = bindingFreeEnergies,
-           bfe.count == results.count,
-           bfe.allSatisfy({ $0 != nil }) {
-            return (bfe.map { $0! }, .kcalPerMol)
+           bfe.count == results.count {
+            let energies = bfe.compactMap { $0 }
+            if energies.count == results.count {
+                return (energies, .kcalPerMol)
+            }
         }
         return (results.map(\.dockingScore), .scoreEnsemble)
     }
@@ -495,7 +497,9 @@ public struct PartitionFunctionCalculator: Sendable {
             } else {
                 // Use the result closest to the bin mean as representative
                 let meanScore = currentBinResults.reduce(0.0) { $0 + $1.dockingScore } / Double(currentBinResults.count)
-                let representative = currentBinResults.min { abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore) }!
+                guard let representative = currentBinResults.min(by: {
+                    abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore)
+                }) else { return nil }
                 bins.append((representative, Double(currentBinResults.count)))
                 currentBinResults = [result]
                 currentBinStart = result.dockingScore
@@ -503,7 +507,9 @@ public struct PartitionFunctionCalculator: Sendable {
         }
         // Flush final bin
         let meanScore = currentBinResults.reduce(0.0) { $0 + $1.dockingScore } / Double(currentBinResults.count)
-        let representative = currentBinResults.min { abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore) }!
+        guard let representative = currentBinResults.min(by: {
+            abs($0.dockingScore - meanScore) < abs($1.dockingScore - meanScore)
+        }) else { return nil }
         bins.append((representative, Double(currentBinResults.count)))
 
         let representatives = bins.map(\.representative)
@@ -749,8 +755,10 @@ public struct EnsembleResult: Sendable {
             return BindingLandscapeFingerprint(cells: [], energyBinWidth: energyBinWidth, entropyBinWidth: entropyBinWidth)
         }
 
-        let minEnergy = attributions.map(\.dockingScore).min()!
-        let minEntropy = attributions.map(\.deltaSConfigBits).min()!
+        guard let minEnergy = attributions.map(\.dockingScore).min(),
+              let minEntropy = attributions.map(\.deltaSConfigBits).min() else {
+            return BindingLandscapeFingerprint(cells: [], energyBinWidth: energyBinWidth, entropyBinWidth: entropyBinWidth)
+        }
 
         // Bin each pose into a 2D cell
         var cellMap: [Int: [Int: (count: Int, weight: Double)]] = [:]

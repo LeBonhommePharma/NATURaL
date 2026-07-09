@@ -45,7 +45,7 @@ public struct MedicationAnalyzer: SignalAnalyzer, Sendable {
             byAdding: .day,
             value: -windowDays,
             to: Date()
-        )!
+        ) ?? Date.distantPast
         let windowedSignals = medSignals.filter { $0.timestamp >= cutoff }
 
         let adherence = computeAdherence(windowedSignals)

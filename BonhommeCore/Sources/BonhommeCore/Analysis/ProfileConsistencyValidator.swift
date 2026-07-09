@@ -8,7 +8,9 @@ public enum IssueSeverity: String, Sendable, Comparable {
 
     public static func < (lhs: IssueSeverity, rhs: IssueSeverity) -> Bool {
         let order: [IssueSeverity] = [.info, .warning, .error]
-        return order.firstIndex(of: lhs)! < order.firstIndex(of: rhs)!
+        let li = order.firstIndex(of: lhs) ?? 0
+        let ri = order.firstIndex(of: rhs) ?? 0
+        return li < ri
     }
 }
 

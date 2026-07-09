@@ -90,8 +90,8 @@ public struct SelectivityEntropyAnalyzer: Sendable {
         let normalized = n > 1 ? max(0, 1.0 - (entropy / maxEntropy)) : 1.0
 
         // Find dominant target
-        let dominant = targetPKi.max(by: { $0.pKi < $1.pKi })!
-        let dominantFraction = dominant.pKi / totalPKi
+        guard let dominant = targetPKi.max(by: { $0.pKi < $1.pKi }) else { return nil }
+        let dominantFraction = totalPKi > 0 ? dominant.pKi / totalPKi : 0
 
         // Derive star rating from normalized selectivity
         let stars: Int

@@ -57,7 +57,25 @@ public struct DockingInsightAnalyzer: SignalAnalyzer, Sendable {
         }
 
         // Use the most recent docking signal (O(n) instead of O(n log n) sort)
-        let latest = dockingSignals.max(by: { $0.timestamp < $1.timestamp })!
+        guard let latest = dockingSignals.max(by: { $0.timestamp < $1.timestamp }) else {
+            return AnalysisInsight(
+                signalType: .molecularDocking,
+                score: nil,
+                trend: .stable,
+                status: .normal,
+                summary: LocalizedString(
+                    en: "No molecular docking data available.",
+                    fr: "Aucune donnée de docking moléculaire disponible.",
+                    es: "No hay datos de acoplamiento molecular disponibles.",
+                    ja: "分子ドッキングデータがありません。",
+                    zh: "无分子对接数据。",
+                    ko: "분자 도킹 데이터가 없습니다.",
+                    ru: "Данные молекулярного докинга недоступны.",
+                    de: "Keine molekularen Docking-Daten verfügbar.",
+                    ar: "لا تتوفر بيانات الالتحام الجزيئي."
+                )
+            )
+        }
         let deltaSConfig = latest.deltaSConfig
 
         // Normalize to a 0–1 score: larger |ΔS| = stronger binding signal
