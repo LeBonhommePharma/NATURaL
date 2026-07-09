@@ -4,8 +4,7 @@
  * Thin shim that validates parameters, dispatches to the appropriate
  * backend via ba::get_backend(), and translates C++ results to C structs.
  *
- * Phase 1: all backends dispatch to scalar core::* functions.
- * Phases 2-4: SIMD/Metal/CUDA/ROCm backends added via switch(backend).
+ * Dispatch: NEON / AVX2 / OpenMP when compiled in, else scalar core.
  */
 
 #include "BonhommeAccel.h"
@@ -15,6 +14,15 @@
 #include "../core/statistics.h"
 #include "../core/incomplete_beta.h"
 #include "../core/pairwise.h"
+
+#if defined(BA_HAS_NEON) || defined(BA_HAS_AVX2)
+#include "../backends/simd/entropy_simd.h"
+#include "../backends/simd/correlation_simd.h"
+#endif
+
+#if defined(BA_HAS_OPENMP)
+#include "../backends/openmp/entropy_omp.h"
+#endif
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Version
@@ -64,6 +72,127 @@ const char* ba_status_string(BAStatus status) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Internal dispatch helpers
+// ═══════════════════════════════════════════════════════════════════════════
+
+static double dispatch_shannon(const double* values, size_t count, int bin_count) {
+    switch (ba::get_backend()) {
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            return ba::simd::shannon_entropy_neon(values, count, bin_count);
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            return ba::simd::shannon_entropy_avx2(values, count, bin_count);
+#endif
+        default:
+            return ba::core::shannon_entropy(values, count, bin_count);
+    }
+}
+
+static double dispatch_circular(const double* angles, size_t count, int bin_count) {
+    switch (ba::get_backend()) {
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            return ba::simd::circular_shannon_entropy_neon(angles, count, bin_count);
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            return ba::simd::circular_shannon_entropy_avx2(angles, count, bin_count);
+#endif
+        default:
+            return ba::core::circular_shannon_entropy(angles, count, bin_count);
+    }
+}
+
+static void dispatch_shannon_batch(const double* values_flat,
+                                    const size_t* offsets, const size_t* lengths,
+                                    size_t batch_count, int bin_count,
+                                    double* out_entropies) {
+    switch (ba::get_backend()) {
+#if defined(BA_HAS_OPENMP)
+        case BA_BACKEND_OPENMP:
+            ba::omp::shannon_entropy_batch_omp(values_flat, offsets, lengths,
+                                                batch_count, bin_count, out_entropies);
+            return;
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            ba::simd::shannon_entropy_batch_avx2(values_flat, offsets, lengths,
+                                                  batch_count, bin_count, out_entropies);
+            return;
+#endif
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            // No dedicated NEON batch kernel; run single-array NEON per item.
+            for (size_t b = 0; b < batch_count; ++b) {
+                out_entropies[b] = ba::simd::shannon_entropy_neon(
+                    values_flat + offsets[b], lengths[b], bin_count);
+            }
+            return;
+#endif
+        default:
+            ba::core::shannon_entropy_batch(values_flat, offsets, lengths,
+                                             batch_count, bin_count, out_entropies);
+            return;
+    }
+}
+
+static void dispatch_circular_batch(const double* values_flat,
+                                     const size_t* offsets, const size_t* lengths,
+                                     size_t batch_count, int bin_count,
+                                     double* out_entropies) {
+    switch (ba::get_backend()) {
+#if defined(BA_HAS_OPENMP)
+        case BA_BACKEND_OPENMP:
+            ba::omp::circular_shannon_entropy_batch_omp(
+                values_flat, offsets, lengths, batch_count, bin_count, out_entropies);
+            return;
+#endif
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            for (size_t b = 0; b < batch_count; ++b) {
+                out_entropies[b] = ba::simd::circular_shannon_entropy_neon(
+                    values_flat + offsets[b], lengths[b], bin_count);
+            }
+            return;
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            for (size_t b = 0; b < batch_count; ++b) {
+                out_entropies[b] = ba::simd::circular_shannon_entropy_avx2(
+                    values_flat + offsets[b], lengths[b], bin_count);
+            }
+            return;
+#endif
+        default:
+            ba::core::circular_shannon_entropy_batch(
+                values_flat, offsets, lengths, batch_count, bin_count, out_entropies);
+            return;
+    }
+}
+
+static double dispatch_pearson(const double* x, const double* y, size_t count) {
+    switch (ba::get_backend()) {
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            return ba::simd::pearson_correlation_neon(x, y, count);
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            return ba::simd::pearson_correlation_avx2(x, y, count);
+#endif
+        default:
+            return ba::core::pearson_correlation(x, y, count);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Shannon Entropy — Single
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -76,8 +205,7 @@ BAStatus ba_shannon_entropy(
     if (count < 2) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1) return BA_ERR_INVALID_PARAM;
 
-    // Dispatch to backend (Phase 1: all go to scalar core)
-    *out_entropy = ba::core::shannon_entropy(values, count, bin_count);
+    *out_entropy = dispatch_shannon(values, count, bin_count);
     return BA_OK;
 }
 
@@ -90,7 +218,7 @@ BAStatus ba_circular_shannon_entropy(
     if (count < 2) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1) return BA_ERR_INVALID_PARAM;
 
-    *out_entropy = ba::core::circular_shannon_entropy(angles, count, bin_count);
+    *out_entropy = dispatch_circular(angles, count, bin_count);
     return BA_OK;
 }
 
@@ -104,6 +232,7 @@ BAStatus ba_shannon_entropy_fixed(
     if (count < 2) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1 || domain_max <= domain_min) return BA_ERR_INVALID_PARAM;
 
+    // Fixed-domain path has no SIMD specialization yet (scalar is correct).
     *out_entropy = ba::core::shannon_entropy_fixed(values, count, bin_count,
                                                     domain_min, domain_max);
     return BA_OK;
@@ -125,8 +254,8 @@ BAStatus ba_shannon_entropy_batch(
     if (batch_count == 0) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1) return BA_ERR_INVALID_PARAM;
 
-    ba::core::shannon_entropy_batch(values_flat, offsets, lengths,
-                                     batch_count, bin_count, out_entropies);
+    dispatch_shannon_batch(values_flat, offsets, lengths,
+                           batch_count, bin_count, out_entropies);
     return BA_OK;
 }
 
@@ -142,8 +271,8 @@ BAStatus ba_circular_shannon_entropy_batch(
     if (batch_count == 0) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1) return BA_ERR_INVALID_PARAM;
 
-    ba::core::circular_shannon_entropy_batch(values_flat, offsets, lengths,
-                                              batch_count, bin_count, out_entropies);
+    dispatch_circular_batch(values_flat, offsets, lengths,
+                            batch_count, bin_count, out_entropies);
     return BA_OK;
 }
 
@@ -158,7 +287,7 @@ BAStatus ba_pearson_correlation(
     if (!x || !y || !out_r) return BA_ERR_NULL_PTR;
     if (count < 2) return BA_ERR_INSUFFICIENT_DATA;
 
-    *out_r = ba::core::pearson_correlation(x, y, count);
+    *out_r = dispatch_pearson(x, y, count);
     return BA_OK;
 }
 

@@ -43,21 +43,30 @@ set(CORE_SOURCES
 set(BACKEND_SOURCES "")
 
 # SIMD backends
+set(BA_HAS_AVX2_BACKEND OFF)
+set(BA_HAS_NEON_BACKEND OFF)
+
 if(BA_ENABLE_AVX2 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
     list(APPEND BACKEND_SOURCES src/backends/simd/entropy_avx2.cpp)
     list(APPEND BACKEND_SOURCES src/backends/simd/correlation_simd.cpp)
+    set(BA_HAS_AVX2_BACKEND ON)
 endif()
 
 if(BA_ENABLE_NEON AND (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|arm64"))
     list(APPEND BACKEND_SOURCES src/backends/simd/entropy_neon.cpp)
+    # NEON Pearson lives in correlation_simd.cpp (same TU as AVX2 kernels)
+    list(APPEND BACKEND_SOURCES src/backends/simd/correlation_simd.cpp)
+    set(BA_HAS_NEON_BACKEND ON)
 endif()
 
 # OpenMP
+set(BA_HAS_OPENMP_BACKEND OFF)
 if(BA_ENABLE_OPENMP)
     find_package(OpenMP QUIET)
     if(OpenMP_CXX_FOUND)
         list(APPEND BACKEND_SOURCES src/backends/openmp/entropy_omp.cpp)
         list(APPEND BACKEND_SOURCES src/backends/openmp/pairwise_omp.cpp)
+        set(BA_HAS_OPENMP_BACKEND ON)
     endif()
 endif()
 
@@ -116,8 +125,16 @@ target_compile_options(BonhommeAccel PRIVATE
     >
 )
 
+# Public compile defs so API/dispatch can select compiled backends
+if(BA_HAS_AVX2_BACKEND)
+    target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_AVX2)
+endif()
+if(BA_HAS_NEON_BACKEND)
+    target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_NEON)
+endif()
+
 # AVX2 flags for SIMD sources
-if(BA_ENABLE_AVX2 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
+if(BA_HAS_AVX2_BACKEND)
     foreach(src src/backends/simd/entropy_avx2.cpp src/backends/simd/correlation_simd.cpp)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
             set_source_files_properties(${src} PROPERTIES
@@ -129,11 +146,11 @@ endif()
 
 # AVX-512 flags
 if(BA_ENABLE_AVX512 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
-    # AVX-512 sources would get -mavx512f flag here
+    # AVX-512 sources would get -mavx512f flag here (kernels not yet implemented)
 endif()
 
 # OpenMP linking
-if(BA_ENABLE_OPENMP AND OpenMP_CXX_FOUND)
+if(BA_HAS_OPENMP_BACKEND)
     target_link_libraries(BonhommeAccel PRIVATE OpenMP::OpenMP_CXX)
     target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_OPENMP)
 endif()
