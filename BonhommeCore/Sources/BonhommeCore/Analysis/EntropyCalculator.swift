@@ -17,7 +17,8 @@ public struct EntropyCalculator: Sendable {
     public let binCount: Int
 
     public init(binCount: Int = 32) {
-        self.binCount = binCount
+        // binCount < 1 would zero-divide and create an empty histogram.
+        self.binCount = max(1, binCount)
     }
 
     /// Shannon entropy of a distribution of values, binned into a histogram.
@@ -42,8 +43,7 @@ public struct EntropyCalculator: Sendable {
         let clean = values.filter { $0.isFinite }
         guard clean.count >= 2 else { return 0 }
 
-        let minVal = clean.min()!
-        let maxVal = clean.max()!
+        guard let minVal = clean.min(), let maxVal = clean.max() else { return 0 }
         let range = maxVal - minVal
         guard range > 0 else { return 0 }
 
@@ -51,7 +51,9 @@ public struct EntropyCalculator: Sendable {
         var bins = [Int](repeating: 0, count: binCount)
 
         for value in clean {
-            let idx = min(binCount - 1, Int((value - minVal) / binWidth))
+            var idx = Int((value - minVal) / binWidth)
+            if idx < 0 { idx = 0 }
+            if idx >= binCount { idx = binCount - 1 }
             bins[idx] += 1
         }
 
@@ -96,7 +98,9 @@ public struct EntropyCalculator: Sendable {
             if a > 180.0 { a -= 360.0 }
             if a < -180.0 { a += 360.0 }
             // Map [-180, 180) → bin index [0, binCount)
-            let idx = min(binCount - 1, Int((a + 180.0) / binWidth))
+            var idx = Int((a + 180.0) / binWidth)
+            if idx < 0 { idx = 0 }
+            if idx >= binCount { idx = binCount - 1 }
             bins[idx] += 1
         }
 
@@ -168,7 +172,9 @@ public struct EntropyCalculator: Sendable {
 
         for value in clean {
             let clamped = max(domainMin, min(domainMax, value))
-            let idx = min(binCount - 1, Int((clamped - domainMin) / binWidth))
+            var idx = Int((clamped - domainMin) / binWidth)
+            if idx < 0 { idx = 0 }
+            if idx >= binCount { idx = binCount - 1 }
             bins[idx] += 1
         }
 
@@ -369,27 +375,44 @@ public func linearRegression(x: [Double], y: [Double]) -> (slope: Double, interc
     }
     #endif
 
-    let n = Double(x.count)
+    guard x.count == y.count, x.count >= 2 else {
+        return (slope: 0, intercept: 0, mae: 0)
+    }
+
+    // Filter non-finite pairs (parity with pearsonCorrelation / Accel)
+    var cx: [Double] = []
+    var cy: [Double] = []
+    cx.reserveCapacity(x.count)
+    cy.reserveCapacity(y.count)
+    for i in 0..<x.count {
+        if x[i].isFinite && y[i].isFinite {
+            cx.append(x[i])
+            cy.append(y[i])
+        }
+    }
+
+    let n = Double(cx.count)
     guard n >= 2 else { return (slope: 0, intercept: 0, mae: 0) }
 
-    let meanX = x.reduce(0, +) / n
-    let meanY = y.reduce(0, +) / n
+    let meanX = cx.reduce(0, +) / n
+    let meanY = cy.reduce(0, +) / n
 
     var sumXY = 0.0
     var sumX2 = 0.0
 
-    for i in 0..<x.count {
-        sumXY += (x[i] - meanX) * (y[i] - meanY)
-        sumX2 += (x[i] - meanX) * (x[i] - meanX)
+    for i in 0..<cx.count {
+        let dx = cx[i] - meanX
+        sumXY += dx * (cy[i] - meanY)
+        sumX2 += dx * dx
     }
 
     let slope = sumX2 > 0 ? sumXY / sumX2 : 0
     let intercept = meanY - slope * meanX
 
     var totalError = 0.0
-    for i in 0..<x.count {
-        let predicted = slope * x[i] + intercept
-        totalError += abs(y[i] - predicted)
+    for i in 0..<cx.count {
+        let predicted = slope * cx[i] + intercept
+        totalError += abs(cy[i] - predicted)
     }
     let mae = totalError / n
 

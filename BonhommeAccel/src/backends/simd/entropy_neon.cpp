@@ -55,8 +55,9 @@ double shannon_entropy_neon(const double* values, size_t count, int bin_count) {
 
     std::vector<int> bins(static_cast<size_t>(bin_count), 0);
     for (size_t i = 0; i < n; ++i) {
-        int idx = std::min(bin_count - 1,
-                           static_cast<int>((clean[i] - min_val) / bin_width));
+        int idx = static_cast<int>((clean[i] - min_val) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 
@@ -84,21 +85,18 @@ double circular_shannon_entropy_neon(const double* angles, size_t count, int bin
     double bin_width = 360.0 / static_cast<double>(bin_count);
     std::vector<int> bins(static_cast<size_t>(bin_count), 0);
 
-    // NEON vectorized wrapping
-    float64x2_t v360 = vdupq_n_f64(360.0);
-    float64x2_t v180 = vdupq_n_f64(180.0);
-    float64x2_t vn180 = vdupq_n_f64(-180.0);
-
+    // Pair-wise loop (scalar wrap; NEON min/max already used above for adaptive path)
     size_t simd_end = (count / 2) * 2;
     for (size_t i = 0; i < simd_end; i += 2) {
-        // Process scalar for simplicity with NaN checks
         for (int k = 0; k < 2; ++k) {
             double a = angles[i + static_cast<size_t>(k)];
             if (!std::isfinite(a)) continue;
             a = std::fmod(a, 360.0);
             if (a > 180.0) a -= 360.0;
             if (a < -180.0) a += 360.0;
-            int idx = std::min(bin_count - 1, static_cast<int>((a + 180.0) / bin_width));
+            int idx = static_cast<int>((a + 180.0) / bin_width);
+            if (idx < 0) idx = 0;
+            if (idx >= bin_count) idx = bin_count - 1;
             bins[static_cast<size_t>(idx)]++;
         }
     }
@@ -109,7 +107,9 @@ double circular_shannon_entropy_neon(const double* angles, size_t count, int bin
         a = std::fmod(a, 360.0);
         if (a > 180.0) a -= 360.0;
         if (a < -180.0) a += 360.0;
-        int idx = std::min(bin_count - 1, static_cast<int>((a + 180.0) / bin_width));
+        int idx = static_cast<int>((a + 180.0) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 

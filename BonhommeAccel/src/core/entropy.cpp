@@ -54,8 +54,10 @@ double shannon_entropy(const double* values, size_t count, int bin_count) {
     for (size_t i = 0; i < count; ++i) {
         double v = values[i];
         if (!std::isfinite(v)) continue;
-        int idx = std::min(bin_count - 1,
-                           static_cast<int>((v - min_val) / bin_width));
+        // Clamp to [0, bin_count-1] — guards against FP noise below min_val
+        int idx = static_cast<int>((v - min_val) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 
@@ -100,8 +102,9 @@ double circular_shannon_entropy(const double* angles, size_t count, int bin_coun
         if (a < -180.0) a += 360.0;
 
         // Map [-180, 180) -> bin index [0, bin_count)
-        int idx = std::min(bin_count - 1,
-                           static_cast<int>((a + 180.0) / bin_width));
+        int idx = static_cast<int>((a + 180.0) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 
@@ -143,8 +146,9 @@ double shannon_entropy_fixed(const double* values, size_t count, int bin_count,
         double v = values[i];
         if (!std::isfinite(v)) continue;
         v = std::max(domain_min, std::min(domain_max, v));
-        int idx = std::min(bin_count - 1,
-                           static_cast<int>((v - domain_min) / bin_width));
+        int idx = static_cast<int>((v - domain_min) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 
