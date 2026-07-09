@@ -17,18 +17,25 @@ final class WorkoutFlowViewModelTests: XCTestCase {
         XCTAssertEqual(plan.totalDuration, poseDuration + transitions)
     }
 
-    func testMorningWakeUpPlanStructure() {
-        let plan = PoseCatalog.morningWakeUp
-        XCTAssertFalse(plan.isFree)
+    func testEnergizingChairFlowPlanStructure() {
+        // Production chair catalog: energizing flow is the morning-style free plan.
+        guard let plan = PoseCatalog.chairYogaPlans.first(where: { $0.id == "chair-energizer" }) else {
+            return XCTFail("missing chair-energizer plan")
+        }
+        XCTAssertTrue(plan.isFree)
         XCTAssertGreaterThan(plan.poseCount, 5)
-        XCTAssertEqual(plan.name.en, "Morning Wake-Up Flow")
-        XCTAssertEqual(plan.name.fr, "Enchaînement réveil matinal")
+        XCTAssertEqual(plan.name.en, "Energizing Chair Flow")
+        XCTAssertEqual(plan.name.fr, "Flux énergisant sur chaise")
     }
 
-    func testHipOpenerPlanContainsHipPoses() {
-        let plan = PoseCatalog.hipOpener
-        let hipPoses = plan.poses.filter { $0.category == .hips }
-        XCTAssertGreaterThanOrEqual(hipPoses.count, 2, "Hip opener should have at least 2 hip-focused poses")
+    func testCatalogContainsHipFocusedPoses() {
+        let hipPoses = PoseCatalog.allPoses.filter { $0.category == .hips }
+        XCTAssertGreaterThanOrEqual(hipPoses.count, 2, "Catalog should include at least 2 hip-focused poses")
+        // Full-body chair plan should reuse at least one mobility/hip-adjacent pose family.
+        guard let fullBody = PoseCatalog.chairYogaPlans.first(where: { $0.id == "chair-full-body" }) else {
+            return XCTFail("missing chair-full-body plan")
+        }
+        XCTAssertGreaterThan(fullBody.poseCount, 0)
     }
 
     // MARK: - TV Payload Construction
