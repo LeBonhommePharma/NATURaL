@@ -2526,6 +2526,17 @@ public enum PoseCatalog {
             transitionSeconds: 5,
             isFree: true
         ),
+        // Free starter for sparse kind coverage
+        genericBuilder(
+            id: "hatha-starter",
+            kind: .hatha,
+            name: LocalizedString(en: "Hatha Starter", fr: "Hatha — Démarrage"),
+            description: LocalizedString(
+                en: "A short seated Hatha intro: breath, spinal mobility, and stillness.",
+                fr: "Courte intro Hatha assise : souffle, mobilité spinale et silence."
+            ),
+            poses: [seatedMountain, seatedCatCow, seatedForwardFold, seatedSpinalTwist, seatedMeditation]
+        ),
     ]
 
     public static let yinPlans: [WorkoutPlan] = [
@@ -2547,6 +2558,17 @@ public enum PoseCatalog {
             poses: [seatedForwardFold, seatedSpinalTwist, seatedPigeon, seatedAnklesToKnees, seatedThreadTheNeedle, seatedMeditation],
             transitionSeconds: 8,
             isFree: true
+        ),
+        genericBuilder(
+            id: "yin-starter",
+            kind: .yin,
+            name: LocalizedString(en: "Yin Starter Holds", fr: "Yin — Maintiens de démarrage"),
+            description: LocalizedString(
+                en: "Gentle long holds to open hips and spine from the chair.",
+                fr: "Maintiens doux et longs pour ouvrir hanches et colonne depuis la chaise."
+            ),
+            poses: [seatedForwardFold, seatedSpinalTwist, seatedAnklesToKnees, seatedMeditation],
+            transitionSeconds: 8
         ),
     ]
 
@@ -2611,6 +2633,18 @@ public enum PoseCatalog {
             transitionSeconds: 3,
             isFree: true
         ),
+        // Free starter — sparse kind was single-plan only
+        genericBuilder(
+            id: "power-starter",
+            kind: .power,
+            name: LocalizedString(en: "Power Starter Blast", fr: "Power — Départ explosif"),
+            description: LocalizedString(
+                en: "A short free power burst: heat, legs, and breath of joy.",
+                fr: "Courte salve power gratuite : chaleur, jambes et souffle de joie."
+            ),
+            poses: [seatedMountain, seatedHighKneeLifts, seatedWarriorII, seatedBreathOfJoy, seatedMeditation],
+            transitionSeconds: 3
+        ),
     ]
 
     public static let standingBalancePlans: [WorkoutPlan] = [
@@ -2632,6 +2666,16 @@ public enum PoseCatalog {
             poses: [seatedMountain, seatedTreePose, seatedHighKneeLifts, seatedEagleArms, seatedHalfMoon, seatedMeditation],
             transitionSeconds: 5,
             isFree: true
+        ),
+        genericBuilder(
+            id: "standing-balance-starter",
+            kind: .standingBalance,
+            name: LocalizedString(en: "Balance Starter", fr: "Équilibre — Démarrage"),
+            description: LocalizedString(
+                en: "Seated stability drills to wake up ankles, core, and focus.",
+                fr: "Exercices de stabilité assis pour réveiller chevilles, centre et focus."
+            ),
+            poses: [seatedMountain, seatedAnkleCircles, seatedTreePose, seatedHighKneeLifts, seatedMeditation]
         ),
     ]
 
@@ -2655,6 +2699,17 @@ public enum PoseCatalog {
             transitionSeconds: 6,
             isFree: true
         ),
+        genericBuilder(
+            id: "prenatal-starter",
+            kind: .prenatal,
+            name: LocalizedString(en: "Prenatal Starter Comfort", fr: "Prénatal — Confort de démarrage"),
+            description: LocalizedString(
+                en: "Very gentle free sequence for comfort, breath, and circulation.",
+                fr: "Séquence gratuite très douce pour le confort, le souffle et la circulation."
+            ),
+            poses: [seatedMountain, neckRolls, shoulderRolls, seatedCatCow, seatedAnkleCircles, seatedMeditation],
+            transitionSeconds: 6
+        ),
     ]
 
     public static let pranayamaPlans: [WorkoutPlan] = [
@@ -2677,6 +2732,17 @@ public enum PoseCatalog {
             transitionSeconds: 6,
             isFree: true
         ),
+        genericBuilder(
+            id: "pranayama-starter",
+            kind: .pranayama,
+            name: LocalizedString(en: "Breath Starter", fr: "Respiration — Démarrage"),
+            description: LocalizedString(
+                en: "A short free pranayama settle: posture, breath, and stillness.",
+                fr: "Courte assise pranayama gratuite : posture, souffle et silence."
+            ),
+            poses: [seatedMountain, seatedCatCow, seatedMeditation],
+            transitionSeconds: 6
+        ),
     ]
 
     // MARK: - Non-yoga sample plans (reuse pose catalog as movement blocks)
@@ -2698,6 +2764,16 @@ public enum PoseCatalog {
             transitionSeconds: 5,
             isFree: true
         ),
+        genericBuilder(
+            id: "mat-starter",
+            kind: .matYoga,
+            name: LocalizedString(en: "Mat Starter Flow", fr: "Tapis — Flux de démarrage"),
+            description: LocalizedString(
+                en: "Free short mat-style sequence for breath and stretch.",
+                fr: "Courte séquence gratuite style tapis pour souffle et étirement."
+            ),
+            poses: [seatedMountain, seatedCatCow, seatedForwardFold, seatedMeditation]
+        ),
     ]
 
     public static let strengthPlans: [WorkoutPlan] = [
@@ -2716,6 +2792,17 @@ public enum PoseCatalog {
             poses: [seatedHighKneeLifts, seatedWarriorII, seatedGoddess, seatedChestExpansion, seatedBreathOfJoy, seatedMountain],
             transitionSeconds: 4,
             isFree: true
+        ),
+        genericBuilder(
+            id: "strength-starter",
+            kind: .strength,
+            name: LocalizedString(en: "Strength Starter", fr: "Force — Démarrage"),
+            description: LocalizedString(
+                en: "Free intro circuit for seated strength and posture.",
+                fr: "Circuit d'intro gratuit pour force assise et posture."
+            ),
+            poses: [seatedMountain, seatedHighKneeLifts, seatedGoddess, seatedChestExpansion],
+            transitionSeconds: 4
         ),
     ]
 
@@ -2736,6 +2823,17 @@ public enum PoseCatalog {
             transitionSeconds: 3,
             isFree: true
         ),
+        genericBuilder(
+            id: "cardio-starter",
+            kind: .cardio,
+            name: LocalizedString(en: "Cardio Starter", fr: "Cardio — Démarrage"),
+            description: LocalizedString(
+                en: "Free short seated intervals to raise heart rate gently.",
+                fr: "Courts intervalles assis gratuits pour élever le rythme en douceur."
+            ),
+            poses: [seatedBreathOfJoy, seatedHighKneeLifts, seatedMeditation],
+            transitionSeconds: 3
+        ),
     ]
 
     public static let mobilityPlans: [WorkoutPlan] = [
@@ -2754,6 +2852,16 @@ public enum PoseCatalog {
             poses: [neckRolls, shoulderRolls, seatedCatCow, seatedSpinalTwist, seatedAnkleCircles, seatedWristStretches, seatedAnklesToKnees],
             transitionSeconds: 5,
             isFree: true
+        ),
+        genericBuilder(
+            id: "mobility-starter",
+            kind: .mobility,
+            name: LocalizedString(en: "Mobility Starter", fr: "Mobilité — Démarrage"),
+            description: LocalizedString(
+                en: "Free joint warm-up for neck, shoulders, and spine.",
+                fr: "Échauffement articulaire gratuit pour cou, épaules et colonne."
+            ),
+            poses: [neckRolls, shoulderRolls, seatedCatCow, seatedWristStretches, seatedAnkleCircles]
         ),
     ]
 
@@ -2774,6 +2882,17 @@ public enum PoseCatalog {
             transitionSeconds: 8,
             isFree: true
         ),
+        genericBuilder(
+            id: "meditation-starter",
+            kind: .meditation,
+            name: LocalizedString(en: "Meditation Starter", fr: "Méditation — Démarrage"),
+            description: LocalizedString(
+                en: "Free short settle into breath and stillness.",
+                fr: "Courte assise gratuite pour le souffle et le silence."
+            ),
+            poses: [seatedMountain, seatedMeditation],
+            transitionSeconds: 8
+        ),
     ]
 
     public static let generalPlans: [WorkoutPlan] = [
@@ -2792,6 +2911,15 @@ public enum PoseCatalog {
             poses: [seatedMountain, neckRolls, seatedCatCow, seatedHighKneeLifts, seatedSideBend, seatedMeditation],
             transitionSeconds: 5,
             isFree: true
+        ),
+        genericBuilder(
+            id: "general-starter",
+            kind: .general,
+            name: LocalizedString(en: "General Starter", fr: "Général — Démarrage"),
+            description: LocalizedString(
+                en: "Free all-purpose short session for any day.",
+                fr: "Courte séance gratuite polyvalente pour chaque jour."
+            )
         ),
     ]
 

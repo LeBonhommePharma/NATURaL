@@ -145,6 +145,59 @@ final class PoseCatalogTests: XCTestCase {
         }
     }
 
+    /// Every WorkoutKind must ship with ≥1 free plan (catalog freemium gate).
+    func testFreePlanCoverageAcrossAllKinds() {
+        var coverage: [(kind: String, total: Int, free: Int)] = []
+        for style in YogaStyle.allCases {
+            let plans = PoseCatalog.plans(for: style)
+            let free = plans.filter(\.isFree)
+            coverage.append((style.rawValue, plans.count, free.count))
+            XCTAssertGreaterThanOrEqual(
+                free.count, 1,
+                "Kind \(style.rawValue) missing free plan (total=\(plans.count))"
+            )
+            for plan in free {
+                XCTAssertFalse(plan.name.en.isEmpty, "Free plan \(plan.id) missing EN name")
+                XCTAssertFalse(plan.name.fr.isEmpty, "Free plan \(plan.id) missing FR name")
+                XCTAssertFalse(plan.poses.isEmpty, "Free plan \(plan.id) has no poses")
+            }
+        }
+        let report = coverage
+            .map { "\($0.kind): \($0.free)/\($0.total) free" }
+            .joined(separator: ", ")
+        XCTAssertEqual(coverage.count, YogaStyle.allCases.count, "Coverage incomplete: \(report)")
+    }
+
+    /// Sparse kinds (historically single-plan) must include a dedicated free starter.
+    func testSparseKindsHaveFreeStarterPlans() {
+        let sparseStarterIDs: [YogaStyle: String] = [
+            .power: "power-starter",
+            .standingBalance: "standing-balance-starter",
+            .prenatal: "prenatal-starter",
+            .pranayama: "pranayama-starter",
+            .hatha: "hatha-starter",
+            .yin: "yin-starter",
+            .matYoga: "mat-starter",
+            .strength: "strength-starter",
+            .cardio: "cardio-starter",
+            .mobility: "mobility-starter",
+            .meditation: "meditation-starter",
+            .general: "general-starter",
+        ]
+        for (style, starterID) in sparseStarterIDs {
+            let plans = PoseCatalog.plans(for: style)
+            guard let starter = plans.first(where: { $0.id == starterID }) else {
+                XCTFail("Sparse kind \(style.rawValue) missing starter plan id=\(starterID)")
+                continue
+            }
+            XCTAssertTrue(starter.isFree, "Starter \(starterID) must be free")
+            XCTAssertEqual(starter.style, style)
+            XCTAssertFalse(starter.name.en.isEmpty)
+            XCTAssertFalse(starter.name.fr.isEmpty)
+            XCTAssertFalse(starter.poses.isEmpty)
+        }
+    }
+
     func testStyleFilterReturnsCorrectPlans() {
         for style in YogaStyle.allCases {
             let plans = PoseCatalog.plans(for: style)
@@ -174,18 +227,25 @@ final class PoseCatalogTests: XCTestCase {
     }
 
     func testHathaPlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPlans.count, 2)
+        XCTAssertTrue(PoseCatalog.hathaPlans.contains { $0.isFree })
     }
 
     func testNonYogaSamplePlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.strengthPlans.count, 1)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.cardioPlans.count, 1)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.mobilityPlans.count, 1)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.meditationPlans.count, 1)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.matYogaPlans.count, 1)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.generalPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.strengthPlans.count, 2)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.cardioPlans.count, 2)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.mobilityPlans.count, 2)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.meditationPlans.count, 2)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.matYogaPlans.count, 2)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.generalPlans.count, 2)
         XCTAssertEqual(PoseCatalog.strengthPlans.first?.style, .strength)
         XCTAssertEqual(PoseCatalog.cardioPlans.first?.style, .cardio)
+        XCTAssertTrue(PoseCatalog.strengthPlans.contains { $0.isFree })
+        XCTAssertTrue(PoseCatalog.cardioPlans.contains { $0.isFree })
+        XCTAssertTrue(PoseCatalog.mobilityPlans.contains { $0.isFree })
+        XCTAssertTrue(PoseCatalog.meditationPlans.contains { $0.isFree })
+        XCTAssertTrue(PoseCatalog.matYogaPlans.contains { $0.isFree })
+        XCTAssertTrue(PoseCatalog.generalPlans.contains { $0.isFree })
     }
 
     func testGenericBuilderProducesKindPlan() {
@@ -201,35 +261,44 @@ final class PoseCatalogTests: XCTestCase {
     }
 
     func testYinPlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.yinPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.yinPlans.count, 2)
+        XCTAssertTrue(PoseCatalog.yinPlans.contains { $0.isFree })
     }
 
     func testRestorativePlansExist() {
         XCTAssertGreaterThanOrEqual(PoseCatalog.restorativePlans.count, 1)
+        XCTAssertTrue(PoseCatalog.restorativePlans.contains { $0.isFree })
     }
 
     func testPowerPlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.powerPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.powerPlans.count, 2)
+        XCTAssertTrue(PoseCatalog.powerPlans.contains { $0.isFree })
     }
 
     func testStandingBalancePlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.standingBalancePlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.standingBalancePlans.count, 2)
+        XCTAssertTrue(PoseCatalog.standingBalancePlans.contains { $0.isFree })
     }
 
     func testPrenatalPlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.prenatalPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.prenatalPlans.count, 2)
+        XCTAssertTrue(PoseCatalog.prenatalPlans.contains { $0.isFree })
     }
 
     func testPranayamaPlansExist() {
-        XCTAssertGreaterThanOrEqual(PoseCatalog.pranayamaPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.pranayamaPlans.count, 2)
+        XCTAssertTrue(PoseCatalog.pranayamaPlans.contains { $0.isFree })
     }
 
     // MARK: - Workout Plans
 
     func testAllPlansNotEmpty() {
         XCTAssertFalse(PoseCatalog.allPlans.isEmpty)
-        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 9,
-            "Expected 9+ plans across all styles, got \(PoseCatalog.allPlans.count)")
+        // 15 kinds × ≥1 plan; sparse starters raise floor well above legacy 9
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, YogaStyle.allCases.count,
+            "Expected ≥1 plan per kind (\(YogaStyle.allCases.count)+), got \(PoseCatalog.allPlans.count)")
+        XCTAssertGreaterThanOrEqual(PoseCatalog.allPlans.count, 27,
+            "Expected 27+ plans after sparse starters, got \(PoseCatalog.allPlans.count)")
     }
 
     func testAllPlanIdsAreUnique() {
