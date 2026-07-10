@@ -55,6 +55,13 @@ struct SummaryView: View {
             hasPersisted = true
             await persistWorkoutResult()
             ringData = try? await ringService.todaySummary()
+            if let rings = ringData {
+                AppGroupStore.writeRingProgress(
+                    move: rings.moveProgress,
+                    exercise: rings.exerciseProgress,
+                    stand: rings.standProgress
+                )
+            }
         }
     }
 
@@ -275,6 +282,18 @@ struct SummaryView: View {
         }
         streak.recordSession()
         try? modelContext.save()
+
+        // 2b. Push streak + session vitals into App Group for widgets.
+        AppGroupStore.writeStreak(
+            current: streak.currentStreak,
+            longest: streak.longestStreak,
+            lastSession: streak.lastSessionDate
+        )
+        AppGroupStore.writeSessionMetricsAndReload(
+            sci: sciScore,
+            heartRate: result.maxHeartRate.map { Int($0.rounded()) },
+            breathRate: nil
+        )
 
         // 3. Record CareKit completion if this was a prescribed workout
         if appState.careKitBridge.hasPrescriptions {

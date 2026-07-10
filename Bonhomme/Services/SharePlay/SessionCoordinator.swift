@@ -55,9 +55,14 @@ final class SessionCoordinator: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                self.isSharePlayActive = (state == .joined)
+                // GroupSession.State.invalidated carries an associated reason (SDK change).
+                if case .joined = state {
+                    self.isSharePlayActive = true
+                } else {
+                    self.isSharePlayActive = false
+                }
                 // System invalidation / leave — full local cleanup without re-leave.
-                if state == .invalidated {
+                if case .invalidated = state {
                     self.teardownSession(leaveGroup: false)
                 }
             }

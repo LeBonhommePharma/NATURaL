@@ -130,6 +130,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
 		006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRingsView.swift; sourceTree = "<group>"; };
 		033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NATURaLWidgetsBundle.swift; sourceTree = "<group>"; };
 		04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHomeView.swift; sourceTree = "<group>"; };
@@ -637,8 +638,8 @@
 		EFDC7F3A123A9292A2D85FF5 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
-
-				A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */,				FFDCC0B84EBAF743E5BBF2D0 /* Components */,
+				A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */,
+				FFDCC0B84EBAF743E5BBF2D0 /* Components */,
 			);
 			path = Shared;
 			sourceTree = "<group>";

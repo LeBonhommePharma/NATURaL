@@ -416,7 +416,9 @@ final class WorkoutFlowViewModel {
             poseTimeRemaining: Int(plan.poses.first?.durationSeconds ?? 0),
             elapsedTime: 0,
             heartRate: nil,
-            calories: 0
+            calories: 0,
+            sciScore: feedbackEngine.latestInsight(for: .heartRateVariability)?.score,
+            breathsPerMinute: breathsPerMinute
         )
 
         do {
@@ -432,13 +434,24 @@ final class WorkoutFlowViewModel {
     private func updateLiveActivity() {
         guard let liveActivity else { return }
 
+        let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+        let hr = recorder.currentHeartRate.map { Int($0) }
         let state = WorkoutActivityAttributes.ContentState(
             currentPoseName: currentPose?.name.localized ?? "",
             poseIndex: currentPoseIndex,
             poseTimeRemaining: Int(poseTimeRemaining),
             elapsedTime: elapsedTime,
-            heartRate: recorder.currentHeartRate.map { Int($0) },
-            calories: Int(recorder.activeCalories)
+            heartRate: hr,
+            calories: Int(recorder.activeCalories),
+            sciScore: sci,
+            breathsPerMinute: breathsPerMinute
+        )
+
+        // Mirror into App Group so home-screen widgets can show latest vitals.
+        AppGroupStore.writeSessionMetrics(
+            sci: sci,
+            heartRate: hr,
+            breathRate: breathsPerMinute
         )
 
         Task {
@@ -449,13 +462,23 @@ final class WorkoutFlowViewModel {
     private func endLiveActivity() {
         guard let liveActivity else { return }
 
+        let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+        let hr = recorder.currentHeartRate.map { Int($0) }
         let finalState = WorkoutActivityAttributes.ContentState(
             currentPoseName: "Complete",
             poseIndex: plan.poseCount - 1,
             poseTimeRemaining: 0,
             elapsedTime: elapsedTime,
-            heartRate: recorder.currentHeartRate.map { Int($0) },
-            calories: Int(recorder.activeCalories)
+            heartRate: hr,
+            calories: Int(recorder.activeCalories),
+            sciScore: sci,
+            breathsPerMinute: breathsPerMinute
+        )
+
+        AppGroupStore.writeSessionMetricsAndReload(
+            sci: sci,
+            heartRate: hr,
+            breathRate: breathsPerMinute
         )
 
         Task {

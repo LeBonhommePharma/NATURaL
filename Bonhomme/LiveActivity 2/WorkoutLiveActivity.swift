@@ -3,7 +3,7 @@ import WidgetKit
 import SwiftUI
 
 /// Live Activity widget for Dynamic Island and Lock Screen during active workouts.
-/// Shows current pose, time remaining, heart rate, and calories.
+/// Shows current pose, time remaining, heart rate, SCI, breath rate, and calories.
 struct WorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
@@ -11,7 +11,6 @@ struct WorkoutLiveActivity: Widget {
             lockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded region
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Image(systemName: context.attributes.styleSymbol)
@@ -30,28 +29,36 @@ struct WorkoutLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    // Progress bar
                     ProgressView(
                         value: Double(context.state.poseIndex + 1),
-                        total: Double(context.attributes.totalPoses)
+                        total: Double(max(1, context.attributes.totalPoses))
                     )
                     .tint(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
+                    HStack(spacing: 10) {
                         if let hr = context.state.heartRate {
                             Label("\(hr)", systemImage: "heart.fill")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundStyle(.red)
                         }
-                        Spacer()
+                        if let sci = context.state.sciScore {
+                            Label(formatSCI(sci), systemImage: "waveform.path.ecg")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.cyan)
+                        }
+                        if let breath = context.state.breathsPerMinute {
+                            Label(formatBreath(breath), systemImage: "wind")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.mint)
+                        }
+                        Spacer(minLength: 0)
                         Label("\(context.state.calories)", systemImage: "flame.fill")
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                             .foregroundStyle(.orange)
-                        Spacer()
                         Text("\(context.state.poseIndex + 1)/\(context.attributes.totalPoses)")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -60,9 +67,16 @@ struct WorkoutLiveActivity: Widget {
                     .font(.system(size: 12))
                     .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
             } compactTrailing: {
-                Text(formatTime(context.state.poseTimeRemaining))
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+                if let sci = context.state.sciScore {
+                    Text(formatSCI(sci))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.cyan)
+                } else {
+                    Text(formatTime(context.state.poseTimeRemaining))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
             } minimal: {
                 Image(systemName: context.attributes.styleSymbol)
                     .font(.system(size: 12))
@@ -83,7 +97,6 @@ struct WorkoutLiveActivity: Widget {
                     .foregroundStyle(.secondary)
             }
 
-            // Current pose with time
             HStack {
                 Text(context.state.currentPoseName)
                     .font(.system(size: 17, weight: .bold))
@@ -95,28 +108,32 @@ struct WorkoutLiveActivity: Widget {
                     .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.7))
             }
 
-            // Progress
             ProgressView(
                 value: Double(context.state.poseIndex + 1),
-                total: Double(context.attributes.totalPoses)
+                total: Double(max(1, context.attributes.totalPoses))
             )
             .tint(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.7))
 
-            // Stats
-            HStack {
+            HStack(spacing: 12) {
                 if let hr = context.state.heartRate {
                     Label("\(hr) bpm", systemImage: "heart.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(.red)
                 }
-                Spacer()
+                if let sci = context.state.sciScore {
+                    Label("SCI \(formatSCI(sci))", systemImage: "waveform.path.ecg")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.cyan)
+                }
+                if let breath = context.state.breathsPerMinute {
+                    Label("\(formatBreath(breath))/min", systemImage: "wind")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.mint)
+                }
+                Spacer(minLength: 0)
                 Label("\(context.state.calories) cal", systemImage: "flame.fill")
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
-                Spacer()
-                Text("Pose \(context.state.poseIndex + 1) of \(context.attributes.totalPoses)")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
             }
         }
         .padding()
@@ -132,5 +149,13 @@ struct WorkoutLiveActivity: Widget {
         let m = Int(interval) / 60
         let s = Int(interval) % 60
         return String(format: "%d:%02d", m, s)
+    }
+
+    private func formatSCI(_ score: Double) -> String {
+        "\(Int((score * 100).rounded()))%"
+    }
+
+    private func formatBreath(_ bpm: Double) -> String {
+        String(format: "%.0f", bpm)
     }
 }

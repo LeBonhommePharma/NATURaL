@@ -3,6 +3,8 @@ import Foundation
 
 /// ActivityKit attributes for the workout Live Activity displayed in Dynamic Island
 /// and on the Lock Screen during active yoga sessions.
+///
+/// Keep in sync with `LiveActivity 2/WorkoutActivityAttributes.swift` (active target source).
 struct WorkoutActivityAttributes: ActivityAttributes {
     /// Static context set when the Live Activity starts.
     let planName: String
@@ -19,5 +21,9 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         let elapsedTime: TimeInterval
         let heartRate: Int?
         let calories: Int
+        /// Shannon Collapse Index (0…1) when HRV insight is available.
+        let sciScore: Double?
+        /// Guided / effective breath rate (breaths per minute).
+        let breathsPerMinute: Double?
     }
 }
