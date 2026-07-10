@@ -224,72 +224,83 @@ BONHOMME_ACCEL=1 swift test   # requires lib present; not the default CI path
 2. Defines `BONHOMME_ACCEL` via `swiftSettings`
 3. Links `-lBonhommeAccel -lc++` + Metal/Foundation via `linkerSettings`
 
-### Option 2 — Xcode device / simulator (manual opt-in)
+### Option 2 — Ship Accel for iOS device / simulator (Path C)
 
-**Prerequisite:** a `libBonhommeAccel.a` built for the **same OS + arch** as the destination (device `arm64` ≠ host macOS `arm64` slice for linking into an iOS app).
+**Prerequisite:** `libBonhommeAccel.a` built for the **same OS + arch** as the destination.  
+Host macOS `BonhommeAccel/build/libBonhommeAccel.a` **must not** be linked into an iOS app.
 
-#### 2a. Cross-compile Accel for iOS device
-
-```bash
-cd BonhommeAccel
-cmake -B build-ios \
-  -DCMAKE_SYSTEM_NAME=iOS \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBA_BUILD_TESTS=OFF \
-  -DBA_ENABLE_OPENMP=OFF \
-  -DBA_ENABLE_METAL=ON
-cmake --build build-ios -j "$(sysctl -n hw.ncpu)"
-# → BonhommeAccel/build-ios/libBonhommeAccel.a
-```
-
-Simulator (example `arm64` Apple Silicon sim):
+#### 2a. One-shot ship script (recommended)
 
 ```bash
-cmake -B build-iossim \
-  -DCMAKE_SYSTEM_NAME=iOS \
-  -DCMAKE_OSX_SYSROOT=iphonesimulator \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBA_BUILD_TESTS=OFF \
-  -DBA_ENABLE_OPENMP=OFF
-cmake --build build-iossim -j "$(sysctl -n hw.ncpu)"
+# From repo root — builds device + simulator (arm64), creates XCFramework
+make accel-ios
+# or:
+./scripts/build-accel-apple.sh
+# optional host slice for BONHOMME_ACCEL=1 on macOS:
+make accel-apple-ship   # → ./scripts/build-accel-apple.sh --with-macos
 ```
 
-watchOS / tvOS / visionOS follow the same pattern with the appropriate `CMAKE_SYSTEM_NAME` / SDK. Prefer NEON/scalar on Watch if Metal is unavailable.
+**Outputs** (gitignored under `BonhommeAccel/dist/`):
 
-#### 2b. Wire package + app target in Xcode
+| Artifact | Use |
+|----------|-----|
+| `dist/iphoneos/libBonhommeAccel.a` | Physical iPhone (arm64), Metal + NEON |
+| `dist/iphonesimulator/libBonhommeAccel.a` | iOS Simulator arm64, Metal + NEON |
+| `dist/BonhommeAccel.xcframework` | Drag into Xcode or `FRAMEWORK_SEARCH_PATHS` |
+| `dist/manifest.txt` | Build metadata (SDK paths, lipo info) |
 
-1. **Package evaluation with Accel (recommended for local packages)**  
-   Resolve/build so `Package.swift` sees the env, e.g. from a shell before opening Xcode:
+Verify symbols:
+
+```bash
+nm BonhommeAccel/dist/iphoneos/libBonhommeAccel.a | grep 'T _ba_shannon_entropy'
+lipo -info BonhommeAccel/dist/iphoneos/libBonhommeAccel.a
+# → Non-fat file … architecture: arm64
+```
+
+Manual CMake (equivalent to the script):
+
+```bash
+cmake -B BonhommeAccel/build-iphoneos -S BonhommeAccel \
+  -DCMAKE_SYSTEM_NAME=iOS \
+  -DCMAKE_OSX_SYSROOT=iphoneos \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBA_BUILD_TESTS=OFF -DBA_ENABLE_OPENMP=OFF -DBA_ENABLE_METAL=ON
+cmake --build BonhommeAccel/build-iphoneos -j "$(sysctl -n hw.ncpu)"
+```
+
+watchOS / tvOS: `./scripts/build-accel-apple.sh --with-watchos` / `--with-tvos` (Watch defaults Metal OFF).
+
+#### 2b. Wire package + app (device)
+
+1. **Package evaluation with Accel** — `Package.swift` only enables Accel when `BONHOMME_ACCEL=1` at resolve time:
    ```bash
    export BONHOMME_ACCEL=1
-   export BONHOMME_ACCEL_LIB="/absolute/path/to/BonhommeAccel/build-ios"
+   # Point at the slice matching the destination SDK:
+   export BONHOMME_ACCEL_LIB="$PWD/BonhommeAccel/dist/iphoneos"          # device
+   # export BONHOMME_ACCEL_LIB="$PWD/BonhommeAccel/dist/iphonesimulator" # sim
    # Reset package caches if Xcode already resolved without the env:
    # File → Packages → Reset Package Caches
    open NATURaL.xcodeproj
    ```
-   If Xcode ignores the env for package evaluation, set the same define on the **BonhommeCore** package target build settings:
-   - `SWIFT_ACTIVE_COMPILATION_CONDITIONS` includes `BONHOMME_ACCEL`
-   - And temporarily set `BonhommeCore` → dependencies to include `BonhommeAccelSwift` in `Package.swift` (or use the env gate above).
 
-2. **App target linker settings** (e.g. **Bonhomme** iOS) when the package does not already `unsafeFlags`-link the `.a`:
-   - **Library Search Paths:** path containing `libBonhommeAccel.a`
+2. **App linker settings** — use `BonhommeAccel/xcconfig/BonhommeAccel.ios.xcconfig` as a base, or set:
+   - **Library Search Paths:** `BonhommeAccel/dist/iphoneos` (device) / `…/iphonesimulator` (sim)
    - **Other Linker Flags:** `-lBonhommeAccel -lc++`
-   - **Frameworks:** `Metal`, `Foundation` (if Accel built with Metal)
-   - Confirm **Frameworks, Libraries, and Embedded Content** does **not** need a second copy of Accel if the package already links it.
+   - **Frameworks:** `Metal`, `Foundation`
+   - Or link **`BonhommeAccel.xcframework`** from `dist/`
 
-3. **Do not** add Accel to **BonhommeCoreTests** / default `swift test`. Leave the package default (`BONHOMME_ACCEL` unset) for Path A.
+3. **Do not** add Accel to **BonhommeCoreTests** / default `swift test`.
 
-4. **Clean build** after toggling Accel (`Product → Clean Build Folder`) so `#if BONHOMME_ACCEL` regions recompile.
+4. **Clean build** after toggling Accel so `#if BONHOMME_ACCEL` recompiles.
 
 #### 2c. Confirm Accel is actually active
 
-- Build log / binary: presence of `ba_shannon_entropy` / Metal symbols, or
-- Runtime: `AccelBackend` / `ba_backend_name(ba_detect_best_backend())` reports Metal/NEON rather than only exercising Swift code paths,
-- Or temporarily log inside `#if BONHOMME_ACCEL` branches in `EntropyCalculator`.
+- `nm` / link map contains `ba_shannon_entropy`
+- Runtime: `ba_backend_name(ba_detect_best_backend())` → Metal or NEON on device
+- Or log inside `#if BONHOMME_ACCEL` in `EntropyCalculator`
 
 ### What not to do
 
@@ -300,6 +311,7 @@ watchOS / tvOS / visionOS follow the same pattern with the appropriate `CMAKE_SY
 | Link host `BonhommeAccel/build/libBonhommeAccel.a` into an iOS device app | Wrong platform/SDK; architecture/platform mismatch |
 | Commit a forced-on Accel Xcode configuration as the team default | Device CI and contributors without CMake Accel trees would fail |
 | Put Accel into `BonhommeCoreTests` dependencies | Violates dual-path invariant |
+| Commit `dist/*.a` / XCFramework binaries by default | Large binaries; rebuild with `make accel-ios` |
 
 ### Suggested enablement checklist
 

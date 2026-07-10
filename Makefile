@@ -1,5 +1,6 @@
 .PHONY: all build test lint lint-fix clean coverage xcode-build xcode-test \
-	accel-configure accel-build accel-test accel accel-clean help
+	accel-configure accel-build accel-test accel accel-clean \
+	accel-ios accel-apple-ship accel-apple-clean help
 
 # Default target
 all: lint test build
@@ -44,6 +45,21 @@ accel: accel-configure accel-build accel-test ## Configure, build, and ctest Acc
 accel-clean: ## Remove BonhommeAccel build tree
 	rm -rf $(ACCEL_BUILD)
 
+# Path C — cross-compile Accel for iOS device + simulator (+ XCFramework)
+# Artifacts: BonhommeAccel/dist/{iphoneos,iphonesimulator}/libBonhommeAccel.a
+#            BonhommeAccel/dist/BonhommeAccel.xcframework
+accel-ios: ## Cross-compile Accel for iPhoneOS + iOS Simulator (arm64)
+	@chmod +x scripts/build-accel-apple.sh
+	./scripts/build-accel-apple.sh
+
+accel-apple-ship: ## Accel for iOS + macOS host slice (ship + host BONHOMME_ACCEL=1)
+	@chmod +x scripts/build-accel-apple.sh
+	./scripts/build-accel-apple.sh --with-macos
+
+accel-apple-clean: ## Remove Accel Apple cross-build dirs and dist/
+	@chmod +x scripts/build-accel-apple.sh
+	./scripts/build-accel-apple.sh --clean
+
 # --- Xcode Project ---
 
 xcode-build: ## Build iOS app via xcodebuild
@@ -76,6 +92,9 @@ lint-fix: ## Run SwiftLint with auto-fix
 clean: ## Remove build artifacts (Swift + Accel + Xcode debris)
 	rm -rf BonhommeCore/.build
 	rm -rf $(ACCEL_BUILD)
+	rm -rf $(ACCEL_DIR)/build-iphoneos $(ACCEL_DIR)/build-iphonesimulator
+	rm -rf $(ACCEL_DIR)/build-macos-ship $(ACCEL_DIR)/build-watchos $(ACCEL_DIR)/build-appletvos
+	rm -rf $(ACCEL_DIR)/build-iphoneos-test $(ACCEL_DIR)/dist
 	rm -rf DerivedData
 	rm -rf ~/Library/Developer/Xcode/DerivedData/NATURaL-*
 	rm -rf TestResults.xcresult

@@ -1,0 +1,31 @@
+// Opt-in Xcode settings for shipping Bonhomme with BonhommeAccel on iOS.
+//
+// Prerequisites:
+//   make accel-ios
+//   → BonhommeAccel/dist/iphoneos/libBonhommeAccel.a
+//   → BonhommeAccel/dist/iphonesimulator/libBonhommeAccel.a
+//
+// Apply (example) on the Bonhomme app target or a configuration that also
+// re-resolves BonhommeCore with BONHOMME_ACCEL=1 (Package.swift env gate).
+//
+// IMPORTANT: Package.swift must see BONHOMME_ACCEL=1 so BonhommeCore compiles
+// #if BONHOMME_ACCEL branches and depends on BonhommeAccelSwift. Setting only
+// this xcconfig on the app is not enough for the package sources.
+
+// Prefer xcframework when present (Xcode 15+).
+// FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = $(SRCROOT)/BonhommeAccel/dist
+// FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*] = $(SRCROOT)/BonhommeAccel/dist
+// OTHER_LDFLAGS = $(inherited) -framework BonhommeAccel
+
+// Static library path (SDK-specific).
+LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64] = $(inherited) $(SRCROOT)/BonhommeAccel/dist/iphoneos
+LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64] = $(inherited) $(SRCROOT)/BonhommeAccel/dist/iphonesimulator
+
+OTHER_LDFLAGS[sdk=iphoneos*] = $(inherited) -lBonhommeAccel -lc++ -framework Metal -framework Foundation
+OTHER_LDFLAGS[sdk=iphonesimulator*] = $(inherited) -lBonhommeAccel -lc++ -framework Metal -framework Foundation
+
+// If you force the define on the app only, Accel still will not activate inside
+// BonhommeCore. Prefer launching Xcode from a shell with:
+//   export BONHOMME_ACCEL=1
+//   export BONHOMME_ACCEL_LIB="$PWD/BonhommeAccel/dist/iphoneos"
+// and File → Packages → Reset Package Caches.

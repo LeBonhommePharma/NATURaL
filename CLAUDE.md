@@ -66,7 +66,17 @@ ctest --test-dir build --output-on-failure
 ```
 Or from repo root: `make accel` (configure + build + ctest). Requires CMake 3.20+. Tests use Catch2 v3.5.2 (fetched automatically). Backends: SIMD (AVX2/NEON auto-detected), OpenMP, CUDA, ROCm, Metal (all optional flags in CMakeLists.txt).
 
-**Dual path:** Path A (`swift test` / `make test`) validates Swift math and app logic. Path B (`cmake` + `ctest` / `make accel-test`) validates the C++ Accel kernels. Full details: `BonhommeAccel/TESTING.md`.
+### BonhommeAccel for iOS device / simulator — Path C (opt-in ship)
+```bash
+make accel-ios
+# → BonhommeAccel/dist/iphoneos/libBonhommeAccel.a
+# → BonhommeAccel/dist/iphonesimulator/libBonhommeAccel.a
+# → BonhommeAccel/dist/BonhommeAccel.xcframework
+# Link with BONHOMME_ACCEL=1 and BONHOMME_ACCEL_LIB=…/dist/iphoneos (device)
+# or …/dist/iphonesimulator (sim). See BonhommeAccel/TESTING.md Path C.
+```
+
+**Dual path:** Path A (`swift test` / `make test`) validates Swift math and app logic. Path B (`cmake` + `ctest` / `make accel-test`) validates the C++ Accel kernels. Path C ships device-matched static libs. Full details: `BonhommeAccel/TESTING.md`.
 ## Architecture
 
 ### Three-Layer Stack

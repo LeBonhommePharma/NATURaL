@@ -12,8 +12,12 @@ import PackageDescription
 //   BONHOMME_ACCEL=1 swift build
 //   BONHOMME_ACCEL=1 BONHOMME_ACCEL_LIB=/path/to/dir-with-libBonhommeAccel.a swift build
 //
-// Xcode device builds: do NOT rely on this env alone. See
-// BonhommeAccel/TESTING.md § "Path C — Xcode / device builds with BONHOMME_ACCEL".
+// Ship iOS device / simulator slices first:
+//   make accel-ios
+//   BONHOMME_ACCEL=1 BONHOMME_ACCEL_LIB=$PWD/../BonhommeAccel/dist/iphoneos swift build
+//
+// Xcode device builds: see BonhommeAccel/TESTING.md § Path C and
+// BonhommeAccel/xcconfig/BonhommeAccel.ios.xcconfig.
 //
 // Invariant: never wire Accel into the default test path. Keep dependencies empty
 // unless BONHOMME_ACCEL=1 is explicitly set when Package.swift is evaluated.

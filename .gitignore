@@ -13,6 +13,8 @@ xcuserdata/
 .swiftpm/
 Package.resolved
 BonhommeAccel/build/
+BonhommeAccel/build-*/
+BonhommeAccel/dist/
 BonhommeCore/.build/
 
 # CocoaPods (if ever added)

@@ -51,13 +51,29 @@ set(BACKEND_SOURCES "")
 set(BA_HAS_AVX2_BACKEND OFF)
 set(BA_HAS_NEON_BACKEND OFF)
 
-if(BA_ENABLE_AVX2 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
+# Host processor and CMAKE_OSX_ARCHITECTURES (cross-compile iOS/watchOS arm64).
+set(_BA_TARGET_X86 FALSE)
+set(_BA_TARGET_ARM64 FALSE)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    set(_BA_TARGET_X86 TRUE)
+endif()
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|arm64")
+    set(_BA_TARGET_ARM64 TRUE)
+endif()
+if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64")
+    set(_BA_TARGET_X86 TRUE)
+endif()
+if(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+    set(_BA_TARGET_ARM64 TRUE)
+endif()
+
+if(BA_ENABLE_AVX2 AND _BA_TARGET_X86 AND NOT _BA_TARGET_ARM64)
     list(APPEND BACKEND_SOURCES src/backends/simd/entropy_avx2.cpp)
     list(APPEND BACKEND_SOURCES src/backends/simd/correlation_simd.cpp)
     set(BA_HAS_AVX2_BACKEND ON)
 endif()
 
-if(BA_ENABLE_NEON AND (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|arm64"))
+if(BA_ENABLE_NEON AND _BA_TARGET_ARM64)
     list(APPEND BACKEND_SOURCES src/backends/simd/entropy_neon.cpp)
     # NEON Pearson lives in correlation_simd.cpp (same TU as AVX2 kernels)
     list(APPEND BACKEND_SOURCES src/backends/simd/correlation_simd.cpp)
@@ -157,6 +173,12 @@ endforeach()
 
 add_library(BonhommeAccel STATIC ${ALL_SOURCES})
 
+# Required for static libs linked into iOS/watchOS/tvOS apps.
+set_target_properties(BonhommeAccel PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    OUTPUT_NAME BonhommeAccel
+)
+
 target_include_directories(BonhommeAccel
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -169,6 +191,12 @@ target_include_directories(BonhommeAccel
 )
 
 target_compile_features(BonhommeAccel PUBLIC cxx_std_20)
+
+# Surface cross-compile intent in the configure log.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|watchOS|tvOS")
+    message(STATUS "BonhommeAccel cross-compile: SYSTEM=${CMAKE_SYSTEM_NAME} "
+                   "SYSROOT=${CMAKE_OSX_SYSROOT} ARCH=${CMAKE_OSX_ARCHITECTURES}")
+endif()
 
 # Compiler warnings / optimization for C++ and ObjC++
 target_compile_options(BonhommeAccel PRIVATE
