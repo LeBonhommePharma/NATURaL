@@ -111,7 +111,7 @@ struct StyleDetailView: View {
             if locked {
                 PaywallView()
             } else {
-                WorkoutFlowView(plan: plan)
+                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
             }
         } label: {
             VStack(alignment: .leading, spacing: 12) {

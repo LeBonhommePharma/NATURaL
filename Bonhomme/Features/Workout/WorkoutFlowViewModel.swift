@@ -71,12 +71,17 @@ final class WorkoutFlowViewModel {
     private var timerTask: Task<Void, Never>?
     private var sessionStartDate: Date?
     private var persistenceCounter: Int = 0
-    private var lastMusicAdaptation: Date = .distantPast
     private var liveActivity: Activity<WorkoutActivityAttributes>?
 
     init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
         self.plan = plan
         self.feedbackEngine = feedbackEngine
+        // Ensure HRV analyzer is present even when a bare engine is injected.
+        feedbackEngine.register(HRVAnalyzer())
+        // Wire live HR → synthetic RR → FeedbackEngine (mirrors Watch path).
+        recorder.onHRVIngest = { [weak self] sdnn, rmssd, rr in
+            self?.ingestHRVSample(sdnn: sdnn, rmssd: rmssd, rrIntervals: rr)
+        }
     }
 
     // MARK: - State Restoration
@@ -426,6 +431,8 @@ final class WorkoutFlowViewModel {
             Task { [weak self] in
                 guard let self else { return }
                 await self.musicService.requestAuthorization()
+                // Prefetch all mood playlists for this style, then start calm.
+                await self.musicService.prefetchPlaylists(style: self.plan.style)
                 await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
             }
 
@@ -464,11 +471,14 @@ final class WorkoutFlowViewModel {
                 // Update Live Activity every tick
                 updateLiveActivity()
 
-                // Periodic state persistence (every 5 seconds)
+                // Periodic state persistence + control tick (every 5 seconds).
+                // Music adapt is fire-and-forget so MusicKit never blocks the pose loop.
                 persistenceCounter += 1
                 if persistenceCounter % 5 == 0 {
                     persistState()
-                    await adaptMusicToCurrentSCI()
+                    Task { [weak self] in
+                        await self?.adaptMusicToCurrentSCI()
+                    }
                     await tickPharmaControl()
                 }
             }
@@ -522,8 +532,9 @@ final class WorkoutFlowViewModel {
     // MARK: - Crooks Pharma Control
 
     /// SCI + HR → Crooks tick (σ_irr, phase, universal beat).
+    /// Uses HRV-only analyze (not full analyzeAll) on the control path.
     private func tickPharmaControl() async {
-        feedbackEngine.analyzeAll()
+        _ = feedbackEngine.analyze(for: .heartRateVariability)
         let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
         let bpm = recorder.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
         let result = await pharmaControl.tickFromSCI(sciScore: sci, bpm: bpm)
@@ -537,22 +548,30 @@ final class WorkoutFlowViewModel {
             await musicService.applyBeatSync(beat)
         }
 
+        // Grounding mood adapt must never block the pose/control timer (full crossfade).
         if result.didGround {
-            await musicService.adaptToSCI(score: 0.2, trend: .declining, style: plan.style)
+            Task { [weak self] in
+                guard let self else { return }
+                await self.musicService.adaptToSCI(
+                    score: 0.2,
+                    trend: .declining,
+                    style: self.plan.style
+                )
+            }
         }
     }
 
     // MARK: - Adaptive Music
 
     /// Checks current SCI from FeedbackEngine and adapts music mood.
-    /// Debounced to minimum 30-second intervals.
+    /// Debounce is owned solely by `MusicService.adaptToSCI` (30s).
     private func adaptMusicToCurrentSCI() async {
-        let now = Date()
-        guard now.timeIntervalSince(lastMusicAdaptation) >= 30 else { return }
-
         let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
-        await musicService.adaptToSCI(score: insight?.score, trend: insight?.trend ?? .stable, style: plan.style)
-        lastMusicAdaptation = now
+        await musicService.adaptToSCI(
+            score: insight?.score,
+            trend: insight?.trend ?? .stable,
+            style: plan.style
+        )
     }
 }
 

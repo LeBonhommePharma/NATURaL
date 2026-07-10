@@ -215,7 +215,7 @@ struct HomeView: View {
             }
 
             NavigationLink {
-                WorkoutFlowView(plan: previewPlan)
+                WorkoutFlowView(plan: previewPlan, feedbackEngine: appState.feedbackEngine)
             } label: {
                 HStack {
                     Text(LocalizedString(en: "Try guided preview", fr: "Essayer l'aperçu guidé").localized)
@@ -344,7 +344,7 @@ struct HomeView: View {
             ForEach(appState.careKitBridge.prescribedTasks, id: \.id) { task in
                 if let plan = appState.careKitBridge.resolveWorkoutPlan(for: task) {
                     NavigationLink {
-                        WorkoutFlowView(plan: plan)
+                        WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
                     } label: {
                         HStack {
                             Image(systemName: "figure.yoga")
@@ -461,7 +461,7 @@ struct HomeView: View {
                 // Start button
                 NavigationLink {
                     if !appState.isPremium || plan.isFree {
-                        WorkoutFlowView(plan: plan)
+                        WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
                     } else {
                         PaywallView()
                     }
@@ -518,7 +518,7 @@ struct HomeView: View {
             if isPremium {
                 PaywallView()
             } else {
-                WorkoutFlowView(plan: plan)
+                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
             }
         } label: {
             VStack(alignment: .leading, spacing: 12) {
