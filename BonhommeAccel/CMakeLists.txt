@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(BonhommeAccel
-    VERSION 1.0.0
+    VERSION 1.1.0
     LANGUAGES CXX
     DESCRIPTION "GPU/SIMD accelerated Shannon entropy and statistics for NATURaL/FlexAIDdS"
 )
@@ -17,7 +17,12 @@ option(BA_BUILD_TESTS    "Build Catch2 tests"                  ON)
 option(BA_ENABLE_OPENMP  "Enable OpenMP backend"               ON)
 option(BA_ENABLE_CUDA    "Enable CUDA backend"                 OFF)
 option(BA_ENABLE_ROCM    "Enable ROCm/HIP backend"             OFF)
-option(BA_ENABLE_METAL   "Enable Metal backend (Apple only)"   OFF)
+# Metal defaults ON on Apple hosts (production GPU path on Apple Silicon).
+if(APPLE)
+    option(BA_ENABLE_METAL "Enable Metal backend (Apple only)" ON)
+else()
+    option(BA_ENABLE_METAL "Enable Metal backend (Apple only)" OFF)
+endif()
 option(BA_ENABLE_AVX2    "Enable AVX2 SIMD backend"            ON)
 option(BA_ENABLE_AVX512  "Enable AVX-512 SIMD backend"         ON)
 option(BA_ENABLE_NEON    "Enable ARM NEON SIMD backend"        ON)
@@ -71,32 +76,82 @@ if(BA_ENABLE_OPENMP)
 endif()
 
 # CUDA
+set(BA_HAS_CUDA_BACKEND OFF)
 if(BA_ENABLE_CUDA)
-    enable_language(CUDA)
-    list(APPEND BACKEND_SOURCES src/backends/cuda/entropy_cuda.cu)
-    list(APPEND BACKEND_SOURCES src/backends/cuda/correlation_cuda.cu)
-    list(APPEND BACKEND_SOURCES src/backends/cuda/pairwise_cuda.cu)
-    add_compile_definitions(BA_HAS_CUDA)
+    include(CheckLanguage)
+    check_language(CUDA)
+    if(CMAKE_CUDA_COMPILER)
+        enable_language(CUDA)
+        set(CMAKE_CUDA_STANDARD 17)
+        set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+        list(APPEND BACKEND_SOURCES
+            src/backends/cuda/entropy_cuda.cu
+            src/backends/cuda/correlation_cuda.cu
+            src/backends/cuda/pairwise_cuda.cu
+        )
+        set(BA_HAS_CUDA_BACKEND ON)
+    else()
+        message(WARNING "BA_ENABLE_CUDA=ON but no CUDA compiler found; CUDA backend disabled")
+    endif()
 endif()
 
 # ROCm/HIP
+set(BA_HAS_ROCM_BACKEND OFF)
 if(BA_ENABLE_ROCM)
-    find_package(hip QUIET)
-    if(hip_FOUND)
-        list(APPEND BACKEND_SOURCES src/backends/rocm/entropy_hip.cpp)
-        add_compile_definitions(BA_HAS_ROCM)
+    # Prefer modern HIP language support when available
+    include(CheckLanguage)
+    check_language(HIP)
+    if(CMAKE_HIP_COMPILER)
+        enable_language(HIP)
+        list(APPEND BACKEND_SOURCES
+            src/backends/rocm/entropy_hip.cpp
+            src/backends/rocm/correlation_hip.cpp
+        )
+        set_source_files_properties(
+            src/backends/rocm/entropy_hip.cpp
+            src/backends/rocm/correlation_hip.cpp
+            PROPERTIES LANGUAGE HIP
+        )
+        set(BA_HAS_ROCM_BACKEND ON)
+    else()
+        find_package(hip QUIET)
+        if(hip_FOUND)
+            list(APPEND BACKEND_SOURCES
+                src/backends/rocm/entropy_hip.cpp
+                src/backends/rocm/correlation_hip.cpp
+            )
+            set(BA_HAS_ROCM_BACKEND ON)
+        else()
+            message(WARNING "BA_ENABLE_ROCM=ON but HIP not found; ROCm backend disabled")
+        endif()
     endif()
+endif()
+
+# Metal (Apple only)
+set(BA_HAS_METAL_BACKEND OFF)
+if(BA_ENABLE_METAL AND APPLE)
+    enable_language(OBJCXX)
+    list(APPEND BACKEND_SOURCES
+        src/backends/metal/metal_runtime.mm
+        src/backends/metal/entropy_metal.mm
+        src/backends/metal/correlation_metal.mm
+        src/backends/metal/pairwise_metal.mm
+    )
+    set(BA_HAS_METAL_BACKEND ON)
+elseif(BA_ENABLE_METAL AND NOT APPLE)
+    message(WARNING "BA_ENABLE_METAL=ON is only supported on Apple platforms")
 endif()
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Library target
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Filter out non-existent backend sources (Phase 2-4 files not yet created)
 set(ALL_SOURCES ${CORE_SOURCES})
 foreach(src ${BACKEND_SOURCES})
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
         list(APPEND ALL_SOURCES ${src})
+    else()
+        message(WARNING "Backend source missing, skipped: ${src}")
     endif()
 endforeach()
 
@@ -110,18 +165,23 @@ target_include_directories(BonhommeAccel
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/core
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dispatch
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends
 )
 
 target_compile_features(BonhommeAccel PUBLIC cxx_std_20)
 
-# Compiler warnings
+# Compiler warnings / optimization for C++ and ObjC++
 target_compile_options(BonhommeAccel PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wno-unused-parameter
-        -O3
+    $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+            -Wall -Wextra -Wpedantic -Wno-unused-parameter
+            -O3
+        >
     >
-    $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /O2 /fp:fast
+    $<$<COMPILE_LANGUAGE:CXX>:
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /W4 /O2 /fp:fast
+        >
     >
 )
 
@@ -144,9 +204,9 @@ if(BA_HAS_AVX2_BACKEND)
     endforeach()
 endif()
 
-# AVX-512 flags
+# AVX-512 flags (kernels not yet implemented — flag reserved)
 if(BA_ENABLE_AVX512 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
-    # AVX-512 sources would get -mavx512f flag here (kernels not yet implemented)
+    # Future: dedicated AVX-512 TUs would get -mavx512f here
 endif()
 
 # OpenMP linking
@@ -155,14 +215,59 @@ if(BA_HAS_OPENMP_BACKEND)
     target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_OPENMP)
 endif()
 
+# CUDA linking
+if(BA_HAS_CUDA_BACKEND)
+    target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_CUDA)
+    find_package(CUDAToolkit QUIET)
+    if(TARGET CUDA::cudart)
+        target_link_libraries(BonhommeAccel PRIVATE CUDA::cudart)
+    else()
+        target_link_libraries(BonhommeAccel PRIVATE cudart)
+    endif()
+    set_target_properties(BonhommeAccel PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+    )
+endif()
+
+# ROCm/HIP linking
+if(BA_HAS_ROCM_BACKEND)
+    target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_ROCM)
+    if(TARGET hip::host)
+        target_link_libraries(BonhommeAccel PRIVATE hip::host)
+    elseif(TARGET hip::device)
+        target_link_libraries(BonhommeAccel PRIVATE hip::device)
+    endif()
+endif()
+
 # Metal linking (Apple only)
-if(BA_ENABLE_METAL AND APPLE)
+if(BA_HAS_METAL_BACKEND)
     target_link_libraries(BonhommeAccel PRIVATE
         "-framework Metal"
         "-framework Foundation"
     )
     target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_METAL)
+    # ARC for Objective-C++ Metal TUs
+    foreach(src
+        src/backends/metal/metal_runtime.mm
+        src/backends/metal/entropy_metal.mm
+        src/backends/metal/correlation_metal.mm
+        src/backends/metal/pairwise_metal.mm
+    )
+        set_source_files_properties(${src} PROPERTIES
+            COMPILE_OPTIONS "-fobjc-arc"
+        )
+    endforeach()
 endif()
+
+# Status summary
+message(STATUS "BonhommeAccel backends:")
+message(STATUS "  NEON   = ${BA_HAS_NEON_BACKEND}")
+message(STATUS "  AVX2   = ${BA_HAS_AVX2_BACKEND}")
+message(STATUS "  OpenMP = ${BA_HAS_OPENMP_BACKEND}")
+message(STATUS "  Metal  = ${BA_HAS_METAL_BACKEND}")
+message(STATUS "  CUDA   = ${BA_HAS_CUDA_BACKEND}")
+message(STATUS "  ROCm   = ${BA_HAS_ROCM_BACKEND}")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Tests

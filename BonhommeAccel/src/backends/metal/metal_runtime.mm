@@ -1,15 +1,16 @@
 /*
  * metal_runtime.mm — Metal device detection, library compilation, and pipeline caching.
  *
- * Objective-C++ file for Apple Metal GPU compute backend.
  * Compiles MSL kernels from embedded strings at first use and caches
- * the compiled pipelines for the lifetime of the process.
+ * pipelines for the process lifetime. Failed compilations are cached as nil
+ * so repeated calls do not re-parse broken sources.
  */
 
-#if defined(__APPLE__) && !defined(BA_SKIP_METAL)
+#if defined(__APPLE__) && defined(BA_HAS_METAL)
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
+#include "metal_backend.h"
 #include "metal_shaders.h"
 #include <mutex>
 #include <string>
@@ -17,14 +18,12 @@
 
 namespace ba::metal {
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Singleton Metal Context
-// ═══════════════════════════════════════════════════════════════════════════
-
 struct MetalContext {
     id<MTLDevice> device = nil;
     id<MTLCommandQueue> queue = nil;
+    // Cached pipelines; absent key = not yet attempted; nil value = hard failure.
     std::unordered_map<std::string, id<MTLComputePipelineState>> pipelines;
+    std::mutex pipeline_mutex;
     bool available = false;
 
     static MetalContext& instance() {
@@ -48,17 +47,22 @@ struct MetalContext {
 
     id<MTLComputePipelineState> getPipeline(const std::string& name,
                                               const char* source) {
+        std::lock_guard<std::mutex> lock(pipeline_mutex);
         auto it = pipelines.find(name);
         if (it != pipelines.end()) return it->second;
 
         @autoreleasepool {
             NSError* error = nil;
             NSString* src = [NSString stringWithUTF8String:source];
+            MTLCompileOptions* opts = [MTLCompileOptions new];
+            // languageVersion defaults to the highest supported by the device.
             id<MTLLibrary> library = [device newLibraryWithSource:src
-                                                          options:nil
+                                                          options:opts
                                                             error:&error];
             if (!library) {
-                NSLog(@"BonhommeAccel: Metal library compilation failed: %@", error);
+                NSLog(@"BonhommeAccel: Metal library compilation failed (%s): %@",
+                      name.c_str(), error);
+                pipelines[name] = nil;
                 return nil;
             }
 
@@ -66,13 +70,16 @@ struct MetalContext {
             id<MTLFunction> function = [library newFunctionWithName:funcName];
             if (!function) {
                 NSLog(@"BonhommeAccel: Metal function '%s' not found", name.c_str());
+                pipelines[name] = nil;
                 return nil;
             }
 
             id<MTLComputePipelineState> pipeline =
                 [device newComputePipelineStateWithFunction:function error:&error];
             if (!pipeline) {
-                NSLog(@"BonhommeAccel: Metal pipeline creation failed: %@", error);
+                NSLog(@"BonhommeAccel: Metal pipeline creation failed (%s): %@",
+                      name.c_str(), error);
+                pipelines[name] = nil;
                 return nil;
             }
 
@@ -81,10 +88,6 @@ struct MetalContext {
         }
     }
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Public API
-// ═══════════════════════════════════════════════════════════════════════════
 
 bool metal_is_available() {
     return MetalContext::instance().initialize();
@@ -111,4 +114,4 @@ id<MTLComputePipelineState> metal_pipeline(const std::string& kernel_name,
 
 } // namespace ba::metal
 
-#endif // __APPLE__ && !BA_SKIP_METAL
+#endif // __APPLE__ && BA_HAS_METAL

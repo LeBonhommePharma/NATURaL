@@ -1,47 +1,52 @@
 /*
  * dispatch.cpp — Runtime backend detection.
  *
- * Probes CPU features (AVX2, AVX-512, NEON), GPU availability (Metal, CUDA, ROCm),
- * and OpenMP support at runtime. Returns the fastest available backend.
+ * Probes GPU (CUDA, ROCm, Metal), then CPU SIMD (NEON, AVX2), then OpenMP.
+ * Only backends with compiled kernels and a live device are advertised.
  */
 
 #include "backend.h"
 
+#if defined(BA_HAS_CUDA)
+#include "../backends/cuda/cuda_backend.h"
+#endif
+#if defined(BA_HAS_ROCM)
+#include "../backends/rocm/rocm_backend.h"
+#endif
+#if defined(BA_HAS_METAL)
+#include "../backends/metal/metal_backend.h"
+#endif
+
 namespace ba {
 
 BABackend probe_best_backend() {
-    // Phase 1: start with scalar, progressively detect better backends.
-    // Detection order: GPU > SIMD > OpenMP > Scalar
+    // Detection order: GPU (when kernels + device exist) > SIMD > OpenMP > Scalar
 
 #if defined(BA_HAS_CUDA)
-    // TODO Phase 4: CUDA runtime detection
-    // if (cudaGetDeviceCount(&count) == cudaSuccess && count > 0)
-    //     return BA_BACKEND_CUDA;
+    if (ba::cuda::cuda_is_available()) {
+        return BA_BACKEND_CUDA;
+    }
 #endif
 
 #if defined(BA_HAS_ROCM)
-    // TODO Phase 4: ROCm/HIP runtime detection
-    // if (hipGetDeviceCount(&count) == hipSuccess && count > 0)
-    //     return BA_BACKEND_ROCM;
+    if (ba::rocm::hip_is_available()) {
+        return BA_BACKEND_ROCM;
+    }
 #endif
 
-#if defined(__APPLE__)
-    // TODO Phase 3: Metal runtime detection
-    // Metal is available on all Apple platforms except watchOS (limited).
-    // #if !TARGET_OS_WATCH
-    //     return BA_BACKEND_METAL;
-    // #endif
+#if defined(BA_HAS_METAL)
+    if (ba::metal::metal_is_available()) {
+        return BA_BACKEND_METAL;
+    }
 #endif
 
-    // SIMD detection — only advertise backends that have compiled kernels.
-    // AVX-512 is detected but maps to AVX2 until dedicated kernels exist.
+    // SIMD — only advertise backends that have compiled kernels.
+    // AVX-512 is not claimed without dedicated kernels.
 #if defined(BA_HAS_NEON) && (defined(__aarch64__) || defined(_M_ARM64))
     return BA_BACKEND_NEON;
 #elif defined(BA_HAS_AVX2) && (defined(__x86_64__) || defined(_M_X64))
     #if defined(__GNUC__) || defined(__clang__)
         __builtin_cpu_init();
-        // Prefer AVX2 when available; do not claim AVX-512 without kernels
-        // (would misreport backend while still running AVX2/scalar).
         if (__builtin_cpu_supports("avx2")) {
             return BA_BACKEND_AVX2;
         }

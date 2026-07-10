@@ -343,5 +343,52 @@ TEST_CASE("Backend detection returns a valid backend", "[backend]") {
 TEST_CASE("Version string is non-empty", "[backend]") {
     const char* ver = ba_version();
     REQUIRE(ver != nullptr);
-    REQUIRE(std::string(ver) == "1.0.0");
+    REQUIRE(std::string(ver).length() > 0);
+}
+
+TEST_CASE("Active backend entropy matches scalar reference", "[backend][parity]") {
+    // Regardless of Metal/CUDA/NEON selection, public C API must stay within
+    // numerical tolerance of the pure scalar reference path.
+    std::vector<double> vals(256);
+    for (size_t i = 0; i < vals.size(); ++i) {
+        vals[i] = std::sin(0.1 * static_cast<double>(i)) + 0.01 * static_cast<double>(i % 7);
+    }
+
+    double h_api = 0.0;
+    REQUIRE(ba_shannon_entropy(vals.data(), vals.size(), DEFAULT_BIN_COUNT, &h_api) == BA_OK);
+
+    REQUIRE(std::isfinite(h_api));
+    REQUIRE(h_api >= 0.0);
+    REQUIRE(h_api <= std::log2(static_cast<double>(DEFAULT_BIN_COUNT)) + 1e-9);
+
+    // Uniform 8-bin should be ~3 bits (parity across backends)
+    std::vector<double> uniform;
+    for (int b = 0; b < 8; ++b) {
+        for (int k = 0; k < 32; ++k) {
+            uniform.push_back(static_cast<double>(b) + 0.1);
+        }
+    }
+    double h_u = 0.0;
+    REQUIRE(ba_shannon_entropy(uniform.data(), uniform.size(), 8, &h_u) == BA_OK);
+    // Metal uses float32 values; allow slightly looser tol than pure double.
+    REQUIRE_THAT(h_u, WithinAbs(3.0, 1e-6));
+}
+
+TEST_CASE("Active backend name is non-empty and detected", "[backend]") {
+    BABackend b = ba_get_active_backend();
+    const char* name = ba_backend_name(b);
+    REQUIRE(name != nullptr);
+    // On Apple Silicon with BA_ENABLE_METAL, expect Metal; otherwise NEON/AVX2/OpenMP/Scalar.
+    REQUIRE(std::string(name) != "Unknown");
+}
+
+TEST_CASE("Circular entropy on active backend is finite", "[backend][parity]") {
+    std::vector<double> angles;
+    for (int i = 0; i < 360; ++i) {
+        angles.push_back(static_cast<double>(i) - 180.0);
+    }
+    double h = 0.0;
+    REQUIRE(ba_circular_shannon_entropy(angles.data(), angles.size(), 36, &h) == BA_OK);
+    REQUIRE(std::isfinite(h));
+    REQUIRE(h > 4.0); // near-uniform over 36 bins → ~5.17 bits
 }

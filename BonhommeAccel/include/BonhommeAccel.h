@@ -7,7 +7,9 @@
  *   AVX2/AVX-512 (x86 SIMD) | NEON (ARM SIMD) | OpenMP (CPU threads) | Scalar
  *
  * Thread-safe, stateless API. All functions take caller-owned buffers.
- * Runtime backend detection via ba_detect_best_backend().
+ * Runtime backend detection via ba_detect_best_backend() (GPU → SIMD → OpenMP → Scalar).
+ * Metal MSL kernels use float32 (Apple GPU constraint); CUDA/ROCm use double.
+ * GPU failures fall back to SIMD/scalar automatically.
  *
  * Ported from BonhommeCore's Swift EntropyCalculator for mathematical parity
  * with FlexAIDdS molecular docking entropy and NATURaL HRV entropy.

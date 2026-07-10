@@ -1,32 +1,27 @@
 /*
- * correlation_cuda.cu — CUDA-accelerated Pearson correlation.
- *
- * Filters non-finite pairs on the host (parity with scalar/SIMD), then
- * reduces means and second moments on the device.
+ * correlation_hip.cpp — ROCm/HIP Pearson correlation (parity with CUDA).
  */
 
-#if defined(BA_HAS_CUDA)
+#if defined(BA_HAS_ROCM)
 
-#include "cuda_backend.h"
-#include <cuda_runtime.h>
+#include "rocm_backend.h"
+#include <hip/hip_runtime.h>
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <vector>
 
-namespace ba::cuda {
+namespace ba::rocm {
 
-// Warp-level reduction
 __device__ double warp_reduce_sum(double val) {
     for (int offset = 16; offset > 0; offset >>= 1) {
-        val += __shfl_down_sync(0xffffffff, val, offset);
+        val += __shfl_down(val, offset);
     }
     return val;
 }
 
-// Block-level reduction
 __device__ double block_reduce_sum(double val) {
-    __shared__ double shared[32]; // One per warp
+    __shared__ double shared[32];
 
     int lane = threadIdx.x % 32;
     int wid = threadIdx.x / 32;
@@ -89,10 +84,9 @@ __global__ void pearson_corr_kernel(
     }
 }
 
-double pearson_correlation_cuda(const double* x, const double* y, size_t count) {
-    if (!cuda_is_available() || !x || !y || count < 2) return 0.0;
+double pearson_correlation_hip(const double* x, const double* y, size_t count) {
+    if (!hip_is_available() || !x || !y || count < 2) return 0.0;
 
-    // Filter non-finite pairs (parity with scalar pearson_correlation)
     std::vector<double> cx, cy;
     cx.reserve(count);
     cy.reserve(count);
@@ -112,57 +106,57 @@ double pearson_correlation_cuda(const double* x, const double* y, size_t count) 
     double *d_sum_x = nullptr, *d_sum_y = nullptr;
     double *d_sxy = nullptr, *d_sx2 = nullptr, *d_sy2 = nullptr;
 
-    if (cudaMalloc(&d_x, n * sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_y, n * sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_sum_x, sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_sum_y, sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_sxy, sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_sx2, sizeof(double)) != cudaSuccess ||
-        cudaMalloc(&d_sy2, sizeof(double)) != cudaSuccess) {
-        if (d_x) cudaFree(d_x);
-        if (d_y) cudaFree(d_y);
-        if (d_sum_x) cudaFree(d_sum_x);
-        if (d_sum_y) cudaFree(d_sum_y);
-        if (d_sxy) cudaFree(d_sxy);
-        if (d_sx2) cudaFree(d_sx2);
-        if (d_sy2) cudaFree(d_sy2);
+    if (hipMalloc(&d_x, n * sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_y, n * sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_sum_x, sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_sum_y, sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_sxy, sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_sx2, sizeof(double)) != hipSuccess ||
+        hipMalloc(&d_sy2, sizeof(double)) != hipSuccess) {
+        if (d_x) hipFree(d_x);
+        if (d_y) hipFree(d_y);
+        if (d_sum_x) hipFree(d_sum_x);
+        if (d_sum_y) hipFree(d_sum_y);
+        if (d_sxy) hipFree(d_sxy);
+        if (d_sx2) hipFree(d_sx2);
+        if (d_sy2) hipFree(d_sy2);
         return 0.0;
     }
 
-    cudaMemcpy(d_x, cx.data(), n * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y, cy.data(), n * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemset(d_sum_x, 0, sizeof(double));
-    cudaMemset(d_sum_y, 0, sizeof(double));
-    cudaMemset(d_sxy, 0, sizeof(double));
-    cudaMemset(d_sx2, 0, sizeof(double));
-    cudaMemset(d_sy2, 0, sizeof(double));
+    hipMemcpy(d_x, cx.data(), n * sizeof(double), hipMemcpyHostToDevice);
+    hipMemcpy(d_y, cy.data(), n * sizeof(double), hipMemcpyHostToDevice);
+    hipMemset(d_sum_x, 0, sizeof(double));
+    hipMemset(d_sum_y, 0, sizeof(double));
+    hipMemset(d_sxy, 0, sizeof(double));
+    hipMemset(d_sx2, 0, sizeof(double));
+    hipMemset(d_sy2, 0, sizeof(double));
 
-    pearson_means_kernel<<<num_blocks, BLOCK_SIZE>>>(d_x, d_y, n, d_sum_x, d_sum_y);
+    hipLaunchKernelGGL(pearson_means_kernel, dim3(num_blocks), dim3(BLOCK_SIZE),
+                       0, 0, d_x, d_y, n, d_sum_x, d_sum_y);
 
     double sum_x = 0.0, sum_y = 0.0;
-    cudaMemcpy(&sum_x, d_sum_x, sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&sum_y, d_sum_y, sizeof(double), cudaMemcpyDeviceToHost);
+    hipMemcpy(&sum_x, d_sum_x, sizeof(double), hipMemcpyDeviceToHost);
+    hipMemcpy(&sum_y, d_sum_y, sizeof(double), hipMemcpyDeviceToHost);
 
     double mean_x = sum_x / static_cast<double>(n);
     double mean_y = sum_y / static_cast<double>(n);
 
-    pearson_corr_kernel<<<num_blocks, BLOCK_SIZE>>>(
-        d_x, d_y, n, mean_x, mean_y, d_sxy, d_sx2, d_sy2
-    );
+    hipLaunchKernelGGL(pearson_corr_kernel, dim3(num_blocks), dim3(BLOCK_SIZE),
+                       0, 0, d_x, d_y, n, mean_x, mean_y, d_sxy, d_sx2, d_sy2);
 
     double sxy = 0.0, sx2 = 0.0, sy2 = 0.0;
-    cudaMemcpy(&sxy, d_sxy, sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&sx2, d_sx2, sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&sy2, d_sy2, sizeof(double), cudaMemcpyDeviceToHost);
+    hipMemcpy(&sxy, d_sxy, sizeof(double), hipMemcpyDeviceToHost);
+    hipMemcpy(&sx2, d_sx2, sizeof(double), hipMemcpyDeviceToHost);
+    hipMemcpy(&sy2, d_sy2, sizeof(double), hipMemcpyDeviceToHost);
 
-    cudaFree(d_x); cudaFree(d_y);
-    cudaFree(d_sum_x); cudaFree(d_sum_y);
-    cudaFree(d_sxy); cudaFree(d_sx2); cudaFree(d_sy2);
+    hipFree(d_x); hipFree(d_y);
+    hipFree(d_sum_x); hipFree(d_sum_y);
+    hipFree(d_sxy); hipFree(d_sx2); hipFree(d_sy2);
 
     double denom = std::sqrt(sx2 * sy2);
     return (denom > 0.0) ? (sxy / denom) : 0.0;
 }
 
-} // namespace ba::cuda
+} // namespace ba::rocm
 
-#endif // BA_HAS_CUDA
+#endif // BA_HAS_ROCM

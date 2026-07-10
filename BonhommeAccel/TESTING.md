@@ -92,20 +92,38 @@ rm -rf BonhommeAccel/build
 |--------|---------|---------|
 | `BA_BUILD_TESTS` | `ON` | Build Catch2 `ba_tests` and register with CTest |
 | `BA_ENABLE_OPENMP` | `ON` | OpenMP backend if toolchain finds OpenMP |
-| `BA_ENABLE_CUDA` | `OFF` | CUDA backend |
-| `BA_ENABLE_ROCM` | `OFF` | ROCm/HIP backend |
-| `BA_ENABLE_METAL` | `OFF` | Metal backend (Apple) |
+| `BA_ENABLE_CUDA` | `OFF` | CUDA backend (requires `nvcc`; runtime device probe) |
+| `BA_ENABLE_ROCM` | `OFF` | ROCm/HIP backend (requires HIP; runtime device probe) |
+| `BA_ENABLE_METAL` | `ON` on Apple, else `OFF` | Metal GPU backend (Apple Silicon / macOS) |
 | `BA_ENABLE_AVX2` | `ON` | AVX2 SIMD (x86_64) |
 | `BA_ENABLE_AVX512` | `ON` | AVX-512 flags reserved for future sources |
 | `BA_ENABLE_NEON` | `ON` | ARM NEON (arm64 / aarch64) |
 
-Example: host CPU SIMD only, no OpenMP:
+Example: host CPU SIMD only, no OpenMP / no Metal:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
   -DBA_BUILD_TESTS=ON \
-  -DBA_ENABLE_OPENMP=OFF
+  -DBA_ENABLE_OPENMP=OFF \
+  -DBA_ENABLE_METAL=OFF
 ```
+
+Example: force-enable CUDA/ROCm (Linux hosts with toolchains):
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DBA_ENABLE_CUDA=ON -DBA_ENABLE_ROCM=ON
+```
+
+### Backend selection (runtime)
+
+`ba_detect_best_backend()` picks the first available compiled backend with a live device:
+
+1. CUDA → 2. ROCm → 3. Metal → 4. NEON/AVX2 → 5. OpenMP → 6. Scalar
+
+On Apple Silicon with default options, expect **Metal**. Metal MSL kernels use **float32** (Apple GPUs lack double); histogram bins remain exact integers and entropy is reduced on the host in double. GPU kernel failures fall back to NEON/AVX2/scalar. Pearson under Metal uses float32 GPU reduction with double SIMD/scalar fallback on failure.
+
+CUDA/ROCm paths use full double precision on device.
 
 ---
 

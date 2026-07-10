@@ -4,7 +4,7 @@
  * Parallelizes the outer loop of the upper-triangle traversal.
  */
 
-#include "../../include/BonhommeAccel.h"
+#include "pairwise_omp.h"
 #include <cstddef>
 #include <cstdint>
 
@@ -22,12 +22,9 @@ void pairwise_scores_omp(const void* data, size_t n, size_t stride,
     const auto* bytes = static_cast<const uint8_t*>(data);
 
 #if defined(_OPENMP)
-    // Compute row start indices for the upper triangle
-    // Row i starts at index: i*n - i*(i+1)/2
+    // Upper-triangle row i starts at: sum_{k=0}^{i-1} (n-1-k) = i*n - i*(i+1)/2
     #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < n; ++i) {
-        size_t row_start = i * n - i * (i + 1) / 2 - i; // adjusted for upper triangle
-        // Actual start: sum_{k=0}^{i-1} (n-k-1) = i*n - i*(i+1)/2
         size_t base_idx = i * n - i * (i + 1) / 2;
         for (size_t j = i + 1; j < n; ++j) {
             size_t idx = base_idx + (j - i - 1);
