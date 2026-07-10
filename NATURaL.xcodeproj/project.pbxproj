@@ -7,7 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */; };
+		A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */; };
+		A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */; };
 		00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */; };
+		ECD6C4E772A9451EA1DB43B3 /* IntentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2859EA906FD499FADEA4960 /* IntentBridge.swift */; };
 		0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */; };
 		0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */; };
 		11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */; };
@@ -78,6 +82,7 @@
 		FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */; };
 		A7C1E2B40D91F5A2C3B4D501 /* MedicationPrescriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */; };
 		A7C1E2B40D91F5A2C3B4D503 /* PrescriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */; };
+		A7C1E2B40D91F5A2C3B4D506 /* PokeDrugSubstanceInsightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D507 /* PokeDrugSubstanceInsightView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -135,6 +140,7 @@
 		2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTracker.swift; sourceTree = "<group>"; };
 		A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationPrescriptionService.swift; sourceTree = "<group>"; };
 		A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionsView.swift; sourceTree = "<group>"; };
+		A7C1E2B40D91F5A2C3B4D507 /* PokeDrugSubstanceInsightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeDrugSubstanceInsightView.swift; sourceTree = "<group>"; };
 		2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BonhommeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FDC5BA711EF5694CD2DCA5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonhommeApp.swift; sourceTree = "<group>"; };
@@ -195,6 +201,7 @@
 		B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionListener.swift; sourceTree = "<group>"; };
 		B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutIntents.swift; sourceTree = "<group>"; };
+		D2859EA906FD499FADEA4960 /* IntentBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentBridge.swift; sourceTree = "<group>"; };
 		B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFlowView.swift; sourceTree = "<group>"; };
 		B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YogaTaskBuilder.swift; sourceTree = "<group>"; };
 		BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -534,6 +541,7 @@
 			isa = PBXGroup;
 			children = (
 				A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */,
+				A7C1E2B40D91F5A2C3B4D507 /* PokeDrugSubstanceInsightView.swift */,
 			);
 			path = Prescriptions;
 			sourceTree = "<group>";
@@ -565,6 +573,7 @@
 		B98FCC200A649E73AA5510D2 /* Siri */ = {
 			isa = PBXGroup;
 			children = (
+				D2859EA906FD499FADEA4960 /* IntentBridge.swift */,
 				B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */,
 			);
 			path = Siri;
@@ -628,7 +637,8 @@
 		EFDC7F3A123A9292A2D85FF5 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
-				FFDCC0B84EBAF743E5BBF2D0 /* Components */,
+
+				A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */,				FFDCC0B84EBAF743E5BBF2D0 /* Components */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -863,7 +873,8 @@
 				99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */,
 				918341A08086F652869D118B /* StreakWidget.swift in Sources */,
 				E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */,
-			);
+			
+				A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */,);
 		};
 		251FBA5035B3A36B86D68809 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -918,6 +929,7 @@
 				A7C1E2B40D91F5A2C3B4D501 /* MedicationPrescriptionService.swift in Sources */,
 				F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */,
 				A7C1E2B40D91F5A2C3B4D503 /* PrescriptionsView.swift in Sources */,
+				A7C1E2B40D91F5A2C3B4D506 /* PokeDrugSubstanceInsightView.swift in Sources */,
 				A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */,
 				534933C52F8892F600628680 /* WorkoutActivityAttributes.swift in Sources */,
 				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,
@@ -926,6 +938,7 @@
 				8269669262800477717015BA /* ChairYogaActivity.swift in Sources */,
 				0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */,
 				00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */,
+				ECD6C4E772A9451EA1DB43B3 /* IntentBridge.swift in Sources */,
 				534933C22F88928400628680 /* YogaStyle+HealthKit.swift in Sources */,
 				D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */,
 				DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */,
@@ -937,7 +950,8 @@
 				E8765D727C3447AFAE8D6490 /* ExternalDisplaySceneDelegate.swift in Sources */,
 				B1549B8CB4C993CF9F332C5F /* NativeCompanionClient.swift in Sources */,
 				5E5FAE10B797CEEB05D1F365 /* TVDisplayCoordinator.swift in Sources */,
-			);
+			
+				A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */,);
 		};
 		9E932D6F72419A52379B9947 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -958,7 +972,8 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */,
-			);
+			
+				A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */,);
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -1339,6 +1354,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = NATURaLWidgets/NATURaLWidgets.entitlements;
 				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
@@ -1360,6 +1376,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = NATURaLWidgets/NATURaLWidgets.entitlements;
 				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;

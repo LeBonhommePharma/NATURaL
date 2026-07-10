@@ -243,29 +243,8 @@ struct PrescriptionsView: View {
                 .foregroundStyle(.secondary)
             } else {
                 ForEach(meds) { med in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(med.name.localized)
-                            .font(.system(size: 16, weight: .semibold))
-                        HStack {
-                            Text(med.formattedDose)
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(med.source == .clinicalRecord
-                                 ? LocalizedString(en: "Clinical", fr: "Clinique").localized
-                                 : LocalizedString(en: "Manual", fr: "Manuel").localized)
-                                .font(.system(size: 12, weight: .medium))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(
-                                    (med.source == .clinicalRecord ? Color.blue : Color.green)
-                                        .opacity(0.15),
-                                    in: Capsule()
-                                )
-                                .foregroundStyle(med.source == .clinicalRecord ? .blue : .green)
-                        }
-                    }
-                    .padding(.vertical, 2)
+                    // Consent already gates this section; only link when PokeDrug can match.
+                    medicationRow(med)
                 }
             }
 
@@ -282,7 +261,103 @@ struct PrescriptionsView: View {
                 LocalizedString(en: "Medications", fr: "Médicaments").localized,
                 systemImage: "pills"
             )
+        } footer: {
+            Text(LocalizedString(
+                en: "When a name matches the PokeDrug catalog, open it for species, type matchup, expected drug-response, and binding-entropy hints.",
+                fr: "Si un nom correspond au catalogue PokeDrug, ouvrez-le pour l'espèce, l'affrontement de types, la réponse médicamenteuse attendue et les indices d'entropie de liaison."
+            ).localized)
         }
+    }
+
+    @ViewBuilder
+    private func medicationRow(_ med: MedicationProfile) -> some View {
+        let pokeMatch = PrescriptionPokeDrugBridge.match(
+            medicationId: med.id,
+            localizedName: med.name
+        ) ?? PrescriptionPokeDrugBridge.match(name: med.name.localized, medicationId: med.id)
+
+        let row = VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(med.name.localized)
+                    .font(.system(size: 16, weight: .semibold))
+                if pokeMatch != nil {
+                    Image(systemName: "atom")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.purple)
+                        .accessibilityLabel(LocalizedString(
+                            en: "PokeDrug insights available",
+                            fr: "Aperçus PokeDrug disponibles"
+                        ).localized)
+                }
+            }
+            HStack {
+                Text(med.formattedDose)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(med.source == .clinicalRecord
+                     ? LocalizedString(en: "Clinical", fr: "Clinique").localized
+                     : LocalizedString(en: "Manual", fr: "Manuel").localized)
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(
+                        (med.source == .clinicalRecord ? Color.blue : Color.green)
+                            .opacity(0.15),
+                        in: Capsule()
+                    )
+                    .foregroundStyle(med.source == .clinicalRecord ? .blue : .green)
+            }
+            if let pokeMatch {
+                pokeDrugHintBar(pokeMatch)
+            }
+        }
+        .padding(.vertical, 2)
+
+        if let pokeMatch, service.consent.isValidForCurrentPolicy {
+            NavigationLink {
+                PokeDrugSubstanceInsightView(
+                    match: pokeMatch,
+                    medicationDisplayName: med.name.localized
+                )
+            } label: {
+                row
+            }
+        } else {
+            row
+        }
+    }
+
+    /// Compact BindingEntropy / species teaser on the list row.
+    private func pokeDrugHintBar(_ match: PrescriptionPokeDrugMatch) -> some View {
+        HStack(spacing: 6) {
+            if let species = match.species {
+                Text(species.primaryType.rawValue.capitalized)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.purple)
+            } else if match.pharmacokineticProfile != nil {
+                Text(LocalizedString(en: "PK profile", fr: "Profil PK").localized)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.purple)
+            }
+            if let binding = match.bindingEntropyProfile {
+                Text("·")
+                    .foregroundStyle(.tertiary)
+                Text(String(format: "ΔS %+.1f bit", binding.expectedDeltaSBits))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Text(LocalizedString(en: "Insights", fr: "Aperçus").localized)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.purple.opacity(0.9))
+        }
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(LocalizedString(
+            en: "Opens PokeDrug species, matchup, and drug-response insights",
+            fr: "Ouvre l'espèce PokeDrug, l'affrontement et la réponse médicamenteuse"
+        ).localized)
     }
 
     // MARK: - Schedules (SwiftData)
@@ -297,19 +372,7 @@ struct PrescriptionsView: View {
                 .foregroundStyle(.secondary)
             } else {
                 ForEach(schedules) { schedule in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(schedule.name)
-                            .font(.system(size: 15, weight: .medium))
-                        Text("\(schedule.formattedDose) · \(schedule.formattedSchedule.isEmpty ? "—" : schedule.formattedSchedule)")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                        if let notes = schedule.notes, !notes.isEmpty {
-                            Text(notes)
-                                .font(.system(size: 12))
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(2)
-                        }
-                    }
+                    scheduleRow(schedule)
                 }
             }
         } header: {
@@ -317,6 +380,51 @@ struct PrescriptionsView: View {
                 LocalizedString(en: "Schedules", fr: "Horaires").localized,
                 systemImage: "clock"
             )
+        }
+    }
+
+    @ViewBuilder
+    private func scheduleRow(_ schedule: MedicationSchedule) -> some View {
+        let pokeMatch = PrescriptionPokeDrugBridge.match(
+            name: schedule.name,
+            medicationId: schedule.medicationId
+        )
+
+        let row = VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(schedule.name)
+                    .font(.system(size: 15, weight: .medium))
+                if pokeMatch != nil {
+                    Image(systemName: "atom")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.purple)
+                }
+            }
+            Text("\(schedule.formattedDose) · \(schedule.formattedSchedule.isEmpty ? "—" : schedule.formattedSchedule)")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            if let notes = schedule.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(2)
+            }
+            if let pokeMatch {
+                pokeDrugHintBar(pokeMatch)
+            }
+        }
+
+        if let pokeMatch, service.consent.isValidForCurrentPolicy {
+            NavigationLink {
+                PokeDrugSubstanceInsightView(
+                    match: pokeMatch,
+                    medicationDisplayName: schedule.name
+                )
+            } label: {
+                row
+            }
+        } else {
+            row
         }
     }
 
