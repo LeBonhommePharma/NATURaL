@@ -559,11 +559,8 @@ final class WorkoutFlowViewModel {
         crooksPhase = result.phase
         let snap = await pharmaControl.snapshot()
         crownBeta = snap.crownBeta
-
-        // Direct apply covers listener race on first bind.
-        if let beat = snap.beat {
-            await musicService.applyBeatSync(beat)
-        }
+        // Tempo: sole path is UniversalBeatSync → MusicService listener from
+        // `bindUniversalBeatSync`. Do not double-apply here (was racing rate writes).
 
         // Grounding mood adapt must never block the pose/control timer (full crossfade).
         if result.didGround {
