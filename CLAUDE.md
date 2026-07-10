@@ -72,7 +72,17 @@ Or from repo root: `make accel` (configure + build + ctest). Requires CMake 3.20
 ### Three-Layer Stack
 1. **Platform Apps** (SwiftUI) — `Bonhomme/` (iOS), `BonhommeWatch/`, `BonhommeTV/`, `BonhommeVision/`, `NATURaLWidgets/`, `NATURaLLiveActivity/`
 2. **BonhommeCore** (Swift Package) — shared models, analysis engines, UI components. This is the bulk of the logic.
-3. **BonhommeAccel** (C++20 static library) — high-performance entropy, correlation, and statistics. Bridged to Swift via `clibBonhommeAccel` C shim -> `BonhommeAccelSwift` wrapper. Compile flag `BONHOMME_ACCEL` enables the accelerated path. Note: `BonhommeAccelSwift` is defined as a target in Package.swift but not wired as a dependency of `BonhommeCore` (conditional linkage handled at Xcode project level).
+3. **BonhommeAccel** (C++20 static library) — high-performance entropy, correlation, and statistics. Bridged to Swift via `clibBonhommeAccel` C shim -> `BonhommeAccelSwift` wrapper. Compile flag `BONHOMME_ACCEL` enables the accelerated path.
+
+### BONHOMME_ACCEL compile flag (opt-in)
+
+| Default | Accel **off**. `Package.swift` leaves `BonhommeCore` with empty deps; Xcode app targets only link the `BonhommeCore` product. Pure Swift entropy. |
+|---------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Enable (CLI) | `BONHOMME_ACCEL=1` when evaluating Package.swift — adds `BonhommeAccelSwift` dep, defines `BONHOMME_ACCEL`, links prebuilt `libBonhommeAccel.a`. |
+| Enable (device) | Cross-compile Accel for the destination SDK, then wire define + `.a` as in `BonhommeAccel/TESTING.md` § Path C. |
+| Do **not** | Wire Accel into default `swift test`; set the define only on the app target (package sources will not see it); link a host `.a` into an iOS app. |
+
+`BonhommeAccelSwift` is also exported as an optional SPM product; prefer the env gate so `BonhommeCore` itself compiles with `BONHOMME_ACCEL`. Full device steps: `BonhommeAccel/TESTING.md`.
 
 ### Key Protocol Chain
 `HealthSignal` (protocol) -> `SignalAnalyzer` (protocol with extensions: HRVAnalyzer, MedicationAnalyzer, DockingInsightAnalyzer) -> `FeedbackEngine` (multi-signal orchestrator producing insights).
@@ -136,7 +146,7 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 | **A — Swift-only** | `BonhommeCore` XCTest | Yes (`make test`) | `cd BonhommeCore && swift test` |
 | **B — Accel C++** | Catch2 via CMake/CTest | Opt-in | `make accel` or cmake/build/ctest under `BonhommeAccel/` |
 
-Default SPM `swift test` must remain Swift-only: do not wire Accel into the `BonhommeCore` test target. Accel product linkage is Xcode/`BONHOMME_ACCEL`, not the default package test graph. See `BonhommeAccel/TESTING.md`.
+Default SPM `swift test` must remain Swift-only: do not wire Accel into the `BonhommeCore` test target. Accel is opt-in via `BONHOMME_ACCEL=1` (Package.swift) or explicit Xcode Path C wiring — never the default package test graph. See `BonhommeAccel/TESTING.md`.
 
 Swift unit tests: `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control). Xcode-level: `Tests/BonhommeTests/`, `Tests/BonhommeUITests/`. C++ Catch2: `BonhommeAccel/tests/` (entropy, correlation, pairwise, incomplete_beta + `reference_values.h`).
 
