@@ -27,9 +27,11 @@
 	<key>NSAppleMusicUsageDescription</key>
 	<string>NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time.</string>
+	<string>NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time. With your explicit consent, NATURaL may also read medication clinical records you connected in the Health app to help you manage user-entered prescriptions — never without your opt-in, and never as medical advice.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>NATURaL saves completed yoga sessions as workouts and mindful sessions so they appear in the Health and Fitness apps.</string>
+	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+	<string>With your explicit opt-in, NATURaL imports medication records from institutions you connected in the Health app so you can manage reminders and CareKit tasks. This is user-managed data, not medical advice. Confirm all prescriptions with your clinician. NATURaL does not log into pharmacies or scrape pharmacy websites.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonhomme._tcp</string>

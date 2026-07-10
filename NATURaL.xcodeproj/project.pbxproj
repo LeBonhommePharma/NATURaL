@@ -16,6 +16,7 @@
 		23F1A4F57862025BECEDAE9F /* YogaTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */; };
 		28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */; };
 		312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */; };
+		393F820810A741C9A4C4C8A2 /* BreathingHapticGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = C831E3A4E77642B2B6AAD7F4 /* BreathingHapticGuide.swift */; };
 		3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */; };
 		4EE07080CC92DE0579A52D6B /* ActivityRingsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */; };
 		4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53094E522F8A9C0A002A7CFE /* DebugDashboardView.swift */; };
@@ -75,6 +76,8 @@
 		F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */; };
 		F3F7A9D411AB20AC7E2336B8 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2116565DC2151DED0D9D89F7 /* BonhommeCore */; };
 		FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */; };
+		A7C1E2B40D91F5A2C3B4D501 /* MedicationPrescriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */; };
+		A7C1E2B40D91F5A2C3B4D503 /* PrescriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -130,6 +133,8 @@
 		1B7EA9136C4131977C6C8296 /* TVRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVRootView.swift; sourceTree = "<group>"; };
 		243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFlowUITests.swift; sourceTree = "<group>"; };
 		2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTracker.swift; sourceTree = "<group>"; };
+		A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationPrescriptionService.swift; sourceTree = "<group>"; };
+		A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionsView.swift; sourceTree = "<group>"; };
 		2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BonhommeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FDC5BA711EF5694CD2DCA5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		30BF400160AE9FBD8D3B266E /* BonhommeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonhommeApp.swift; sourceTree = "<group>"; };
@@ -186,6 +191,7 @@
 		B1885EBFCE2CC0B5387AD9CE /* SessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoordinator.swift; sourceTree = "<group>"; };
 		B31B55F0E33E1894538ED708 /* ChairYogaActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChairYogaActivity.swift; sourceTree = "<group>"; };
 		B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionView.swift; sourceTree = "<group>"; };
+		C831E3A4E77642B2B6AAD7F4 /* BreathingHapticGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathingHapticGuide.swift; sourceTree = "<group>"; };
 		B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionListener.swift; sourceTree = "<group>"; };
 		B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutIntents.swift; sourceTree = "<group>"; };
@@ -442,6 +448,7 @@
 			isa = PBXGroup;
 			children = (
 				E42CB8293F97DAD6558CA2C6 /* BonhommeWatchApp.swift */,
+				C831E3A4E77642B2B6AAD7F4 /* BreathingHapticGuide.swift */,
 				8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */,
 				04CFBDFA4B4A2534530C39D1 /* WatchHomeView.swift */,
 				B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */,
@@ -490,6 +497,7 @@
 			children = (
 				5046310E6BDB98A70926195D /* History */,
 				0E49E56A4A748A3A4C69EFC8 /* Paywall */,
+				A7C1E2B40D91F5A2C3B4D505 /* Prescriptions */,
 				9DBEDABBF844160E3256A1D0 /* Summary */,
 				703B6E2D72B9A3F1184DD037 /* Workout */,
 			);
@@ -513,12 +521,21 @@
 				B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */,
 				985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */,
 				F63ED6670450497F627DE63D /* InsightEngine.swift */,
+				A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */,
 				2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */,
 				DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */,
 				0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */,
 				534933C12F88928400628680 /* YogaStyle+HealthKit.swift */,
 			);
 			path = HealthKit;
+			sourceTree = "<group>";
+		};
+		A7C1E2B40D91F5A2C3B4D505 /* Prescriptions */ = {
+			isa = PBXGroup;
+			children = (
+				A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */,
+			);
+			path = Prescriptions;
 			sourceTree = "<group>";
 		};
 		9DBEDABBF844160E3256A1D0 /* Summary */ = {
@@ -852,6 +869,7 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				68C5637B03670C35407D1EF8 /* BonhommeWatchApp.swift in Sources */,
+				393F820810A741C9A4C4C8A2 /* BreathingHapticGuide.swift in Sources */,
 				11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */,
 				83120F65EF14CED3B7D8EAC8 /* WatchHomeView.swift in Sources */,
 				312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */,
@@ -897,7 +915,9 @@
 				FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */,
 				5A13F14D9C36CE6E0E442C80 /* HeartRateMonitor.swift in Sources */,
 				88EA537DFE1C985516B3783E /* InsightEngine.swift in Sources */,
+				A7C1E2B40D91F5A2C3B4D501 /* MedicationPrescriptionService.swift in Sources */,
 				F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */,
+				A7C1E2B40D91F5A2C3B4D503 /* PrescriptionsView.swift in Sources */,
 				A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */,
 				534933C52F8892F600628680 /* WorkoutActivityAttributes.swift in Sources */,
 				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,

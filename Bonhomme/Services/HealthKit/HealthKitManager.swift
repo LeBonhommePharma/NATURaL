@@ -9,11 +9,28 @@ final class HealthKitManager: Sendable {
         HKHealthStore.isHealthDataAvailable()
     }
 
-    /// Requests HealthKit authorization for the full signal pipeline:
-    /// HR, HRV, sleep, respiratory rate, resting HR, VO2 max, mood,
-    /// medication records, workouts, and activity summaries.
+    /// Whether clinical medication records can be requested on this OS / entitlement surface.
+    /// Clinical types exist from iOS 12+; actual data still requires Health Records entitlement,
+    /// institutional connection in the Health app, and **explicit in-app consent**.
+    static var isClinicalMedicationTypeAvailable: Bool {
+        #if os(iOS)
+        return HKObjectType.clinicalType(forIdentifier: .medicationRecord) != nil
+        #else
+        return false
+        #endif
+    }
+
+    /// Requests HealthKit authorization for the **non-clinical** signal pipeline:
+    /// HR, HRV, sleep, respiratory rate, resting HR, VO2 max,
+    /// workouts, and activity summaries.
+    ///
+    /// **Clinical medication records are intentionally excluded** from this call.
+    /// Request them only after explicit user consent via
+    /// `requestClinicalMedicationAuthorization()`. Mixing clinical types into the
+    /// launch-time sheet can fail the entire authorization if Health Records is
+    /// not provisioned, producing a forever-loading launch.
     func requestAuthorization() async throws {
-        var typesToRead: Set<HKObjectType> = [
+        let typesToRead: Set<HKObjectType> = [
             // Core biofeedback
             HKQuantityType(.heartRate),
             HKQuantityType(.heartRateVariabilitySDNN),
@@ -37,13 +54,6 @@ final class HealthKitManager: Sendable {
             HKObjectType.electrocardiogramType(),
         ]
 
-        // NOTE: HKClinicalType(.medicationRecord) is intentionally excluded.
-        // It requires the "Health Records" entitlement (com.apple.developer.healthkit.background-delivery
-        // + clinical-health-records) which is not provisioned for this app.
-        // Requesting it without that entitlement causes requestAuthorization() to throw
-        // BEFORE the permission sheet appears, leaving HealthKit permanently unauthorized
-        // and producing the forever-loading-screen symptom at launch.
-
         let typesToShare: Set<HKSampleType> = [
             HKQuantityType(.activeEnergyBurned),
             HKSampleType.workoutType(),
@@ -55,6 +65,39 @@ final class HealthKitManager: Sendable {
             toShare: typesToShare,
             read: typesToRead
         )
+    }
+
+    // MARK: - Clinical medication authorization (consent-gated caller)
+
+    /// Requests read access for `HKClinicalTypeIdentifier.medicationRecord`.
+    ///
+    /// **Call only after explicit in-app consent** (`ConsentStore.hasValidClinicalConsent`).
+    ///
+    /// OS / product limits:
+    /// - Clinical types are **read-only** (pass empty share set).
+    /// - Requires Health Records entitlement (`health-records` in entitlements).
+    /// - User must connect a health institution in the Health app; not all regions
+    ///   support Health Records; many devices return zero samples even when authorized.
+    /// - Does **not** use pharmacy credentials or scrape pharmacy websites.
+    /// - HealthKit may present a **separate** clinical permission sheet.
+    ///
+    /// - Returns: `true` if the authorization request completed without throw.
+    ///   HealthKit does not reveal whether the user allowed a read type (privacy).
+    @discardableResult
+    func requestClinicalMedicationAuthorization() async throws -> Bool {
+        guard Self.isAvailable else { return false }
+        guard Self.isClinicalMedicationTypeAvailable else { return false }
+
+        #if os(iOS)
+        guard let medType = HKObjectType.clinicalType(forIdentifier: .medicationRecord) else {
+            return false
+        }
+        // Clinical records are read-only.
+        try await healthStore.requestAuthorization(toShare: [], read: [medType])
+        return true
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Background Delivery

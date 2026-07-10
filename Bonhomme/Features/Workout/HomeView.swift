@@ -134,6 +134,9 @@ struct HomeView: View {
                 // Style card grid
                 styleCardGrid
 
+                // Prescriptions / clinical medication consent entry
+                prescriptionsEntryCard
+
                 // TV connection status
                 tvStatusSection
             }
@@ -141,6 +144,57 @@ struct HomeView: View {
         }
         .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
+    }
+
+    // MARK: - Prescriptions entry
+
+    private var prescriptionsEntryCard: some View {
+        NavigationLink {
+            PrescriptionsView()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "pills.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.teal)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedString(
+                        en: "Prescriptions & Consent",
+                        fr: "Ordonnances et consentement"
+                    ).localized)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                    Text(
+                        appState.prescriptionService.consent.isValidForCurrentPolicy
+                        ? LocalizedString(
+                            en: "Medication access on · manage meds & sync",
+                            fr: "Accès médicaments activé · gérer et synchroniser"
+                        ).localized
+                        : LocalizedString(
+                            en: "Explicit consent required before clinical reads",
+                            fr: "Consentement explicite requis avant lecture clinique"
+                        ).localized
+                    )
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+        .accessibilityHint(LocalizedString(
+            en: "Opens prescription consent and medication list",
+            fr: "Ouvre le consentement et la liste des médicaments"
+        ).localized)
     }
 
     // MARK: - Coach Hero

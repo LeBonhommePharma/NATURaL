@@ -8,6 +8,10 @@ import BonhommeCore
 /// via HKClinicalType when the user has connected a health provider.
 /// This service bridges those records into MedicationSignal for the
 /// FeedbackEngine, and also supports manual dose logging.
+///
+/// **Privacy:** Clinical HealthKit reads require explicit consent via
+/// `ConsentStore`. Prefer `MedicationPrescriptionService` as the public entry
+/// point; this type still enforces the consent gate on clinical fetch.
 @MainActor
 final class MedicationTracker: ObservableObject {
     @Published var activeMedications: [MedicationProfile] = []
@@ -25,11 +29,31 @@ final class MedicationTracker: ObservableObject {
     // MARK: - Clinical Record Import
 
     /// Fetches medication records from HealthKit clinical data (health provider records).
-    /// Requires the user to have connected their health provider in the Health app.
-    func fetchClinicalMedications() async throws {
+    /// Requires: explicit in-app consent + HealthKit clinical authorization +
+    /// user-connected health institution in the Health app.
+    ///
+    /// Never invents pharmacy credentials. Returns without reading if consent is missing.
+    func fetchClinicalMedications(consentStore: ConsentStore = .shared) async throws {
+        guard consentStore.hasValidClinicalConsent else {
+            consentStore.appendAudit(ConsentAuditEntry(
+                action: .clinicalReadBlocked,
+                detail: "MedicationTracker.fetchClinicalMedications no_consent"
+            ))
+            return
+        }
+
         guard HKHealthStore.isHealthDataAvailable() else { return }
 
-        let medType = HKClinicalType(.medicationRecord)
+        #if os(iOS)
+        guard let medType = HKObjectType.clinicalType(forIdentifier: .medicationRecord) else {
+            return
+        }
+
+        consentStore.appendAudit(ConsentAuditEntry(
+            action: .clinicalReadAttempt,
+            detail: "MedicationTracker.HKClinicalType.medicationRecord"
+        ))
+
         let predicate = HKQuery.predicateForClinicalRecords(
             withFHIRResourceType: .medicationRequest
         )
@@ -47,10 +71,39 @@ final class MedicationTracker: ObservableObject {
             guard let fhirResource = clinicalRecord.fhirResource else { continue }
 
             if let profile = parseFHIRMedication(fhirResource, record: clinicalRecord) {
-                if !activeMedications.contains(where: { $0.id == profile.id }) {
+                if let idx = activeMedications.firstIndex(where: { $0.id == profile.id }) {
+                    activeMedications[idx] = profile
+                } else {
                     activeMedications.append(profile)
                 }
             }
+        }
+        #endif
+    }
+
+    /// Removes clinically imported profiles (e.g. on consent revoke). Manual entries kept.
+    func clearClinicalMedications() {
+        activeMedications.removeAll { $0.source == .clinicalRecord }
+    }
+
+    /// Registers a manual medication profile for dose logging / display.
+    func addManualProfile(
+        id: String,
+        name: LocalizedString,
+        doseValue: Double? = nil,
+        doseUnit: String? = nil
+    ) {
+        let profile = MedicationProfile(
+            id: id,
+            name: name,
+            source: .manualEntry,
+            doseValue: doseValue,
+            doseUnit: doseUnit
+        )
+        if let idx = activeMedications.firstIndex(where: { $0.id == id }) {
+            activeMedications[idx] = profile
+        } else {
+            activeMedications.append(profile)
         }
     }
 
@@ -250,22 +303,69 @@ final class MedicationTracker: ObservableObject {
         _ resource: HKFHIRResource,
         record: HKClinicalRecord
     ) -> MedicationProfile? {
-        // Extract medication name from the clinical record display
+        // Extract medication name from the clinical record display.
+        // Full FHIR JSON parsing for dose is best-effort; never invent missing fields.
         let displayName = record.displayName
+        var doseValue: Double?
+        var doseUnit: String?
+
+        if let data = try? JSONSerialization.jsonObject(with: resource.data) as? [String: Any] {
+            // FHIR MedicationRequest / MedicationStatement-ish dosageInstruction[0].doseAndRate
+            if let instructions = data["dosageInstruction"] as? [[String: Any]],
+               let first = instructions.first,
+               let doseAndRate = first["doseAndRate"] as? [[String: Any]],
+               let doseQty = doseAndRate.first?["doseQuantity"] as? [String: Any] {
+                if let value = doseQty["value"] as? Double {
+                    doseValue = value
+                } else if let value = doseQty["value"] as? Int {
+                    doseValue = Double(value)
+                }
+                doseUnit = doseQty["unit"] as? String ?? doseQty["code"] as? String
+            }
+        }
 
         return MedicationProfile(
             id: resource.identifier,
             name: LocalizedString(en: displayName, fr: displayName),
-            source: .clinicalRecord
+            source: .clinicalRecord,
+            doseValue: doseValue,
+            doseUnit: doseUnit
         )
     }
 }
 
 /// A medication the user is tracking, sourced from clinical records or manual entry.
-struct MedicationProfile: Identifiable, Sendable {
+struct MedicationProfile: Identifiable, Sendable, Equatable {
     let id: String
     let name: LocalizedString
     let source: MedicationSource
+    /// Optional dose from clinical FHIR or manual entry — nil if unknown.
+    let doseValue: Double?
+    let doseUnit: String?
+
+    init(
+        id: String,
+        name: LocalizedString,
+        source: MedicationSource,
+        doseValue: Double? = nil,
+        doseUnit: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.source = source
+        self.doseValue = doseValue
+        self.doseUnit = doseUnit
+    }
+
+    var formattedDose: String {
+        guard let doseValue else {
+            return doseUnit?.isEmpty == false ? (doseUnit ?? "") : "—"
+        }
+        let intDose = Int(doseValue)
+        let doseStr = doseValue == Double(intDose) ? "\(intDose)" : String(format: "%.1f", doseValue)
+        let unit = doseUnit ?? ""
+        return unit.isEmpty ? doseStr : "\(doseStr) \(unit)"
+    }
 }
 
 enum MedicationSource: String, Sendable {

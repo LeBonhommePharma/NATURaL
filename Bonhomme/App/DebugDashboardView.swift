@@ -62,6 +62,13 @@ struct DebugDashboardView: View {
                         diagnosticRow("PhoneConnectivityBridge", value: "✅ Initialized")
                         diagnosticRow("FeedbackEngine", value: "✅ Initialized")
                         diagnosticRow("MedicationTracker", value: "✅ Initialized")
+                        diagnosticRow("PrescriptionService", value: "✅ Initialized")
+                        diagnosticRow(
+                            "Clinical Consent",
+                            value: appState.prescriptionService.consent.isValidForCurrentPolicy
+                                ? "✅ Granted v\(appState.prescriptionService.consent.policyVersion ?? "?")"
+                                : "⚠️ Not granted"
+                        )
                         diagnosticRow("WorkoutStateStore", value: "✅ Initialized")
 
                         Divider()

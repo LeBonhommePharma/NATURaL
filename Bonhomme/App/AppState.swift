@@ -31,6 +31,9 @@ final class AppState {
     /// Medication tracking and drug response analysis service.
     let medicationTracker: MedicationTracker
 
+    /// Consent-gated prescription import (HealthKit clinical + manual + CareKit).
+    let prescriptionService: MedicationPrescriptionService
+
     init() {
         // Register all signal analyzers at app level so data persists across sessions
         do {
@@ -47,6 +50,12 @@ final class AppState {
             medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
             print("⚠️ AppState initialization completed with warnings: \(error.localizedDescription)")
         }
+
+        prescriptionService = MedicationPrescriptionService(
+            healthKitManager: healthKitManager,
+            medicationTracker: medicationTracker,
+            careKitBridge: careKitBridge
+        )
     }
 
     /// Detects recoverable local activity and auto-loads it into a runnable restored session.

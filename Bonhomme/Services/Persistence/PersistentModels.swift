@@ -100,6 +100,19 @@ final class UserPreferences {
     var adaptiveMusicEnabled: Bool = true
     var showSCIVisualization: Bool = true
 
+    // MARK: Clinical / medication consent (mirror of ConsentStore)
+    // Authoritative gate is ConsentStore (UserDefaults); these fields support
+    // CloudKit-visible preference sync and UI binding when a ModelContext is available.
+
+    /// Whether the user explicitly opted in to clinical medication reads.
+    var clinicalMedicationConsentGranted: Bool = false
+    /// ISO-8601 or absolute date of last grant (nil if never granted).
+    var clinicalMedicationConsentGrantedAt: Date?
+    /// Date of last revoke (nil if currently granted or never granted).
+    var clinicalMedicationConsentRevokedAt: Date?
+    /// Policy version accepted at last grant (must match ClinicalConsent.currentPolicyVersion).
+    var clinicalMedicationConsentPolicyVersion: String?
+
     init() {}
 
     /// Resolved WorkoutMood from the persisted string preference.
@@ -109,6 +122,14 @@ final class UserPreferences {
             return .calm
         }
         return mood
+    }
+
+    /// Mirrors a `ClinicalConsent` snapshot into SwiftData preferences.
+    func applyClinicalConsent(_ consent: ClinicalConsent) {
+        clinicalMedicationConsentGranted = consent.isGranted
+        clinicalMedicationConsentGrantedAt = consent.grantedAt
+        clinicalMedicationConsentRevokedAt = consent.revokedAt
+        clinicalMedicationConsentPolicyVersion = consent.policyVersion
     }
 }
 

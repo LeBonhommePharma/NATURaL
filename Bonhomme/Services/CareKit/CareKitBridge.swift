@@ -163,6 +163,105 @@ final class CareKitBridge: ObservableObject {
         try await store.deleteTask(task)
         await refreshPrescribedTasks()
     }
+
+    // MARK: - Medication Prescriptions (consent-gated caller)
+
+    /// Syncs user-managed medication prescriptions into CareKit as daily tasks.
+    /// Call only after explicit clinical/medication consent.
+    /// Does not invent pharmacy credentials — titles/doses come from HealthKit clinical
+    /// import or user manual entry only.
+    func syncMedicationPrescriptions(_ medications: [MedicationPrescriptionSummary]) async throws {
+        for med in medications {
+            let task = MedicationTaskBuilder.buildTask(from: med)
+            do {
+                var existing = try await store.fetchTask(withID: task.id)
+                existing.effectiveDate = Date()
+                existing.schedule = task.schedule
+                existing.instructions = task.instructions
+                existing.title = task.title
+                try await store.updateTask(existing)
+            } catch {
+                try await store.addTask(task)
+            }
+        }
+        await refreshPrescribedTasks()
+    }
+
+    /// Removes a CareKit medication task by medication id.
+    func removeMedicationPrescription(medicationId: String) async throws {
+        let taskId = MedicationTaskBuilder.taskId(for: medicationId)
+        let task = try await store.fetchTask(withID: taskId)
+        try await store.deleteTask(task)
+        await refreshPrescribedTasks()
+    }
+}
+
+// MARK: - Medication CareKit Task Builder
+
+/// Maps user-managed medication prescriptions to CareKit tasks.
+/// Separate from yoga prescriptions (`YogaTaskBuilder`).
+enum MedicationTaskBuilder {
+    private static let taskPrefix = "natural.med."
+
+    static func taskId(for medicationId: String) -> String {
+        "\(taskPrefix)\(medicationId)"
+    }
+
+    static func buildTask(from summary: MedicationPrescriptionSummary) -> OCKTask {
+        let schedule = buildSchedule(hours: summary.scheduledHours)
+        let doseLine = summary.doseDescription.isEmpty || summary.doseDescription == "—"
+            ? ""
+            : " Dose: \(summary.doseDescription)."
+
+        var task = OCKTask(
+            id: taskId(for: summary.id),
+            title: summary.title,
+            carePlanUUID: nil,
+            schedule: schedule
+        )
+        task.instructions = summary.instructions + doseLine
+            + " User-managed — confirm with your clinician. Not medical advice."
+        task.impactsAdherence = true
+        task.groupIdentifier = "medication"
+        return task
+    }
+
+    private static func buildSchedule(hours: [Int]) -> OCKSchedule {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let activeHours = hours.isEmpty ? [8] : hours.sorted()
+
+        var elements: [OCKScheduleElement] = []
+        for hour in activeHours {
+            var components = calendar.dateComponents([.year, .month, .day], from: startOfDay)
+            components.hour = hour
+            components.minute = 0
+            guard let date = calendar.date(from: components) else { continue }
+            elements.append(
+                OCKScheduleElement(
+                    start: date,
+                    end: nil,
+                    interval: DateComponents(day: 1),
+                    text: nil,
+                    targetValues: []
+                )
+            )
+        }
+
+        if elements.isEmpty {
+            elements = [
+                OCKScheduleElement(
+                    start: startOfDay,
+                    end: nil,
+                    interval: DateComponents(day: 1),
+                    text: nil,
+                    targetValues: []
+                )
+            ]
+        }
+
+        return OCKSchedule(composing: elements)
+    }
 }
 
 // MARK: - OCKStore Async Helpers
