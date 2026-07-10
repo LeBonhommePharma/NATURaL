@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CareKitStore
 import BonhommeCore
 
 /// User-managed prescriptions with **explicit consent** for HealthKit clinical import.
@@ -14,6 +15,8 @@ struct PrescriptionsView: View {
 
     @State private var showingManualEntry = false
     @State private var showRevokeConfirm = false
+    @State private var doseJustLoggedId: String?
+    @State private var yogaAdherence: [String: Double] = [:]
 
     // Manual entry fields
     @State private var manualName = ""
@@ -26,10 +29,15 @@ struct PrescriptionsView: View {
         appState.prescriptionService
     }
 
+    private var careKit: CareKitBridge {
+        appState.careKitBridge
+    }
+
     var body: some View {
         List {
             consentSection
             privacySection
+            carePlanSection
             if service.consent.isValidForCurrentPolicy {
                 syncSection
                 medicationsSection
@@ -60,6 +68,181 @@ struct PrescriptionsView: View {
         .onAppear {
             service.refreshConsentState()
         }
+        .task {
+            await careKit.refreshPrescribedTasks()
+            await loadYogaAdherence()
+        }
+    }
+
+    // MARK: - Therapist care plan (yoga + CareKit med tasks)
+
+    /// Surfaces CareKit-prescribed yoga workouts and synced medication tasks
+    /// so therapist plans are visible even when clinical HK import is empty.
+    private var carePlanSection: some View {
+        Section {
+            if !careKit.isLoaded {
+                HStack {
+                    ProgressView()
+                    Text(LocalizedString(en: "Loading care plan…", fr: "Chargement du plan de soins…").localized)
+                        .foregroundStyle(.secondary)
+                }
+            } else if !careKit.hasPrescriptions {
+                Text(LocalizedString(
+                    en: "No therapist-prescribed tasks yet. Yoga plans appear when imported; medications sync after consent.",
+                    fr: "Aucune tâche prescrite pour l'instant. Les programmes de yoga apparaissent à l'import; les médicaments se synchronisent après consentement."
+                ).localized)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            } else {
+                if careKit.hasYogaPrescriptions {
+                    ForEach(careKit.yogaPrescribedTasks, id: \.id) { task in
+                        yogaCarePlanRow(task)
+                    }
+                }
+                if careKit.hasMedicationPrescriptions {
+                    ForEach(careKit.medicationPrescribedTasks, id: \.id) { task in
+                        medicationCarePlanRow(task)
+                    }
+                }
+            }
+        } header: {
+            Label(
+                LocalizedString(en: "Care plan (CareKit)", fr: "Plan de soins (CareKit)").localized,
+                systemImage: "stethoscope"
+            )
+        } footer: {
+            Text(LocalizedString(
+                en: "Completing a prescribed workout or marking a dose taken records CareKit adherence automatically.",
+                fr: "Terminer un entraînement prescrit ou marquer une dose prise enregistre automatiquement l'adhérence CareKit."
+            ).localized)
+        }
+    }
+
+    private func yogaCarePlanRow(_ task: OCKTask) -> some View {
+        let plan = careKit.resolveWorkoutPlan(for: task)
+        let planId = YogaTaskBuilder.planId(from: task.id)
+        let adherence = yogaAdherence[planId]
+
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "figure.yoga")
+                .font(.system(size: 22))
+                .foregroundStyle(.blue)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(plan?.name.localized ?? task.title ?? planId)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(LocalizedString(en: "Yoga", fr: "Yoga").localized)
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.blue)
+                }
+                if let instructions = task.instructions, !instructions.isEmpty {
+                    Text(instructions)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let adherence {
+                    Text(LocalizedString(
+                        en: "30-day adherence: \(Int(adherence * 100))%",
+                        fr: "Adhérence 30 j : \(Int(adherence * 100)) %"
+                    ).localized)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(adherence >= 0.7 ? .green : .orange)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func medicationCarePlanRow(_ task: OCKTask) -> some View {
+        let medId = MedicationTaskBuilder.medicationId(from: task.id)
+
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "pills.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(.teal)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(task.title ?? medId)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(LocalizedString(en: "Med", fr: "Méd.").localized)
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.teal.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.teal)
+                }
+                if let instructions = task.instructions, !instructions.isEmpty {
+                    Text(instructions)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                Task { await markDoseFromCareKitTask(task) }
+            } label: {
+                if doseJustLoggedId == medId {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Text(LocalizedString(en: "Taken", fr: "Pris").localized)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+            .disabled(doseJustLoggedId == medId)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func markDoseFromCareKitTask(_ task: OCKTask) async {
+        let medId = MedicationTaskBuilder.medicationId(from: task.id)
+        let profile = service.trackedMedications.first { $0.id == medId }
+        let schedule = schedules.first { $0.medicationId == medId }
+
+        let name = LocalizedString(
+            en: profile?.name.en ?? schedule?.name ?? task.title ?? medId,
+            fr: profile?.name.fr ?? schedule?.name ?? task.title ?? medId
+        )
+        let doseValue = profile?.doseValue ?? schedule?.doseValue ?? 0
+        let doseUnit = profile?.doseUnit ?? schedule?.doseUnit ?? ""
+
+        await service.logDoseTaken(
+            medicationId: medId,
+            name: name,
+            doseValue: doseValue,
+            doseUnit: doseUnit,
+            event: .taken
+        )
+
+        doseJustLoggedId = medId
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        if doseJustLoggedId == medId {
+            doseJustLoggedId = nil
+        }
+    }
+
+    private func loadYogaAdherence() async {
+        var map: [String: Double] = [:]
+        for task in careKit.yogaPrescribedTasks {
+            let planId = YogaTaskBuilder.planId(from: task.id)
+            if let value = try? await careKit.fetchAdherence(for: planId, days: 30) {
+                map[planId] = value
+            }
+        }
+        yogaAdherence = map
     }
 
     // MARK: - Consent
@@ -380,6 +563,11 @@ struct PrescriptionsView: View {
                 LocalizedString(en: "Schedules", fr: "Horaires").localized,
                 systemImage: "clock"
             )
+        } footer: {
+            Text(LocalizedString(
+                en: "Mark Taken logs the dose for biofeedback analysis and CareKit adherence when the med is synced.",
+                fr: "« Pris » journalise la dose pour l'analyse de biofeedback et l'adhérence CareKit si le médicament est synchronisé."
+            ).localized)
         }
     }
 
@@ -390,7 +578,7 @@ struct PrescriptionsView: View {
             medicationId: schedule.medicationId
         )
 
-        let row = VStack(alignment: .leading, spacing: 4) {
+        let detail = VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(schedule.name)
                     .font(.system(size: 15, weight: .medium))
@@ -414,17 +602,67 @@ struct PrescriptionsView: View {
             }
         }
 
-        if let pokeMatch, service.consent.isValidForCurrentPolicy {
-            NavigationLink {
-                PokeDrugSubstanceInsightView(
-                    match: pokeMatch,
-                    medicationDisplayName: schedule.name
-                )
-            } label: {
-                row
+        HStack(alignment: .center, spacing: 12) {
+            Group {
+                if let pokeMatch, service.consent.isValidForCurrentPolicy {
+                    NavigationLink {
+                        PokeDrugSubstanceInsightView(
+                            match: pokeMatch,
+                            medicationDisplayName: schedule.name
+                        )
+                    } label: {
+                        detail
+                    }
+                } else {
+                    detail
+                }
             }
-        } else {
-            row
+
+            Spacer(minLength: 8)
+
+            Button {
+                Task { await markDoseFromSchedule(schedule) }
+            } label: {
+                if doseJustLoggedId == schedule.medicationId {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Text(LocalizedString(en: "Taken", fr: "Pris").localized)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(.teal)
+            .disabled(doseJustLoggedId == schedule.medicationId)
+            .accessibilityHint(LocalizedString(
+                en: "Marks this dose taken and updates CareKit adherence",
+                fr: "Marque cette dose comme prise et met à jour l'adhérence CareKit"
+            ).localized)
+        }
+    }
+
+    private func markDoseFromSchedule(_ schedule: MedicationSchedule) async {
+        await service.logDoseTaken(
+            medicationId: schedule.medicationId,
+            name: LocalizedString(en: schedule.name, fr: schedule.name),
+            doseValue: schedule.doseValue,
+            doseUnit: schedule.doseUnit,
+            event: .taken
+        )
+        doseJustLoggedId = schedule.medicationId
+        // Ensure CareKit med task exists, then re-record if the first write no-op'd
+        await service.syncPrescriptions(modelContext: modelContext)
+        if careKit.isMedicationPrescribed(schedule.medicationId) {
+            try? await careKit.recordMedicationDose(
+                medicationId: schedule.medicationId,
+                doseValue: schedule.doseValue,
+                doseUnit: schedule.doseUnit,
+                event: .taken
+            )
+        }
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        if doseJustLoggedId == schedule.medicationId {
+            doseJustLoggedId = nil
         }
     }
 

@@ -238,6 +238,57 @@ final class MedicationPrescriptionService: ObservableObject {
         medicationTracker.activeMedications
     }
 
+    // MARK: - Dose adherence (FeedbackEngine + CareKit)
+
+    /// Logs a dose event into the analysis pipeline and records CareKit adherence
+    /// when the medication is synced as a CareKit task.
+    ///
+    /// - Parameters:
+    ///   - medicationId: Stable medication id (matches CareKit `natural.med.*` suffix).
+    ///   - name: Display name.
+    ///   - doseValue: Dose amount (0 if unknown).
+    ///   - doseUnit: Dose unit string.
+    ///   - event: Taken / late write CareKit outcomes; missed / skipped only hit in-app analytics.
+    ///   - at: Event timestamp.
+    func logDoseTaken(
+        medicationId: String,
+        name: LocalizedString,
+        doseValue: Double,
+        doseUnit: String,
+        event: MedicationEvent = .taken,
+        at date: Date = Date()
+    ) async {
+        medicationTracker.logDose(
+            medicationId: medicationId,
+            name: name,
+            doseValue: doseValue,
+            doseUnit: doseUnit,
+            event: event,
+            at: date
+        )
+
+        guard event == .taken || event == .late else { return }
+
+        do {
+            try await careKitBridge.recordMedicationDose(
+                medicationId: medicationId,
+                doseValue: doseValue,
+                doseUnit: doseUnit,
+                event: event,
+                at: date
+            )
+            consentStore.appendAudit(ConsentAuditEntry(
+                action: .careKitSync,
+                detail: "dose_outcome med=\(medicationId) event=\(event.rawValue)"
+            ))
+        } catch {
+            consentStore.appendAudit(ConsentAuditEntry(
+                action: .clinicalReadFailure,
+                detail: "dose_outcome_error \(error.localizedDescription)"
+            ))
+        }
+    }
+
     // MARK: - Private helpers
 
     private func mergeClinicalIntoSchedules(modelContext: ModelContext) {

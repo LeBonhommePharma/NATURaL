@@ -8,7 +8,8 @@ import BonhommeCore
 enum YogaTaskBuilder {
 
     /// Prefix used to namespace NATURaL task IDs in the CareKit store.
-    private static let taskPrefix = "natural.yoga."
+    static let taskPrefix = "natural.yoga."
+    static let groupIdentifier = "yoga"
 
     /// Generates a CareKit task ID from a workout plan ID.
     static func taskId(for planId: String) -> String {
@@ -18,6 +19,11 @@ enum YogaTaskBuilder {
     /// Extracts the original workout plan ID from a CareKit task ID.
     static func planId(from taskId: String) -> String {
         String(taskId.dropFirst(taskPrefix.count))
+    }
+
+    /// Whether a CareKit task is a NATURaL yoga workout prescription.
+    static func isYogaTask(_ task: OCKTask) -> Bool {
+        task.groupIdentifier == groupIdentifier || task.id.hasPrefix(taskPrefix)
     }
 
     // MARK: - Task Building
@@ -58,7 +64,7 @@ enum YogaTaskBuilder {
         )
         task.instructions = instructions
         task.impactsAdherence = true
-        task.groupIdentifier = "yoga"
+        task.groupIdentifier = groupIdentifier
 
         return task
     }

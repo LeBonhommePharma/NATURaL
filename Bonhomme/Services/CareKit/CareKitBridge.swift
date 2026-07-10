@@ -9,6 +9,10 @@ import BonhommeCore
 /// and outcomes. The therapist creates a care plan (via a companion portal or
 /// in-app configuration), and patients see their prescribed workouts in the
 /// NATURaL home screen with adherence tracking.
+///
+/// Task namespaces:
+/// - Yoga workouts: `natural.yoga.<planId>` (`groupIdentifier == "yoga"`)
+/// - Medications: `natural.med.<medicationId>` (`groupIdentifier == "medication"`)
 @MainActor
 final class CareKitBridge: ObservableObject {
     @Published var prescribedTasks: [OCKTask] = []
@@ -18,6 +22,45 @@ final class CareKitBridge: ObservableObject {
 
     init(storeName: String = "NATURaLCareKit") {
         self.store = OCKStore(name: storeName)
+    }
+
+    // MARK: - Task classification
+
+    /// Active yoga workout prescriptions only.
+    var yogaPrescribedTasks: [OCKTask] {
+        prescribedTasks.filter { YogaTaskBuilder.isYogaTask($0) }
+    }
+
+    /// Active medication prescriptions only.
+    var medicationPrescribedTasks: [OCKTask] {
+        prescribedTasks.filter { MedicationTaskBuilder.isMedicationTask($0) }
+    }
+
+    /// True when any CareKit task is active (yoga or medication).
+    var hasPrescriptions: Bool {
+        !prescribedTasks.isEmpty
+    }
+
+    /// True when at least one yoga workout is prescribed.
+    var hasYogaPrescriptions: Bool {
+        !yogaPrescribedTasks.isEmpty
+    }
+
+    /// True when at least one medication task is prescribed.
+    var hasMedicationPrescriptions: Bool {
+        !medicationPrescribedTasks.isEmpty
+    }
+
+    /// Whether a catalog workout plan is currently prescribed in CareKit.
+    func isPlanPrescribed(_ planId: String) -> Bool {
+        let taskId = YogaTaskBuilder.taskId(for: planId)
+        return yogaPrescribedTasks.contains { $0.id == taskId }
+    }
+
+    /// Whether a medication has an active CareKit task.
+    func isMedicationPrescribed(_ medicationId: String) -> Bool {
+        let taskId = MedicationTaskBuilder.taskId(for: medicationId)
+        return medicationPrescribedTasks.contains { $0.id == taskId }
     }
 
     // MARK: - Prescription Management
@@ -50,6 +93,9 @@ final class CareKitBridge: ObservableObject {
                 existing.effectiveDate = startDate
                 existing.schedule = task.schedule
                 existing.instructions = task.instructions
+                existing.title = task.title
+                existing.groupIdentifier = task.groupIdentifier
+                existing.impactsAdherence = task.impactsAdherence
                 try await store.updateTask(existing)
             } catch {
                 // Task doesn't exist yet — add it
@@ -61,9 +107,10 @@ final class CareKitBridge: ObservableObject {
     }
 
     /// Records a completed workout as a CareKit outcome against the prescribed task.
+    /// No-ops (without throwing) when the plan is not currently prescribed.
     ///
     /// - Parameters:
-    ///   - planId: The workout plan ID (matches the OCKTask ID).
+    ///   - planId: The workout plan ID (matches the OCKTask ID suffix).
     ///   - result: The workout result containing duration, poses, calories, etc.
     ///   - sciScore: The final SCI score at workout completion.
     func recordCompletion(
@@ -73,37 +120,65 @@ final class CareKitBridge: ObservableObject {
     ) async throws {
         let taskId = YogaTaskBuilder.taskId(for: planId)
 
-        // Find the task and its schedule event for today
-        let task = try await store.fetchTask(withID: taskId)
+        let task: OCKTask
+        do {
+            task = try await store.fetchTask(withID: taskId)
+        } catch {
+            // Plan is not prescribed — nothing to record
+            return
+        }
 
-        // Create outcome values from the workout result
         let outcomeValues = YogaTaskBuilder.buildOutcomeValues(
             from: result,
             sciScore: sciScore
         )
 
-        // Find today's schedule event index
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
-        let events = task.schedule.events(
-            from: startOfDay,
-            to: endOfDay
+        try await addOutcomeIfNeeded(
+            for: task,
+            values: outcomeValues,
+            at: result.endDate
         )
-
-        let eventIndex = events.isEmpty ? 0 : 0 // Use first event of the day
-
-        let outcome = OCKOutcome(
-            taskUUID: task.uuid,
-            taskOccurrenceIndex: eventIndex,
-            values: outcomeValues
-        )
-
-        try await store.addOutcome(outcome)
     }
 
-    /// Calculates adherence percentage for a specific prescribed plan
+    /// Records a medication dose event as a CareKit outcome for adherence.
+    /// Call when the user marks a dose taken (or late). Missed/skipped do not
+    /// write completion outcomes (they are non-adherence signals in-app only).
+    ///
+    /// - Parameters:
+    ///   - medicationId: Stable medication identifier (matches CareKit task suffix).
+    ///   - doseValue: Dose amount.
+    ///   - doseUnit: Dose unit string.
+    ///   - event: Taken / late (others are ignored for CareKit outcomes).
+    ///   - at: Event timestamp (defaults to now).
+    func recordMedicationDose(
+        medicationId: String,
+        doseValue: Double,
+        doseUnit: String,
+        event: MedicationEvent = .taken,
+        at date: Date = Date()
+    ) async throws {
+        guard event == .taken || event == .late else { return }
+
+        let taskId = MedicationTaskBuilder.taskId(for: medicationId)
+        let task: OCKTask
+        do {
+            task = try await store.fetchTask(withID: taskId)
+        } catch {
+            // Medication not synced to CareKit yet
+            return
+        }
+
+        let values = MedicationTaskBuilder.buildOutcomeValues(
+            doseValue: doseValue,
+            doseUnit: doseUnit,
+            event: event,
+            at: date
+        )
+
+        try await addOutcomeIfNeeded(for: task, values: values, at: date)
+    }
+
+    /// Calculates adherence percentage for a specific prescribed yoga plan
     /// over the last N days.
     ///
     /// - Parameters:
@@ -112,28 +187,17 @@ final class CareKitBridge: ObservableObject {
     /// - Returns: Adherence as a 0.0–1.0 fraction.
     func fetchAdherence(for planId: String, days: Int = 30) async throws -> Double {
         let taskId = YogaTaskBuilder.taskId(for: planId)
-        let task = try await store.fetchTask(withID: taskId)
+        return try await fetchAdherence(taskId: taskId, days: days)
+    }
 
-        let calendar = Calendar.current
-        let endDate = Date()
-        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
-            return 0
-        }
-
-        // Count scheduled events in the window
-        let scheduledEvents = task.schedule.events(from: startDate, to: endDate)
-        let totalScheduled = scheduledEvents.count
-        guard totalScheduled > 0 else { return 0 }
-
-        // Count outcomes (completed sessions)
-        let query = OCKOutcomeQuery(for: Date())
-        let outcomes = try await store.fetchOutcomes(query: query)
-        let completedCount = outcomes.filter { $0.taskUUID == task.uuid }.count
-
-        return min(1.0, Double(completedCount) / Double(totalScheduled))
+    /// Calculates adherence for a medication CareKit task over the last N days.
+    func fetchMedicationAdherence(for medicationId: String, days: Int = 30) async throws -> Double {
+        let taskId = MedicationTaskBuilder.taskId(for: medicationId)
+        return try await fetchAdherence(taskId: taskId, days: days)
     }
 
     /// Fetches all active prescribed tasks from the CareKit store.
+    /// Independent of HealthKit — CareKit uses a local OCKStore.
     func refreshPrescribedTasks() async {
         do {
             let query = OCKTaskQuery(for: Date())
@@ -147,16 +211,12 @@ final class CareKitBridge: ObservableObject {
 
     /// Returns the WorkoutPlan for a prescribed task, if it exists in the catalog.
     func resolveWorkoutPlan(for task: OCKTask) -> WorkoutPlan? {
+        guard YogaTaskBuilder.isYogaTask(task) else { return nil }
         let planId = YogaTaskBuilder.planId(from: task.id)
         return PoseCatalog.allPlans.first { $0.id == planId }
     }
 
-    /// Checks if there are any active prescriptions.
-    var hasPrescriptions: Bool {
-        !prescribedTasks.isEmpty
-    }
-
-    /// Removes a prescribed task (e.g., when therapist cancels the prescription).
+    /// Removes a prescribed yoga task (e.g., when therapist cancels the prescription).
     func removePrescription(planId: String) async throws {
         let taskId = YogaTaskBuilder.taskId(for: planId)
         let task = try await store.fetchTask(withID: taskId)
@@ -171,6 +231,8 @@ final class CareKitBridge: ObservableObject {
     /// Does not invent pharmacy credentials — titles/doses come from HealthKit clinical
     /// import or user manual entry only.
     func syncMedicationPrescriptions(_ medications: [MedicationPrescriptionSummary]) async throws {
+        let desiredIds = Set(medications.map { MedicationTaskBuilder.taskId(for: $0.id) })
+
         for med in medications {
             let task = MedicationTaskBuilder.buildTask(from: med)
             do {
@@ -179,11 +241,19 @@ final class CareKitBridge: ObservableObject {
                 existing.schedule = task.schedule
                 existing.instructions = task.instructions
                 existing.title = task.title
+                existing.groupIdentifier = task.groupIdentifier
+                existing.impactsAdherence = task.impactsAdherence
                 try await store.updateTask(existing)
             } catch {
                 try await store.addTask(task)
             }
         }
+
+        // Drop CareKit med tasks no longer present in the user-managed list
+        for task in medicationPrescribedTasks where !desiredIds.contains(task.id) {
+            try? await store.deleteTask(task)
+        }
+
         await refreshPrescribedTasks()
     }
 
@@ -194,6 +264,77 @@ final class CareKitBridge: ObservableObject {
         try await store.deleteTask(task)
         await refreshPrescribedTasks()
     }
+
+    // MARK: - Private helpers
+
+    private func fetchAdherence(taskId: String, days: Int) async throws -> Double {
+        let task = try await store.fetchTask(withID: taskId)
+
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
+            return 0
+        }
+
+        let scheduledEvents = task.schedule.events(from: startDate, to: endDate)
+        let totalScheduled = scheduledEvents.count
+        guard totalScheduled > 0 else { return 0 }
+
+        var query = OCKOutcomeQuery(dateInterval: DateInterval(start: startDate, end: endDate))
+        query.taskIDs = [task.id]
+        let outcomes = try await store.fetchOutcomes(query: query)
+        let completedCount = outcomes.filter { $0.taskUUID == task.uuid }.count
+
+        return min(1.0, Double(completedCount) / Double(totalScheduled))
+    }
+
+    /// Adds an outcome for today's (or nearest) schedule occurrence if one
+    /// does not already exist for that occurrence index.
+    private func addOutcomeIfNeeded(
+        for task: OCKTask,
+        values: [OCKOutcomeValue],
+        at date: Date
+    ) async throws {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return
+        }
+
+        let dayEvents = task.schedule.events(from: startOfDay, to: endOfDay)
+        let occurrenceIndex: Int
+        if let nearest = dayEvents.min(by: {
+            abs($0.start.timeIntervalSince(date)) < abs($1.start.timeIntervalSince(date))
+        }) {
+            occurrenceIndex = nearest.occurrence
+        } else {
+            // No event scheduled today — still record against occurrence 0 so
+            // therapists see activity outside the strict schedule window.
+            occurrenceIndex = 0
+        }
+
+        // Skip if an outcome already exists for this occurrence
+        var existingQuery = OCKOutcomeQuery(dateInterval: DateInterval(start: startOfDay, end: endOfDay))
+        existingQuery.taskIDs = [task.id]
+        if let existing = try? await store.fetchOutcomes(query: existingQuery),
+           existing.contains(where: {
+               $0.taskUUID == task.uuid && $0.taskOccurrenceIndex == occurrenceIndex
+           }) {
+            return
+        }
+
+        let outcome = OCKOutcome(
+            taskUUID: task.uuid,
+            taskOccurrenceIndex: occurrenceIndex,
+            values: values
+        )
+
+        do {
+            try await store.addOutcome(outcome)
+        } catch {
+            // Duplicate or store conflict — treat as already recorded
+        }
+    }
 }
 
 // MARK: - Medication CareKit Task Builder
@@ -201,10 +342,19 @@ final class CareKitBridge: ObservableObject {
 /// Maps user-managed medication prescriptions to CareKit tasks.
 /// Separate from yoga prescriptions (`YogaTaskBuilder`).
 enum MedicationTaskBuilder {
-    private static let taskPrefix = "natural.med."
+    static let taskPrefix = "natural.med."
+    static let groupIdentifier = "medication"
 
     static func taskId(for medicationId: String) -> String {
         "\(taskPrefix)\(medicationId)"
+    }
+
+    static func medicationId(from taskId: String) -> String {
+        String(taskId.dropFirst(taskPrefix.count))
+    }
+
+    static func isMedicationTask(_ task: OCKTask) -> Bool {
+        task.groupIdentifier == groupIdentifier || task.id.hasPrefix(taskPrefix)
     }
 
     static func buildTask(from summary: MedicationPrescriptionSummary) -> OCKTask {
@@ -222,8 +372,40 @@ enum MedicationTaskBuilder {
         task.instructions = summary.instructions + doseLine
             + " User-managed — confirm with your clinician. Not medical advice."
         task.impactsAdherence = true
-        task.groupIdentifier = "medication"
+        task.groupIdentifier = groupIdentifier
         return task
+    }
+
+    /// Outcome values for a logged dose (adherence completion).
+    static func buildOutcomeValues(
+        doseValue: Double,
+        doseUnit: String,
+        event: MedicationEvent,
+        at date: Date
+    ) -> [OCKOutcomeValue] {
+        var values: [OCKOutcomeValue] = []
+
+        var taken = OCKOutcomeValue(true)
+        taken.kind = "dose_taken"
+        values.append(taken)
+
+        var dose = OCKOutcomeValue(doseValue)
+        dose.kind = "dose_value"
+        values.append(dose)
+
+        var unit = OCKOutcomeValue(doseUnit)
+        unit.kind = "dose_unit"
+        values.append(unit)
+
+        var eventKind = OCKOutcomeValue(event.rawValue)
+        eventKind.kind = "medication_event"
+        values.append(eventKind)
+
+        var timestamp = OCKOutcomeValue(date.timeIntervalSince1970)
+        timestamp.kind = "logged_at"
+        values.append(timestamp)
+
+        return values
     }
 
     private static func buildSchedule(hours: [Int]) -> OCKSchedule {

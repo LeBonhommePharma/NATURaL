@@ -50,13 +50,9 @@ struct BonhommeApp: App {
             if !appState.isWorkoutActive {
                 appState.checkForResumableWorkout()
             }
-            // Refresh CareKit prescriptions only after HealthKit authorization
+            // CareKit uses a local OCKStore — independent of HealthKit authorization
             Task {
-                if appState.healthKitAuthorized {
-                    await appState.careKitBridge.refreshPrescribedTasks()
-                } else {
-                    print("ℹ️ Skipping CareKit refresh: HealthKit not authorized")
-                }
+                await appState.careKitBridge.refreshPrescribedTasks()
             }
         @unknown default:
             break
@@ -159,12 +155,12 @@ struct ContentView: View {
                     try await appState.healthKitManager.requestAuthorization()
                     appState.healthKitAuthorized = true
                     try? await appState.healthKitManager.enableBackgroundDelivery()
-                    // Safe to refresh CareKit prescriptions after authorization
-                    await appState.careKitBridge.refreshPrescribedTasks()
                 } catch {
                     appState.healthKitAuthorized = false
                     print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
                 }
+                // CareKit local store refresh — not gated on HealthKit
+                await appState.careKitBridge.refreshPrescribedTasks()
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 CloudKitSyncStatusBanner(status: appState.persistenceSync)

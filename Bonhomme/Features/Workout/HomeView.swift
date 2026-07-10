@@ -25,8 +25,8 @@ struct HomeView: View {
     private var iPadLayout: some View {
         NavigationSplitView {
             List(selection: $selectedStyle) {
-                // CareKit prescribed section
-                if appState.careKitBridge.hasPrescriptions {
+                // CareKit prescribed yoga workouts (meds surface in Prescriptions)
+                if appState.careKitBridge.hasYogaPrescriptions {
                     prescribedSection
                 }
 
@@ -106,8 +106,8 @@ struct HomeView: View {
                         .padding(.horizontal)
                 }
 
-                // CareKit prescribed section
-                if appState.careKitBridge.hasPrescriptions {
+                // CareKit prescribed yoga workouts (meds surface in Prescriptions)
+                if appState.careKitBridge.hasYogaPrescriptions {
                     prescribedCardsSection
                 }
 
@@ -440,13 +440,20 @@ struct HomeView: View {
 
     private var prescribedSection: some View {
         Section {
-            ForEach(appState.careKitBridge.prescribedTasks, id: \.id) { task in
+            ForEach(appState.careKitBridge.yogaPrescribedTasks, id: \.id) { task in
                 if let plan = appState.careKitBridge.resolveWorkoutPlan(for: task) {
                     planRow(plan: plan, isPremium: false)
                         .badge(Text(LocalizedString(
                             en: "Prescribed",
                             fr: "Prescrit"
                         ).localized))
+                } else {
+                    // Orphan CareKit yoga task (plan not in local catalog) — still surface it
+                    Label(
+                        task.title ?? YogaTaskBuilder.planId(from: task.id),
+                        systemImage: "stethoscope"
+                    )
+                    .foregroundStyle(.secondary)
                 }
             }
         } header: {
@@ -464,44 +471,85 @@ struct HomeView: View {
                     .foregroundStyle(.blue)
                 Text(LocalizedString(en: "Prescribed Workouts", fr: "Entraînements prescrits").localized)
                     .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Text("\(appState.careKitBridge.yogaPrescribedTasks.count)")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(.blue.opacity(0.12), in: Capsule())
             }
             .padding(.horizontal)
 
-            ForEach(appState.careKitBridge.prescribedTasks, id: \.id) { task in
+            ForEach(appState.careKitBridge.yogaPrescribedTasks, id: \.id) { task in
                 if let plan = appState.careKitBridge.resolveWorkoutPlan(for: task) {
                     NavigationLink {
                         WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
                     } label: {
-                        HStack {
-                            Image(systemName: "figure.yoga")
-                                .font(.system(size: 24))
-                                .foregroundStyle(.blue)
-
-                            VStack(alignment: .leading) {
-                                Text(plan.name.localized)
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                if let instructions = task.instructions {
-                                    Text(instructions)
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding()
-                        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                        prescribedTaskCard(
+                            title: plan.name.localized,
+                            subtitle: task.instructions,
+                            isTappable: true
+                        )
                     }
                     .buttonStyle(.plain)
+                    .padding(.horizontal)
+                } else {
+                    // Show prescribed task even when catalog resolve fails
+                    prescribedTaskCard(
+                        title: task.title ?? YogaTaskBuilder.planId(from: task.id),
+                        subtitle: task.instructions
+                            ?? LocalizedString(
+                                en: "Prescribed plan — open when available in catalog",
+                                fr: "Programme prescrit — disponible quand présent au catalogue"
+                            ).localized,
+                        isTappable: false
+                    )
                     .padding(.horizontal)
                 }
             }
         }
+    }
+
+    private func prescribedTaskCard(
+        title: String,
+        subtitle: String?,
+        isTappable: Bool
+    ) -> some View {
+        HStack {
+            Image(systemName: "figure.yoga")
+                .font(.system(size: 24))
+                .foregroundStyle(.blue)
+
+            VStack(alignment: .leading) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    Text(LocalizedString(en: "Prescribed", fr: "Prescrit").localized)
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.blue)
+                }
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer()
+
+            if isTappable {
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Resume Banner

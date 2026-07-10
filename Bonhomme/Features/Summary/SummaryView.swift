@@ -295,14 +295,12 @@ struct SummaryView: View {
             breathRate: nil
         )
 
-        // 3. Record CareKit completion if this was a prescribed workout
-        if appState.careKitBridge.hasPrescriptions {
-            try? await appState.careKitBridge.recordCompletion(
-                planId: result.workoutPlanId,
-                result: result,
-                sciScore: sciScore
-            )
-        }
+        // 3. CareKit yoga adherence — no-ops when this plan is not prescribed
+        try? await appState.careKitBridge.recordCompletion(
+            planId: result.workoutPlanId,
+            result: result,
+            sciScore: sciScore
+        )
 
         // 4. Save drug response record if available
         if let response = drugResponse {

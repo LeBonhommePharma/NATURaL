@@ -87,6 +87,8 @@ struct DebugDashboardView: View {
                         // CareKit Status
                         sectionHeader("CareKit")
                         diagnosticRow("Prescriptions", value: "\(appState.careKitBridge.prescribedTasks.count)")
+                        diagnosticRow("Yoga Tasks", value: "\(appState.careKitBridge.yogaPrescribedTasks.count)")
+                        diagnosticRow("Med Tasks", value: "\(appState.careKitBridge.medicationPrescribedTasks.count)")
                         diagnosticRow("Has Prescriptions", value: appState.careKitBridge.hasPrescriptions ? "✅ Yes" : "❌ No")
 
                         Divider()
