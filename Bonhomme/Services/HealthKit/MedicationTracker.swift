@@ -17,10 +17,15 @@ final class MedicationTracker: ObservableObject {
     @Published var activeMedications: [MedicationProfile] = []
     @Published var recentEvents: [MedicationSignal] = []
     @Published var latestDrugResponse: DrugResponseResult?
+    /// Multi-substance |ΔS_config| ↔ |ΔH_hrv| correlation when enough pairs exist.
+    @Published var latestCrossDomainValidation: CrossDomainValidator.ValidationResult?
 
     private let healthStore = HKHealthStore()
     private let feedbackEngine: FeedbackEngine
     private let drugResponseAnalyzer = DrugResponseAnalyzer()
+    private let crossDomainValidator = CrossDomainValidator()
+    /// Recent per-substance drug responses for cross-domain pairing (newest wins per id).
+    private var drugResponseBySubstance: [String: DrugResponseResult] = [:]
 
     init(feedbackEngine: FeedbackEngine) {
         self.feedbackEngine = feedbackEngine
@@ -171,9 +176,20 @@ final class MedicationTracker: ObservableObject {
 
         if let result {
             latestDrugResponse = result
+            drugResponseBySubstance[result.doseEvent.medicationId] = result
+            refreshCrossDomainValidation()
         }
 
         return result
+    }
+
+    /// Recompute molecular ↔ physiological correlation from accumulated drug responses.
+    /// Uses BindingEntropyProfile reference ΔS when docking runs are unavailable.
+    private func refreshCrossDomainValidation() {
+        let results = Array(drugResponseBySubstance.values)
+        latestCrossDomainValidation = crossDomainValidator.validateFromProfiles(
+            drugResponseResults: results
+        )
     }
 
     /// Analyze drug response history for a specific medication across all logged doses.

@@ -298,11 +298,31 @@ final class WorkoutFlowViewModel {
         musicService.stop()
         insightEngine.clearPoseCueCache()
         endLiveActivity()
+        // Drug/docking-aware session narrative — fire-and-forget (never blocks UI).
+        generateSessionNarrativeAsync()
         Task {
             await pharmaControl.stop()
             let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
             let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
             try? await recorder.end(metadata: metadata)
+        }
+    }
+
+    /// Kick InsightEngine workout summary (FM on-device or static drug-aware templates).
+    /// Does not await on the pose/control path.
+    private func generateSessionNarrativeAsync() {
+        let result = buildResult()
+        let insights = feedbackEngine.analyzeAll()
+        Task { [weak self] in
+            guard let self else { return }
+            let summary = await self.insightEngine.generateWorkoutSummary(
+                result: result,
+                insights: insights
+            )
+            // Mirror into latestNarrative so summary UI / Siri can read one field.
+            if !summary.isEmpty {
+                self.insightEngine.latestNarrative = summary
+            }
         }
     }
 
@@ -501,11 +521,23 @@ final class WorkoutFlowViewModel {
         startPoseTimer(for: index)
     }
 
+    /// Push latest drug-response / cross-domain context into InsightEngine narratives.
+    /// Safe to call from UI on appear or when MedicationTracker updates — does not touch pose timers.
+    func syncPharmaContext(
+        drugResponse: DrugResponseResult?,
+        crossDomain: CrossDomainValidator.ValidationResult? = nil
+    ) {
+        insightEngine.setDrugResponse(drugResponse)
+        if let crossDomain {
+            insightEngine.setCrossDomainValidation(crossDomain)
+        }
+    }
+
     /// Fire-and-forget pose voice cue via InsightEngine (on-device FM or static templates).
     /// Never awaited from the pose timer path — generation runs on a side task.
     private func refreshVoiceCue(for pose: Pose) {
         let poseId = pose.id
-        // HRV-only refresh keeps the path light; medication/docking use last known insights.
+        // HRV-only refresh keeps the path light; medication/docking/drug-response use last known insights + pharma context.
         let insights = feedbackEngine.refreshHRVAndSnapshot()
         let hr = recorder.currentHeartRate
 
@@ -609,6 +641,8 @@ final class WorkoutFlowViewModel {
             endLiveActivity()
             stateStore.clear()
             await pharmaControl.stop()
+            // Drug/docking-aware session narrative before complete UI (async, non-blocking).
+            generateSessionNarrativeAsync()
             phase = .complete
         }
     }

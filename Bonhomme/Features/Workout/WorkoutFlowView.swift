@@ -41,7 +41,12 @@ struct WorkoutFlowView: View {
                 cooldownView
             case .complete:
                 let sciScore = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
-                SummaryView(result: viewModel.buildResult(), sciScore: sciScore) {
+                SummaryView(
+                    result: viewModel.buildResult(),
+                    sciScore: sciScore,
+                    drugResponse: appState.medicationTracker.latestDrugResponse
+                        ?? viewModel.insightEngine.latestDrugResponse
+                ) {
                     dismiss()
                 }
             }
@@ -70,9 +75,21 @@ struct WorkoutFlowView: View {
             // All entry paths (catalog start, banner, auto-restore navigation) mark active
             // so BonhommeApp scenePhase.active does not re-run detect→auto-load mid-session.
             appState.noteWorkoutPresented()
+            // Wire drug-response / cross-domain context into InsightEngine (pose/session narratives).
+            // Non-blocking — does not start or delay the pose timer.
+            viewModel.syncPharmaContext(
+                drugResponse: appState.medicationTracker.latestDrugResponse,
+                crossDomain: appState.medicationTracker.latestCrossDomainValidation
+            )
             if viewModel.isRestoredSession {
                 viewModel.resumeRestoredSession()
             }
+        }
+        .onChange(of: appState.medicationTracker.latestDrugResponse?.doseEvent.timestamp) { _, _ in
+            viewModel.syncPharmaContext(
+                drugResponse: appState.medicationTracker.latestDrugResponse,
+                crossDomain: appState.medicationTracker.latestCrossDomainValidation
+            )
         }
         .onDisappear {
             appState.noteWorkoutDismissed()

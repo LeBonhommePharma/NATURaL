@@ -12,6 +12,10 @@ import FoundationModels
 /// No health data is sent to the network by this engine. Cloud / Private Cloud Compute
 /// models are intentionally not used.
 ///
+/// **Pharma context:** Optional `DrugResponseResult` and `CrossDomainValidator.ValidationResult`
+/// enrich narratives with drug–HRV entropy language and molecular ↔ physiological correlation.
+/// Medication adherence and docking insights also flow from `FeedbackEngine` signal analysis.
+///
 /// Availability: Requires iOS 26+ and a device that supports Apple Intelligence
 /// with the model ready. Falls back to template-based summaries and static
 /// `pose.voiceCueText` on unsupported OS / hardware / disabled AI.
@@ -30,6 +34,11 @@ final class InsightEngine: ObservableObject {
 
     private let feedbackEngine: FeedbackEngine
 
+    /// Latest post-dose HRV entropy analysis (from `MedicationTracker` / DrugResponseAnalyzer).
+    private(set) var latestDrugResponse: DrugResponseResult?
+    /// Optional multi-substance molecular ↔ physiological correlation.
+    private(set) var latestCrossDomainValidation: CrossDomainValidator.ValidationResult?
+
     /// Per-pose cache of the last successful model (or template) cue this session.
     private var poseCueCache: [String: String] = [:]
     /// In-flight pose generation — cancelled when a new pose starts.
@@ -38,6 +47,43 @@ final class InsightEngine: ObservableObject {
     init(feedbackEngine: FeedbackEngine) {
         self.feedbackEngine = feedbackEngine
         refreshModelAvailability()
+    }
+
+    // MARK: - Pharma Context
+
+    /// Wire the latest drug-response analysis into narrative generation.
+    /// Call when `MedicationTracker.latestDrugResponse` updates (does not block pose timer).
+    func setDrugResponse(_ result: DrugResponseResult?) {
+        latestDrugResponse = result
+        // Drug context can change mid-session; drop pose cache so cues re-adapt.
+        poseCueCache.removeAll(keepingCapacity: false)
+    }
+
+    /// Wire a `CrossDomainValidator` result when enough paired |ΔS| / |ΔH| observations exist.
+    func setCrossDomainValidation(_ result: CrossDomainValidator.ValidationResult?) {
+        latestCrossDomainValidation = result
+    }
+
+    /// Convenience: push both optional pharma contexts in one call.
+    /// Pass non-nil values to update; omit a parameter to leave that field unchanged.
+    /// Use `clearPharmaContext()` or `setDrugResponse(nil)` / `setCrossDomainValidation(nil)` to clear.
+    func updatePharmaContext(
+        drugResponse: DrugResponseResult? = nil,
+        crossDomain: CrossDomainValidator.ValidationResult? = nil
+    ) {
+        if let drugResponse {
+            setDrugResponse(drugResponse)
+        }
+        if let crossDomain {
+            setCrossDomainValidation(crossDomain)
+        }
+    }
+
+    /// Clear drug / cross-domain narrative context (e.g. session end or consent revoke).
+    func clearPharmaContext() {
+        latestDrugResponse = nil
+        latestCrossDomainValidation = nil
+        poseCueCache.removeAll(keepingCapacity: false)
     }
 
     // MARK: - Availability
@@ -59,7 +105,8 @@ final class InsightEngine: ObservableObject {
 
     // MARK: - Insight Generation
 
-    /// Generate a natural-language narrative from all current analysis insights.
+    /// Generate a natural-language narrative from all current analysis insights,
+    /// including drug response / docking / cross-domain when available.
     /// Uses Apple Foundation Model when available, falls back to templates otherwise.
     func generateNarrative() async {
         isProcessing = true
@@ -198,7 +245,7 @@ final class InsightEngine: ObservableObject {
             let options = GenerationOptions(
                 samplingMode: nil,
                 temperature: 0.4,
-                maximumResponseTokens: 160
+                maximumResponseTokens: 200
             )
             let response = try await session.respond(to: prompt, options: options)
             let text = Self.sanitizeCue(response.content)
@@ -228,7 +275,7 @@ final class InsightEngine: ObservableObject {
             let options = GenerationOptions(
                 samplingMode: nil,
                 temperature: 0.35,
-                maximumResponseTokens: 72
+                maximumResponseTokens: 80
             )
             let response = try await session.respond(to: prompt, options: options)
             let text = Self.sanitizeCue(response.content)
@@ -253,7 +300,7 @@ final class InsightEngine: ObservableObject {
             let options = GenerationOptions(
                 samplingMode: nil,
                 temperature: 0.4,
-                maximumResponseTokens: 200
+                maximumResponseTokens: 240
             )
             let response = try await session.respond(to: prompt, options: options)
             let text = Self.sanitizeCue(response.content)
@@ -285,16 +332,20 @@ final class InsightEngine: ObservableObject {
 
     private static let wellnessInstructions = """
         You are a wellness assistant for NATURaL, a chair yoga app.
-        Summarize health signals in 2–3 short sentences. Be encouraging and factual.
+        Summarize health signals in 2–4 short sentences. Be encouraging and factual.
         Mention specific numbers when provided. Never give medical advice or diagnoses.
         Never invent data. Prefer the user's language when specified; otherwise English.
+        When drug–HRV entropy (ΔH), docking entropy (ΔS_config), or cross-domain correlation
+        data is provided, weave it in as observational wellness context only — not clinical claims.
         All data is processed on-device; do not mention cloud services or external servers.
         """
 
     private static let poseCoachInstructions = """
         You are a chair yoga instructor for the NATURaL app.
-        Produce a single brief guidance cue (1–2 short sentences, max ~35 words).
+        Produce a single brief guidance cue (1–2 short sentences, max ~40 words).
         Adapt to the practitioner's biofeedback (SCI focus, heart rate, trends).
+        If recent dose / drug–HRV context is provided, adapt tone gently (calm or steady)
+        without naming diagnoses or giving medication advice.
         Be warm, specific, and actionable. No medical advice or diagnoses.
         Prefer the language indicated in the prompt (English or French).
         Do not use markdown, bullet lists, or quotation marks around the whole cue.
@@ -315,8 +366,10 @@ final class InsightEngine: ObservableObject {
         sections.append(
             "Write the summary in \(lang). "
             + "You are a wellness assistant for a chair yoga app called NATURaL. "
-            + "Summarize the following health data in 2-3 sentences. "
+            + "Summarize the following health data in 2-4 sentences. "
             + "Be encouraging, factual, and mention specific numbers. "
+            + "When drug response or docking entropy is present, relate it observationally "
+            + "to HRV/SCI (e.g. post-dose entropy change timing). "
             + "Never provide medical advice or diagnoses. "
             + "Processing is on-device only."
         )
@@ -348,10 +401,20 @@ final class InsightEngine: ObservableObject {
         if let docking = insights[.molecularDocking] {
             let scoreText = docking.score.map { String(format: "%.0f%%", $0 * 100) } ?? "unavailable"
             sections.append(
-                "Molecular Docking Entropy: binding signal = \(scoreText), "
+                "Molecular Docking Entropy (FlexAID ΔS_config): binding signal = \(scoreText), "
                 + "trend: \(docking.trend.rawValue), "
                 + "status: \(docking.status.rawValue). \(docking.summary.en)"
             )
+        }
+
+        if let drugPrompt = drugResponsePromptSection() {
+            sections.append(drugPrompt)
+        }
+
+        if let crossPrompt = crossDomainPromptSection() {
+            sections.append(crossPrompt)
+        } else if let pairNote = singlePairCrossDomainPromptSection(insights: insights) {
+            sections.append(pairNote)
         }
 
         return sections.joined(separator: "\n\n")
@@ -384,7 +447,19 @@ final class InsightEngine: ObservableObject {
 
         if let med = insights[.medication] {
             let scoreText = med.score.map { String(format: "%.0f", $0 * 100) } ?? "unknown"
-            prompt += "Medication adherence: \(scoreText)%\n"
+            prompt += "Medication adherence: \(scoreText)% — \(med.summary.en)\n"
+        }
+
+        if let docking = insights[.molecularDocking], docking.score != nil {
+            prompt += "Docking insight: \(docking.summary.en)\n"
+        }
+
+        if let drug = latestDrugResponse {
+            prompt += "Recent drug–HRV context: \(drug.summary.en)\n"
+            prompt += "Response direction: \(drug.responseDirection.rawValue)\n"
+            if drug.bindingDetected {
+                prompt += "Adapt cue gently for post-dose autonomic shift (no medical advice).\n"
+            }
         }
 
         return prompt
@@ -397,9 +472,10 @@ final class InsightEngine: ObservableObject {
         let lang = preferredLanguageCode() == "fr" ? "French" : "English"
         var prompt = "Write in \(lang). "
         + "You are a wellness coach for the NATURaL chair yoga app. "
-        + "Write a 3-4 sentence summary of this completed workout session. "
+        + "Write a 3-5 sentence summary of this completed workout session. "
         + "Be encouraging, mention specific achievements, and suggest one "
-        + "thing to try next time. Do not give medical advice. "
+        + "thing to try next time. If drug–HRV or docking data is present, "
+        + "include one observational sentence about it. Do not give medical advice. "
         + "Processing is on-device only.\n\n"
 
         let minutes = Int(result.totalDuration) / 60
@@ -418,14 +494,85 @@ final class InsightEngine: ObservableObject {
         for (type, insight) in insights {
             let scoreText = insight.score.map { String(format: "%.0f%%", $0 * 100) } ?? "N/A"
             prompt += "\(type.rawValue) score: \(scoreText), trend: \(insight.trend.rawValue)\n"
+            // Include full summaries for medication and docking so FM can cite them.
+            if type == .medication || type == .molecularDocking {
+                prompt += "  summary: \(insight.summary.en)\n"
+            }
+        }
+
+        if let drugPrompt = drugResponsePromptSection() {
+            prompt += "\n\(drugPrompt)\n"
+        }
+        if let crossPrompt = crossDomainPromptSection() {
+            prompt += "\n\(crossPrompt)\n"
+        } else if let pairNote = singlePairCrossDomainPromptSection(insights: insights) {
+            prompt += "\n\(pairNote)\n"
         }
 
         return prompt
     }
 
+    // MARK: - Pharma Prompt Helpers
+
+    private func drugResponsePromptSection() -> String? {
+        guard let drug = latestDrugResponse else { return nil }
+        let delta = String(format: "%+.2f", drug.peakDeltaH)
+        let peak = String(format: "%.0f", drug.peakTimeMinutes)
+        let effect = String(format: "%.0f", drug.effectSize * 100)
+        var section = "Drug Response (post-dose HRV entropy / ΔH_hrv):\n"
+        section += "Medication: \(drug.doseEvent.name) "
+        section += "(\(drug.doseEvent.doseValue) \(drug.doseEvent.doseUnit))\n"
+        section += "Peak ΔH = \(delta) bits at +\(peak) min post-dose "
+        section += "(effect size \(effect)%). "
+        section += "Binding detected: \(drug.bindingDetected). "
+        section += "Direction: \(drug.responseDirection.rawValue).\n"
+        section += "Summary: \(drug.summary.en)"
+        if let match = drug.profileMatch {
+            let conf = String(format: "%.0f", match.confidence * 100)
+            section += "\nPK profile match: \(match.profile.name.en) (\(conf)% confidence)."
+        }
+        return section
+    }
+
+    private func crossDomainPromptSection() -> String? {
+        guard let validation = latestCrossDomainValidation else { return nil }
+        let r = String(format: "%.3f", validation.pearsonR)
+        let p = String(format: "%.4f", validation.pValue)
+        let r2 = String(format: "%.3f", validation.rSquared)
+        var section = "Cross-domain validation (molecular |ΔS_config| ↔ physiological |ΔH_hrv|):\n"
+        section += "n=\(validation.n), Pearson r=\(r), R²=\(r2), p=\(p), "
+        section += "significant=\(validation.isSignificant).\n"
+        section += validation.summary.en
+        return section
+    }
+
+    /// Single-substance docking vs drug–HRV note when full multi-pair validation is absent.
+    private func singlePairCrossDomainPromptSection(
+        insights: [SignalType: AnalysisInsight]
+    ) -> String? {
+        guard let drug = latestDrugResponse else { return nil }
+        let docking = insights[.molecularDocking]
+        let bindingProfile = BindingEntropyProfile.profile(for: drug.doseEvent.medicationId)
+
+        guard docking?.score != nil || bindingProfile != nil else { return nil }
+
+        var section = "Single-substance cross-domain context for \(drug.doseEvent.name):\n"
+        section += "In-vivo |ΔH_hrv| peak = \(String(format: "%.2f", abs(drug.peakDeltaH))) bits "
+        section += "at +\(String(format: "%.0f", drug.peakTimeMinutes)) min.\n"
+        if let profile = bindingProfile {
+            section += "Reference |ΔS_config| ≈ \(String(format: "%.2f", abs(profile.expectedDeltaSBits))) bits "
+            section += "(-TΔS ≈ \(String(format: "%.1f", profile.expectedEntropyPenaltyKcal)) kcal/mol).\n"
+        }
+        if let docking, docking.score != nil {
+            section += "Docking insight: \(docking.summary.en)\n"
+        }
+        return section
+    }
+
     // MARK: - Template Fallback
 
     /// Deterministic summary when Foundation Model is unavailable.
+    /// Always mentions drug–HRV / docking / cross-domain when that data is present.
     private func generateWithTemplates(
         _ insights: [SignalType: AnalysisInsight]
     ) -> String {
@@ -447,7 +594,12 @@ final class InsightEngine: ObservableObject {
             parts.append(docking.summary.localized)
         }
 
-        // Cross-signal correlation note
+        // Drug response narrative (DrugResponseResult — not just adherence).
+        if let drugNote = drugResponseTemplateSnippet() {
+            parts.append(drugNote)
+        }
+
+        // Cross-signal correlation note (adherence × SCI)
         if let hrvScore = insights[.heartRateVariability]?.score,
            let medScore = insights[.medication]?.score {
             if hrvScore > 0.7 && medScore > 0.8 {
@@ -463,21 +615,20 @@ final class InsightEngine: ObservableObject {
             }
         }
 
-        // Drug response correlation note
-        if let dockingScore = insights[.molecularDocking]?.score,
-           let hrvScore = insights[.heartRateVariability]?.score,
-           dockingScore > 0.3 {
-            let hrvPct = Int(hrvScore * 100)
-            parts.append(LocalizedString(
-                en: "Molecular binding entropy detected — correlating with HRV coherence (\(hrvPct)%).",
-                fr: "Entropie de liaison moléculaire détectée — corrélation avec la cohérence VFC (\(hrvPct) %)."
-            ).localized)
+        // Drug–HRV / docking correlation (static, always when data present)
+        if let crossNote = drugHRVCorrelationTemplate(insights: insights) {
+            parts.append(crossNote)
+        }
+
+        // Full multi-pair cross-domain language when available
+        if let validation = latestCrossDomainValidation {
+            parts.append(validation.summary.localized)
         }
 
         return parts.joined(separator: " ")
     }
 
-    /// SCI / HR-aware static pose cue when the on-device model is unavailable.
+    /// SCI / HR / drug-aware static pose cue when the on-device model is unavailable.
     private func generatePoseCueWithTemplates(
         pose: Pose,
         insights: [SignalType: AnalysisInsight],
@@ -489,6 +640,11 @@ final class InsightEngine: ObservableObject {
 
         let sci = insights[.heartRateVariability]?.score
         let trend = insights[.heartRateVariability]?.trend
+
+        // Prefer gentle drug–HRV adaptation when a significant post-dose response exists.
+        if let drugTip = drugAwarePoseTip() {
+            return "\(fallback) \(drugTip)"
+        }
 
         if let sci, sci < 0.35 {
             let tip = LocalizedString(
@@ -510,6 +666,15 @@ final class InsightEngine: ObservableObject {
             let tip = LocalizedString(
                 en: "Heart rate is elevated (\(Int(hr)) BPM) — ease intensity if needed.",
                 fr: "Fréquence élevée (\(Int(hr)) BPM) — allégez si besoin."
+            ).localized
+            return "\(fallback) \(tip)"
+        }
+
+        // Light medication adherence advisory on pose path (non-blocking, short).
+        if let med = insights[.medication], med.status == .alert {
+            let tip = LocalizedString(
+                en: "Breathe steadily — check your dose log when you finish.",
+                fr: "Respirez calmement — vérifiez votre journal de doses après la séance."
             ).localized
             return "\(fallback) \(tip)"
         }
@@ -544,7 +709,134 @@ final class InsightEngine: ObservableObject {
             ).localized)
         }
 
+        if let med = insights[.medication], med.score != nil {
+            parts.append(med.summary.localized)
+        }
+
+        if let docking = insights[.molecularDocking], docking.score != nil {
+            parts.append(docking.summary.localized)
+        }
+
+        if let drugNote = drugResponseTemplateSnippet() {
+            parts.append(drugNote)
+        }
+
+        if let crossNote = drugHRVCorrelationTemplate(insights: insights) {
+            parts.append(crossNote)
+        }
+
+        if let validation = latestCrossDomainValidation {
+            parts.append(validation.summary.localized)
+        }
+
         return parts.joined(separator: " ")
+    }
+
+    // MARK: - Drug / Cross-Domain Template Snippets
+
+    /// Static bilingual narrative for the latest `DrugResponseResult`.
+    private func drugResponseTemplateSnippet() -> String? {
+        guard let drug = latestDrugResponse else { return nil }
+        // Prefer the structured summary on DrugResponseResult (already bilingual).
+        var text = drug.summary.localized
+
+        // Enrich with timing relative to dose for narrative clarity.
+        let peak = String(format: "%.0f", drug.peakTimeMinutes)
+        let name = drug.doseEvent.name
+        if drug.bindingDetected {
+            switch drug.responseDirection {
+            case .sympathomimeticCollapse:
+                text += " " + LocalizedString(
+                    en: "HRV entropy collapsed about \(peak) min after \(name) — consistent with a sympathomimetic-style profile (observational only).",
+                    fr: "L'entropie VFC s'est effondrée environ \(peak) min après \(name) — cohérent avec un profil de type sympathomimétique (observation seulement)."
+                ).localized
+            case .parasympathomimeticExpansion:
+                text += " " + LocalizedString(
+                    en: "HRV entropy expanded about \(peak) min after \(name) — consistent with a parasympathomimetic / vagotonic-style profile (observational only).",
+                    fr: "L'entropie VFC s'est élargie environ \(peak) min après \(name) — cohérent avec un profil de type parasympathomimétique / vagotonique (observation seulement)."
+                ).localized
+            case .noSignificantChange:
+                break
+            }
+        }
+        return text
+    }
+
+    /// Drug–HRV × docking correlation language for static fallbacks.
+    private func drugHRVCorrelationTemplate(
+        insights: [SignalType: AnalysisInsight]
+    ) -> String? {
+        let hrvScore = insights[.heartRateVariability]?.score
+        let docking = insights[.molecularDocking]
+        let drug = latestDrugResponse
+
+        // Prefer rich single-substance language when DrugResponseResult is present.
+        if let drug {
+            let hrvPct = hrvScore.map { Int($0 * 100) }
+            let delta = String(format: "%+.2f", drug.peakDeltaH)
+            let peak = String(format: "%.0f", drug.peakTimeMinutes)
+            let name = drug.doseEvent.name
+
+            if let docking, let dockingScore = docking.score, dockingScore > 0.3 {
+                let focus = hrvPct.map { "\($0)%" } ?? "n/a"
+                return LocalizedString(
+                    en: "Molecular binding entropy for \(name) aligns with post-dose HRV ΔH \(delta) bits at +\(peak) min (SCI focus \(focus)).",
+                    fr: "L'entropie de liaison moléculaire pour \(name) s'aligne avec ΔH VFC \(delta) bits à +\(peak) min (focus SCI \(focus))."
+                ).localized
+            }
+
+            if drug.bindingDetected, let hrvPct {
+                return LocalizedString(
+                    en: "Post-dose HRV entropy shift (ΔH \(delta) bits at +\(peak) min) co-occurs with current SCI focus \(hrvPct)%.",
+                    fr: "Le changement d'entropie VFC post-dose (ΔH \(delta) bits à +\(peak) min) coïncide avec un focus SCI de \(hrvPct) %."
+                ).localized
+            }
+
+            // Reference profile pair when no docking insight score.
+            if let profile = BindingEntropyProfile.profile(for: drug.doseEvent.medicationId) {
+                let ds = String(format: "%.2f", abs(profile.expectedDeltaSBits))
+                return LocalizedString(
+                    en: "Reference |ΔS_config| ≈ \(ds) bits for \(name) vs observed |ΔH_hrv| \(String(format: "%.2f", abs(drug.peakDeltaH))) bits.",
+                    fr: "|ΔS_config| de référence ≈ \(ds) bits pour \(name) vs |ΔH_hrv| observé \(String(format: "%.2f", abs(drug.peakDeltaH))) bits."
+                ).localized
+            }
+
+            return nil
+        }
+
+        // Fallback: docking score alone still mentions HRV coherence (legacy path).
+        if let dockingScore = docking?.score, dockingScore > 0.3, let hrvScore {
+            let hrvPct = Int(hrvScore * 100)
+            return LocalizedString(
+                en: "Molecular binding entropy detected — correlating with HRV coherence (\(hrvPct)%).",
+                fr: "Entropie de liaison moléculaire détectée — corrélation avec la cohérence VFC (\(hrvPct) %)."
+            ).localized
+        }
+
+        return nil
+    }
+
+    /// Brief pose-side tip when a significant drug response is active.
+    private func drugAwarePoseTip() -> String? {
+        guard let drug = latestDrugResponse, drug.bindingDetected else { return nil }
+        // Only adapt cues within ~3 hours of peak window (loose, non-clinical).
+        let minutesSinceDose = Date().timeIntervalSince(drug.doseEvent.timestamp) / 60.0
+        guard minutesSinceDose >= 0, minutesSinceDose < 180 else { return nil }
+
+        switch drug.responseDirection {
+        case .sympathomimeticCollapse:
+            return LocalizedString(
+                en: "Stay soft and steady — autonomic focus may be shifting after your recent dose.",
+                fr: "Restez souple et stable — le focus autonome peut évoluer après votre dose récente."
+            ).localized
+        case .parasympathomimeticExpansion:
+            return LocalizedString(
+                en: "Lean into the calm — your recent dose aligns with a relaxed HRV pattern.",
+                fr: "Accueillez le calme — votre dose récente s'aligne avec un motif VFC détendu."
+            ).localized
+        case .noSignificantChange:
+            return nil
+        }
     }
 
     // MARK: - Helpers
