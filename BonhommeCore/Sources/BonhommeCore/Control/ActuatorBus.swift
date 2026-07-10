@@ -136,10 +136,12 @@ public actor SessionEventLog {
     public private(set) var events: [String] = []
 
     private static let capacity = 500
+    /// Trim only after this many over-capacity appends to avoid O(n) shift every line.
+    private static let trimSlack = 64
 
     public func append(_ line: String) {
         events.append(line)
-        if events.count > Self.capacity {
+        if events.count > Self.capacity + Self.trimSlack {
             events.removeFirst(events.count - Self.capacity)
         }
     }
@@ -154,6 +156,13 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
     public let id = "session_log"
     private let log: SessionEventLog
 
+    /// Shared formatter — avoid allocating `ISO8601DateFormatter` on every grounding tick.
+    private static let iso8601: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     public init(log: SessionEventLog = .shared) {
         self.log = log
     }
@@ -162,7 +171,7 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
         let line: String
         switch command {
         case .grounding(let sigma, let bpm, let beta):
-            line = "grounding σ_irr=\(sigma) bpm=\(bpm) β=\(beta) t=\(ISO8601DateFormatter().string(from: Date()))"
+            line = "grounding σ_irr=\(sigma) bpm=\(bpm) β=\(beta) t=\(Self.iso8601.string(from: Date()))"
         case .beatBroadcast(let bpm, let beta, let g):
             line = "beat bpm=\(bpm) β=\(beta) grounding=\(g)"
         case .phaseFlip(let from, let to, let n):

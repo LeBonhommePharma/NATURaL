@@ -211,14 +211,14 @@ final class CrooksCycleControllerTests: XCTestCase {
         let result = kernel.evaluate(CrooksFeatureVector(
             deltaHRV: -1, flexAIDDeltaS: -2, crownBeta: 0.1, bpm: 120
         ))
-        // Acceleration claim must match the real compile-time vDSP path.
-        XCTAssertEqual(result.usedANEPath, EigenMetalWorkKernel.accelerateAvailable)
-        #if canImport(Accelerate)
-        XCTAssertTrue(result.usedANEPath)
-        XCTAssertTrue(result.backendLabel.contains("ANE") || result.backendLabel.contains("Accelerate"))
-        #else
+        // Length-4 control hot path is intentionally scalar (vDSP loses for N=4).
         XCTAssertFalse(result.usedANEPath)
         XCTAssertEqual(result.backendLabel, "Scalar/Eigen")
+        // Compile-time Accelerate remains available for larger vectors if needed.
+        #if canImport(Accelerate)
+        XCTAssertTrue(EigenMetalWorkKernel.accelerateAvailable)
+        #else
+        XCTAssertFalse(EigenMetalWorkKernel.accelerateAvailable)
         #endif
         XCTAssertTrue(result.work.isFinite)
     }

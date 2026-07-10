@@ -237,7 +237,8 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     func recordHeartRate(bpm: Double, timestamp: Date = Date()) {
         currentHeartRate = bpm
         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: timestamp))
-        if heartRateSamples.count > Self.maxHeartRateSamples {
+        // Batch-trim (slack) so we don't O(n)-shift on every sample once at capacity.
+        if heartRateSamples.count > Self.maxHeartRateSamples + 64 {
             heartRateSamples.removeFirst(heartRateSamples.count - Self.maxHeartRateSamples)
         }
         let sum = heartRateSamples.reduce(0.0) { $0 + $1.bpm }

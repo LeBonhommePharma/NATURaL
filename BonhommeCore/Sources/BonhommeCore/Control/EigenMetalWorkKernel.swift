@@ -104,22 +104,25 @@ public struct EigenMetalWorkKernel: Sendable {
         let coords = projectOntoEigenBasis(x)
         let raw = aneLinearMap(features: x, eigenCoords: coords)
         let work = clamp(raw, maxAbs: CrooksCycleDefaults.maxAbsWorkPerTick)
-        // usedANEPath is true only when vDSP actually backs `dot` (compile-time path).
-        let usedANE = Self.accelerateAvailable
-        let label = usedANE ? "Accelerate/ANE+Eigen" : "Scalar/Eigen"
-
+        // Hot path is always length-4 scalar (vDSP setup cost dominates for N=4).
+        // `usedANEPath` stays false here; batch path may use Accelerate for larger vectors.
         return EigenMetalWorkResult(
             work: work.isFinite ? work : 0,
             eigenCoords: coords.map { $0.isFinite ? $0 : 0 },
-            backendLabel: label,
-            usedANEPath: usedANE
+            backendLabel: "Scalar/Eigen",
+            usedANEPath: false
         )
     }
 
     public func evaluateBatch(_ batch: [CrooksFeatureVector]) -> [Double] {
         guard !batch.isEmpty else { return [] }
-        // Small fixed feature dim (4); map is optimal. Large-N entropy uses EntropyCalculator/Metal.
-        return batch.map { evaluate($0).work }
+        // Reserve once; evaluate in-place without intermediate Result maps beyond work.
+        var out = [Double]()
+        out.reserveCapacity(batch.count)
+        for features in batch {
+            out.append(evaluate(features).work)
+        }
+        return out
     }
 
     /// Shannon entropy of a work history (`EntropyCalculator` / Metal when linked).
@@ -165,16 +168,24 @@ public struct EigenMetalWorkKernel: Sendable {
         return max(-maxAbs, min(maxAbs, v))
     }
 
-    /// Dot product via Accelerate `vDSP_dotprD` when available; scalar otherwise.
+    /// Dot product: scalar for small N (control hot path is N=4); vDSP only when N is large enough
+    /// that setup cost is amortized.
     private func dot(_ a: [Double], _ b: [Double]) -> Double {
         precondition(a.count == b.count)
+        let n = a.count
+        // vDSP_dotprD overhead loses to 4 FMAs on every Crooks tick.
+        if n <= 16 {
+            var s = 0.0
+            for i in 0..<n { s += a[i] * b[i] }
+            return s.isFinite ? s : 0
+        }
         #if canImport(Accelerate)
         var result = 0.0
-        vDSP_dotprD(a, 1, b, 1, &result, vDSP_Length(a.count))
+        vDSP_dotprD(a, 1, b, 1, &result, vDSP_Length(n))
         return result.isFinite ? result : 0
         #else
         var s = 0.0
-        for i in 0..<a.count { s += a[i] * b[i] }
+        for i in 0..<n { s += a[i] * b[i] }
         return s.isFinite ? s : 0
         #endif
     }

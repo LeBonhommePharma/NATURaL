@@ -292,7 +292,8 @@ public actor CrooksCycleController {
     private func appendWork(_ work: Double) {
         guard work.isFinite else { return }
         workHistory.append(work)
-        if workHistory.count > Self.maxWorkHistory {
+        // Batch-trim to avoid O(n) shift on every append once at capacity.
+        if workHistory.count > Self.maxWorkHistory + 32 {
             workHistory.removeFirst(workHistory.count - Self.maxWorkHistory)
         }
     }

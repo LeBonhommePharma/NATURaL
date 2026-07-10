@@ -14,9 +14,12 @@ public final class FeedbackEngine: @unchecked Sendable {
 
     /// Maximum signals retained per type.
     private let bufferLimit: Int
+    /// Extra slots before trim — amortizes `removeFirst` cost on high-rate ingest.
+    private let bufferTrimSlack: Int
 
     public init(bufferLimit: Int = 500) {
         self.bufferLimit = bufferLimit
+        self.bufferTrimSlack = max(32, bufferLimit / 10)
     }
 
     /// Register an analyzer for its primary signal type.
@@ -33,7 +36,7 @@ public final class FeedbackEngine: @unchecked Sendable {
         lock.lock()
         var buffer = signalBuffers[type] ?? []
         buffer.append(signal)
-        if buffer.count > bufferLimit {
+        if buffer.count > bufferLimit + bufferTrimSlack {
             buffer.removeFirst(buffer.count - bufferLimit)
         }
         signalBuffers[type] = buffer
