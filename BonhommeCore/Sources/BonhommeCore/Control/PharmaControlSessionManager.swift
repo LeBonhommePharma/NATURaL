@@ -39,6 +39,12 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
     public var crownBeta: Double
     public var tickCount: Int
     public var lastPrediction: DeltaHRVFlexAIDPrediction?
+    /// Breathing-guide rate (breaths/min) from `BreathingGuideActuatorChannel`.
+    public var breathsPerMinute: Double
+    /// Latest cross-domain residual bits from `CrossDomainActuatorChannel` / mapper.
+    public var crossDomainResidual: Double
+    public var crossDomainShouldGround: Bool
+    public var crossDomainSource: String
 
     public init(
         isRunning: Bool = false,
@@ -47,7 +53,11 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
         beat: BeatSyncSnapshot? = nil,
         crownBeta: Double = 0,
         tickCount: Int = 0,
-        lastPrediction: DeltaHRVFlexAIDPrediction? = nil
+        lastPrediction: DeltaHRVFlexAIDPrediction? = nil,
+        breathsPerMinute: Double = 0,
+        crossDomainResidual: Double = 0,
+        crossDomainShouldGround: Bool = false,
+        crossDomainSource: String = "none"
     ) {
         self.isRunning = isRunning
         self.thermodynamic = thermodynamic
@@ -56,6 +66,10 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
         self.crownBeta = crownBeta
         self.tickCount = tickCount
         self.lastPrediction = lastPrediction
+        self.breathsPerMinute = breathsPerMinute
+        self.crossDomainResidual = crossDomainResidual
+        self.crossDomainShouldGround = crossDomainShouldGround
+        self.crossDomainSource = crossDomainSource
     }
 
     public var sigmaIrrDisplay: String {
@@ -111,11 +125,14 @@ public actor PharmaControlSessionManager {
         lastSCI = nil
         _ = baselineEntropy // reserved for future baseline-relative ΔH
         await controller.reset()
+        await ControlActuatorSnapshotStore.shared.reset()
         await SessionEventLog.shared.append("pharma_session_start")
     }
 
     public func stop() async {
         isRunning = false
+        // Drop beat listeners so the next session can rebind without stacking.
+        await beatSync.removeAllListeners()
         await SessionEventLog.shared.append("pharma_session_stop ticks=\(tickCount)")
     }
 
@@ -226,6 +243,11 @@ public actor PharmaControlSessionManager {
         let beat = await beatSync.current()
         let beta = await crown.currentBeta()
         let pred = await mapper.last()
+        let actuators = ControlActuatorSnapshotStore.shared
+        let breath = await actuators.breathsPerMinute
+        let residual = await actuators.crossDomainResidual
+        let residualGround = await actuators.crossDomainShouldGround
+        let residualSource = await actuators.crossDomainSource
         return PharmaControlSessionSnapshot(
             isRunning: isRunning,
             thermodynamic: thermo,
@@ -233,7 +255,11 @@ public actor PharmaControlSessionManager {
             beat: beat,
             crownBeta: beta,
             tickCount: tickCount,
-            lastPrediction: pred
+            lastPrediction: pred,
+            breathsPerMinute: breath,
+            crossDomainResidual: residual,
+            crossDomainShouldGround: residualGround,
+            crossDomainSource: residualSource
         )
     }
 

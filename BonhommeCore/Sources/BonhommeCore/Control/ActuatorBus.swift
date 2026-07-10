@@ -59,10 +59,10 @@ public struct BeatSyncActuatorChannel: ActuatorChannel {
         case .beatBroadcast(let bpm, let beta, let grounding):
             let snap = await beatSync.broadcast(bpm: bpm, beta: beta, grounding: grounding)
             return ok(command, "broadcast bpm=\(snap.bpm) beta=\(fmt(snap.crownBeta))")
-        case .phaseFlip:
-            let snap = await beatSync.current()
-            _ = await beatSync.broadcast(bpm: snap.bpm, beta: snap.crownBeta, grounding: false)
-            return ok(command, "phase-flip re-sync bpm=\(snap.bpm)")
+        case .phaseFlip(let from, let to, let cycle):
+            // Log-only: Crooks end-of-tick `broadcastBeat` is the sole beat authority.
+            // Re-broadcast here double-fired listeners on every phase flip.
+            return ok(command, "phase-flip log-only \(from.rawValue)→\(to.rawValue) cycle=\(cycle)")
         case .microSurveyLog:
             return ok(command, "idle")
         }
@@ -108,6 +108,9 @@ public struct CrownActuatorChannel: ActuatorChannel {
 }
 
 /// Cross-domain ΔH_hrv ↔ FlexAID residual (BindingEntropyProfile / calibrated slope).
+///
+/// Publishes the latest residual into `ControlActuatorSnapshotStore` so UI / session
+/// snapshots can surface residual without treating this channel as a pure log sink.
 public struct CrossDomainActuatorChannel: ActuatorChannel {
     public let id = "delta_hrv_flexaid"
     private let mapper: DeltaHRVFlexAIDMapper
@@ -120,6 +123,14 @@ public struct CrossDomainActuatorChannel: ActuatorChannel {
         switch command {
         case .grounding(let sigma, _, _):
             let pred = await mapper.predictAndGround(deltaHRV: 0, flexAIDDeltaS: 0)
+            await ControlActuatorSnapshotStore.shared.publishCrossDomain(
+                residual: pred.residual,
+                shouldGround: pred.shouldGround,
+                source: pred.source
+            )
+            await SessionEventLog.shared.append(
+                "cross_domain residual=\(fmt(pred.residual)) ground=\(pred.shouldGround) source=\(pred.source)"
+            )
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: "residual=\(fmt(pred.residual)) σ_irr=\(fmt(sigma)) source=\(pred.source)"
@@ -188,6 +199,9 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
 ///
 /// Conversion: `breaths/min ≈ bpm / bpmPerBreath`.
 /// At grounding (92 BPM): 92 / 15.2 ≈ 6.05 breaths/min — clinical recovery cadence.
+///
+/// Publishes `breathsPerMinute` into `ControlActuatorSnapshotStore` for session UI;
+/// also appends a session-log line so the rate is inspectable offline.
 public struct BreathingGuideActuatorChannel: ActuatorChannel {
     public let id = "breathing_guide"
 
@@ -200,12 +214,15 @@ public struct BreathingGuideActuatorChannel: ActuatorChannel {
         switch command {
         case .grounding:
             let rate = CrooksCycleDefaults.groundingBPM / Self.bpmPerBreath
+            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate)
+            await SessionEventLog.shared.append(String(format: "breath %.1f/min grounding", rate))
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: String(format: "breathe %.1f/min grounding", rate)
             )
         case .beatBroadcast(let bpm, _, let grounding):
             let rate = bpm / Self.bpmPerBreath
+            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: String(format: "breathe %.1f/min g=%@", rate, String(grounding))
@@ -213,6 +230,36 @@ public struct BreathingGuideActuatorChannel: ActuatorChannel {
         default:
             return ActuatorChannelResult(channelId: id, command: command, success: true, detail: "idle")
         }
+    }
+}
+
+// MARK: - Shared actuator snapshot (breath / cross-domain)
+
+/// Lightweight published state from channels that are not pure telemetry-only.
+/// Consumed by `PharmaControlSessionManager.snapshot()`.
+public actor ControlActuatorSnapshotStore {
+    public static let shared = ControlActuatorSnapshotStore()
+
+    public private(set) var breathsPerMinute: Double = 0
+    public private(set) var crossDomainResidual: Double = 0
+    public private(set) var crossDomainShouldGround: Bool = false
+    public private(set) var crossDomainSource: String = "none"
+
+    public func publishBreathRate(_ rate: Double) {
+        breathsPerMinute = rate.isFinite ? max(0, rate) : 0
+    }
+
+    public func publishCrossDomain(residual: Double, shouldGround: Bool, source: String) {
+        crossDomainResidual = residual.isFinite ? residual : 0
+        crossDomainShouldGround = shouldGround
+        crossDomainSource = source
+    }
+
+    public func reset() {
+        breathsPerMinute = 0
+        crossDomainResidual = 0
+        crossDomainShouldGround = false
+        crossDomainSource = "none"
     }
 }
 

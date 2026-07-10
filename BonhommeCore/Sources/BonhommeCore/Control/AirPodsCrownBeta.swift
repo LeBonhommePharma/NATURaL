@@ -84,25 +84,25 @@ public actor AirPodsCrownBetaController {
     }
 
     /// Positive delta (volume up) → heating β; negative → binding β.
+    ///
+    /// Mutates dial β only — does **not** call `UniversalBeatSync.broadcast`.
+    /// When a Crooks session bus is active, end-of-tick `broadcastBeat` is sole tempo authority;
+    /// standalone callers that need an immediate beat use `broadcastBeat` explicitly.
     @discardableResult
     public func applyVolumeDelta(_ delta: Double) async -> Double {
         let scaled = delta * volumeSensitivity / max(dial.sensitivity, 1e-6)
         let beta = dial.applyCrownDelta(scaled)
         lastUpdate = Date()
-        if routeActive {
-            _ = await beatSync.broadcast(bpm: lastBPM, beta: beta, grounding: isGrounding)
-        }
         return beta
     }
 
     /// Stem Force Sensor → damp β (micro-grounding).
+    ///
+    /// β-only (no beat broadcast) — same authority rules as `applyVolumeDelta`.
     @discardableResult
     public func applyStemPress(gain: Double = 0.25) async -> Double {
         let beta = dial.dampTowardNeutral(gain: gain)
         lastUpdate = Date()
-        if routeActive {
-            _ = await beatSync.broadcast(bpm: lastBPM, beta: beta, grounding: isGrounding)
-        }
         return beta
     }
 

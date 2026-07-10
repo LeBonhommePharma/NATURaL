@@ -67,6 +67,18 @@ public actor UniversalBeatSync {
         listeners.append(listener)
     }
 
+    /// Drop all listeners (session stop / rebind). Next `addListener` starts a clean set.
+    public func removeAllListeners() {
+        listeners.removeAll(keepingCapacity: false)
+    }
+
+    /// Replace the entire listener set in one shot (session-scoped rebind).
+    public func replaceListeners(
+        _ newListeners: [@Sendable (BeatSyncSnapshot) async -> Void]
+    ) {
+        listeners = newListeners
+    }
+
     /// Force all channels to a BPM / β pair and notify listeners once.
     @discardableResult
     public func broadcast(bpm: Double, beta: Double, grounding: Bool = false) async -> BeatSyncSnapshot {

@@ -39,14 +39,16 @@ final class MusicService: ObservableObject {
     }
 
     /// Bind once to `UniversalBeatSync` for session tempo lock and start AirPods route observer.
+    /// Safe to call again after `stop()` (which resets `beatBound` and clears listeners).
     func bindUniversalBeatSync() {
         guard !beatBound else { return }
         beatBound = true
         startAudioRouteObserver()
         Task { [weak self] in
-            await UniversalBeatSync.shared.addListener { snap in
-                await self?.applyBeatSync(snap)
-            }
+            // Session-scoped: replace so we never stack listeners across rebinds.
+            await UniversalBeatSync.shared.replaceListeners([
+                { snap in await self?.applyBeatSync(snap) }
+            ])
         }
     }
 
@@ -155,8 +157,14 @@ final class MusicService: ObservableObject {
         fadeTask?.cancel()
         isCrossfading = false
         stopAudioRouteObserver()
+        // Reset so the next session can rebind the beat listener + route observer.
+        beatBound = false
+        Task {
+            await UniversalBeatSync.shared.removeAllListeners()
+        }
         ApplicationMusicPlayer.shared.stop()
         isPlaying = false
+        lastBeat = nil
     }
 
     // MARK: - Adaptive SCI-Driven Music

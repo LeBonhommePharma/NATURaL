@@ -249,6 +249,66 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(count, 1)
     }
 
+    /// Phase flip must be log-only on the beat channel — end-of-tick owns broadcast.
+    func testPhaseFlipDoesNotBroadcastBeat() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        // Seed a known tempo.
+        _ = await beat.broadcast(bpm: 100, beta: 0.1, grounding: false)
+        let afterSeed = await counter.value
+        XCTAssertEqual(afterSeed, 1)
+
+        let bus = ActuatorBus(channels: [
+            BeatSyncActuatorChannel(beatSync: beat),
+            CrownActuatorChannel(crown: CrownController(beatSync: beat)),
+            SessionLogActuatorChannel()
+        ])
+        _ = await bus.executePhaseFlip(from: .forward, to: .reverse, cycleCount: 1)
+        let afterFlip = await counter.value
+        XCTAssertEqual(afterFlip, afterSeed, "phaseFlip must not re-broadcast (was double-beat bug)")
+
+        // End-of-tick sole broadcast still works.
+        _ = await bus.broadcastBeat(bpm: 100, beta: 0.1, grounding: false)
+        let afterTick = await counter.value
+        XCTAssertEqual(afterTick, afterSeed + 1)
+    }
+
+    func testRemoveAllListenersClearsBeatSubscribers() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        _ = await beat.broadcast(bpm: 90, beta: 0, grounding: false)
+        let afterFirst = await counter.value
+        XCTAssertEqual(afterFirst, 1)
+        await beat.removeAllListeners()
+        _ = await beat.broadcast(bpm: 95, beta: 0, grounding: false)
+        let afterClear = await counter.value
+        XCTAssertEqual(afterClear, 1, "listeners cleared — no further fires")
+    }
+
+    func testBreathingGuidePublishesToSnapshotStore() async {
+        await ControlActuatorSnapshotStore.shared.reset()
+        let channel = BreathingGuideActuatorChannel()
+        _ = await channel.execute(.beatBroadcast(bpm: CrooksCycleDefaults.groundingBPM, beta: 0, grounding: true))
+        let rate = await ControlActuatorSnapshotStore.shared.breathsPerMinute
+        let expected = CrooksCycleDefaults.groundingBPM / BreathingGuideActuatorChannel.bpmPerBreath
+        XCTAssertEqual(rate, expected, accuracy: 1e-9)
+    }
+
+    /// Volume / stem mutate β only — never UniversalBeatSync.broadcast.
+    func testAirPodsVolumeStemDoNotBroadcast() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        await airPods.setRouteActive(true)
+        _ = await airPods.applyVolumeDelta(1.0)
+        _ = await airPods.applyStemPress(gain: 0.5)
+        let count = await counter.value
+        XCTAssertEqual(count, 0, "volume/stem must not bypass ActuatorBus beat authority")
+    }
+
     func testANEWorkPathLabelPresent() {
         let kernel = EigenMetalWorkKernel()
         let result = kernel.evaluate(CrooksFeatureVector(
