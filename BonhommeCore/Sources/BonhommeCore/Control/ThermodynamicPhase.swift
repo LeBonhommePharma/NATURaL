@@ -75,8 +75,10 @@ public enum CrooksCycleDefaults {
     /// Recovery tempo for universal beat sync (≈ 6 breaths/min via breathing guide).
     public static let groundingBPM: Double = 92.0
 
-    /// Nominal exercise BPM (work-feature origin).
-    public static let nominalBPM: Double = 128.0
+    /// Nominal session BPM for work-feature origin (seated chair yoga, not HIIT).
+    /// Feature uses fractional deviation `(bpm − nominal) / nominal` so resting HR
+    /// does not dominate the eigen work score and trip permanent grounding.
+    public static let nominalBPM: Double = 85.0
 
     /// Soft clamp for |work| per tick.
     public static let maxAbsWorkPerTick: Double = 4.0

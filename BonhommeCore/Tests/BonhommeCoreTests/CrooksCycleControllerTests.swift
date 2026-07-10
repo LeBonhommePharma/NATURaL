@@ -51,6 +51,30 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertGreaterThan(high, low)
     }
 
+    /// Seated yoga HR (~70–90) must not produce near-max |work| from BPM alone.
+    func testRestingBPMDoesNotDominateWork() {
+        let kernel = EigenMetalWorkKernel()
+        let atNominal = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: 0, flexAIDDeltaS: 0, crownBeta: 0, bpm: CrooksCycleDefaults.nominalBPM
+        )).work
+        let seated = kernel.evaluate(CrooksFeatureVector(
+            deltaHRV: 0, flexAIDDeltaS: 0, crownBeta: 0, bpm: 75
+        )).work
+        XCTAssertEqual(atNominal, 0, accuracy: 1e-9)
+        // Fractional BPM channel weight 0.09 → |work| ≪ maxAbsWorkPerTick at yoga HR.
+        XCTAssertLessThan(abs(seated), 0.15)
+        XCTAssertLessThan(abs(seated), CrooksCycleDefaults.maxAbsWorkPerTick * 0.1)
+
+        let features = CrooksFeatureVector(
+            deltaHRV: 0, flexAIDDeltaS: 0, crownBeta: 0, bpm: 75
+        )
+        XCTAssertEqual(
+            features.bpmFractionalDeviation,
+            (75 - CrooksCycleDefaults.nominalBPM) / CrooksCycleDefaults.nominalBPM,
+            accuracy: 1e-12
+        )
+    }
+
     func testWorkHistoryEntropyNonNegative() {
         let kernel = EigenMetalWorkKernel()
         let works = (0..<64).map { i in
@@ -127,6 +151,25 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertTrue(pred.source.contains("profile") || pred.source == "BindingEntropyProfile")
         XCTAssertGreaterThanOrEqual(pred.residual, 0)
         XCTAssertEqual(pred.substanceId, "fentanyl")
+    }
+
+    /// Without live FlexAID or profile substance, residual must not request grounding.
+    func testMapperDoesNotGroundWithoutMolecularAnchor() async {
+        let mapper = DeltaHRVFlexAIDMapper()
+        let pred = await mapper.predict(
+            deltaHRV: -2.0,
+            flexAIDDeltaS: 0,
+            substanceId: nil
+        )
+        XCTAssertFalse(pred.shouldGround)
+        XCTAssertEqual(pred.source, "live")
+        // With profile anchor, large residual may ground.
+        let anchored = await mapper.predict(
+            deltaHRV: -2.0,
+            flexAIDDeltaS: 0,
+            substanceId: "fentanyl"
+        )
+        XCTAssertTrue(anchored.source.contains("profile") || anchored.source == "BindingEntropyProfile")
     }
 
     func testMapperEntropyPenaltyMatchesThermodynamicConstants() async {

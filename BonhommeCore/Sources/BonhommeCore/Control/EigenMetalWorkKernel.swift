@@ -16,7 +16,7 @@ import Accelerate
 /// | ΔH_hrv (physiological entropy delta) | 0.42 |
 /// | FlexAID ΔS_config (molecular) | 0.31 |
 /// | Crown β dial | 0.18 |
-/// | BPM deviation from nominal | 0.09 |
+/// | BPM fractional deviation from nominal | 0.09 |
 public struct CrooksFeatureVector: Sendable, Equatable {
     public var deltaHRV: Double
     public var flexAIDDeltaS: Double
@@ -31,13 +31,24 @@ public struct CrooksFeatureVector: Sendable, Equatable {
         self.bpm = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
     }
 
+    /// Fractional BPM deviation, clamped to ±1 (i.e. 0…2× nominal).
+    /// Using raw `(bpm − nominal)` made seated yoga (~70–90 BPM) look like
+    /// multi-unit work and permanently ground the Crooks loop.
+    public var bpmFractionalDeviation: Double {
+        let nom = CrooksCycleDefaults.nominalBPM
+        guard nom > 0 else { return 0 }
+        let frac = (bpm - nom) / nom
+        guard frac.isFinite else { return 0 }
+        return max(-1, min(1, frac))
+    }
+
     /// Feature components as a 4-vector for eigen / Accelerate projection.
     public var components: [Double] {
         [
             deltaHRV,
             flexAIDDeltaS,
             crownBeta,
-            bpm - CrooksCycleDefaults.nominalBPM
+            bpmFractionalDeviation
         ]
     }
 }
