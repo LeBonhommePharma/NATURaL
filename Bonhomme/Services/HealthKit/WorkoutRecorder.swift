@@ -20,6 +20,8 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     @Published var currentHeartRate: Double?
     @Published var activeCalories: Double = 0
     @Published var averageHeartRate: Double?
+    /// Peak BPM for the session (O(1) update; avoids full-buffer scan on result).
+    @Published private(set) var maxHeartRate: Double?
     @Published var heartRateSamples: [HeartRateSample] = []
 
     /// Provenance of the last RR window sent to SCI ingest.
@@ -59,6 +61,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         heartRateSum = 0
         currentHeartRate = nil
         averageHeartRate = nil
+        maxHeartRate = nil
         activeCalories = 0
         cachedRealRR.removeAll(keepingCapacity: true)
         lastRRSource = .synthetic
@@ -316,6 +319,11 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         currentHeartRate = bpm
         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: timestamp))
         heartRateSum += bpm
+        if let peak = maxHeartRate {
+            maxHeartRate = max(peak, bpm)
+        } else {
+            maxHeartRate = bpm
+        }
         // Batch-trim (slack) so we don't O(n)-shift on every sample once at capacity.
         if heartRateSamples.count > Self.maxHeartRateSamples + 64 {
             let overflow = heartRateSamples.count - Self.maxHeartRateSamples
