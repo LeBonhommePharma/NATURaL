@@ -18,6 +18,8 @@ struct WatchSessionView: View {
     @State private var crownRotationalDelta: Double = 0
     @State private var sigmaIrr: Double = 0
     @State private var crownBeta: Double = 0
+    /// Debounce full Crooks ticks from crown micro-deltas (β still applies immediately).
+    @State private var crownTickTask: Task<Void, Never>?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -40,11 +42,19 @@ struct WatchSessionView: View {
             let delta = newValue - oldValue
             guard abs(delta) > 1e-6 else { return }
             Task {
+                // Apply β immediately for responsive dial feel.
                 let beta = await PharmaControlSessionManager.shared.applyCrownDelta(delta)
                 crownBeta = beta
-                // Drive Crooks update with current HR + crown β.
+            }
+            // Debounce full Crooks ticks — 2s relay owns steady ticks; crown only
+            // nudges control after rotation settles (~150ms).
+            crownTickTask?.cancel()
+            crownTickTask = Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
                 let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+                let beta = await PharmaControlSessionManager.shared.snapshot().crownBeta
                 let result = await PharmaControlSessionManager.shared.tickFromSCI(
                     sciScore: sci,
                     bpm: bpm,
@@ -54,7 +64,10 @@ struct WatchSessionView: View {
             }
         }
         .onAppear { startWorkout() }
-        .onDisappear { relayTask?.cancel() }
+        .onDisappear {
+            relayTask?.cancel()
+            crownTickTask?.cancel()
+        }
         .onChange(of: manager.phase) { _, newPhase in
             if case .complete = newPhase {
                 handleWorkoutComplete()
@@ -334,7 +347,8 @@ struct WatchSessionView: View {
                 let snapshot = manager.buildBiofeedbackSnapshot()
                 connectivity.sendBiofeedback(snapshot)
 
-                manager.feedbackEngine.analyzeAll()
+                // HRV-only on the control path (avoid full multi-analyzer pass every 2s).
+                _ = manager.feedbackEngine.analyze(for: .heartRateVariability)
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
                 let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
                 let result = await PharmaControlSessionManager.shared.tickFromSCI(

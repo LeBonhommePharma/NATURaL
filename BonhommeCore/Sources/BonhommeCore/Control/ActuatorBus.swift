@@ -40,6 +40,9 @@ public protocol ActuatorChannel: Sendable {
 // MARK: - Production Channels
 
 /// Sole owner of `UniversalBeatSync.broadcast` — all other channels only mutate local state.
+///
+/// Grounding does **not** broadcast here: Crooks end-of-tick `broadcastBeat` is the single
+/// beat authority (avoids double-broadcast on ground path that raced recovery tempo).
 public struct BeatSyncActuatorChannel: ActuatorChannel {
     public let id = "universal_beat_sync"
     private let beatSync: UniversalBeatSync
@@ -50,13 +53,9 @@ public struct BeatSyncActuatorChannel: ActuatorChannel {
 
     public func execute(_ command: ActuatorCommand) async -> ActuatorChannelResult {
         switch command {
-        case .grounding(_, _, let beta):
-            let snap = await beatSync.broadcast(
-                bpm: CrooksCycleDefaults.groundingBPM,
-                beta: beta * 0.5,
-                grounding: true
-            )
-            return ok(command, "grounding bpm=\(snap.bpm) phase=\(fmt(snap.phase))")
+        case .grounding(_, let bpm, _):
+            // β damp / recovery BPM applied by end-of-tick broadcastBeat only.
+            return ok(command, "grounding deferred-to-tick from \(bpm)")
         case .beatBroadcast(let bpm, let beta, let grounding):
             let snap = await beatSync.broadcast(bpm: bpm, beta: beta, grounding: grounding)
             return ok(command, "broadcast bpm=\(snap.bpm) beta=\(fmt(snap.crownBeta))")
@@ -273,11 +272,32 @@ public actor ActuatorBus {
 
     @discardableResult
     public func dispatch(_ command: ActuatorCommand) async -> [ActuatorChannelResult] {
+        // Beat channel first (tempo authority), remaining channels in parallel.
+        let beatChannels = channels.filter { $0.id == "universal_beat_sync" }
+        let otherChannels = channels.filter { $0.id != "universal_beat_sync" }
+
         var results: [ActuatorChannelResult] = []
         results.reserveCapacity(channels.count)
-        for channel in channels {
+
+        for channel in beatChannels {
             results.append(await channel.execute(command))
         }
+
+        if !otherChannels.isEmpty {
+            let parallel = await withTaskGroup(of: ActuatorChannelResult.self) { group in
+                for channel in otherChannels {
+                    group.addTask { await channel.execute(command) }
+                }
+                var collected: [ActuatorChannelResult] = []
+                collected.reserveCapacity(otherChannels.count)
+                for await result in group {
+                    collected.append(result)
+                }
+                return collected
+            }
+            results.append(contentsOf: parallel)
+        }
+
         lastResults = results
         return results
     }

@@ -261,6 +261,10 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                         .doubleValue(for: .count().unitDivided(by: .minute())) {
                         currentHeartRate = bpm
                         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: Date()))
+                        // Cap buffer (~1h @ 1Hz) to avoid unbounded growth.
+                        if heartRateSamples.count > 3600 {
+                            heartRateSamples.removeFirst(heartRateSamples.count - 3600)
+                        }
                         processHeartRateForSCI(bpm: bpm)
                     }
                     if let avg = stats?.averageQuantity()?
