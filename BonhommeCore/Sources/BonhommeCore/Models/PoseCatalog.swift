@@ -2,9 +2,17 @@ import Foundation
 
 // MARK: - Supporting Types
 
-/// Yoga styles available in the app.
+/// Workout style / kind available in the app.
+///
+/// Historical name `YogaStyle` is kept for Codable raw-value stability and call-site
+/// compatibility. Prefer the `WorkoutKind` typealias for new code.
+///
+/// New non-yoga cases (`matYoga`, `strength`, `cardio`, `mobility`, `meditation`,
+/// `general`) are additive — existing encoded strings still decode.
 public enum YogaStyle: String, Codable, Sendable, CaseIterable {
+    // MARK: Yoga (legacy raw values preserved)
     case chairYoga
+    case matYoga
     case vinyasa
     case hatha
     case yin
@@ -13,11 +21,19 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
     case standingBalance
     case prenatal
     case pranayama
-    
+    // MARK: Non-yoga workout kinds
+    case strength
+    case cardio
+    case mobility
+    case meditation
+    case general
+
     public var localizedName: LocalizedString {
         switch self {
         case .chairYoga:
             return LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise", es: "Yoga en silla", ja: "チェアヨガ", zh: "椅子瑜伽", ko: "의자 요가", ru: "Йога на стуле", de: "Stuhl-Yoga", ar: "يوغا الكرسي")
+        case .matYoga:
+            return LocalizedString(en: "Mat Yoga", fr: "Yoga sur tapis", es: "Yoga en esterilla", ja: "マットヨガ", zh: "垫上瑜伽", ko: "매트 요가", ru: "Йога на коврике", de: "Matten-Yoga", ar: "يوغا السجادة")
         case .vinyasa:
             return LocalizedString(en: "Vinyasa", fr: "Vinyasa", es: "Vinyasa", ja: "ヴィンヤサ", zh: "流瑜伽", ko: "빈야사", ru: "Виньяса", de: "Vinyasa", ar: "فينياسا")
         case .hatha:
@@ -34,6 +50,16 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
             return LocalizedString(en: "Prenatal", fr: "Prénatal", es: "Prenatal", ja: "マタニティ", zh: "孕期瑜伽", ko: "산전", ru: "Пренатальная", de: "Pränatal", ar: "ما قبل الولادة")
         case .pranayama:
             return LocalizedString(en: "Pranayama", fr: "Pranayama", es: "Pranayama", ja: "プラナヤマ", zh: "呼吸法", ko: "호흡법", ru: "Пранаяма", de: "Pranayama", ar: "براناياما")
+        case .strength:
+            return LocalizedString(en: "Strength", fr: "Force", es: "Fuerza", ja: "筋トレ", zh: "力量训练", ko: "근력", ru: "Сила", de: "Kraft", ar: "قوة")
+        case .cardio:
+            return LocalizedString(en: "Cardio", fr: "Cardio", es: "Cardio", ja: "有酸素", zh: "有氧", ko: "유산소", ru: "Кардио", de: "Cardio", ar: "كارديو")
+        case .mobility:
+            return LocalizedString(en: "Mobility", fr: "Mobilité", es: "Movilidad", ja: "モビリティ", zh: "活动度", ko: "가동성", ru: "Мобильность", de: "Mobilität", ar: "حركية")
+        case .meditation:
+            return LocalizedString(en: "Meditation", fr: "Méditation", es: "Meditación", ja: "瞑想", zh: "冥想", ko: "명상", ru: "Медитация", de: "Meditation", ar: "تأمل")
+        case .general:
+            return LocalizedString(en: "General", fr: "Général", es: "General", ja: "総合", zh: "综合", ko: "일반", ru: "Общая", de: "Allgemein", ar: "عام")
         }
     }
 
@@ -41,6 +67,8 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
         switch self {
         case .chairYoga:
             return LocalizedString(en: "Accessible yoga performed while seated in a chair, ideal for all fitness levels.", fr: "Yoga accessible pratiqué assis sur une chaise, idéal pour tous les niveaux de forme physique.")
+        case .matYoga:
+            return LocalizedString(en: "Floor-based yoga on a mat — flexible sequences for strength, stretch, and breath.", fr: "Yoga au sol sur un tapis — séquences flexibles pour force, étirement et respiration.")
         case .vinyasa:
             return LocalizedString(en: "A flowing style linking breath with movement through dynamic pose sequences.", fr: "Un style fluide reliant la respiration au mouvement à travers des séquences de postures dynamiques.")
         case .hatha:
@@ -57,12 +85,23 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
             return LocalizedString(en: "Gentle yoga adapted for pregnancy, supporting comfort, breath, and body awareness.", fr: "Yoga doux adapté à la grossesse, favorisant le confort, la respiration et la conscience corporelle.")
         case .pranayama:
             return LocalizedString(en: "Breathing exercises that regulate energy, calm the mind, and enhance focus.", fr: "Exercices de respiration qui régulent l'énergie, apaisent l'esprit et améliorent la concentration.")
+        case .strength:
+            return LocalizedString(en: "Resistance-focused sessions for muscular strength and endurance.", fr: "Séances axées sur la résistance pour la force et l'endurance musculaires.")
+        case .cardio:
+            return LocalizedString(en: "Elevated heart-rate intervals for cardiovascular conditioning.", fr: "Intervalles à fréquence cardiaque élevée pour le conditionnement cardiovasculaire.")
+        case .mobility:
+            return LocalizedString(en: "Joint range-of-motion and controlled movement prep for daily function.", fr: "Amplitude articulaire et mouvements contrôlés pour la fonction quotidienne.")
+        case .meditation:
+            return LocalizedString(en: "Stillness and breath-focused sessions for calm and awareness.", fr: "Séances de silence et de respiration pour le calme et la conscience.")
+        case .general:
+            return LocalizedString(en: "Mixed-modality workout when no specific style is selected.", fr: "Entraînement multi-modalités lorsqu'aucun style précis n'est sélectionné.")
         }
     }
-    
+
     public var symbolName: String {
         switch self {
         case .chairYoga: return "figure.seated.side"
+        case .matYoga: return "figure.yoga"
         case .vinyasa: return "figure.yoga"
         case .hatha: return "figure.flexibility"
         case .yin: return "moon.zzz"
@@ -71,12 +110,18 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
         case .standingBalance: return "figure.stand"
         case .prenatal: return "heart.fill"
         case .pranayama: return "wind"
+        case .strength: return "dumbbell.fill"
+        case .cardio: return "figure.run"
+        case .mobility: return "figure.cooldown"
+        case .meditation: return "brain.head.profile"
+        case .general: return "figure.mixed.cardio"
         }
     }
-    
+
     public var accentHue: Double {
         switch self {
         case .chairYoga: return 0.55
+        case .matYoga: return 0.58
         case .vinyasa: return 0.60
         case .hatha: return 0.35
         case .yin: return 0.75
@@ -85,9 +130,53 @@ public enum YogaStyle: String, Codable, Sendable, CaseIterable {
         case .standingBalance: return 0.65
         case .prenatal: return 0.95
         case .pranayama: return 0.50
+        case .strength: return 0.02
+        case .cardio: return 0.98
+        case .mobility: return 0.45
+        case .meditation: return 0.70
+        case .general: return 0.52
+        }
+    }
+
+    // MARK: - Per-kind control defaults
+
+    /// Nominal session BPM for Crooks work-feature origin (fractional BPM channel).
+    /// Seated / meditative kinds stay near resting; cardio is higher so effort HR does
+    /// not permanently trip grounding.
+    public var nominalBPM: Double {
+        switch self {
+        case .chairYoga, .yin, .restorative, .prenatal, .pranayama, .meditation:
+            return 85
+        case .hatha, .matYoga, .standingBalance, .mobility:
+            return 95
+        case .vinyasa, .power, .general:
+            return 110
+        case .strength:
+            return 120
+        case .cardio:
+            return 140
+        }
+    }
+
+    /// Recovery tempo broadcast when heuristic σ_irr grounding fires.
+    public var groundingBPM: Double {
+        switch self {
+        case .cardio:
+            return 150
+        case .strength:
+            return 128
+        case .vinyasa, .power, .general:
+            return 118
+        case .hatha, .matYoga, .standingBalance, .mobility:
+            return 102
+        case .chairYoga, .yin, .restorative, .prenatal, .pranayama, .meditation:
+            return 92
         }
     }
 }
+
+/// Preferred name for workout style / kind (`YogaStyle` retained for Codable).
+public typealias WorkoutKind = YogaStyle
 
 /// A structured workout plan consisting of multiple poses.
 public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
@@ -2589,7 +2678,123 @@ public enum PoseCatalog {
             isFree: true
         ),
     ]
-    
+
+    // MARK: - Non-yoga sample plans (reuse pose catalog as movement blocks)
+
+    public static let matYogaPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "mat-foundations",
+            name: LocalizedString(
+                en: "Mat Foundations", fr: "Fondations sur tapis",
+                es: "Fundamentos en esterilla", ja: "マット基礎", zh: "垫上基础",
+                ko: "매트 기초", ru: "Основы на коврике", de: "Matten-Grundlagen",
+                ar: "أساسيات السجادة", it: "Fondamenta sul tappetino", pt: "Fundamentos no tapete"
+            ),
+            description: LocalizedString(
+                en: "A grounded mat sequence blending breath, stretch, and gentle strength.", fr: "Une séquence au sol mêlant respiration, étirement et force douce."
+            ),
+            style: .matYoga,
+            poses: [seatedMountain, seatedCatCow, seatedForwardFold, seatedSideBend, seatedWarriorII, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+    ]
+
+    public static let strengthPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "strength-chair-power",
+            name: LocalizedString(
+                en: "Chair Strength Circuit", fr: "Circuit de force sur chaise",
+                es: "Circuito de fuerza en silla", ja: "チェア・ストレングス", zh: "椅上力量循环",
+                ko: "체어 스트렝스 서킷", ru: "Силовой круг на стуле", de: "Stuhl-Kraftzirkel",
+                ar: "دائرة قوة على الكرسي", it: "Circuito di forza in sedia", pt: "Circuito de força na cadeira"
+            ),
+            description: LocalizedString(
+                en: "Seated strength blocks for legs, core, and upper body.", fr: "Blocs de force assis pour jambes, centre et haut du corps."
+            ),
+            style: .strength,
+            poses: [seatedHighKneeLifts, seatedWarriorII, seatedGoddess, seatedChestExpansion, seatedBreathOfJoy, seatedMountain],
+            transitionSeconds: 4,
+            isFree: true
+        ),
+    ]
+
+    public static let cardioPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "cardio-seated-intervals",
+            name: LocalizedString(
+                en: "Seated Cardio Intervals", fr: "Intervalles cardio assis",
+                es: "Intervalos cardio sentados", ja: "シーテッド・カーディオ", zh: "坐姿有氧间歇",
+                ko: "앉은 유산소 인터벌", ru: "Сидячие кардио-интервалы", de: "Sitzende Cardio-Intervalle",
+                ar: "فترات كارديو جلوساً", it: "Intervalli cardio da seduti", pt: "Intervalos cardio sentados"
+            ),
+            description: LocalizedString(
+                en: "Short elevated-effort intervals with recovery breaths.", fr: "Courts intervalles d'effort avec respirations de récupération."
+            ),
+            style: .cardio,
+            poses: [seatedBreathOfJoy, seatedHighKneeLifts, seatedSunSalutation, seatedReverseWarrior, seatedMeditation],
+            transitionSeconds: 3,
+            isFree: true
+        ),
+    ]
+
+    public static let mobilityPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "mobility-daily-reset",
+            name: LocalizedString(
+                en: "Daily Mobility Reset", fr: "Reset mobilité quotidien",
+                es: "Reinicio de movilidad diario", ja: "デイリー・モビリティ", zh: "每日活动度重置",
+                ko: "데일리 모빌리티 리셋", ru: "Ежедневный сброс мобильности", de: "Täglicher Mobilitäts-Reset",
+                ar: "إعادة ضبط الحركية اليومية", it: "Reset mobilità quotidiano", pt: "Reset diário de mobilidade"
+            ),
+            description: LocalizedString(
+                en: "Joint-friendly mobility for neck, shoulders, spine, and hips.", fr: "Mobilité articulaire pour cou, épaules, colonne et hanches."
+            ),
+            style: .mobility,
+            poses: [neckRolls, shoulderRolls, seatedCatCow, seatedSpinalTwist, seatedAnkleCircles, seatedWristStretches, seatedAnklesToKnees],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+    ]
+
+    public static let meditationPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "meditation-stillness",
+            name: LocalizedString(
+                en: "Stillness Practice", fr: "Pratique du silence",
+                es: "Práctica de quietud", ja: "静寂のプラクティス", zh: "静心练习",
+                ko: "고요함 수련", ru: "Практика тишины", de: "Stille-Praxis",
+                ar: "ممارسة السكون", it: "Pratica della quiete", pt: "Prática de quietude"
+            ),
+            description: LocalizedString(
+                en: "Breath-led stillness with light postural anchors.", fr: "Silence guidé par le souffle avec ancrages posturaux légers."
+            ),
+            style: .meditation,
+            poses: [seatedMountain, seatedCatCow, seatedMeditation, seatedForwardFold, seatedMeditation],
+            transitionSeconds: 8,
+            isFree: true
+        ),
+    ]
+
+    public static let generalPlans: [WorkoutPlan] = [
+        WorkoutPlan(
+            id: "general-full-body",
+            name: LocalizedString(
+                en: "Full-Body Reset", fr: "Reset corps entier",
+                es: "Reinicio de cuerpo completo", ja: "全身リセット", zh: "全身重置",
+                ko: "전신 리셋", ru: "Полный сброс тела", de: "Ganzkörper-Reset",
+                ar: "إعادة ضبط الجسم بالكامل", it: "Reset a corpo intero", pt: "Reset de corpo inteiro"
+            ),
+            description: LocalizedString(
+                en: "A balanced mix of mobility, strength, and calm for any day.", fr: "Un mélange équilibré de mobilité, force et calme pour chaque jour."
+            ),
+            style: .general,
+            poses: [seatedMountain, neckRolls, seatedCatCow, seatedHighKneeLifts, seatedSideBend, seatedMeditation],
+            transitionSeconds: 5,
+            isFree: true
+        ),
+    ]
+
     /// Default beginner chair yoga plan
     public static var beginnerFlow: WorkoutPlan {
         chairYogaPlans.first ?? WorkoutPlan(
@@ -2650,10 +2855,11 @@ public enum PoseCatalog {
     public static let freePoses: [Pose] = allPoses.filter(\.isFree)
     public static let premiumPoses: [Pose] = allPoses.filter { !$0.isFree }
 
-    /// Returns all workout plans for a given yoga style.
+    /// Returns all workout plans for a given style / kind.
     public static func plans(for style: YogaStyle) -> [WorkoutPlan] {
         switch style {
         case .chairYoga:       return chairYogaPlans
+        case .matYoga:         return matYogaPlans
         case .vinyasa:         return vinyasaPlans
         case .hatha:           return hathaPlans
         case .yin:             return yinPlans
@@ -2662,16 +2868,42 @@ public enum PoseCatalog {
         case .standingBalance: return standingBalancePlans
         case .prenatal:        return prenatalPlans
         case .pranayama:       return pranayamaPlans
+        case .strength:        return strengthPlans
+        case .cardio:          return cardioPlans
+        case .mobility:        return mobilityPlans
+        case .meditation:      return meditationPlans
+        case .general:         return generalPlans
         }
     }
 
-    /// All workout plans across every yoga style.
+    /// All workout plans across every style / kind.
     public static let allPlans: [WorkoutPlan] = {
         YogaStyle.allCases.flatMap { plans(for: $0) }
     }()
 
-    /// Number of plans for a given style.
+    /// Number of plans for a given style / kind.
     public static func planCount(for style: YogaStyle) -> Int {
         plans(for: style).count
+    }
+
+    /// Build a lightweight free plan for any kind using common free poses.
+    public static func genericBuilder(
+        id: String,
+        kind: WorkoutKind,
+        name: LocalizedString,
+        description: LocalizedString,
+        poses: [Pose]? = nil,
+        transitionSeconds: TimeInterval = 5
+    ) -> WorkoutPlan {
+        let blocks = poses ?? [seatedMountain, neckRolls, seatedCatCow, seatedMeditation]
+        return WorkoutPlan(
+            id: id,
+            name: name,
+            description: description,
+            style: kind,
+            poses: blocks,
+            transitionSeconds: transitionSeconds,
+            isFree: true
+        )
     }
 }

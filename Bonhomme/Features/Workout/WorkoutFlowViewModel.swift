@@ -30,6 +30,8 @@ final class WorkoutFlowViewModel {
     let recorder = WorkoutRecorder()
     let feedbackEngine: FeedbackEngine
     let musicService = MusicService()
+    /// On-device Foundation Models (iOS 26+) pose/session narratives with static fallback.
+    let insightEngine: InsightEngine
     private let stateStore = WorkoutStateStore()
 
     /// Crooks-cycle pharma control session (σ_irr minimization, universal beat sync).
@@ -39,6 +41,10 @@ final class WorkoutFlowViewModel {
     private(set) var sigmaIrr: Double = 0
     private(set) var crooksPhase: ThermodynamicPhase = .forward
     private(set) var crownBeta: Double = 0
+    /// Live breath rate from `BreathingGuideActuatorChannel` (via session snapshot).
+    private(set) var breathsPerMinute: Double = BreathingGuideActuatorChannel.defaultBreathsPerMinute
+    /// Sticky grounding flag for breath UI prominence.
+    private(set) var isGrounding: Bool = false
 
     /// Tracks whether this session was restored from a killed app.
     private(set) var isRestoredSession = false
@@ -49,6 +55,10 @@ final class WorkoutFlowViewModel {
 
     /// Whether the session is currently paused (timer cancelled, HealthKit suspended).
     private(set) var isPaused: Bool = false
+
+    /// Voice / on-screen guidance for the active pose.
+    /// Starts as `pose.voiceCueText` (or SCI template) and may update when Foundation Models finishes.
+    private(set) var currentVoiceCue: String = ""
 
     var currentPose: Pose? {
         switch phase {
@@ -76,6 +86,7 @@ final class WorkoutFlowViewModel {
     init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
         self.plan = plan
         self.feedbackEngine = feedbackEngine
+        self.insightEngine = InsightEngine(feedbackEngine: feedbackEngine)
         // Ensure HRV analyzer is present even when a bare engine is injected.
         feedbackEngine.register(HRVAnalyzer())
         // Wire live HR → synthetic RR → FeedbackEngine (mirrors Watch path).
@@ -137,7 +148,10 @@ final class WorkoutFlowViewModel {
 
         musicService.bindUniversalBeatSync()
         Task {
-            await pharmaControl.start()
+            await pharmaControl.start(
+                nominalBPM: plan.style.nominalBPM,
+                groundingBPM: plan.style.groundingBPM
+            )
             // Attempt to recover the existing HealthKit workout session.
             await recoverHealthKitSession()
 
@@ -155,6 +169,10 @@ final class WorkoutFlowViewModel {
             // Resume at the current phase (preserve remaining transition seconds).
             switch phase {
             case .active(let idx):
+                if let pose = plan.poses[safe: idx] {
+                    currentVoiceCue = pose.voiceCueText.localized
+                    refreshVoiceCue(for: pose)
+                }
                 startPoseTimer(for: idx)
             case .transition(let nextIdx, let secs):
                 startTransition(to: nextIdx, remainingSeconds: secs)
@@ -219,7 +237,12 @@ final class WorkoutFlowViewModel {
         sessionStartDate = Date()
         phase = .countdown(secondsRemaining: 3)
         musicService.bindUniversalBeatSync()
-        Task { await pharmaControl.start() }
+        Task {
+            await pharmaControl.start(
+                nominalBPM: plan.style.nominalBPM,
+                groundingBPM: plan.style.groundingBPM
+            )
+        }
         startCountdownSequence()
     }
 
@@ -273,6 +296,7 @@ final class WorkoutFlowViewModel {
         phase = .complete
         stateStore.clear()
         musicService.stop()
+        insightEngine.clearPoseCueCache()
         endLiveActivity()
         Task {
             await pharmaControl.stop()
@@ -470,7 +494,49 @@ final class WorkoutFlowViewModel {
         let pose = plan.poses[index]
         poseTimeRemaining = pose.durationSeconds
         phase = .active(poseIndex: index)
+        // Immediate static cue; Foundation Models upgrades async without blocking the timer.
+        currentVoiceCue = pose.voiceCueText.localized
+        refreshVoiceCue(for: pose)
         startPoseTimer(for: index)
+    }
+
+    /// Fire-and-forget pose voice cue via InsightEngine (on-device FM or static templates).
+    /// Never awaited from the pose timer path — generation runs on a side task.
+    private func refreshVoiceCue(for pose: Pose) {
+        let poseId = pose.id
+        // HRV-only refresh keeps the path light; medication/docking use last known insights.
+        let insights = feedbackEngine.refreshHRVAndSnapshot()
+        let hr = recorder.currentHeartRate
+
+        // Immediate template/cache publish (sync); model upgrade happens inside InsightEngine.
+        insightEngine.refreshPoseCueAsync(
+            for: pose,
+            insights: insights,
+            heartRate: hr
+        )
+        if insightEngine.latestPoseCuePoseId == poseId,
+           !insightEngine.latestPoseCue.isEmpty {
+            currentVoiceCue = insightEngine.latestPoseCue
+        }
+
+        // Mirror async model result without blocking startPoseTimer.
+        Task { [weak self] in
+            guard let self else { return }
+            for _ in 0..<24 {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                guard case .active(let idx) = self.phase,
+                      self.plan.poses[safe: idx]?.id == poseId else { return }
+                guard self.insightEngine.latestPoseCuePoseId == poseId else { return }
+
+                let cue = self.insightEngine.latestPoseCue
+                if !cue.isEmpty {
+                    self.currentVoiceCue = cue
+                }
+                // Settle once background generation finished (or was a cache hit).
+                if !self.insightEngine.isProcessing { return }
+            }
+        }
     }
 
     private func startPoseTimer(for index: Int) {
@@ -538,6 +604,7 @@ final class WorkoutFlowViewModel {
             try? await recorder.end(metadata: metadata)
 
             musicService.stop()
+            insightEngine.clearPoseCueCache()
             endLiveActivity()
             stateStore.clear()
             await pharmaControl.stop()
@@ -552,14 +619,17 @@ final class WorkoutFlowViewModel {
     private func tickPharmaControl() async {
         _ = feedbackEngine.analyze(for: .heartRateVariability)
         let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
-        let bpm = recorder.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+        let bpm = recorder.currentHeartRate ?? plan.style.nominalBPM
         let result = await pharmaControl.tickFromSCI(sciScore: sci, bpm: bpm)
         sigmaIrr = result.sigmaIrr
         crooksPhase = result.phase
         let snap = await pharmaControl.snapshot()
         crownBeta = snap.crownBeta
-        // Tempo: sole path is UniversalBeatSync → MusicService listener from
-        // `bindUniversalBeatSync`. Do not double-apply here (was racing rate writes).
+        // Breath UI / Watch consumers read these; never block on UI work here.
+        breathsPerMinute = snap.effectiveBreathsPerMinute
+        isGrounding = snap.isGrounding
+        // Tempo (issue #11): listener-only — UniversalBeatSync → MusicService.bindUniversalBeatSync
+        // → private applyBeatSync. Never call music rate APIs here (was double-writing playbackRate).
 
         // Grounding mood adapt must never block the pose/control timer (full crossfade).
         if result.didGround {

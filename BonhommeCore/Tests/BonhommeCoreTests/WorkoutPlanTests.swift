@@ -45,6 +45,50 @@ final class WorkoutPlanTests: XCTestCase {
         }
     }
 
+    func testLegacyYogaStyleRawValuesStillDecode() throws {
+        // Codable stability: pre-multi-kind encoded strings must keep working.
+        let legacy = ["chairYoga", "vinyasa", "hatha", "yin", "restorative", "power", "standingBalance", "prenatal", "pranayama"]
+        for raw in legacy {
+            let data = try JSONEncoder().encode(raw)
+            let decoded = try JSONDecoder().decode(YogaStyle.self, from: data)
+            XCTAssertEqual(decoded.rawValue, raw)
+        }
+    }
+
+    func testWorkoutKindAliasMatchesYogaStyle() {
+        let kind: WorkoutKind = .strength
+        let style: YogaStyle = kind
+        XCTAssertEqual(style, .strength)
+        XCTAssertEqual(style.nominalBPM, 120)
+        XCTAssertEqual(style.groundingBPM, 128)
+    }
+
+    func testPerKindNominalBPMDefaults() {
+        XCTAssertEqual(YogaStyle.chairYoga.nominalBPM, 85)
+        XCTAssertEqual(YogaStyle.meditation.nominalBPM, 85)
+        XCTAssertEqual(YogaStyle.cardio.nominalBPM, 140)
+        XCTAssertEqual(YogaStyle.strength.nominalBPM, 120)
+        XCTAssertEqual(YogaStyle.matYoga.nominalBPM, 95)
+        for style in YogaStyle.allCases {
+            XCTAssertGreaterThan(style.nominalBPM, 0, "\(style.rawValue) nominalBPM")
+            XCTAssertGreaterThan(style.groundingBPM, 0, "\(style.rawValue) groundingBPM")
+        }
+    }
+
+    func testCrooksFeatureVectorUsesPlanNominalBPM() {
+        // Cardio HR at 140 should be on-nominal for cardio kind, not a large deviation.
+        let cardio = CrooksFeatureVector(
+            deltaHRV: 0, flexAIDDeltaS: 0, crownBeta: 0, bpm: 140, nominalBPM: YogaStyle.cardio.nominalBPM
+        )
+        XCTAssertEqual(cardio.bpmFractionalDeviation, 0, accuracy: 1e-12)
+
+        // Same HR vs chair-yoga nominal would look like large effort.
+        let asYoga = CrooksFeatureVector(
+            deltaHRV: 0, flexAIDDeltaS: 0, crownBeta: 0, bpm: 140, nominalBPM: YogaStyle.chairYoga.nominalBPM
+        )
+        XCTAssertGreaterThan(abs(asYoga.bpmFractionalDeviation), 0.5)
+    }
+
     func testPoseCount() {
         let plan = makeTestPlan()
         XCTAssertEqual(plan.poseCount, plan.poses.count)

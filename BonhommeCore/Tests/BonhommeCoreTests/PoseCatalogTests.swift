@@ -177,6 +177,29 @@ final class PoseCatalogTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(PoseCatalog.hathaPlans.count, 1)
     }
 
+    func testNonYogaSamplePlansExist() {
+        XCTAssertGreaterThanOrEqual(PoseCatalog.strengthPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.cardioPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.mobilityPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.meditationPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.matYogaPlans.count, 1)
+        XCTAssertGreaterThanOrEqual(PoseCatalog.generalPlans.count, 1)
+        XCTAssertEqual(PoseCatalog.strengthPlans.first?.style, .strength)
+        XCTAssertEqual(PoseCatalog.cardioPlans.first?.style, .cardio)
+    }
+
+    func testGenericBuilderProducesKindPlan() {
+        let plan = PoseCatalog.genericBuilder(
+            id: "generic-test",
+            kind: .general,
+            name: LocalizedString(en: "Generic", fr: "Générique"),
+            description: LocalizedString(en: "Test", fr: "Test")
+        )
+        XCTAssertEqual(plan.style, .general)
+        XCTAssertTrue(plan.isFree)
+        XCTAssertFalse(plan.poses.isEmpty)
+    }
+
     func testYinPlansExist() {
         XCTAssertGreaterThanOrEqual(PoseCatalog.yinPlans.count, 1)
     }

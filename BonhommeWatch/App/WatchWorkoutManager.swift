@@ -75,7 +75,7 @@ final class WatchWorkoutManager: NSObject {
         isPaused = false
 
         let config = HKWorkoutConfiguration()
-        config.activityType = .yoga
+        config.activityType = plan.style.healthKitActivityType
         config.locationType = .indoor
 
         session = try HKWorkoutSession(healthStore: healthStore, configuration: config)

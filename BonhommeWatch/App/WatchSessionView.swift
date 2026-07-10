@@ -18,8 +18,11 @@ struct WatchSessionView: View {
     @State private var crownRotationalDelta: Double = 0
     @State private var sigmaIrr: Double = 0
     @State private var crownBeta: Double = 0
+    @State private var breathsPerMinute: Double = BreathingGuideActuatorChannel.defaultBreathsPerMinute
+    @State private var isGrounding: Bool = false
     /// Debounce full Crooks ticks from crown micro-deltas (β still applies immediately).
     @State private var crownTickTask: Task<Void, Never>?
+    @State private var breathHaptics = BreathingHapticGuide()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -52,7 +55,7 @@ struct WatchSessionView: View {
             crownTickTask = Task {
                 try? await Task.sleep(for: .milliseconds(150))
                 guard !Task.isCancelled else { return }
-                let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+                let bpm = manager.currentHeartRate ?? plan.style.nominalBPM
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
                 let beta = await PharmaControlSessionManager.shared.snapshot().crownBeta
                 let result = await PharmaControlSessionManager.shared.tickFromSCI(
@@ -61,12 +64,14 @@ struct WatchSessionView: View {
                     crownBeta: beta
                 )
                 sigmaIrr = result.sigmaIrr
+                await applySessionSnapshot()
             }
         }
         .onAppear { startWorkout() }
         .onDisappear {
             relayTask?.cancel()
             crownTickTask?.cancel()
+            breathHaptics.stop()
         }
         .onChange(of: manager.phase) { _, newPhase in
             if case .complete = newPhase {
@@ -247,7 +252,7 @@ struct WatchSessionView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
 
-            // Crooks σ_irr + crown β
+            // Crooks σ_irr + crown β + breath rate
             HStack(spacing: 8) {
                 Text(String(format: "σ_irr: %.3f", sigmaIrr))
                     .font(.system(size: 11, design: .monospaced))
@@ -256,6 +261,12 @@ struct WatchSessionView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.6))
             }
+            BreathingGuideView(
+                breathsPerMinute: breathsPerMinute,
+                isGrounding: isGrounding,
+                prominence: isGrounding ? .grounding : .subtle
+            )
+            .scaleEffect(0.75)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -323,8 +334,12 @@ struct WatchSessionView: View {
 
     private func startWorkout() {
         Task {
-            await PharmaControlSessionManager.shared.start()
+            await PharmaControlSessionManager.shared.start(
+                nominalBPM: plan.style.nominalBPM,
+                groundingBPM: plan.style.groundingBPM
+            )
             try? await manager.start(plan: plan)
+            breathHaptics.start()
             startBiofeedbackRelay()
         }
     }
@@ -342,20 +357,33 @@ struct WatchSessionView: View {
                 // HRV-only on the control path (avoid full multi-analyzer pass every 2s).
                 _ = manager.feedbackEngine.analyze(for: .heartRateVariability)
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
-                let bpm = manager.currentHeartRate ?? CrooksCycleDefaults.nominalBPM
+                let bpm = manager.currentHeartRate ?? plan.style.nominalBPM
                 let result = await PharmaControlSessionManager.shared.tickFromSCI(
                     sciScore: sci,
                     bpm: bpm
                 )
                 sigmaIrr = result.sigmaIrr
-                let snap = await PharmaControlSessionManager.shared.snapshot()
-                crownBeta = snap.crownBeta
+                await applySessionSnapshot()
             }
         }
     }
 
+    /// Pull breath rate / grounding / β from session snapshot for UI + haptics.
+    private func applySessionSnapshot() async {
+        let snap = await PharmaControlSessionManager.shared.snapshot()
+        crownBeta = snap.crownBeta
+        breathsPerMinute = snap.effectiveBreathsPerMinute
+        isGrounding = snap.isGrounding
+        sigmaIrr = snap.sigmaIrr
+        breathHaptics.update(
+            breathsPerMinute: snap.effectiveBreathsPerMinute,
+            isGrounding: snap.isGrounding
+        )
+    }
+
     private func handleWorkoutComplete() {
         relayTask?.cancel()
+        breathHaptics.stop()
         Task { await PharmaControlSessionManager.shared.stop() }
         if let result = manager.buildResult() {
             connectivity.transferWorkoutResult(result)

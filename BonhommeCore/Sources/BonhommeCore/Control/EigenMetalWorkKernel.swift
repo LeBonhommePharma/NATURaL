@@ -22,20 +22,31 @@ public struct CrooksFeatureVector: Sendable, Equatable {
     public var flexAIDDeltaS: Double
     public var crownBeta: Double
     public var bpm: Double
+    /// Plan/kind-aware nominal BPM for fractional deviation (defaults to chair-yoga 85).
+    public var nominalBPM: Double
 
-    public init(deltaHRV: Double, flexAIDDeltaS: Double, crownBeta: Double, bpm: Double) {
+    public init(
+        deltaHRV: Double,
+        flexAIDDeltaS: Double,
+        crownBeta: Double,
+        bpm: Double,
+        nominalBPM: Double = CrooksCycleDefaults.nominalBPM
+    ) {
         // Non-finite sensor values → 0 so work/σ_irr never poison the control loop.
         self.deltaHRV = deltaHRV.isFinite ? deltaHRV : 0
         self.flexAIDDeltaS = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
         self.crownBeta = crownBeta.isFinite ? max(-1, min(1, crownBeta)) : 0
-        self.bpm = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+        let safeNom = (nominalBPM.isFinite && nominalBPM > 0) ? nominalBPM : CrooksCycleDefaults.nominalBPM
+        self.nominalBPM = safeNom
+        self.bpm = bpm.isFinite ? bpm : safeNom
     }
 
     /// Fractional BPM deviation, clamped to ±1 (i.e. 0…2× nominal).
     /// Using raw `(bpm − nominal)` made seated yoga (~70–90 BPM) look like
     /// multi-unit work and permanently ground the Crooks loop.
+    /// Pass a higher `nominalBPM` for cardio/strength kinds so effort HR is on-scale.
     public var bpmFractionalDeviation: Double {
-        let nom = CrooksCycleDefaults.nominalBPM
+        let nom = nominalBPM > 0 ? nominalBPM : CrooksCycleDefaults.nominalBPM
         guard nom > 0 else { return 0 }
         let frac = (bpm - nom) / nom
         guard frac.isFinite else { return 0 }

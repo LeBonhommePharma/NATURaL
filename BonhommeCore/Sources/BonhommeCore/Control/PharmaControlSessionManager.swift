@@ -41,6 +41,8 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
     public var lastPrediction: DeltaHRVFlexAIDPrediction?
     /// Breathing-guide rate (breaths/min) from `BreathingGuideActuatorChannel`.
     public var breathsPerMinute: Double
+    /// True while Crooks grounding policy is active (beat / breath channel / residual).
+    public var isGrounding: Bool
     /// Latest cross-domain residual bits from `CrossDomainActuatorChannel` / mapper.
     public var crossDomainResidual: Double
     public var crossDomainShouldGround: Bool
@@ -55,6 +57,7 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
         tickCount: Int = 0,
         lastPrediction: DeltaHRVFlexAIDPrediction? = nil,
         breathsPerMinute: Double = 0,
+        isGrounding: Bool = false,
         crossDomainResidual: Double = 0,
         crossDomainShouldGround: Bool = false,
         crossDomainSource: String = "none"
@@ -67,13 +70,30 @@ public struct PharmaControlSessionSnapshot: Sendable, Equatable {
         self.tickCount = tickCount
         self.lastPrediction = lastPrediction
         self.breathsPerMinute = breathsPerMinute
+        self.isGrounding = isGrounding
         self.crossDomainResidual = crossDomainResidual
         self.crossDomainShouldGround = crossDomainShouldGround
         self.crossDomainSource = crossDomainSource
     }
 
+    /// Heuristic irreversibility index from the thermodynamic controller state.
+    public var sigmaIrr: Double { thermodynamic.sigmaIrr }
+
     public var sigmaIrrDisplay: String {
-        String(format: "%.3f", thermodynamic.sigmaIrr)
+        String(format: "%.3f", sigmaIrr)
+    }
+
+    /// Breath rate for UI / haptics: published rate, or nominal default when idle.
+    public var effectiveBreathsPerMinute: Double {
+        if breathsPerMinute.isFinite && breathsPerMinute > 0.1 {
+            return breathsPerMinute
+        }
+        return BreathingGuideActuatorChannel.defaultBreathsPerMinute
+    }
+
+    /// Full inhale+exhale period (seconds) from `effectiveBreathsPerMinute`.
+    public var breathPeriodSeconds: Double {
+        BreathingGuideActuatorChannel.breathPeriodSeconds(rate: effectiveBreathsPerMinute)
     }
 }
 
@@ -103,6 +123,10 @@ public actor PharmaControlSessionManager {
     private var tickCount = 0
     private var lastResult: CrooksCycleUpdateResult?
     private var lastSCI: Double?
+    /// Plan/kind-aware origin for Crooks fractional BPM channel.
+    private var sessionNominalBPM: Double = CrooksCycleDefaults.nominalBPM
+    /// Plan/kind-aware recovery tempo when grounding fires.
+    private var sessionGroundingBPM: Double = CrooksCycleDefaults.groundingBPM
 
     public init(
         controller: CrooksCycleController = .shared,
@@ -118,15 +142,24 @@ public actor PharmaControlSessionManager {
         self.mapper = mapper
     }
 
-    public func start(baselineEntropy: Double? = nil) async {
+    /// Start a control session. Pass plan-aware BPM defaults from `WorkoutPlan.style`.
+    public func start(
+        baselineEntropy: Double? = nil,
+        nominalBPM: Double = CrooksCycleDefaults.nominalBPM,
+        groundingBPM: Double = CrooksCycleDefaults.groundingBPM
+    ) async {
         isRunning = true
         tickCount = 0
         lastResult = nil
         lastSCI = nil
+        sessionNominalBPM = (nominalBPM.isFinite && nominalBPM > 0) ? nominalBPM : CrooksCycleDefaults.nominalBPM
+        sessionGroundingBPM = (groundingBPM.isFinite && groundingBPM > 0) ? groundingBPM : CrooksCycleDefaults.groundingBPM
         _ = baselineEntropy // reserved for future baseline-relative ΔH
         await controller.reset()
         await ControlActuatorSnapshotStore.shared.reset()
-        await SessionEventLog.shared.append("pharma_session_start")
+        await SessionEventLog.shared.append(
+            "pharma_session_start nominalBPM=\(sessionNominalBPM) groundingBPM=\(sessionGroundingBPM)"
+        )
     }
 
     public func stop() async {
@@ -188,7 +221,9 @@ public actor PharmaControlSessionManager {
             flexAIDDeltaS: input.flexAIDDeltaS,
             crownBeta: beta,
             bpm: input.bpm,
-            substanceId: input.substanceId
+            substanceId: input.substanceId,
+            nominalBPM: sessionNominalBPM,
+            groundingBPM: sessionGroundingBPM
         )
         lastResult = result
         tickCount += 1
@@ -225,7 +260,7 @@ public actor PharmaControlSessionManager {
         } else {
             beta = await crown.currentBeta()
         }
-        let safeBPM = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+        let safeBPM = bpm.isFinite ? bpm : sessionNominalBPM
         let safeFlex = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
 
         return await tick(PharmaControlTick(
@@ -245,9 +280,16 @@ public actor PharmaControlSessionManager {
         let pred = await mapper.last()
         let actuators = ControlActuatorSnapshotStore.shared
         let breath = await actuators.breathsPerMinute
+        let breathGrounding = await actuators.isGrounding
         let residual = await actuators.crossDomainResidual
         let residualGround = await actuators.crossDomainShouldGround
         let residualSource = await actuators.crossDomainSource
+        // Sticky grounding: breath channel, beat lock, last tick, residual, or σ_irr.
+        let grounding = breathGrounding
+            || beat.isGrounding
+            || (lastResult?.didGround == true)
+            || residualGround
+            || thermo.sigmaIrr > CrooksCycleDefaults.groundingThreshold
         return PharmaControlSessionSnapshot(
             isRunning: isRunning,
             thermodynamic: thermo,
@@ -257,6 +299,7 @@ public actor PharmaControlSessionManager {
             tickCount: tickCount,
             lastPrediction: pred,
             breathsPerMinute: breath,
+            isGrounding: grounding,
             crossDomainResidual: residual,
             crossDomainShouldGround: residualGround,
             crossDomainSource: residualSource

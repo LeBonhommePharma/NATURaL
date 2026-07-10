@@ -143,19 +143,26 @@ public actor CrooksCycleController {
     // MARK: - Control tick
 
     /// Ingest ΔH_hrv, FlexAID ΔS_config, crown β, and BPM; apply Crooks-inspired policy.
+    /// - Parameters:
+    ///   - nominalBPM: Plan/kind-aware origin for the fractional BPM work channel.
+    ///   - groundingBPM: Recovery tempo when heuristic σ_irr grounding fires.
     @discardableResult
     public func update(
         deltaHRV: Double,
         flexAIDDeltaS: Double,
         crownBeta: Double,
         bpm: Double,
-        substanceId: String? = nil
+        substanceId: String? = nil,
+        nominalBPM: Double = CrooksCycleDefaults.nominalBPM,
+        groundingBPM: Double = CrooksCycleDefaults.groundingBPM
     ) async -> CrooksCycleUpdateResult {
         // Sanitize at the boundary (feature vector also sanitizes; belt-and-suspenders).
         let safeHRV = deltaHRV.isFinite ? deltaHRV : 0
         let safeFlex = flexAIDDeltaS.isFinite ? flexAIDDeltaS : 0
         let safeBeta = crownBeta.isFinite ? max(-1, min(1, crownBeta)) : 0
-        let safeBPM = bpm.isFinite ? bpm : CrooksCycleDefaults.nominalBPM
+        let safeNom = (nominalBPM.isFinite && nominalBPM > 0) ? nominalBPM : CrooksCycleDefaults.nominalBPM
+        let safeGround = (groundingBPM.isFinite && groundingBPM > 0) ? groundingBPM : CrooksCycleDefaults.groundingBPM
+        let safeBPM = bpm.isFinite ? bpm : safeNom
 
         _ = await crown.setBeta(safeBeta)
 
@@ -169,7 +176,8 @@ public actor CrooksCycleController {
             deltaHRV: safeHRV,
             flexAIDDeltaS: safeFlex,
             crownBeta: safeBeta,
-            bpm: safeBPM
+            bpm: safeBPM,
+            nominalBPM: safeNom
         )
         let eval = kernel.evaluate(features)
         let work = eval.work.isFinite ? eval.work : 0
@@ -191,7 +199,7 @@ public actor CrooksCycleController {
         var didFlip = false
 
         if sigmaIrr > CrooksCycleDefaults.groundingThreshold || prediction.shouldGround {
-            await minimizeSigmaIrr(bpm: safeBPM, beta: safeBeta)
+            await minimizeSigmaIrr(bpm: safeGround, beta: safeBeta)
             didGround = true
         }
 
@@ -215,12 +223,12 @@ public actor CrooksCycleController {
         }
 
         // One multiplexed beat — sole end-of-tick authority.
-        // After grounding, preserve recovery tempo (92 BPM) and damped β; do not
-        // re-broadcast the pre-ground input BPM/β (that undoes executeGrounding).
+        // After grounding, preserve recovery tempo (plan-aware grounding BPM) and damped β;
+        // do not re-broadcast the pre-ground input BPM/β (that undoes executeGrounding).
         if didGround {
             let dampedBeta = await crown.currentBeta()
             await actuators.broadcastBeat(
-                bpm: CrooksCycleDefaults.groundingBPM,
+                bpm: safeGround,
                 beta: dampedBeta,
                 grounding: true
             )
