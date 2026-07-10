@@ -338,10 +338,22 @@ final class AnalyzerTests: XCTestCase {
             summary: LocalizedString(en: "Focused", fr: "Concentré")
         )
 
-        let snapshot = BiofeedbackSnapshot(
+        // Wire/relay default strips the insight map but still keeps sciScore/trend.
+        let wire = BiofeedbackSnapshot(
             heartRate: 68,
             activeCalories: 12.5,
             feedbackInsights: [.heartRateVariability: insight]
+        )
+        XCTAssertEqual(wire.sciScore, 0.72)
+        XCTAssertEqual(wire.sciTrend, .improving)
+        XCTAssertTrue(wire.insights.isEmpty, "Default includeInsights=false for size-safe relay")
+
+        // In-process UI path can keep full insights.
+        let snapshot = BiofeedbackSnapshot(
+            heartRate: 68,
+            activeCalories: 12.5,
+            feedbackInsights: [.heartRateVariability: insight],
+            includeInsights: true
         )
 
         XCTAssertEqual(snapshot.sciScore, 0.72)
