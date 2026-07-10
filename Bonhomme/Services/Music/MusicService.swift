@@ -1,13 +1,14 @@
 import Foundation
 import Combine
+import AVFoundation
 import MusicKit
 import BonhommeCore
 
 /// Apple Music workout playlists with SCI-driven mood transitions.
 ///
 /// Coherence high → energizing; coherence low → meditative. Debounced (30s)
-/// with 3s volume crossfade. When bound to `UniversalBeatSync`, playback rate
-/// tracks Crooks-cycle BPM so the active audio route (AirPods included) locks tempo.
+/// with a short gap crossfade that does **not** touch `playbackRate`.
+/// Tempo is owned exclusively by `applyBeatSync` via `UniversalBeatSync`.
 @MainActor
 final class MusicService: ObservableObject {
     @Published var isAuthorized = false
@@ -15,12 +16,19 @@ final class MusicService: ObservableObject {
     @Published private(set) var adaptiveMood: WorkoutMood = .calm
     /// Last snapshot from universal beat sync.
     @Published private(set) var lastBeat: BeatSyncSnapshot?
+    /// True while a mood transition is in flight — beat-rate updates are suspended.
+    @Published private(set) var isCrossfading = false
 
     /// Minimum interval between mood transitions to avoid jarring rapid switches.
+    /// Sole debounce owner for adaptive music (callers must not layer a second 30s gate).
     private let transitionDebounce: TimeInterval = 30
     private var lastTransitionDate: Date = .distantPast
     private var fadeTask: Task<Void, Never>?
     private var beatBound = false
+    private var routeObserver: NSObjectProtocol?
+
+    /// Playlist cache keyed by (mood rawValue, style rawValue or "default").
+    private var playlistCache: [String: Playlist] = [:]
 
     /// Nominal track BPM assumed for playback-rate scaling (MusicKit has no beat grid).
     private let assumedTrackBPM: Double = 120
@@ -30,10 +38,11 @@ final class MusicService: ObservableObject {
         isAuthorized = status == .authorized
     }
 
-    /// Bind once to `UniversalBeatSync` for session tempo lock.
+    /// Bind once to `UniversalBeatSync` for session tempo lock and start AirPods route observer.
     func bindUniversalBeatSync() {
         guard !beatBound else { return }
         beatBound = true
+        startAudioRouteObserver()
         Task { [weak self] in
             await UniversalBeatSync.shared.addListener { snap in
                 await self?.applyBeatSync(snap)
@@ -42,9 +51,10 @@ final class MusicService: ObservableObject {
     }
 
     /// Apply Crooks BPM to MusicKit playback rate on the active audio route.
+    /// Skipped while crossfading so gap transitions do not race tempo.
     func applyBeatSync(_ snap: BeatSyncSnapshot) async {
         lastBeat = snap
-        guard isPlaying else { return }
+        guard isPlaying, !isCrossfading else { return }
         let player = ApplicationMusicPlayer.shared
         let rate = max(0.75, min(1.25, snap.bpm / assumedTrackBPM))
         // Grounding: slightly slower, calmer feel.
@@ -57,31 +67,79 @@ final class MusicService: ObservableObject {
         await PharmaControlSessionManager.shared.setAirPodsRouteActive(active)
     }
 
+    // MARK: - AirPods / headphone route
+
+    /// Observe AVAudioSession route changes and publish headphone presence.
+    func startAudioRouteObserver() {
+        guard routeObserver == nil else {
+            Task { await publishCurrentAudioRoute() }
+            return
+        }
+        routeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.publishCurrentAudioRoute()
+            }
+        }
+        Task { await publishCurrentAudioRoute() }
+    }
+
+    func stopAudioRouteObserver() {
+        if let routeObserver {
+            NotificationCenter.default.removeObserver(routeObserver)
+            self.routeObserver = nil
+        }
+    }
+
+    private func publishCurrentAudioRoute() async {
+        let session = AVAudioSession.sharedInstance()
+        let outputs = session.currentRoute.outputs
+        let headphonesActive = outputs.contains { port in
+            switch port.portType {
+            case .headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
+                return true
+            default:
+                // AirPods often report as bluetoothA2DP; also match name heuristics.
+                let name = port.portName.lowercased()
+                return name.contains("airpods") || name.contains("headphone")
+            }
+        }
+        await setAirPodsRouteActive(headphonesActive)
+    }
+
+    // MARK: - Playback
+
+    /// Prefetch playlists for all moods × style so adaptive switches avoid network on the hot path.
+    func prefetchPlaylists(style: YogaStyle?) async {
+        guard isAuthorized else { return }
+        for mood in WorkoutMood.allCases {
+            if playlistCache[cacheKey(mood: mood, style: style)] != nil { continue }
+            if let playlist = await searchPlaylist(mood: mood, style: style) {
+                playlistCache[cacheKey(mood: mood, style: style)] = playlist
+            }
+        }
+    }
+
     /// Searches Apple Music for yoga-related playlists and plays the first match.
     func playWorkoutMusic(mood: WorkoutMood, style: YogaStyle? = nil) async {
         guard isAuthorized else { return }
 
-        let searchTerm: String
-        if let style, let styleTerm = style.musicSearchTerms[mood] {
-            searchTerm = styleTerm
-        } else {
-            searchTerm = mood.searchTerm
-        }
+        // Fire prefetch for remaining moods in parallel with first play.
+        Task { await prefetchPlaylists(style: style) }
 
         do {
-            var request = MusicCatalogSearchRequest(
-                term: searchTerm,
-                types: [Playlist.self]
-            )
-            request.limit = 5
-            let response = try await request.response()
-
-            if let playlist = response.playlists.first {
-                let player = ApplicationMusicPlayer.shared
-                player.queue = [playlist]
-                try await player.play()
-                isPlaying = true
-                adaptiveMood = mood
+            let playlist = try await resolvePlaylist(mood: mood, style: style)
+            let player = ApplicationMusicPlayer.shared
+            player.queue = [playlist]
+            try await player.play()
+            isPlaying = true
+            adaptiveMood = mood
+            // Re-apply beat rate after play starts.
+            if let beat = lastBeat {
+                await applyBeatSync(beat)
             }
         } catch {
             isPlaying = false
@@ -95,48 +153,16 @@ final class MusicService: ObservableObject {
 
     func stop() {
         fadeTask?.cancel()
+        isCrossfading = false
+        stopAudioRouteObserver()
         ApplicationMusicPlayer.shared.stop()
         isPlaying = false
     }
 
     // MARK: - Adaptive SCI-Driven Music
 
-    /// Smoothly adjusts the system music player volume over a duration.
-    /// Uses 10 discrete steps for a smooth-feeling transition.
-    private func fadeVolume(from startVolume: Float, to endVolume: Float, duration: TimeInterval) async {
-        let steps = 10
-        let stepDuration = duration / Double(steps)
-        let player = ApplicationMusicPlayer.shared
-
-        for i in 0...steps {
-            guard !Task.isCancelled else { return }
-            let progress = Float(i) / Float(steps)
-            let volume = startVolume + (endVolume - startVolume) * progress
-
-            // ApplicationMusicPlayer uses playbackRate for speed, not volume.
-            // For volume control, we use the state's volume property.
-            player.state.playbackRate = 1.0 // Ensure normal speed
-            // Volume is controlled at the system level via MPVolumeView;
-            // we adjust the player's output by setting the queue entry volume
-            // through the audio session. Since MusicKit doesn't expose direct
-            // volume control, we use the playback rate approach for fade effect:
-            // near-zero playback feels like silence, then resume at normal rate.
-            // A production implementation would use AVAudioSession.setVolume().
-
-            // Practical approach: just control playback
-            if volume < 0.1 {
-                player.state.playbackRate = 0.5 // Slow down during fade-out for audible effect
-            } else {
-                player.state.playbackRate = 1.0
-            }
-
-            try? await Task.sleep(for: .milliseconds(Int(stepDuration * 1000)))
-        }
-    }
-
-    // MARK: - Style-Aware Search Terms
-
     /// Crossfade with style awareness during adaptive SCI transitions.
+    /// Debounce lives here only — callers should not gate again.
     func adaptToSCI(score: Double?, trend: InsightTrend, style: YogaStyle?) async {
         guard isPlaying, isAuthorized else { return }
 
@@ -163,51 +189,87 @@ final class MusicService: ObservableObject {
         await crossfadeToMood(targetMood, style: style)
     }
 
+    /// Short gap transition: suspend beat rate, swap playlist (prefer cache), resume.
+    /// Does **not** use `playbackRate` as a volume fader.
     private func crossfadeToMood(_ newMood: WorkoutMood, style: YogaStyle?) async {
         fadeTask?.cancel()
 
         fadeTask = Task {
+            isCrossfading = true
+            defer {
+                isCrossfading = false
+            }
+
             let player = ApplicationMusicPlayer.shared
 
-            await fadeVolume(from: 1.0, to: 0.05, duration: 3.0)
+            // Brief gap: pause → queue swap → play (real dual-player not available via MusicKit).
+            player.pause()
+            try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-
-            let searchTerm: String
-            if let style, let styleTerm = style.musicSearchTerms[newMood] {
-                searchTerm = styleTerm
-            } else {
-                searchTerm = newMood.searchTerm
-            }
 
             do {
-                var request = MusicCatalogSearchRequest(
-                    term: searchTerm,
-                    types: [Playlist.self]
-                )
-                request.limit = 5
-                let response = try await request.response()
-
+                // Overlap search with gap when cache miss.
+                let playlist = try await resolvePlaylist(mood: newMood, style: style)
                 guard !Task.isCancelled else { return }
 
-                if let playlist = response.playlists.first {
-                    player.queue = [playlist]
-                    try await player.play()
+                player.queue = [playlist]
+                try await player.play()
+                isPlaying = true
+                adaptiveMood = newMood
+
+                // Restore beat-owned tempo after crossfade.
+                if let beat = lastBeat {
+                    let rate = max(0.75, min(1.25, beat.bpm / assumedTrackBPM))
+                    let adjusted = beat.isGrounding ? min(rate, 0.92) : rate
+                    player.state.playbackRate = Float(adjusted)
                 }
             } catch {
-                await fadeVolume(from: 0.05, to: 1.0, duration: 1.0)
-                return
-            }
-
-            guard !Task.isCancelled else { return }
-
-            await fadeVolume(from: 0.05, to: 1.0, duration: 3.0)
-
-            await MainActor.run {
-                adaptiveMood = newMood
+                // Resume prior queue if still playable.
+                try? await player.play()
+                isPlaying = true
             }
         }
 
         await fadeTask?.value
+    }
+
+    // MARK: - Playlist cache / search
+
+    private func cacheKey(mood: WorkoutMood, style: YogaStyle?) -> String {
+        "\(mood.rawValue)|\(style?.rawValue ?? "default")"
+    }
+
+    private func resolvePlaylist(mood: WorkoutMood, style: YogaStyle?) async throws -> Playlist {
+        let key = cacheKey(mood: mood, style: style)
+        if let cached = playlistCache[key] {
+            return cached
+        }
+        if let found = await searchPlaylist(mood: mood, style: style) {
+            playlistCache[key] = found
+            return found
+        }
+        throw MusicServiceError.playlistNotFound
+    }
+
+    private func searchPlaylist(mood: WorkoutMood, style: YogaStyle?) async -> Playlist? {
+        let searchTerm: String
+        if let style, let styleTerm = style.musicSearchTerms[mood] {
+            searchTerm = styleTerm
+        } else {
+            searchTerm = mood.searchTerm
+        }
+        do {
+            var request = MusicCatalogSearchRequest(
+                term: searchTerm,
+                types: [Playlist.self]
+            )
+            // Only the first result is used.
+            request.limit = 1
+            let response = try await request.response()
+            return response.playlists.first
+        } catch {
+            return nil
+        }
     }
 
     // MARK: - Mood Types
@@ -248,6 +310,10 @@ final class MusicService: ObservableObject {
             case .meditative: return "moon.fill"
             }
         }
+    }
+
+    private enum MusicServiceError: Error {
+        case playlistNotFound
     }
 }
 
