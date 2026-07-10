@@ -264,16 +264,8 @@ struct WatchSessionView: View {
 
     private var controlsTab: some View {
         VStack(spacing: 12) {
-            // Progress
-            let poseIndex: Int = {
-                switch manager.phase {
-                case .active(let idx): return idx
-                case .transition(let nextIdx, _): return max(0, nextIdx - 1)
-                default: return 0
-                }
-            }()
-
-            Text("\(poseIndex + 1)/\(plan.poseCount)")
+            // Progress: completed count mirrors iOS posesCompletedCount (not poseIndex+1).
+            Text("\(manager.posesCompletedCount)/\(plan.poseCount)")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -287,8 +279,8 @@ struct WatchSessionView: View {
 
             Spacer()
 
-            // Pause / Resume
-            if manager.isRecording {
+            // Pause / Resume — use isPaused (isRecording stays true while paused).
+            if manager.isRecording && !manager.isPaused {
                 Button {
                     manager.pause()
                 } label: {
@@ -298,7 +290,7 @@ struct WatchSessionView: View {
                         .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-            } else {
+            } else if manager.isRecording && manager.isPaused {
                 Button {
                     manager.resume()
                 } label: {

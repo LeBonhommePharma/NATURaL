@@ -5,6 +5,11 @@ import BonhommeCore
 /// Manages the native watchOS HKWorkoutSession for direct wrist sensor access.
 /// Provides higher-frequency HR data than the iOS relay path and computes
 /// on-wrist SCI via the FeedbackEngine.
+///
+/// ## RR / SCI
+/// BPM→RR is a **proxy** (`RRIntervalProxy.syntheticRR`) with light physiological jitter
+/// so SCI is not stuck at 1.0 on constant BPM. Prefer real RR when HealthKit exposes it
+/// (future heartbeat-series path); until then synthetic is documented as non-clinical.
 @Observable
 @MainActor
 final class WatchWorkoutManager: NSObject {
@@ -12,10 +17,14 @@ final class WatchWorkoutManager: NSObject {
     // MARK: - Published State
 
     private(set) var isRecording = false
+    private(set) var isPaused = false
     private(set) var currentHeartRate: Double?
     private(set) var activeCalories: Double = 0
     private(set) var averageHeartRate: Double?
     private(set) var heartRateSamples: [HeartRateSample] = []
+    /// Mirrors iOS `WorkoutFlowViewModel.posesCompletedCount` — only full holds.
+    private(set) var posesCompletedCount: Int = 0
+    private(set) var lastRRSource: RRIntervalSource = .synthetic
 
     /// Current phase in the workout flow.
     enum Phase: Equatable {
@@ -42,6 +51,8 @@ final class WatchWorkoutManager: NSObject {
     private var timerTask: Task<Void, Never>?
     private var sessionStartDate: Date?
     private var currentPlan: WorkoutPlan?
+    /// Running sum for O(1) average HR.
+    private var heartRateSum: Double = 0
 
     override init() {
         super.init()
@@ -53,6 +64,10 @@ final class WatchWorkoutManager: NSObject {
     func start(plan: WorkoutPlan) async throws {
         currentPlan = plan
         sessionStartDate = Date()
+        posesCompletedCount = 0
+        heartRateSamples.removeAll(keepingCapacity: true)
+        heartRateSum = 0
+        isPaused = false
 
         let config = HKWorkoutConfiguration()
         config.activityType = .yoga
@@ -76,14 +91,34 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func pause() {
+        isPaused = true
         session?.pause()
         timerTask?.cancel()
     }
 
     func resume() {
+        isPaused = false
         session?.resume()
-        if case .active(let idx) = phase {
-            startPoseTimer(for: idx)
+        // Restore timers for every timer-bearing phase (not only .active).
+        switch phase {
+        case .active(let idx):
+            if poseTimeRemaining > 0 {
+                startPoseTimer(for: idx)
+            } else {
+                let next = idx + 1
+                if let plan = currentPlan, next < plan.poses.count {
+                    startTransition(to: next)
+                } else {
+                    phase = .cooldown
+                    startCooldown()
+                }
+            }
+        case .transition(let nextIdx, let secs):
+            startTransition(to: nextIdx, remainingSeconds: secs)
+        case .cooldown:
+            startCooldown()
+        default:
+            break
         }
     }
 
@@ -93,6 +128,7 @@ final class WatchWorkoutManager: NSObject {
         try await builder?.endCollection(at: Date())
         _ = try await builder?.finishWorkout()
         isRecording = false
+        isPaused = false
         phase = .complete
     }
 
@@ -100,12 +136,6 @@ final class WatchWorkoutManager: NSObject {
 
     func buildResult() -> WorkoutResult? {
         guard let plan = currentPlan else { return nil }
-        let poseIndex: Int
-        switch phase {
-        case .active(let idx): poseIndex = idx
-        case .transition(let nextIdx, _): poseIndex = max(0, nextIdx - 1)
-        default: poseIndex = plan.poses.count - 1
-        }
 
         return WorkoutResult(
             workoutPlanId: plan.id,
@@ -113,7 +143,8 @@ final class WatchWorkoutManager: NSObject {
             startDate: sessionStartDate ?? Date(),
             endDate: Date(),
             totalDuration: elapsedTime,
-            posesCompleted: poseIndex + 1,
+            // Mirror iOS: explicit completed count, not poseIndex+1.
+            posesCompleted: posesCompletedCount,
             totalPoses: plan.poseCount,
             activeCalories: activeCalories,
             averageHeartRate: averageHeartRate,
@@ -160,6 +191,9 @@ final class WatchWorkoutManager: NSObject {
                 }
             }
 
+            // Pose fully held — mirror iOS posesCompletedCount.
+            posesCompletedCount += 1
+
             let nextIndex = index + 1
             if nextIndex < plan.poses.count {
                 startTransition(to: nextIndex)
@@ -170,12 +204,12 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    private func startTransition(to nextIndex: Int) {
+    private func startTransition(to nextIndex: Int, remainingSeconds: Int? = nil) {
         guard let plan = currentPlan else { return }
         timerTask?.cancel()
         timerTask = Task {
-            let transitionDuration = Int(plan.transitionSeconds)
-            for i in stride(from: transitionDuration, through: 1, by: -1) {
+            let transitionDuration = remainingSeconds ?? Int(plan.transitionSeconds)
+            for i in stride(from: max(1, transitionDuration), through: 1, by: -1) {
                 phase = .transition(nextPoseIndex: nextIndex, secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
@@ -193,38 +227,24 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    /// Ingest HR data as HRV signals for on-wrist SCI computation.
+    /// Ingest HR as HRV signals. BPM→RR is a **proxy** with light jitter (not clinical HRV).
     private func processHeartRateForSCI(bpm: Double) {
-        // Convert BPM to approximate RR interval in ms
-        let rrInterval = 60000.0 / bpm
-        // Build a synthetic HRV signal from recent HR samples
-        let recentRR = heartRateSamples.suffix(10).map { 60000.0 / $0.bpm }
-        guard recentRR.count >= 4 else { return }
+        _ = bpm
+        let recentBPM = heartRateSamples.suffix(10).map(\.bpm)
+        guard recentBPM.count >= 4 else { return }
+
+        // Synthetic proxy with physiological noise so SCI is not stuck at 1.0.
+        let recentRR = RRIntervalProxy.syntheticRR(fromBPMSamples: Array(recentBPM))
+        lastRRSource = .synthetic
+        guard !RRIntervalProxy.isMeaninglessForSCI(recentRR) else { return }
 
         let signal = HRVSignal(
             timestamp: Date(),
-            sdnn: standardDeviation(recentRR),
-            rmssd: rmssd(recentRR),
+            sdnn: RRIntervalProxy.standardDeviation(recentRR),
+            rmssd: RRIntervalProxy.rmssd(recentRR),
             rrIntervals: recentRR
         )
         feedbackEngine.ingest(signal)
-    }
-
-    private func standardDeviation(_ values: [Double]) -> Double {
-        guard values.count >= 2 else { return 0 }
-        let mean = values.reduce(0, +) / Double(values.count)
-        let squaredDiffs = values.map { ($0 - mean) * ($0 - mean) }
-        return sqrt(squaredDiffs.reduce(0, +) / Double(values.count - 1))
-    }
-
-    private func rmssd(_ intervals: [Double]) -> Double {
-        guard intervals.count >= 2 else { return 0 }
-        var sumSquaredDiff = 0.0
-        for i in 1..<intervals.count {
-            let diff = intervals[i] - intervals[i - 1]
-            sumSquaredDiff += diff * diff
-        }
-        return sqrt(sumSquaredDiff / Double(intervals.count - 1))
     }
 }
 
@@ -261,10 +281,17 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                         .doubleValue(for: .count().unitDivided(by: .minute())) {
                         currentHeartRate = bpm
                         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: Date()))
-                        // Cap buffer (~1h @ 1Hz); batch-trim with slack to avoid O(n) every sample.
+                        heartRateSum += bpm
                         if heartRateSamples.count > 3600 + 64 {
-                            heartRateSamples.removeFirst(heartRateSamples.count - 3600)
+                            let overflow = heartRateSamples.count - 3600
+                            for i in 0..<overflow {
+                                heartRateSum -= heartRateSamples[i].bpm
+                            }
+                            heartRateSamples.removeFirst(overflow)
+                            heartRateSum = heartRateSamples.reduce(0.0) { $0 + $1.bpm }
                         }
+                        let n = heartRateSamples.count
+                        averageHeartRate = n > 0 ? heartRateSum / Double(n) : nil
                         processHeartRateForSCI(bpm: bpm)
                     }
                     if let avg = stats?.averageQuantity()?
