@@ -21,10 +21,21 @@ import BonhommeCore
 final class ResearchKitBridge: ObservableObject {
     @Published var latestSurveys: [SurveySignal] = []
 
+    /// Cap in-memory survey history (long programs + re-tests).
+    private static let maxSurveys = 100
+
     private let feedbackEngine: FeedbackEngine
 
     init(feedbackEngine: FeedbackEngine) {
         self.feedbackEngine = feedbackEngine
+    }
+
+    private func appendSurvey(_ signal: SurveySignal) {
+        latestSurveys.append(signal)
+        if latestSurveys.count > Self.maxSurveys {
+            latestSurveys.removeFirst(latestSurveys.count - Self.maxSurveys)
+        }
+        feedbackEngine.ingest(signal)
     }
 
     // MARK: - Survey Result Processing
@@ -56,8 +67,7 @@ final class ResearchKitBridge: ObservableObject {
             responses: stepResults
         )
 
-        latestSurveys.append(signal)
-        feedbackEngine.ingest(signal)
+        appendSurvey(signal)
     }
 
     // MARK: - Pre-built Instrument Helpers
@@ -71,8 +81,7 @@ final class ResearchKitBridge: ObservableObject {
             normalizedScore: max(0, min(1, inverted)),
             responses: ["pain_score": String(format: "%.1f", score)]
         )
-        latestSurveys.append(signal)
-        feedbackEngine.ingest(signal)
+        appendSurvey(signal)
     }
 
     /// Process a mood Likert result (1-5 scale, higher = better).
@@ -84,8 +93,7 @@ final class ResearchKitBridge: ObservableObject {
             normalizedScore: max(0, min(1, normalized)),
             responses: ["mood_score": "\(score)"]
         )
-        latestSurveys.append(signal)
-        feedbackEngine.ingest(signal)
+        appendSurvey(signal)
     }
 
     /// Process a WHO-5 Well-Being Index (0-25 raw score, percentage = raw × 4).
@@ -97,8 +105,7 @@ final class ResearchKitBridge: ObservableObject {
             normalizedScore: max(0, min(1, normalized)),
             responses: ["who5_raw": "\(rawScore)", "who5_pct": "\(rawScore * 4)"]
         )
-        latestSurveys.append(signal)
-        feedbackEngine.ingest(signal)
+        appendSurvey(signal)
     }
 
     // MARK: - Normalization

@@ -70,7 +70,18 @@ struct BonhommeApp: App {
                     // Absolute last resort — single-model container so the app
                     // can at least boot and show an error UI instead of crashing.
                     print("❌ FATAL: In-memory container failed: \(error)")
-                    return try! ModelContainer(for: WorkoutRecord.self)
+                    do {
+                        return try ModelContainer(
+                            for: WorkoutRecord.self,
+                            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+                        )
+                    } catch {
+                        // SwiftData still failed: empty in-memory config without try!
+                        // (UI should surface a non-recoverable storage banner.)
+                        fatalError(
+                            "SwiftData ModelContainer could not be created: \(error.localizedDescription)"
+                        )
+                    }
                 }
             }
         }
