@@ -28,6 +28,9 @@ public struct WorkoutStateStore: @unchecked Sendable {
         public let elapsedTime: TimeInterval
         public let sessionStartDate: Date
         public let currentPoseIndex: Int
+        /// Explicit full-hold count (survives restore better than inferring from index).
+        /// Optional for backward compatibility with older UserDefaults payloads.
+        public let posesCompletedCount: Int?
         public let savedAt: Date
 
         public init(
@@ -37,6 +40,7 @@ public struct WorkoutStateStore: @unchecked Sendable {
             elapsedTime: TimeInterval,
             sessionStartDate: Date,
             currentPoseIndex: Int,
+            posesCompletedCount: Int? = nil,
             savedAt: Date = Date()
         ) {
             self.planId = planId
@@ -45,6 +49,7 @@ public struct WorkoutStateStore: @unchecked Sendable {
             self.elapsedTime = elapsedTime
             self.sessionStartDate = sessionStartDate
             self.currentPoseIndex = currentPoseIndex
+            self.posesCompletedCount = posesCompletedCount
             self.savedAt = savedAt
         }
 
@@ -71,7 +76,8 @@ public struct WorkoutStateStore: @unchecked Sendable {
         poseTimeRemaining: TimeInterval,
         elapsedTime: TimeInterval,
         sessionStartDate: Date,
-        currentPoseIndex: Int
+        currentPoseIndex: Int,
+        posesCompletedCount: Int? = nil
     ) {
         let state = PersistedWorkoutState(
             planId: planId,
@@ -80,6 +86,7 @@ public struct WorkoutStateStore: @unchecked Sendable {
             elapsedTime: elapsedTime,
             sessionStartDate: sessionStartDate,
             currentPoseIndex: currentPoseIndex,
+            posesCompletedCount: posesCompletedCount,
             savedAt: Date()
         )
         saveState(state)

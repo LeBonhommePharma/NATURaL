@@ -204,7 +204,8 @@ final class WorkoutFlowViewModel {
             poseTimeRemaining: poseTimeRemaining,
             elapsedTime: elapsedTime,
             sessionStartDate: sessionStartDate ?? Date(),
-            currentPoseIndex: currentPoseIndex
+            currentPoseIndex: currentPoseIndex,
+            posesCompletedCount: posesCompletedCount
         )
     }
 
@@ -286,7 +287,8 @@ final class WorkoutFlowViewModel {
     func buildTVPayload() -> TVDisplayPayload? {
         guard let pose = currentPose else { return nil }
 
-        let insights = feedbackEngine.analyzeAll()
+        // Display path: refresh HRV only; avoid full multi-analyzer analyzeAll every tick.
+        let insights = feedbackEngine.refreshHRVAndSnapshot()
         return TVDisplayPayload(
             currentPose: pose,
             poseTimeRemaining: poseTimeRemaining,
@@ -333,7 +335,7 @@ final class WorkoutFlowViewModel {
             totalPoses: plan.poseCount,
             activeCalories: recorder.activeCalories,
             averageHeartRate: recorder.averageHeartRate,
-            maxHeartRate: recorder.heartRateSamples.map(\.bpm).max(),
+            maxHeartRate: recorder.maxHeartRate,
             heartRateSamples: recorder.heartRateSamples,
             yogaStyle: plan.style,
             yogaStyleName: plan.style.localizedName.localized

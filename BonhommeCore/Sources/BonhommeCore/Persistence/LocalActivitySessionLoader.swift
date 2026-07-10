@@ -37,7 +37,7 @@ public struct RestoredLocalSession: Sendable, Equatable {
         if case .ready = persisted.phase { return nil }
 
         let poseTimeRemaining: TimeInterval
-        let posesCompletedCount: Int
+        let inferredCompleted: Int
         let currentPoseIndex: Int
 
         switch persisted.phase {
@@ -45,26 +45,29 @@ public struct RestoredLocalSession: Sendable, Equatable {
             return nil
         case .countdown:
             poseTimeRemaining = persisted.poseTimeRemaining
-            posesCompletedCount = 0
+            inferredCompleted = 0
             currentPoseIndex = 0
         case .active(let idx):
             poseTimeRemaining = persisted.poseTimeRemaining
-            posesCompletedCount = idx
+            inferredCompleted = idx
             currentPoseIndex = idx
         case .transition(let nextIdx, _):
             // During transition, remaining time reflects the *next* pose's duration.
             poseTimeRemaining = plan.poses.indices.contains(nextIdx)
                 ? plan.poses[nextIdx].durationSeconds
                 : persisted.poseTimeRemaining
-            posesCompletedCount = nextIdx
+            inferredCompleted = nextIdx
             currentPoseIndex = max(0, nextIdx - 1)
         case .cooldown:
             poseTimeRemaining = persisted.poseTimeRemaining
-            posesCompletedCount = plan.poses.count
+            inferredCompleted = plan.poses.count
             currentPoseIndex = max(0, plan.poses.count - 1)
         case .complete:
             return nil
         }
+
+        // Prefer explicitly persisted count when present (stop-mid-pose correctness).
+        let posesCompletedCount = persisted.posesCompletedCount ?? inferredCompleted
 
         return RestoredLocalSession(
             plan: plan,

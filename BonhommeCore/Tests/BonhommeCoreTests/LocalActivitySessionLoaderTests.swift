@@ -58,6 +58,25 @@ final class LocalActivitySessionLoaderTests: XCTestCase {
         XCTAssertEqual(session.currentPoseIndex, 2)
     }
 
+    func testExplicitPosesCompletedCountPreferredOverIndexInference() {
+        let plan = PoseCatalog.beginnerFlow
+        // Mid-pose stop: index 2 but only 1 full hold completed.
+        store.save(
+            planId: plan.id,
+            phase: .active(poseIndex: 2),
+            poseTimeRemaining: 20,
+            elapsedTime: 100,
+            sessionStartDate: Date().addingTimeInterval(-100),
+            currentPoseIndex: 2,
+            posesCompletedCount: 1
+        )
+        let loader = LocalActivitySessionLoader(store: store)
+        guard let session = loader.detectAndLoad() else {
+            return XCTFail("must load")
+        }
+        XCTAssertEqual(session.posesCompletedCount, 1, "Explicit persisted count must win over index inference")
+    }
+
     func testSeededTransitionWorkout_Load_MapsNextPoseDurationAndCompletedCount() {
         let plan = PoseCatalog.beginnerFlow
         XCTAssertGreaterThan(plan.poses.count, 2, "Catalog plan must have enough poses")
