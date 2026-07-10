@@ -9,8 +9,11 @@ import BonhommeCore
 ///   and `associatedWorkoutBuilder()` are only available on iOS 26+; the session class itself
 ///   exists from iOS 17 for mirrored Watch workouts.
 ///
-/// HR samples synthesize RR windows and invoke `onHRVIngest` so the session
-/// `FeedbackEngine` receives the same SCI path as Watch (`processHeartRateForSCI`).
+/// ## RR / SCI provenance
+/// Prefer real beat-to-beat intervals from `HKHeartbeatSeriesSample` when HealthKit has them.
+/// Otherwise BPM samples are converted via `RRIntervalProxy.syntheticRR` — a **proxy**, not
+/// clinical HRV. Light physiological jitter prevents SCI from locking at 1.0 on constant BPM.
+/// Adaptive music should consult `lastRRUsableForAdaptiveMusic` before reacting to SCI.
 @MainActor
 final class WorkoutRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
@@ -18,6 +21,11 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     @Published var activeCalories: Double = 0
     @Published var averageHeartRate: Double?
     @Published var heartRateSamples: [HeartRateSample] = []
+
+    /// Provenance of the last RR window sent to SCI ingest.
+    @Published private(set) var lastRRSource: RRIntervalSource = .synthetic
+    /// `false` when the last RR window is meaningless for SCI (near-constant) even after proxy.
+    @Published private(set) var lastRRUsableForAdaptiveMusic: Bool = false
 
     /// Ring-buffer cap (~1 hour at 1 Hz). Prevents unbounded growth during long sessions.
     static let maxHeartRateSamples = 3600
@@ -31,18 +39,40 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     private var heartRateQuery: HKAnchoredObjectQuery?
     private var energyQuery: HKAnchoredObjectQuery?
     private var usesLiveSession = false
+    /// Builder-path queries are suspended on pause (iOS 17–25 have no session.pause()).
+    private var queriesSuspended = false
     /// Running sum for O(1) average; recomputed only when the ring buffer is trimmed.
     private var heartRateSum: Double = 0
+    /// Cached real RR intervals (ms) from the most recent heartbeat series query.
+    private var cachedRealRR: [Double] = []
+    private var lastHeartbeatSeriesFetch: Date = .distantPast
 
+    /// Start (or **reuse**) a HealthKit workout session for `style`.
+    /// If already recording, returns immediately so restore cannot orphan a second session.
     func start(style: YogaStyle = .chairYoga) async throws {
+        if isRecording {
+            // Reuse active session — avoids dual/orphaned workouts on restore.
+            return
+        }
+
         heartRateSamples.removeAll(keepingCapacity: true)
         heartRateSum = 0
         currentHeartRate = nil
         averageHeartRate = nil
         activeCalories = 0
+        cachedRealRR.removeAll(keepingCapacity: true)
+        lastRRSource = .synthetic
+        lastRRUsableForAdaptiveMusic = false
+        queriesSuspended = false
 
         if #available(iOS 26.0, *) {
-            try await startLiveSession(style: style)
+            do {
+                try await startLiveSession(style: style)
+            } catch {
+                // Live path failed (beginCollection timeout / auth) — fall back to builder.
+                await teardownLiveSessionArtifacts()
+                try await startBuilderSession(style: style)
+            }
         } else {
             try await startBuilderSession(style: style)
         }
@@ -52,11 +82,24 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         if #available(iOS 26.0, *), usesLiveSession, let session = session as? HKWorkoutSession {
             session.pause()
         }
+        // iOS 17–25 (and live path with anchored fallback): suspend HR/energy queries.
+        if heartRateQuery != nil || energyQuery != nil {
+            stopQueries()
+            queriesSuspended = true
+        }
     }
 
     func resume() {
         if #available(iOS 26.0, *), usesLiveSession, let session = session as? HKWorkoutSession {
             session.resume()
+        }
+        if queriesSuspended && !usesLiveSession {
+            startHeartRateQuery()
+            startEnergyQuery()
+            queriesSuspended = false
+        } else if queriesSuspended && usesLiveSession {
+            // Live path normally uses builder statistics; only re-arm if we had anchored queries.
+            queriesSuspended = false
         }
     }
 
@@ -64,6 +107,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     /// 1. session.end() (live path)  2. endCollection  3. addMetadata  4. finishWorkout
     func end(metadata: WorkoutMetadata? = nil) async throws {
         stopQueries()
+        queriesSuspended = false
 
         if #available(iOS 26.0, *), usesLiveSession,
            let session = session as? HKWorkoutSession,
@@ -120,14 +164,45 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         session.startActivity(with: Date())
 
         // beginCollection can stall on simulator / incomplete auth — race a timeout.
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { try? await builder.beginCollection(at: Date()) }
-            group.addTask { try? await Task.sleep(for: .seconds(3)) }
-            _ = await group.next()
+        // Only mark recording on confirmed success; otherwise throw so caller can fall back.
+        let began = await withTaskGroup(of: Bool.self) { group -> Bool in
+            group.addTask {
+                do {
+                    try await builder.beginCollection(at: Date())
+                    return true
+                } catch {
+                    return false
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(3))
+                return false
+            }
+            let first = await group.next() ?? false
             group.cancelAll()
+            return first
+        }
+
+        guard began else {
+            session.end()
+            self.session = nil
+            self.builder = nil
+            usesLiveSession = false
+            throw WorkoutRecorderError.beginCollectionFailed
         }
 
         isRecording = true
+    }
+
+    @available(iOS 26.0, *)
+    private func teardownLiveSessionArtifacts() async {
+        if let session = session as? HKWorkoutSession {
+            session.end()
+        }
+        session = nil
+        builder = nil
+        usesLiveSession = false
+        isRecording = false
     }
 
     // MARK: - iOS 17–25 Builder + Anchored HR
@@ -236,7 +311,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
     // MARK: - Shared HR → SCI
 
-    /// Record BPM, ring-buffer samples, and synthesize RR for FeedbackEngine ingest.
+    /// Record BPM, ring-buffer samples, and synthesize / prefer real RR for FeedbackEngine ingest.
     func recordHeartRate(bpm: Double, timestamp: Date = Date()) {
         currentHeartRate = bpm
         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: timestamp))
@@ -258,33 +333,111 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         let n = heartRateSamples.count
         averageHeartRate = n > 0 ? heartRateSum / Double(n) : nil
         processHeartRateForSCI(bpm: bpm)
+        // Opportunistically refresh real RR cache (throttled).
+        Task { await self.refreshRealRRIfNeeded() }
     }
 
-    /// Mirror of Watch `processHeartRateForSCI`: BPM → synthetic RR window → ingest.
+    /// Prefer real heartbeat-series RR when cached; else BPM→RR **proxy** with light jitter.
+    ///
+    /// Pure-constant BPM→RR without jitter yields SCI≈1.0 and must not drive adaptive music
+    /// (`lastRRUsableForAdaptiveMusic` gates that path).
     private func processHeartRateForSCI(bpm: Double) {
-        let recentRR = heartRateSamples.suffix(10).map { 60000.0 / max($0.bpm, 1) }
-        guard recentRR.count >= 4 else { return }
+        _ = bpm
+        let recentBPM = heartRateSamples.suffix(10).map(\.bpm)
+        guard recentBPM.count >= 4 else { return }
 
-        let sdnn = standardDeviation(Array(recentRR))
-        let rmssdValue = rmssd(Array(recentRR))
-        onHRVIngest?(sdnn, rmssdValue, Array(recentRR))
-    }
-
-    private func standardDeviation(_ values: [Double]) -> Double {
-        guard values.count >= 2 else { return 0 }
-        let mean = values.reduce(0, +) / Double(values.count)
-        let squaredDiffs = values.map { ($0 - mean) * ($0 - mean) }
-        return sqrt(squaredDiffs.reduce(0, +) / Double(values.count - 1))
-    }
-
-    private func rmssd(_ intervals: [Double]) -> Double {
-        guard intervals.count >= 2 else { return 0 }
-        var sumSquaredDiff = 0.0
-        for i in 1..<intervals.count {
-            let diff = intervals[i] - intervals[i - 1]
-            sumSquaredDiff += diff * diff
+        let rr: [Double]
+        let source: RRIntervalSource
+        if cachedRealRR.count >= 4 {
+            rr = Array(cachedRealRR.suffix(32))
+            source = .real
+        } else {
+            // Proxy: BPM samples → RR ms with ~5% SDNN-scale jitter (not clinical HRV).
+            rr = RRIntervalProxy.syntheticRR(fromBPMSamples: Array(recentBPM))
+            source = .synthetic
         }
-        return sqrt(sumSquaredDiff / Double(intervals.count - 1))
+
+        lastRRSource = source
+        // Gate adaptive music when RR variance is still negligible (pure-constant proxy).
+        // Jittered synthetic is normally usable; real series always preferred.
+        lastRRUsableForAdaptiveMusic = !RRIntervalProxy.isMeaninglessForSCI(rr)
+
+        // Always ingest jittered / real RR so SCI can leave a 1.0 floor; music checks the gate.
+        let sdnn = RRIntervalProxy.standardDeviation(rr)
+        let rmssdValue = RRIntervalProxy.rmssd(rr)
+        onHRVIngest?(sdnn, rmssdValue, rr)
+    }
+
+    /// Throttled fetch of recent `HKHeartbeatSeriesSample` beat-to-beat intervals.
+    private func refreshRealRRIfNeeded() async {
+        let now = Date()
+        guard now.timeIntervalSince(lastHeartbeatSeriesFetch) >= 15 else { return }
+        lastHeartbeatSeriesFetch = now
+
+        let seriesType = HKSeriesType.heartbeat()
+        let predicate = HKQuery.predicateForSamples(
+            withStart: now.addingTimeInterval(-120),
+            end: now,
+            options: .strictStartDate
+        )
+
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let sampleQuery = HKSampleQuery(
+                sampleType: seriesType,
+                predicate: predicate,
+                limit: 3,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { [weak self] _, samples, _ in
+                guard let self, let seriesSamples = samples as? [HKHeartbeatSeriesSample], !seriesSamples.isEmpty else {
+                    cont.resume()
+                    return
+                }
+                Task { @MainActor in
+                    var intervals: [Double] = []
+                    for series in seriesSamples {
+                        if let beats = await self.fetchHeartbeatSeriesBeats(series) {
+                            intervals.append(contentsOf: beats)
+                        }
+                    }
+                    if intervals.count >= 4 {
+                        self.cachedRealRR = Array(intervals.suffix(64))
+                    }
+                    cont.resume()
+                }
+            }
+            healthStore.execute(sampleQuery)
+        }
+    }
+
+    /// Returns beat-to-beat RR intervals in ms, or nil on error / empty.
+    private func fetchHeartbeatSeriesBeats(_ series: HKHeartbeatSeriesSample) async -> [Double]? {
+        await withCheckedContinuation { cont in
+            var rr: [Double] = []
+            var previous: TimeInterval?
+            var settled = false
+            let finish: ([Double]?) -> Void = { result in
+                guard !settled else { return }
+                settled = true
+                cont.resume(returning: result)
+            }
+            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, _, done, error in
+                if error != nil {
+                    finish(nil)
+                    return
+                }
+                if let previous {
+                    let deltaMs = (timeSinceSeriesStart - previous) * 1000.0
+                    if deltaMs > 200 && deltaMs < 2000 {
+                        rr.append(deltaMs)
+                    }
+                }
+                previous = timeSinceSeriesStart
+                if done {
+                    finish(rr.isEmpty ? nil : rr)
+                }
+            }
+            healthStore.execute(query)
+        }
     }
 
     private static func healthKitMetadata(from metadata: WorkoutMetadata) -> [String: Any] {
@@ -296,6 +449,12 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             "NATURaLSCIScore": metadata.sciScore as Any,
         ]
     }
+}
+
+// MARK: - Errors
+
+enum WorkoutRecorderError: Error {
+    case beginCollectionFailed
 }
 
 // MARK: - Live session delegates (iOS 26+)

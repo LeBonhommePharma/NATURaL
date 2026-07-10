@@ -152,34 +152,36 @@ final class WorkoutFlowViewModel {
                 )
             }
 
-            // Resume at the current phase.
+            // Resume at the current phase (preserve remaining transition seconds).
             switch phase {
             case .active(let idx):
                 startPoseTimer(for: idx)
-            case .transition(let nextIdx, _):
-                startTransition(to: nextIdx)
+            case .transition(let nextIdx, let secs):
+                startTransition(to: nextIdx, remainingSeconds: secs)
             case .cooldown:
                 startCooldown()
-            case .countdown:
-                startCountdownSequence()
+            case .countdown(let secs):
+                startCountdownSequence(remainingSeconds: secs)
             default:
                 break
             }
         }
     }
 
-    /// Tries to recover an active HKWorkoutSession from a previous app launch.
+    /// Tries to recover / reuse an active HealthKit workout before starting a new one.
+    ///
+    /// `WorkoutRecorder.start` is a no-op when already `isRecording`, so we never open
+    /// a second concurrent session that would orphan the first.
     private func recoverHealthKitSession() async {
-        // HKWorkoutSession persists across app restarts on iOS 17+.
-        // The WorkoutRecorder will attempt to reconnect to any active session.
-        // If no session is found, we start a fresh one.
+        if recorder.isRecording {
+            return
+        }
         do {
-            // BUG 1 FIX: Pass `plan.style` so the restored HKWorkout is logged under
+            // Pass `plan.style` so the restored HKWorkout is logged under
             // the correct HKWorkoutActivityType, not the `.chairYoga` default.
             try await recorder.start(style: plan.style)
         } catch {
-            // Session may already be active from the previous launch;
-            // WorkoutRecorder handles this gracefully.
+            // Fresh start failed (auth / HealthKit unavailable) — continue pose flow.
         }
     }
 
@@ -254,12 +256,12 @@ final class WorkoutFlowViewModel {
                     startCooldown()
                 }
             }
-        case .transition(let nextIdx, _):
-            // Session was paused during a transition window — resume the countdown.
-            startTransition(to: nextIdx)
-        case .countdown:
+        case .transition(let nextIdx, let secs):
+            // Resume remaining transition window (do not restart full transitionSeconds).
+            startTransition(to: nextIdx, remainingSeconds: secs)
+        case .countdown(let secs):
             // Unlikely but guard against a pause hitting right during the 3-2-1.
-            startCountdownSequence()
+            startCountdownSequence(remainingSeconds: secs)
         default:
             break
         }
@@ -417,46 +419,41 @@ final class WorkoutFlowViewModel {
 
     // MARK: - Timer Logic
 
-    private func startCountdownSequence() {
+    private func startCountdownSequence(remainingSeconds: Int? = nil) {
         timerTask?.cancel()
+        let startFrom = remainingSeconds ?? 3
+        let isResume = remainingSeconds != nil
         timerTask = Task {
-            for i in stride(from: 3, through: 1, by: -1) {
+            for i in stride(from: max(1, startFrom), through: 1, by: -1) {
                 phase = .countdown(secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
             }
 
-            // FIX: Start HealthKit recording in background — don't block workout flow.
-            // The workout MUST proceed even if HealthKit initialization is slow or fails.
-            // This prevents the countdown-freezes-at-1 bug when HealthKit or WatchConnectivity
-            // is not properly initialized.
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    try await self.recorder.start(style: self.plan.style)
-                    print("✅ HealthKit workout session started successfully")
-                } catch {
-                    print("⚠️ HealthKit workout session failed to start: \(error)")
-                    // Continue workout without HealthKit recording
+            // Only kick off HK / music / Live Activity on a fresh countdown, not mid-resume.
+            if !isResume {
+                // Start HealthKit recording in background — don't block workout flow.
+                Task { [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await self.recorder.start(style: self.plan.style)
+                        print("✅ HealthKit workout session started successfully")
+                    } catch {
+                        print("⚠️ HealthKit workout session failed to start: \(error)")
+                    }
                 }
+
+                // Music is fire-and-forget — never block the pose flow.
+                Task { [weak self] in
+                    guard let self else { return }
+                    await self.musicService.requestAuthorization()
+                    await self.musicService.prefetchPlaylists(style: self.plan.style)
+                    await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
+                }
+
+                startLiveActivity()
             }
 
-            // Music is fire-and-forget — MusicAuthorization.request() and
-            // the Apple Music catalog search can both block indefinitely on
-            // simulator or without an active Apple Music subscription.
-            // The workout flow must NEVER await music.
-            Task { [weak self] in
-                guard let self else { return }
-                await self.musicService.requestAuthorization()
-                // Prefetch all mood playlists for this style, then start calm.
-                await self.musicService.prefetchPlaylists(style: self.plan.style)
-                await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
-            }
-
-            // Start Live Activity for Dynamic Island
-            startLiveActivity()
-
-            // Begin first pose IMMEDIATELY — don't wait for HealthKit or Music
             beginPose(at: 0)
         }
     }
@@ -514,11 +511,11 @@ final class WorkoutFlowViewModel {
         }
     }
 
-    private func startTransition(to nextIndex: Int) {
+    private func startTransition(to nextIndex: Int, remainingSeconds: Int? = nil) {
         timerTask?.cancel()
         timerTask = Task {
-            let transitionDuration = Int(plan.transitionSeconds)
-            for i in stride(from: transitionDuration, through: 1, by: -1) {
+            let transitionDuration = remainingSeconds ?? Int(plan.transitionSeconds)
+            for i in stride(from: max(1, transitionDuration), through: 1, by: -1) {
                 phase = .transition(nextPoseIndex: nextIndex, secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
@@ -579,7 +576,10 @@ final class WorkoutFlowViewModel {
 
     /// Checks current SCI from FeedbackEngine and adapts music mood.
     /// Debounce is owned solely by `MusicService.adaptToSCI` (30s).
+    ///
+    /// Gated when SCI is driven by pure-constant proxy RR (meaningless coherence).
     private func adaptMusicToCurrentSCI() async {
+        guard recorder.lastRRUsableForAdaptiveMusic else { return }
         let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
         await musicService.adaptToSCI(
             score: insight?.score,
