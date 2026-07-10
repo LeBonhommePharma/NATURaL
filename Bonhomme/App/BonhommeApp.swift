@@ -11,7 +11,11 @@ struct BonhommeApp: App {
     /// A computed `var` would create a new ModelContainer on every `body`
     /// re-evaluation (triggered by any AppState mutation), causing repeated
     /// CloudKit initialization storms and the forever-loading symptom.
-    private let persistentContainer: ModelContainer = Self.makePersistentContainer()
+    ///
+    /// Bootstrap records CloudKit → local → ephemeral mode for user-visible UX
+    /// (`AppState.persistenceSync`); failures are never silent.
+    static let persistenceBootstrap = PersistenceConfiguration.bootstrap()
+    private let persistentContainer: ModelContainer = BonhommeApp.persistenceBootstrap.container
 
     var body: some Scene {
         WindowGroup {
@@ -21,70 +25,11 @@ struct BonhommeApp: App {
                     handleScenePhaseChange(from: oldPhase, to: newPhase)
                 }
                 .onAppear {
+                    appState.persistenceSync.apply(Self.persistenceBootstrap)
                     appState.checkForResumableWorkout()
                 }
         }
         .modelContainer(persistentContainer)
-    }
-
-    /// SwiftData ModelContainer with CloudKit sync for cross-device data.
-    /// Three-tier fallback: CloudKit → local-only → in-memory (last resort).
-    /// Called exactly once via the stored `persistentContainer` let-property.
-    private static func makePersistentContainer() -> ModelContainer {
-        do {
-            return try PersistenceConfiguration.makeContainer()
-        } catch {
-            // CloudKit container fails on simulators or when iCloud is not signed in.
-            print("⚠️ Failed to create CloudKit container: \(error.localizedDescription)")
-            print("   Falling back to local-only storage.")
-
-            let schema = Schema([
-                WorkoutRecord.self,
-                UserPreferences.self,
-                SessionStreak.self,
-                MedicationSchedule.self,
-                DrugResponseRecord.self,
-            ])
-
-            do {
-                let fallbackConfig = ModelConfiguration("NATURaLLocal", schema: schema)
-                return try ModelContainer(for: schema, configurations: [fallbackConfig])
-            } catch {
-                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
-                print("   Using in-memory storage. Data will not persist.")
-
-                // Unnamed in-memory config avoids any name-based store lookup.
-                // FIX: build the container directly from the model types without
-                // a named configuration — the name-based lookup can itself fail
-                // when the schema has validation errors. Passing types directly
-                // lets SwiftData construct the schema fresh with no store conflict.
-                do {
-                    return try ModelContainer(for:
-                        WorkoutRecord.self,
-                        UserPreferences.self,
-                        SessionStreak.self,
-                        MedicationSchedule.self,
-                        DrugResponseRecord.self
-                    )
-                } catch {
-                    // Absolute last resort — single-model container so the app
-                    // can at least boot and show an error UI instead of crashing.
-                    print("❌ FATAL: In-memory container failed: \(error)")
-                    do {
-                        return try ModelContainer(
-                            for: WorkoutRecord.self,
-                            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-                        )
-                    } catch {
-                        // SwiftData still failed: empty in-memory config without try!
-                        // (UI should surface a non-recoverable storage banner.)
-                        fatalError(
-                            "SwiftData ModelContainer could not be created: \(error.localizedDescription)"
-                        )
-                    }
-                }
-            }
-        }
     }
 
     /// Handles scene phase transitions for state persistence.
@@ -169,6 +114,8 @@ struct ContentView: View {
                 }
             }
             .onAppear {
+                // Surface CloudKit / local / ephemeral mode from launch bootstrap.
+                appState.persistenceSync.apply(BonhommeApp.persistenceBootstrap)
                 // If detect already ran in BonhommeApp.onAppear before ContentView mounted,
                 // consume any pending auto-present flag immediately.
                 if appState.shouldAutoPresentRestoredSession {
@@ -197,30 +144,125 @@ struct ContentView: View {
                     print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                CloudKitSyncStatusBanner(status: appState.persistenceSync)
+            }
         }
     }
-    
+
     /// Validates that core app components initialized correctly.
     @MainActor
     private func performInitializationChecks() async {
         print("🔍 Running initialization diagnostics...")
-        
+
         // Check HealthKit availability
         if HealthKitManager.isAvailable {
             print("✅ HealthKit is available")
         } else {
             print("⚠️ HealthKit is not available on this device")
         }
-        
+
+        let sync = appState.persistenceSync
+        print("ℹ️ Persistence mode: \(sync.mode.rawValue)")
+        if let err = sync.underlyingErrorDescription {
+            print("   Underlying init detail: \(err)")
+        }
+
         // Detect local activity (same store as launch path)
         let loader = LocalActivitySessionLoader(store: appState.workoutStateStore)
         if loader.hasRecoverableActivity() {
             print("ℹ️ Recoverable local activity detected — auto-load path engaged")
         }
-        
+
         // Verify feedback engine is ready
         print("✅ FeedbackEngine initialized with analyzers")
-        
+
         print("✅ Initialization checks complete")
+    }
+}
+
+// MARK: - CloudKit Sync Status Banner
+
+/// Top-of-app banner when CloudKit init fell back to local-only or ephemeral storage.
+/// Includes optional Retry; copy never claims silent data loss.
+struct CloudKitSyncStatusBanner: View {
+    @Bindable var status: PersistenceSyncStatus
+
+    var body: some View {
+        if status.shouldShowBanner {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: status.systemImageName)
+                        .font(.system(size: 22))
+                        .foregroundStyle(status.accentColor)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(status.bannerTitle)
+                            .font(.system(size: 15, weight: .semibold))
+                        Text(status.bannerMessage)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Button {
+                        status.dismissBanner()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(LocalizedString(en: "Dismiss", fr: "Fermer").localized)
+                }
+
+                if let feedback = status.retryFeedback {
+                    Text(feedback)
+                        .font(.system(size: 12))
+                        .foregroundStyle(status.restartRecommended ? Color.green.opacity(0.9) : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await status.retryCloudKitConnection() }
+                    } label: {
+                        if status.isRetrying {
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text(LocalizedString(en: "Retry iCloud", fr: "Réessayer iCloud").localized)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(status.accentColor)
+                    .disabled(status.isRetrying)
+
+                    Button {
+                        status.dismissBanner()
+                    } label: {
+                        Text(LocalizedString(en: "Not now", fr: "Pas maintenant").localized)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(status.isRetrying)
+                }
+            }
+            .padding(14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(status.accentColor.opacity(0.35), lineWidth: 1)
+            )
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+            .accessibilityElement(children: .contain)
+        }
     }
 }

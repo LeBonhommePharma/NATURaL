@@ -35,6 +35,9 @@ final class AppState {
     /// Consent-gated prescription import (HealthKit clinical + manual + CareKit).
     let prescriptionService: MedicationPrescriptionService
 
+    /// CloudKit / local / ephemeral storage mode for user-visible sync UX.
+    let persistenceSync = PersistenceSyncStatus()
+
     init() {
         // Register all signal analyzers at app level so data persists across sessions
         do {

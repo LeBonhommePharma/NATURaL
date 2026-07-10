@@ -70,6 +70,17 @@ struct DebugDashboardView: View {
                                 : "⚠️ Not granted"
                         )
                         diagnosticRow("WorkoutStateStore", value: "✅ Initialized")
+                        diagnosticRow(
+                            "Persistence Mode",
+                            value: appState.persistenceSync.mode.rawValue
+                        )
+                        diagnosticRow(
+                            "CloudKit Attention",
+                            value: appState.persistenceSync.needsAttention ? "⚠️ Yes" : "✅ No"
+                        )
+                        if let err = appState.persistenceSync.underlyingErrorDescription {
+                            diagnosticRow("Persistence Error", value: err)
+                        }
 
                         Divider()
 

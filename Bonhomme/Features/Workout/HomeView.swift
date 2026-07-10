@@ -62,6 +62,10 @@ struct HomeView: View {
                             .padding(.horizontal, 32)
                             .padding(.top, 24)
 
+                        if appState.persistenceSync.needsAttention {
+                            cloudKitSyncStatusCard
+                        }
+
                         VStack(spacing: 16) {
                             Image(systemName: "figure.yoga")
                                 .font(.system(size: 52))
@@ -137,6 +141,11 @@ struct HomeView: View {
                 // Prescriptions / clinical medication consent entry
                 prescriptionsEntryCard
 
+                // iCloud / CloudKit sync status (local-only or ephemeral fallback)
+                if appState.persistenceSync.needsAttention {
+                    cloudKitSyncStatusCard
+                }
+
                 // TV connection status
                 tvStatusSection
             }
@@ -144,6 +153,69 @@ struct HomeView: View {
         }
         .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
+    }
+
+    // MARK: - CloudKit / persistence status
+
+    /// Settings-style card when storage is local-only or ephemeral.
+    /// Mirrors banner messaging; keeps Retry available after the banner is dismissed.
+    @ViewBuilder
+    private var cloudKitSyncStatusCard: some View {
+        @Bindable var sync = appState.persistenceSync
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                Image(systemName: sync.systemImageName)
+                    .font(.system(size: 24))
+                    .foregroundStyle(sync.accentColor)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedString(
+                        en: "Data & iCloud Sync",
+                        fr: "Données et sync iCloud"
+                    ).localized)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                    Text(sync.settingsDetail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let feedback = sync.retryFeedback {
+                Text(feedback)
+                    .font(.system(size: 12))
+                    .foregroundStyle(sync.restartRecommended ? Color.green.opacity(0.9) : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button {
+                Task { await sync.retryCloudKitConnection() }
+            } label: {
+                if sync.isRetrying {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(LocalizedString(en: "Retry iCloud Sync", fr: "Réessayer la sync iCloud").localized)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(sync.accentColor)
+            .disabled(sync.isRetrying)
+        }
+        .padding()
+        .background(sync.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(LocalizedString(
+            en: "Data and iCloud sync status",
+            fr: "État des données et de la sync iCloud"
+        ).localized)
     }
 
     // MARK: - Prescriptions entry
