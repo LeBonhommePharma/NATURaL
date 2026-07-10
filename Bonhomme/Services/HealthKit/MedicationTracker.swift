@@ -135,6 +135,8 @@ final class MedicationTracker: ObservableObject {
 
         recentEvents.append(signal)
         feedbackEngine.ingest(signal)
+        // Persist for App Intents cold-start adherence + snapshot refresh
+        IntentBridge.shared.recordMedicationEvent(signal)
     }
 
     // MARK: - Drug Response Analysis (FlexAID∆S Validation)

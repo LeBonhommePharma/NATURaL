@@ -75,6 +75,8 @@ extension Notification.Name {
 struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var navigateToRestoredWorkout = false
+    @State private var intentPlan: WorkoutPlan?
+    @State private var navigateToIntentPlan = false
     @State private var initializationError: Error?
     @State private var showDebugDashboard = false
 
@@ -85,6 +87,11 @@ struct ContentView: View {
                     .navigationDestination(isPresented: $navigateToRestoredWorkout) {
                         if let vm = appState.pendingRestoredWorkout {
                             WorkoutFlowView(restoredViewModel: vm)
+                        }
+                    }
+                    .navigationDestination(isPresented: $navigateToIntentPlan) {
+                        if let plan = intentPlan {
+                            WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
                         }
                     }
                     .toolbar {
@@ -113,6 +120,17 @@ struct ContentView: View {
                     appState.noteRestoredSessionUIDismissed()
                 }
             }
+            .onChange(of: navigateToIntentPlan) { _, isShowing in
+                if !isShowing {
+                    intentPlan = nil
+                    appState.noteWorkoutDismissed()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .intentStartWorkoutPlan)) { note in
+                let planId = note.userInfo?["planId"] as? String
+                    ?? IntentBridge.shared.consumePendingPlanId()
+                presentIntentPlan(id: planId)
+            }
             .onAppear {
                 // Surface CloudKit / local / ephemeral mode from launch bootstrap.
                 appState.persistenceSync.apply(BonhommeApp.persistenceBootstrap)
@@ -121,6 +139,10 @@ struct ContentView: View {
                 if appState.shouldAutoPresentRestoredSession {
                     navigateToRestoredWorkout = true
                     appState.noteRestoredSessionPresented()
+                }
+                // Honor App Intent plan start queued while the app was launching.
+                if let pendingId = IntentBridge.shared.consumePendingPlanId() {
+                    presentIntentPlan(id: pendingId)
                 }
             }
             .task {
@@ -178,6 +200,21 @@ struct ContentView: View {
         print("✅ FeedbackEngine initialized with analyzers")
 
         print("✅ Initialization checks complete")
+    }
+
+    /// Opens a workout flow from an App Intent plan id.
+    @MainActor
+    private func presentIntentPlan(id: String?) {
+        guard let id,
+              let plan = PoseCatalog.allPlans.first(where: { $0.id == id }) else {
+            return
+        }
+        // Avoid stacking a second session while one is already presenting.
+        guard !appState.isWorkoutActive else { return }
+        _ = IntentBridge.shared.consumePendingPlanId()
+        intentPlan = plan
+        navigateToIntentPlan = true
+        appState.noteWorkoutPresented()
     }
 }
 

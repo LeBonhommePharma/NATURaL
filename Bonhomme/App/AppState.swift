@@ -60,6 +60,12 @@ final class AppState {
             medicationTracker: medicationTracker,
             careKitBridge: careKitBridge
         )
+
+        // Wire App Intents → live FeedbackEngine / MedicationTracker
+        IntentBridge.shared.bind(
+            feedbackEngine: feedbackEngine,
+            medicationTracker: medicationTracker
+        )
     }
 
     /// Detects recoverable local activity and auto-loads it into a runnable restored session.

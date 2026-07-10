@@ -26,35 +26,40 @@ struct WorkoutPlanQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [WorkoutPlanEntity] {
         PoseCatalog.allPlans
             .filter { identifiers.contains($0.id) }
-            .map { plan in
-                WorkoutPlanEntity(
-                    id: plan.id,
-                    name: plan.name.localized,
-                    poseCount: plan.poseCount,
-                    isFree: plan.isFree
-                )
-            }
+            .map(Self.entity(from:))
     }
 
     func suggestedEntities() async throws -> [WorkoutPlanEntity] {
-        PoseCatalog.allPlans.map { plan in
-            WorkoutPlanEntity(
-                id: plan.id,
-                name: plan.name.localized,
-                poseCount: plan.poseCount,
-                isFree: plan.isFree
-            )
-        }
+        PoseCatalog.allPlans.map(Self.entity(from:))
     }
 
     func defaultResult() async -> WorkoutPlanEntity? {
-        let plan = PoseCatalog.beginnerFlow
-        return WorkoutPlanEntity(
+        Self.entity(from: PoseCatalog.beginnerFlow)
+    }
+
+    static func entity(from plan: WorkoutPlan) -> WorkoutPlanEntity {
+        WorkoutPlanEntity(
             id: plan.id,
             name: plan.name.localized,
             poseCount: plan.poseCount,
             isFree: plan.isFree
         )
+    }
+}
+
+extension WorkoutPlanQuery: EntityStringQuery {
+    func entities(matching string: String) async throws -> [WorkoutPlanEntity] {
+        let query = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return try await suggestedEntities() }
+
+        return PoseCatalog.allPlans
+            .filter { plan in
+                plan.id.localizedCaseInsensitiveContains(query)
+                    || plan.name.en.localizedCaseInsensitiveContains(query)
+                    || plan.name.fr.localizedCaseInsensitiveContains(query)
+                    || plan.name.localized.localizedCaseInsensitiveContains(query)
+            }
+            .map(Self.entity(from:))
     }
 }
 
@@ -113,12 +118,23 @@ struct StartWorkoutPlanIntent: AppIntent {
     @Parameter(title: "Workout Plan")
     var plan: WorkoutPlanEntity
 
+    static var parameterSummary: some ParameterSummary {
+        Summary("Start \(\.$plan)")
+    }
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        return .result(dialog: "Starting \(plan.name).")
+        await MainActor.run {
+            IntentBridge.shared.requestStartPlan(id: plan.id)
+        }
+        let dialog = LocalizedString(
+            en: "Starting \(plan.name).",
+            fr: "Démarrage de \(plan.name)."
+        ).localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
-/// General "start chair yoga" intent — picks the default beginner plan.
+/// General "start chair yoga" intent — picks a plan by optional duration.
 struct StartChairYogaIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Chair Yoga"
     static let description: IntentDescription = "Begin a chair yoga session"
@@ -140,10 +156,35 @@ struct StartChairYogaIntent: AppIntent {
             .twentyMinutes: "20 minutes",
             .thirtyMinutes: "30 minutes",
         ]
+
+        var minutes: Int {
+            switch self {
+            case .fiveMinutes: return 5
+            case .tenMinutes: return 10
+            case .twentyMinutes: return 20
+            case .thirtyMinutes: return 30
+            }
+        }
+    }
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Start chair yoga") {
+            \.$duration
+        }
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        return .result(dialog: "Starting your chair yoga session.")
+        let selected = await MainActor.run {
+            let plan = IntentBridge.shared.planMatching(durationMinutes: duration?.minutes)
+            IntentBridge.shared.requestStartPlan(id: plan.id)
+            return plan
+        }
+        let name = selected.name.localized
+        let dialog = LocalizedString(
+            en: "Starting \(name).",
+            fr: "Démarrage de \(name)."
+        ).localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
@@ -152,19 +193,41 @@ struct GetFocusScoreIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Focus Score"
     static let description: IntentDescription = "Check your current Shannon Collapse Index focus score"
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        // In production, read from FeedbackEngine.latestInsight(for: .heartRateVariability)
-        return .result(dialog: "Your focus score is available in the NATURaL app.")
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<Double?> {
+        let (dialog, score) = await MainActor.run {
+            let snap = IntentBridge.shared.currentFocusSnapshot()
+            return (IntentBridge.shared.focusDialog(), snap.score.map { $0 * 100 })
+        }
+        return .result(value: score, dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
-/// Show medication adherence via Siri.
+/// Show medication adherence via Siri (real score from dose events / FeedbackEngine).
 struct GetAdherenceIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Medication Adherence"
     static let description: IntentDescription = "Check your medication adherence score"
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        return .result(dialog: "Your medication adherence is available in the NATURaL app.")
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<Double?> {
+        let (dialog, score) = await MainActor.run {
+            let snap = IntentBridge.shared.currentAdherenceSnapshot()
+            return (IntentBridge.shared.adherenceDialog(), snap.score.map { $0 * 100 })
+        }
+        return .result(value: score, dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
+/// Last drug-response analysis (ΔH / SCI entropy change after a dose).
+struct GetLastDrugResponseIntent: AppIntent {
+    static let title: LocalizedStringResource = "Get Last Drug Response"
+    static let description: IntentDescription =
+        "Report the last post-dose HRV entropy response (ΔH) and binding signal"
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<Double?> {
+        let (dialog, deltaH) = await MainActor.run {
+            let snap = IntentBridge.shared.lastDrugResponseSnapshot()
+            return (IntentBridge.shared.drugResponseDialog(), snap.peakDeltaH)
+        }
+        return .result(value: deltaH, dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
@@ -198,6 +261,7 @@ struct AppShortcuts: AppShortcutsProvider {
             phrases: [
                 "What's my focus score in \(.applicationName)",
                 "Show my \(.applicationName) focus",
+                "What's my SCI in \(.applicationName)",
             ],
             shortTitle: "Focus Score",
             systemImageName: "brain.head.profile"
@@ -211,6 +275,17 @@ struct AppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Adherence",
             systemImageName: "pills.fill"
+        )
+
+        AppShortcut(
+            intent: GetLastDrugResponseIntent(),
+            phrases: [
+                "What's my last drug response in \(.applicationName)",
+                "Show my last dose response in \(.applicationName)",
+                "Check my \(.applicationName) drug response",
+            ],
+            shortTitle: "Drug Response",
+            systemImageName: "waveform.path.ecg"
         )
     }
 }
