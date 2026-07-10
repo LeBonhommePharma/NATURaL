@@ -197,6 +197,7 @@ final class MusicService: ObservableObject {
         fadeTask = Task {
             isCrossfading = true
             defer {
+                // Always release the gate (cancel / early return / success).
                 isCrossfading = false
             }
 
@@ -216,17 +217,16 @@ final class MusicService: ObservableObject {
                 try await player.play()
                 isPlaying = true
                 adaptiveMood = newMood
-
-                // Restore beat-owned tempo after crossfade.
-                if let beat = lastBeat {
-                    let rate = max(0.75, min(1.25, beat.bpm / assumedTrackBPM))
-                    let adjusted = beat.isGrounding ? min(rate, 0.92) : rate
-                    player.state.playbackRate = Float(adjusted)
-                }
             } catch {
                 // Resume prior queue if still playable.
                 try? await player.play()
                 isPlaying = true
+            }
+
+            // Drop the gate before re-applying rate so `applyBeatSync` is sole owner of playbackRate.
+            isCrossfading = false
+            if let beat = lastBeat {
+                await applyBeatSync(beat)
             }
         }
 

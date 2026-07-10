@@ -128,12 +128,29 @@ final class WorkoutFlowViewModel {
 
     /// Resume a restored session: reconnect to the HealthKit workout session
     /// and restart timers from the persisted state.
+    ///
+    /// Mirrors `start()` control wiring: beat sync + route observer + pharma
+    /// session must be live so HR ingest → SCI → Crooks actuators work after kill/restore.
+    /// (`onHRVIngest` is already wired in `init`.)
     func resumeRestoredSession() {
         guard isRestoredSession else { return }
 
+        musicService.bindUniversalBeatSync()
         Task {
+            await pharmaControl.start()
             // Attempt to recover the existing HealthKit workout session.
             await recoverHealthKitSession()
+
+            // Resume music (fire-and-forget; never block pose recovery).
+            Task { [weak self] in
+                guard let self else { return }
+                await self.musicService.requestAuthorization()
+                await self.musicService.prefetchPlaylists(style: self.plan.style)
+                await self.musicService.playWorkoutMusic(
+                    mood: self.musicService.adaptiveMood,
+                    style: self.plan.style
+                )
+            }
 
             // Resume at the current phase.
             switch phase {
