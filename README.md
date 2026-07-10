@@ -34,7 +34,7 @@
   <img src="https://img.shields.io/badge/docking_poses-84-AB47BC?style=flat-square" alt="Docking Poses">
   <img src="https://img.shields.io/badge/yoga_poses-26_bilingual-FF6B6B?style=flat-square" alt="Yoga Poses">
   <img src="https://img.shields.io/badge/PokeDrug_TYPEs-10-7B2FFE?style=flat-square" alt="Types">
-  <img src="https://img.shields.io/badge/plans-6_guided-FFA726?style=flat-square" alt="Plans">
+  <img src="https://img.shields.io/badge/workout_kinds-15-FFA726?style=flat-square" alt="Workout kinds">
   <img src="https://img.shields.io/badge/biofeedback-real--time-FFEE58?style=flat-square" alt="Biofeedback">
   <img src="https://img.shields.io/badge/CareKit-clinical-66BB6A?style=flat-square" alt="CareKit">
   <img src="https://img.shields.io/badge/CloudKit-sync-42A5F5?style=flat-square" alt="CloudKit">
@@ -109,11 +109,12 @@ SCI score:             0 ──────────── 50 ─────
 <tr><td>🔋 <b>PP</b></td><td>Unlimited</td></tr>
 </table>
 
-- 🧘 **26 chair yoga poses** across 3 difficulty levels with bilingual content (English / French Canadian)
-- 🦴 7 anatomical categories: spine, hip, shoulder, neck, balance, breathing, full-body
+- 🧘 **26+ poses** across difficulty levels with multi-language `LocalizedString` content
+- 🗂️ **15 workout kinds** (`WorkoutKind` / `YogaStyle`): yoga styles plus strength, cardio, mobility, meditation, general
+- 🦴 Anatomical categories (spine, hips, shoulders, neck, balance, breathing, full-body, …)
 - ⚠️ Per-pose modifications, contraindications, and breathing patterns
-- 🗣️ Voice cue text for guided audio in both languages
-- 🎨 Category-specific SF Symbols and accent colors for visual differentiation
+- 🗣️ Voice cue text for guided audio; optional FM personalization when available
+- 🎨 Kind- and category-specific SF Symbols and accent colors
 
 <p align="center">
 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢
@@ -223,7 +224,7 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
 ☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️
 </p>
 
-### 🧚 MOVE 4 — Adaptive MusicKit `FAIRY`
+### 🧚 MOVE 4 — Dual-Path Adaptive Music `FAIRY`
 
 <table>
 <tr><td>💪 <b>Power</b></td><td>SCI-driven</td></tr>
@@ -231,31 +232,45 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0         ← same signal
 <tr><td>🔋 <b>PP</b></td><td>Per-session</td></tr>
 </table>
 
-🎵 Music dynamically adjusts based on real-time SCI during workouts:
-- 🚀 **High coherence + improving** (SCI > 70%): crossfade to energizing playlists
-- 🧘 **Low coherence** (SCI < 30%): fade to meditative/calming tracks
+🎵 Music adjusts from real-time SCI; tempo locks to the session beat once per control tick:
+
+**Dual playback paths** (best available):
+1. **Local dual engine** — true overlapping volume crossfade via two `AVAudioPlayerNode`s (local file URLs)
+2. **MusicKit** — iOS 18+ `ApplicationMusicPlayer.transition = .crossfade`; iOS 17 / insert failure → cache-first queue replace with a short gap (no player volume API)
+
+SCI mood policy:
+- 🚀 **High coherence + improving** (SCI > 70%): switch toward energizing playlists
+- 🧘 **Low coherence** (SCI < 30%): switch toward meditative/calming tracks
 - ⚖️ **Mid-range**: maintain current mood
-- ⏱️ 30-second debounce prevents jarring rapid transitions
-- 🎚️ 3-second volume crossfade between mood switches
+- ⏱️ 30-second debounce (sole owner; no double-gate)
+- 🎚️ UniversalBeatSync owns `playbackRate` only (never used as a volume fader); rate updates suspend during crossfade
+- 🎧 AirPods route → crown-β dial (system volume is not ramped)
 
 <p align="center">
 🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚🧚
 </p>
 
-### 🏥 MOVE 5 — CareKit Integration `STEEL`
+### 🏥 MOVE 5 — CareKit + Consent Prescriptions `STEEL`
 
 <table>
 <tr><td>💪 <b>Power</b></td><td>Clinical-grade</td></tr>
-<tr><td>🎯 <b>Accuracy</b></td><td>OCKStore</td></tr>
-<tr><td>🔋 <b>PP</b></td><td>Prescribed</td></tr>
+<tr><td>🎯 <b>Accuracy</b></td><td>OCKStore + ConsentStore</td></tr>
+<tr><td>🔋 <b>PP</b></td><td>Prescribed / opt-in</td></tr>
 </table>
 
-For clinical and rehabilitation settings where a therapist prescribes yoga regimens:
+For clinical and rehabilitation settings where a therapist or user manages plans:
+
+**Yoga prescriptions**
 - 🏗️ `CareKitBridge` manages `OCKStore` with prescribed task scheduling
 - 📝 `YogaTaskBuilder` maps `WorkoutPlan` to `OCKTask` with frequency-based scheduling
-- ✅ Workout completions automatically recorded as `OCKOutcome` with duration, calories, SCI score
-- 📊 Adherence tracking over configurable time windows
-- 💊 "Prescribed" section in HomeView when active prescriptions exist
+- ✅ Workout completions recorded as `OCKOutcome` (duration, calories, SCI)
+- 📊 Adherence tracking over configurable windows
+
+**Medication prescriptions (consent-gated)**
+- 🔐 `ClinicalConsent` + `ConsentStore` — policy-versioned grant/revoke and append-only audit (no clinical read without valid consent)
+- 💊 `MedicationPrescriptionService` — explicit consent → HealthKit clinical import and/or manual entry → CareKit med tasks
+- 📱 `PrescriptionsView` — consent toggle, sync, schedules, audit; revoke clears clinical access
+- ⚠️ Not medical advice; confirm with a clinician
 
 <p align="center">
 ⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️
@@ -299,7 +314,7 @@ If the app is killed mid-workout, the session resumes seamlessly:
 🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊🧊
 </p>
 
-### 🧠 MOVE 8 — Apple Intelligence `PSYCHIC`
+### 🧠 MOVE 8 — Foundation Models Insights `PSYCHIC`
 
 <table>
 <tr><td>💪 <b>Power</b></td><td>On-device AI</td></tr>
@@ -307,14 +322,42 @@ If the app is killed mid-workout, the session resumes seamlessly:
 <tr><td>🔋 <b>PP</b></td><td>iOS 26+</td></tr>
 </table>
 
-🤖 On-device insight generation via the FoundationModels framework:
-- 💡 `InsightEngine` synthesizes natural-language narratives from multi-signal analysis
-- 🎯 Personalized pose coaching based on current biofeedback context
-- 📝 Post-workout summary generation correlating HRV, medication, and survey data
-- 🌐 Template-based bilingual fallback on pre-iOS 26 devices
+🤖 On-device-only insight generation (`SystemLanguageModel` — no cloud/PCC path):
+- 💡 `InsightEngine` narratives from FeedbackEngine insights (HRV/SCI, medication, survey, **molecular docking**)
+- 🎯 Pose cue resolve: FM model → session cache → SCI-aware template → static `voiceCueText`
+- 📝 Workout summaries and template cross-notes (adherence × SCI; docking × HRV)
+- 🌐 Template fallback when iOS &lt; 26, model unavailable, or AI disabled
+- 🟡 Full post-dose `DrugResponseResult` curves in prompts still roadmap (see [POKEDRUG_PLAN.md](POKEDRUG_PLAN.md) §10)
 
 <p align="center">
 🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠🧠
+</p>
+
+### 🔥 MOVE 8b — Crooks Control Layer `DRAGON`
+
+<table>
+<tr><td>💪 <b>Power</b></td><td>Session control</td></tr>
+<tr><td>🎯 <b>Accuracy</b></td><td>Heuristic σ_irr</td></tr>
+<tr><td>🔋 <b>PP</b></td><td>Every tick</td></tr>
+</table>
+
+Crooks-**inspired** live control (not a verified fluctuation-theorem estimator):
+
+```
+PharmaControlSessionManager
+  → CrooksCycleController.update(ΔH_hrv, ΔS_config, β, bpm)
+      → EigenMetalWorkKernel · DeltaHRVFlexAIDMapper
+      → ActuatorBus
+          → UniversalBeatSync · crown β · AirPods dial · breathing · session log
+```
+
+- 📈 Policy: high σ_irr / high FlexAID residual → grounding (damp β, calmer tempo); low σ_irr → phase flip
+- ⌚ Watch crown micro-deltas adjust β; full ticks debounced; breath haptics follow published rate
+- 🫁 `BreathingGuideView` / overlay on phone and Watch — rate from `BreathingGuideActuatorChannel`
+- 🧬 Cross-domain residual from BindingEntropyProfile assists grounding (same FlexAID bridge as PokeDrug)
+
+<p align="center">
+🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
 </p>
 
 ### 🦅 MOVE 9 — Multi-Screen Display `FLYING`
@@ -381,12 +424,14 @@ If the app is killed mid-workout, the session resumes seamlessly:
 | 📳 | Live Activities | ActivityKit | iOS |
 | 📊 | Home & Lock Screen widgets | WidgetKit | iOS |
 | 🗣️ | Siri shortcuts | App Intents (4 intents + 2 entities) | iOS |
-| 🎵 | Adaptive music | MusicKit (SCI-driven crossfade) | iOS |
+| 🎵 | Dual-path adaptive music | Local dual AV + MusicKit + UniversalBeatSync | iOS |
+| 🫁 | Breathing guide | BreathingGuideView + Watch haptics | iOS / watchOS |
+| 🔥 | Crooks session control | PharmaControlSessionManager / ActuatorBus | iOS / watchOS |
 | 👥 | Group sessions | SharePlay (`GroupActivity`) | iOS |
 | 💰 | Subscriptions | StoreKit 2 | iOS |
-| 🏥 | Care plan prescriptions | CareKitStore (`OCKStore`) | iOS |
-| 💾 | Data persistence + sync | SwiftData + CloudKit | iOS |
-| 🤖 | On-device AI insights | FoundationModels (iOS 26+) | iOS |
+| 🏥 | Care + consent prescriptions | CareKitStore + ConsentStore | iOS |
+| 💾 | Data persistence + sync | SwiftData + CloudKit (`DrugResponseRecord`) | iOS |
+| 🤖 | On-device AI insights | FoundationModels (iOS 26+) + templates | iOS |
 | 📱 | iPad multicolumn | NavigationSplitView | iPadOS |
 | 🥽 | Spatial display | RealityKit + ImmersiveSpace | visionOS |
 
@@ -394,20 +439,29 @@ If the app is killed mid-workout, the session resumes seamlessly:
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
 </p>
 
-## 🧘 Chair Yoga — Workout Plans
+## 🧘 Multi-Kind Workouts
 
 > *🎮 Select your training regimen! 🎮*
 
-| Plan | Poses | Duration | Level | Access |
-|------|-------|----------|-------|--------|
-| 🌅 Morning Flow | 5 | ~4 min | 🟢 Beginner | 🆓 Free |
-| 🌸 Gentle Stretch | 5 | ~4 min | 🟢 Beginner | 🆓 Free |
-| 💼 Quick Desk Break | 5 | ~3 min | 🟢 Beginner | 🆓 Free |
-| 🧘 Full Session | 8 | ~7 min | 🟡 Mixed | ⭐ Premium |
-| 💪 Strength & Balance | 6 | ~5 min | 🟡 Intermediate | ⭐ Premium |
-| 🔥 Advanced Chair Yoga | 8 | ~6 min | 🔴 Advanced | ⭐ Premium |
+Workouts are no longer chair-yoga-only. `WorkoutKind` (`typealias` of `YogaStyle`) covers **15 kinds** with per-kind plans, SF Symbols, accents, and Crooks nominal BPM (so cardio effort HR does not permanently trip grounding).
 
-26 bilingual chair yoga poses (EN/FR-CA) across 3 difficulty tiers — see MOVE 1 above.
+| Kind group | Cases |
+|------------|--------|
+| 🧘 Yoga | chairYoga, matYoga, vinyasa, hatha, yin, restorative, power, standingBalance, prenatal, pranayama |
+| 🏋️ Non-yoga | strength, cardio, mobility, meditation, general |
+
+**Chair yoga plans** (examples; more plans exist per style via `PoseCatalog.plans(for:)`):
+
+| Plan | Style | Access |
+|------|-------|--------|
+| 🌅 Gentle Chair Flow | chairYoga | 🆓 Free |
+| 🧘 Full Body Chair Yoga | chairYoga | 🆓 Free |
+| ⚡ Energizing Chair Flow | chairYoga | 🆓 Free |
+| 🩹 Lower Back Relief | chairYoga | 🆓 Free |
+| + Vinyasa / Hatha / Yin / Restorative / Power / … | respective styles | per plan |
+| + Strength / Cardio / Mobility / Meditation / General | non-yoga kinds | per plan |
+
+26+ bilingual poses (multi-language `LocalizedString`) across difficulty tiers — see MOVE 1.
 
 <p align="center">
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
@@ -706,30 +760,17 @@ All models, analysis engine, and TV display views live in `BonhommeCore`, a plat
     │   ├── 📺 TVDisplayPayload.swift    # Codable message: iPhone → TV surface
     │   ├── 💓 BiofeedbackSnapshot.swift # HR, HRV, SCI, calories + multi-signal insights
     │   └── 📊 WorkoutResult.swift       # Post-session summary with HR samples
-    ├── 🔬 Analysis/
-    │   ├── 🧮 EntropyCalculator.swift   # Shared Shannon entropy utility (reusable)
-    │   ├── 📡 HealthSignal.swift        # Protocol + HRVSignal, MedicationSignal, DockingSignal
-    │   ├── 🔍 SignalAnalyzer.swift      # Protocol + AnalysisInsight, AnalysisContext
-    │   ├── 💓 HRVAnalyzer.swift         # Shannon Collapse Index from R-R intervals
-    │   ├── 💊 MedicationAnalyzer.swift  # Adherence scoring with HRV correlation
-    │   ├── ⚙️ FeedbackEngine.swift      # Thread-safe multi-signal orchestrator
-    │   ├── 📈 DrugResponseAnalyzer.swift # ΔH detection around medication dose events
-    │   ├── 🧪 PharmacokineticProfile.swift # 70+ substance PK/autonomic profiles
-    │   ├── 🧬 BindingEntropyProfile.swift # 60+ molecular ΔS_config reference values
-    │   ├── 🔩 FlexAIDdSAnalyzer.swift   # Torsional ΔS_config computation
-    │   ├── 🔬 CrossDomainValidator.swift # 3-way: |ΔS_config| ↔ |−TΔS| ↔ |ΔH_hrv|
-    │   ├── 🎯 SelectivityEntropyAnalyzer.swift # pKi → Shannon entropy → Sp.Atk stat
-    │   ├── 📊 PartitionFunctionCalculator.swift # Kahan Z, N_eff, essential pose set
-    │   ├── ⚖️ EnthalpyEntropyCompensation.swift # ΔH vs −TΔS regression + PV flags
-    │   ├── 🧬 EvolutionThermodynamics.swift # ΔΔG, affinity fold change, safety flags
-    │   ├── 📋 ThermodynamicBindingProfile.swift # ~48 substance-target pairs with ITC
-    │   └── 🔗 DockingInsightAnalyzer.swift # SignalAnalyzer adapter for FeedbackEngine
-    └── 📺 TVDisplay/
-        ├── 🖼️ TVDisplayView.swift       # Shared layout: 60% pose + 40% biofeedback
-        ├── ⏱️ PoseCountdownView.swift   # Circular countdown timer with category color
-        ├── 💚 HeartRateGaugeView.swift   # BPM gauge with HR zone
-        ├── 🎯 SCIVisualizationView.swift # Focus ring with trend indicator
-        └── 📊 SessionProgressView.swift  # Pose dots + elapsed time
+    ├── 🔬 Analysis/                     # Entropy, PokeDrug, FlexAID, PK, thermodynamics
+    │   ├── 🧮 EntropyCalculator.swift   # Linear (HRV) + circular (torsional) Shannon
+    │   ├── 📡 HealthSignal / SignalAnalyzer / FeedbackEngine
+    │   ├── 💓 HRVAnalyzer · 💊 MedicationAnalyzer · 🔗 DockingInsightAnalyzer
+    │   ├── 📈 DrugResponseAnalyzer · 🧪 PharmacokineticProfile · 🧬 BindingEntropyProfile
+    │   ├── 🔩 FlexAIDdSAnalyzer · 🔬 CrossDomainValidator (p-values)
+    │   └── … selectivity, partition Z, ITC profiles, PokeDrug types/species
+    ├── 🔐 Consent/ClinicalConsent.swift # Policy-versioned clinical consent + audit
+    ├── 🔥 Control/                      # Crooks cycle, ActuatorBus, UniversalBeatSync
+    ├── 🫁 UI/BreathingGuideView.swift   # Breath guide + motion coach
+    └── 📺 TVDisplay/                    # Shared pose + biofeedback TV layout
 ```
 
 ### 🌐 Bilingual Data Model
@@ -759,20 +800,20 @@ public struct LocalizedString: Codable, Sendable, Hashable {
 │   │   ├── 📜 History/                 # Blended NATURaL + Fitness+ timeline
 │   │   └── 💰 Paywall/                 # StoreKit 2 subscription view
 │   ├── ⚙️ Services/
-│   │   ├── ❤️ HealthKit/               # HR, workout recorder, Fitness+ reader,
-│   │   │                            # InsightEngine, MedicationTracker, ResearchKit
-│   │   ├── 🎵 Music/                   # MusicKit adaptive playlists (SCI-driven)
-│   │   ├── 💾 Persistence/             # WorkoutStateStore, SwiftData PersistentModels
+│   │   ├── ❤️ HealthKit/               # HR, InsightEngine (FM), MedicationTracker,
+│   │   │                            # MedicationPrescriptionService, Fitness+
+│   │   ├── 🎵 Music/                   # Dual-path adaptive music + beat lock
+│   │   ├── 💾 Persistence/             # SwiftData models (incl. DrugResponseRecord)
 │   │   ├── 🏥 CareKit/                 # CareKitBridge, YogaTaskBuilder
 │   │   ├── ⌚ WatchConnectivity/       # PhoneConnectivityBridge (iOS ↔ Watch)
 │   │   ├── 👥 SharePlay/               # GroupActivity session coordinator
-│   │   ├── 🗣️ Siri/                    # App Intents + 4 shortcuts
+│   │   ├── 🗣️ Siri/                    # App Intents (adherence intent still stub)
 │   │   └── 💳 Subscription/            # StoreKit 2 entitlements
 │   ├── 📺 TVRelay/                     # Coordinator, AirPlay, native companion
 │   └── 🎨 Shared/Components/           # Activity rings, reusable views
 ├── 📦 BonhommeCore/                    # Shared Swift Package (all platforms)
-│   ├── 📂 Sources/BonhommeCore/        # Models + Analysis + TV display views
-│   └── 🧪 Tests/BonhommeCoreTests/     # Unit tests (entropy, analyzers, codable)
+│   ├── 📂 Sources/BonhommeCore/        # Models + Analysis + Control + Consent + UI + TV
+│   └── 🧪 Tests/BonhommeCoreTests/     # Entropy, PokeDrug, Crooks, consent, codable
 ├── 📺 BonhommeTV/                      # tvOS companion app
 │   ├── 🚀 App/                         # @main entry
 │   ├── 🌐 Networking/                  # NWListener Bonjour service
@@ -818,9 +859,9 @@ git clone https://github.com/LeBonhommePharma/NATURaL.git
 cd NATURaL
 
 # 🛠️ Open in Xcode
-open Bonhomme.xcodeproj    # or .xcworkspace
+open NATURaL.xcodeproj
 
-# 🎯 Select scheme → Bonhomme, destination → iPhone 15 Pro
+# 🎯 Select scheme → Bonhomme, destination → iPhone 16 Pro (or available sim)
 # ⌘R to build and run
 ```
 
@@ -847,19 +888,37 @@ open Bonhomme.xcodeproj    # or .xcworkspace
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
 </p>
 
+## ✅ Shipped Feature Status
+
+Concise truth table against current code. Details: [POKEDRUG_PLAN.md](POKEDRUG_PLAN.md) §10.
+
+| Feature | Status | Notes |
+|---------|--------|--------|
+| Multi-kind workouts | ✅ | 15 `WorkoutKind`s + per-kind plans / nominal BPM |
+| Crooks control | ✅ | Heuristic σ_irr → actuators (beat, β, breath); not verified FT |
+| Consent prescriptions | ✅ | ClinicalConsent → import/manual → CareKit; audit log |
+| Breathing guide | ✅ | Phone overlay + Watch haptics from actuator rate |
+| FM insights | 🟡 | On-device FM + templates; docking in prompts; full ΔH-curve narrative remaining |
+| FlexAID / cross-domain | ✅ | Analyzer, profiles, validator p-values, docking insight, residual grounding |
+| Dual-path music | ✅ | Local dual crossfade **or** MusicKit + UniversalBeatSync rate lock |
+| DrugResponse persistence | ✅ | SwiftData `DrugResponseRecord` + summary card |
+| Drug-response charts | ❌ | Time-series / dose–response / cross-domain scatter not built |
+| Siri drug-response intents | ❌ | `GetAdherenceIntent` still stub |
+
 ## 🏟️ Arena Challenge — Testing
 
 > *🏆 "You've defeated the ARENA MASTER! You earned the test badge!" 🏆*
 
 ```bash
-# 🧪 BonhommeCore unit tests (platform-agnostic)
-xcodebuild test -scheme BonhommeCore -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Path A — Swift-only BonhommeCore (default; no Accel link required)
+cd BonhommeCore && swift test
+# or: make test
 
-# 📱 iOS app unit tests
-xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Path B — BonhommeAccel C++ (opt-in)
+make accel   # cmake + build + ctest
 
-# 🤖 UI tests (requires simulator)
-xcodebuild test -scheme BonhommeUITests -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Xcode
+xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
 ### 🏅 Arena Badges Earned

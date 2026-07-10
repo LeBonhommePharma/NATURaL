@@ -29,22 +29,40 @@ Binding → ΔS_config < 0        Drug → ΔH_hrv < 0        ← identical sign
 ### 2.1 Module Map
 
 ```
-BonhommeCore/Sources/BonhommeCore/Analysis/
-├── EntropyCalculator.swift          # Shared Shannon engine (both domains)
-├── HealthSignal.swift               # Protocol + DockingSignal, MedicationSignal, HRVSignal
-├── SignalAnalyzer.swift             # Protocol + AnalysisInsight, AnalysisContext
-├── FeedbackEngine.swift             # Multi-signal orchestrator
-├── HRVAnalyzer.swift                # SCI from RR intervals
-├── MedicationAnalyzer.swift         # Adherence scoring
-├── DrugResponseAnalyzer.swift       # ΔH detection around dose events
-├── PharmacokineticProfile.swift     # 70+ substance PK/autonomic profiles
-├── BindingEntropyProfile.swift      # 60+ molecular ΔS_config reference values
-├── FlexAIDdSAnalyzer.swift          # Torsional ΔS_config computation
-├── CrossDomainValidator.swift       # |ΔS_config| ↔ |ΔH_hrv| correlation
-└── DockingInsightAnalyzer.swift     # SignalAnalyzer adapter for FeedbackEngine
+BonhommeCore/Sources/BonhommeCore/
+├── Analysis/
+│   ├── EntropyCalculator.swift          # Shared Shannon engine (linear + circular)
+│   ├── HealthSignal.swift               # Protocol + DockingSignal, MedicationSignal, HRVSignal
+│   ├── SignalAnalyzer.swift             # Protocol + AnalysisInsight, AnalysisContext
+│   ├── FeedbackEngine.swift             # Multi-signal orchestrator
+│   ├── HRVAnalyzer.swift                # SCI from RR intervals
+│   ├── MedicationAnalyzer.swift         # Adherence scoring
+│   ├── DrugResponseAnalyzer.swift       # ΔH detection around dose events
+│   ├── PharmacokineticProfile.swift     # 70+ substance PK/autonomic profiles
+│   ├── BindingEntropyProfile.swift      # 60+ molecular ΔS_config reference values
+│   ├── FlexAIDdSAnalyzer.swift          # Torsional ΔS_config computation
+│   ├── CrossDomainValidator.swift       # |ΔS_config| ↔ |ΔH_hrv| (p-values)
+│   ├── DockingInsightAnalyzer.swift     # SignalAnalyzer adapter for FeedbackEngine
+│   └── … (PokeDrug types/species, selectivity, partition Z, thermodynamics)
+├── Consent/
+│   └── ClinicalConsent.swift            # Policy-versioned consent + ConsentStore + audit
+├── Control/
+│   ├── PharmaControlSessionManager.swift
+│   ├── CrooksCycleController.swift      # Heuristic σ_irr control (not verified FT)
+│   ├── DeltaHRVFlexAIDMapper.swift      # Cross-domain residual → grounding assist
+│   ├── ActuatorBus.swift / UniversalBeatSync.swift / … crown · AirPods · breath
+│   └── EigenMetalWorkKernel.swift
+└── UI/
+    └── BreathingGuideView.swift         # Session breath guide (rate from actuators)
 
-Bonhomme/Services/HealthKit/
-└── MedicationTracker.swift          # HealthKit FHIR import + dose logging + response analysis
+Bonhomme/Services/
+├── HealthKit/
+│   ├── MedicationTracker.swift          # FHIR import + dose logging + response analysis
+│   ├── MedicationPrescriptionService.swift  # Consent-gated prescriptions
+│   └── InsightEngine.swift              # On-device FM + template insights
+├── Music/MusicService.swift             # Dual-path adaptive music + beat lock
+├── CareKit/CareKitBridge.swift          # Yoga + medication tasks
+└── Persistence/PersistentModels.swift   # WorkoutRecord, DrugResponseRecord, consent mirror
 ```
 
 ### 2.2 Data Flow
@@ -456,75 +474,87 @@ tizanidine, THC, dronabinol, MDMA, psilocybin, LSD, ketamine, GHB
 
 ---
 
-## 10. Gaps & Roadmap
+## 10. Status — Shipped vs Remaining
 
-The analysis engine is fully implemented and tested. The following integration layers
-remain unbuilt and represent the path from "working library" to "shipping feature."
+Honest inventory against current code (PokéDrug branch). Analysis math was already
+complete; integration layers below have largely landed. Only remaining product gaps
+are called out as **Remaining**.
 
-### 10.1 Persistence
+### 10.1 Persistence — ✅ Shipped
 
-**Status:** Not implemented.
+`DrugResponseRecord` is a SwiftData `@Model` in `PersistentModels.swift`, registered
+in the app ModelContainer / CloudKit fallback path. `SummaryView` persists a record
+when a `DrugResponseResult` is present (medication id, peak ΔH, direction, AUC,
+profile match, etc.).
 
-`DrugResponseResult` and `DrugResponseAggregate` are computed in-memory but never saved.
-No SwiftData `@Model` exists for drug response history. Analysis results are lost on
-app restart, preventing historical trend tracking and multi-session dose-response curves.
+### 10.2 App Lifecycle — ✅ Shipped
 
-**Required:** Add `DrugResponseRecord` to `PersistentModels.swift` and register it in
-`PersistenceConfiguration.makeContainer()`.
+- `AppState` owns app-wide `FeedbackEngine`, `MedicationTracker`, and
+  `MedicationPrescriptionService`.
+- Analyzers registered at init: `HRVAnalyzer`, `MedicationAnalyzer`,
+  `DockingInsightAnalyzer`.
+- Workout VMs accept the shared engine (session signals no longer isolated by default).
 
-### 10.2 App Lifecycle
+### 10.3 Consent prescriptions — ✅ Shipped
 
-**Status:** Partially wired.
+- `ClinicalConsent` + `ConsentStore` (policy-versioned grant/revoke, audit log).
+- `MedicationPrescriptionService`: consent → HealthKit clinical import / manual entry
+  → CareKit med tasks. Clinical reads are blocked without valid consent.
+- `PrescriptionsView` UI (consent toggle, sync, schedules, audit).
 
-- `MedicationTracker` is defined but **not instantiated** in `AppState`. It must be
-  manually created each time medication features are accessed.
-- `FeedbackEngine` is **session-local** — created fresh in each `WorkoutFlowViewModel`.
-  This means medication signals from one workout don't carry over to the next.
-- `DockingInsightAnalyzer` is **never registered** in the FeedbackEngine at any level.
+### 10.4 FlexAID / cross-domain — ✅ Shipped (library + session control)
 
-**Required:** Lift `FeedbackEngine` and `MedicationTracker` to `AppState` as app-wide
-singletons. Register all three analyzers (HRV, Medication, Docking) at init time.
+- `FlexAIDdSAnalyzer`, `BindingEntropyProfile`, `CrossDomainValidator` (p-values,
+  n ≥ 5), circular torsional entropy, docking insight path through FeedbackEngine.
+- Crooks control stack (`Control/`): `PharmaControlSessionManager` →
+  `CrooksCycleController` (heuristic σ_irr — **not** a verified FT estimator) →
+  `DeltaHRVFlexAIDMapper` residual + `ActuatorBus` (beat, crown β, breathing, log).
+- Wired on iOS workout ticks and watchOS session / crown path.
 
-### 10.3 UI / Visualization
+### 10.5 UI / Visualization — 🟡 Partial
 
-**Status:** Not implemented.
+**Shipped:**
+- Summary `drugResponseCard` (peak ΔH, direction, binding flag).
+- Prescriptions UI; workout breathing overlay; Crooks metrics on Watch session.
 
-No SwiftUI views exist to display drug response data:
-- No ΔH time-series chart (entropy measurements over post-dose windows)
-- No dose-response scatter plot (dose vs |ΔH|)
-- No medication entropy timeline
-- No cross-domain validation visualization (|ΔS_config| vs |ΔH_hrv|)
+**Remaining:**
+- Full ΔH time-series chart (post-dose windows)
+- Dose–response scatter (dose vs |ΔH|)
+- Medication entropy history timeline
+- Cross-domain plot (|ΔS_config| vs |ΔH_hrv|)
 
-The `SummaryView` shows HR chart but has no drug response correlation card.
+### 10.6 InsightEngine (Foundation Models) — 🟡 Partial / ✅ core path
 
-### 10.4 InsightEngine (Apple Intelligence)
+**Shipped:**
+- On-device-only FM path (iOS 26+), template fallback otherwise.
+- Multi-signal narratives include HRV, medication, survey, **and** `.molecularDocking`.
+- Pose cue resolve: model → cache → SCI-aware template → static voice cue.
+- Template cross-notes for med adherence × SCI and docking × HRV.
 
-**Status:** Not integrated.
+**Remaining:**
+- Explicit `DrugResponseResult` (post-dose ΔH curve) injection into prompts
+- Richer “dose + expected sympathomimetic profile” narratives beyond docking insight
 
-`InsightEngine` generates narratives from `FeedbackEngine` insights but:
-- Does not reference `DrugResponseResult` data
-- Does not include `.molecularDocking` insight type in prompts or templates
-- Missing drug-HRV cross-correlation narrative (e.g., "Your focus score dropped
-  30 minutes after your dose, consistent with the expected sympathomimetic profile")
+### 10.7 Siri / App Intents — ❌ Remaining (stub)
 
-### 10.5 Siri / App Intents
+- `GetAdherenceIntent` still returns a static “available in the app” dialog.
+- No intents for last drug response, medication entropy history, or aggregates.
 
-**Status:** Not implemented.
+### 10.8 Adjacent shipped product (not PokeDrug-only, documented for sync)
 
-No intents exist for:
-- "What was my drug response after my last dose?"
-- "Show my medication entropy history"
-- Drug response aggregate queries
+| Area | Status | Notes |
+|------|--------|--------|
+| Multi-kind workouts | ✅ | `WorkoutKind` = `YogaStyle`; 15 kinds (yoga + strength/cardio/mobility/meditation/general) with per-kind plans + Crooks nominal BPM |
+| Breathing | ✅ | `BreathingGuideView` / overlay; rate from `BreathingGuideActuatorChannel`; Watch haptics |
+| Dual-path music | ✅ | Local dual-player crossfade **or** MusicKit (iOS 18+ transition / iOS 17 gap fallback) + UniversalBeatSync rate lock |
+| README | ✅ | Main README documents PokeDrug, FlexAID bridge, multi-kind, Crooks, consent, breathing, dual-path music |
 
-Only `GetAdherenceIntent` exists for medication, and it's a stub.
+### 10.9 Roadmap (remaining only)
 
-### 10.6 README
-
-**Status:** Not documented.
-
-The main `README.md` describes the full platform (poses, HRV, SCI, CareKit, CloudKit,
-Apple Intelligence, multi-screen) but does not mention drug response analysis,
-FlexAID∆S integration, substance profiles, or cross-domain validation.
+1. Drug-response charts (ΔH series, dose–response, cross-domain scatter)
+2. `DrugResponseResult` → InsightEngine prompt path
+3. Non-stub Siri intents for response / entropy history
+4. Optional: history browser for `DrugResponseRecord` list queries
 
 ---
 
@@ -577,13 +607,18 @@ Enhancements to improve scientific rigor and numerical robustness.
 PokeDrug bridges computational chemistry and wearable health monitoring through a single
 mathematical principle: Shannon entropy measures the cost of binding — whether a ligand
 locking into a receptor pocket (ΔS_config) or a drug compressing cardiac rhythm variability
-(ΔH_hrv). The implementation includes 70+ substance profiles, cross-domain validation
-with proper p-value significance testing, circular entropy for torsional angles,
-FeedbackEngine integration, HealthKit medication tracking, centralized configuration,
-and 77 tests validating every layer from raw entropy computation to bilingual summary generation.
+(ΔH_hrv).
+
+**Shipped:** 70+ PK profiles, 60+ binding entropy refs, circular torsional entropy,
+CrossDomainValidator (p < 0.05, n ≥ 5), app-wide FeedbackEngine + MedicationTracker +
+DockingInsightAnalyzer, consent-gated prescriptions, SwiftData `DrugResponseRecord`,
+Crooks-inspired session control with FlexAID residual mapping, breathing actuators,
+dual-path adaptive music, multi-kind workouts, and on-device Foundation Models insights
+(with template fallback). Unit tests cover entropy, analyzers, consent, and Crooks control.
+
+**Remaining (product polish):** rich drug-response charts, deeper DrugResponseResult
+narratives in InsightEngine, and non-stub Siri intents for response history.
 
 The framework is ready for real-world validation: collect Apple Watch RR intervals around
-medication doses, run the DrugResponseAnalyzer, and correlate the observed |ΔH_hrv| against
-the published |ΔS_config| via CrossDomainValidator. A significant positive Pearson r
-(p < 0.05, n ≥ 5) will constitute independent physiological evidence that entropy collapse
-is a universal binding signature.
+medication doses, run DrugResponseAnalyzer, persist results, and correlate |ΔH_hrv|
+against |ΔS_config| via CrossDomainValidator.
