@@ -89,6 +89,7 @@ public actor DeltaHRVFlexAIDMapper {
 
         var observedFlex = safeFlexIn
         var source = "live"
+        var hasMolecularAnchor = abs(safeFlexIn) > 1e-9
         if let id = substanceId, let profile = BindingEntropyProfile.profile(for: id) {
             if abs(safeFlexIn) < 1e-9 {
                 observedFlex = profile.expectedDeltaSBits
@@ -96,6 +97,7 @@ public actor DeltaHRVFlexAIDMapper {
             } else {
                 source = "live+profile"
             }
+            hasMolecularAnchor = true
         }
 
         // Invert regression: |ΔH| ≈ slope × |ΔS| + intercept
@@ -107,12 +109,19 @@ public actor DeltaHRVFlexAIDMapper {
 
         let soft = softResidual(abs(predicted - observedFlex))
 
+        // Residual grounding only when molecular ΔS is live or profile-backed.
+        // Without an anchor, residual ≈ |predicted| and modest SCI swings false-ground.
+        let residualGround =
+            hasMolecularAnchor
+            && soft.isFinite
+            && soft > Self.residualGroundingThreshold
+
         let prediction = DeltaHRVFlexAIDPrediction(
             deltaHRV: safeHRV,
             flexAIDDeltaS: observedFlex,
             predictedDeltaS: predicted.isFinite ? predicted : 0,
             residual: soft.isFinite ? soft : 0,
-            shouldGround: soft.isFinite && soft > Self.residualGroundingThreshold,
+            shouldGround: residualGround,
             substanceId: substanceId,
             source: source
         )
