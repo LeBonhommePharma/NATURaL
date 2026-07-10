@@ -31,9 +31,12 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     private var heartRateQuery: HKAnchoredObjectQuery?
     private var energyQuery: HKAnchoredObjectQuery?
     private var usesLiveSession = false
+    /// Running sum for O(1) average; recomputed only when the ring buffer is trimmed.
+    private var heartRateSum: Double = 0
 
     func start(style: YogaStyle = .chairYoga) async throws {
         heartRateSamples.removeAll(keepingCapacity: true)
+        heartRateSum = 0
         currentHeartRate = nil
         averageHeartRate = nil
         activeCalories = 0
@@ -237,12 +240,23 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     func recordHeartRate(bpm: Double, timestamp: Date = Date()) {
         currentHeartRate = bpm
         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: timestamp))
+        heartRateSum += bpm
         // Batch-trim (slack) so we don't O(n)-shift on every sample once at capacity.
         if heartRateSamples.count > Self.maxHeartRateSamples + 64 {
-            heartRateSamples.removeFirst(heartRateSamples.count - Self.maxHeartRateSamples)
+            let overflow = heartRateSamples.count - Self.maxHeartRateSamples
+            for i in 0..<overflow {
+                heartRateSum -= heartRateSamples[i].bpm
+            }
+            heartRateSamples.removeFirst(overflow)
+            // Guard float drift after large trims.
+            if heartRateSamples.count > 0 {
+                heartRateSum = heartRateSamples.reduce(0.0) { $0 + $1.bpm }
+            } else {
+                heartRateSum = 0
+            }
         }
-        let sum = heartRateSamples.reduce(0.0) { $0 + $1.bpm }
-        averageHeartRate = sum / Double(heartRateSamples.count)
+        let n = heartRateSamples.count
+        averageHeartRate = n > 0 ? heartRateSum / Double(n) : nil
         processHeartRateForSCI(bpm: bpm)
     }
 
