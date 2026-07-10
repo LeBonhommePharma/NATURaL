@@ -65,27 +65,38 @@ public struct CrownBetaDial: Sendable, Equatable {
 
 // MARK: - Crown Controller
 
-/// Watch crown dial state. Beat broadcasts go through `ActuatorBus` /
-/// `UniversalBeatSync` — this type only owns β.
+/// Watch crown dial state.
+///
+/// ## Beat authority
+/// Session control **never** calls `UniversalBeatSync` from this type.
+/// Tempo broadcasts go solely through `ActuatorBus` → `BeatSyncActuatorChannel`.
+/// Production paths use `setBeta` / `adoptBeatState` only.
 public actor CrownController {
     public static let shared = CrownController()
 
     private var dial = CrownBetaDial()
-    private let beatSync: UniversalBeatSync
 
-    public init(beatSync: UniversalBeatSync = .shared) {
-        self.beatSync = beatSync
+    public init() {}
+
+    /// Legacy init kept so call sites that previously injected a beat clock still compile.
+    /// The `beatSync` parameter is **ignored** — Crown never owns beat authority.
+    @available(*, deprecated, message: "CrownController no longer holds UniversalBeatSync; use init()")
+    public init(beatSync: UniversalBeatSync) {
+        // Intentionally unused — bus-only beat broadcasts.
+        _ = beatSync
     }
 
     public func currentBeta() -> Double { dial.beta }
 
     public func dialSnapshot() -> CrownBetaDial { dial }
 
+    /// Mutates dial β only — does **not** call `UniversalBeatSync.broadcast`.
     @discardableResult
     public func applyCrownDelta(_ delta: Double) -> Double {
         dial.applyCrownDelta(delta)
     }
 
+    /// Mutates dial β only — does **not** call `UniversalBeatSync.broadcast`.
     @discardableResult
     public func setBeta(_ value: Double) -> Double {
         dial.setBeta(value)
@@ -96,9 +107,26 @@ public actor CrownController {
         dial.dampTowardNeutral(gain: gain)
     }
 
-    /// Direct broadcast for standalone callers; session control prefers ActuatorBus.
-    public func broadcastBeat(bpm: Double, beta: Double, grounding: Bool = false) async {
+    /// Record β without touching `UniversalBeatSync` (session / bus path).
+    public func adoptBeatState(beta: Double) {
         _ = dial.setBeta(beta)
-        _ = await beatSync.broadcast(bpm: bpm, beta: dial.beta, grounding: grounding)
+    }
+
+    // MARK: - Debug / standalone only
+
+    /// **DEBUG / STANDALONE ONLY.** Direct `UniversalBeatSync.broadcast`.
+    ///
+    /// Session control (`PharmaControlSessionManager`, `CrooksCycleController`,
+    /// `CrownActuatorChannel`) must **not** call this. Prefer
+    /// `ActuatorBus.broadcastBeat` so `BeatSyncActuatorChannel` remains sole authority.
+    @discardableResult
+    public func debugBroadcastBeat(
+        bpm: Double,
+        beta: Double,
+        grounding: Bool = false,
+        via beatSync: UniversalBeatSync
+    ) async -> BeatSyncSnapshot {
+        _ = dial.setBeta(beta)
+        return await beatSync.broadcast(bpm: bpm, beta: dial.beta, grounding: grounding)
     }
 }

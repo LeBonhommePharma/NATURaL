@@ -74,6 +74,9 @@ public struct BeatSyncActuatorChannel: ActuatorChannel {
 }
 
 /// Watch Digital Crown β dial — state only; beat is owned by `BeatSyncActuatorChannel`.
+///
+/// Bus path: `setBeta` / `adoptBeatState` / `dampTowardNeutral` only.
+/// Never calls `UniversalBeatSync.broadcast` (or Crown debug broadcast APIs).
 public struct CrownActuatorChannel: ActuatorChannel {
     public let id = "crown_beta_dial"
     private let crown: CrownController
@@ -91,7 +94,7 @@ public struct CrownActuatorChannel: ActuatorChannel {
                 detail: "damped β=\(fmt(beta)) σ_irr=\(fmt(sigma)) bpm→\(CrooksCycleDefaults.groundingBPM) from \(bpm)"
             )
         case .beatBroadcast(_, let beta, _):
-            _ = await crown.setBeta(beta)
+            await crown.adoptBeatState(beta: beta)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: "scene=\(await crown.dialSnapshot().sceneLabel)"

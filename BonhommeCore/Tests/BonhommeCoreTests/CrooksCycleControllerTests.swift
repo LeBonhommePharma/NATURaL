@@ -209,7 +209,7 @@ final class CrooksCycleControllerTests: XCTestCase {
     // MARK: - AirPods Crown β
 
     func testAirPodsVolumeDeltaAndStemPress() async {
-        let airPods = AirPodsCrownBetaController(beatSync: UniversalBeatSync())
+        let airPods = AirPodsCrownBetaController()
         await airPods.setRouteActive(true)
         let betaUp = await airPods.applyVolumeDelta(1.0)
         XCTAssertGreaterThan(betaUp, 0)
@@ -220,12 +220,13 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(snap.sceneLabel, "neutral")
     }
 
-    func testAirPodsMirrorsWatchCrownAndBroadcasts() async {
+    func testAirPodsMirrorsWatchCrownAndDebugBroadcast() async {
         let beat = UniversalBeatSync()
-        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        let airPods = AirPodsCrownBetaController()
         await airPods.setRouteActive(true)
         _ = await airPods.mirrorWatchCrown(beta: 0.75)
-        let beatSnap = await airPods.broadcastBeat(bpm: 110, beta: 0.75, grounding: false)
+        // Debug API only — session path must use ActuatorBus instead.
+        let beatSnap = await airPods.debugBroadcastBeat(bpm: 110, beta: 0.75, grounding: false, via: beat)
         XCTAssertEqual(beatSnap.bpm, 110, accuracy: 1e-9)
         XCTAssertEqual(beatSnap.crownBeta, 0.75, accuracy: 1e-9)
         let snap = await airPods.snapshot()
@@ -239,8 +240,8 @@ final class CrooksCycleControllerTests: XCTestCase {
         await beat.addListener { _ in await counter.increment() }
         let bus = ActuatorBus(channels: [
             BeatSyncActuatorChannel(beatSync: beat),
-            CrownActuatorChannel(crown: CrownController(beatSync: beat)),
-            AirPodsCrownActuatorChannel(airPods: AirPodsCrownBetaController(beatSync: beat)),
+            CrownActuatorChannel(crown: CrownController()),
+            AirPodsCrownActuatorChannel(airPods: AirPodsCrownBetaController()),
             BreathingGuideActuatorChannel()
         ])
         _ = await bus.broadcastBeat(bpm: 100, beta: 0.2, grounding: false)
@@ -261,7 +262,7 @@ final class CrooksCycleControllerTests: XCTestCase {
 
         let bus = ActuatorBus(channels: [
             BeatSyncActuatorChannel(beatSync: beat),
-            CrownActuatorChannel(crown: CrownController(beatSync: beat)),
+            CrownActuatorChannel(crown: CrownController()),
             SessionLogActuatorChannel()
         ])
         _ = await bus.executePhaseFlip(from: .forward, to: .reverse, cycleCount: 1)
@@ -355,12 +356,54 @@ final class CrooksCycleControllerTests: XCTestCase {
         let beat = UniversalBeatSync()
         let counter = ListenerCounter()
         await beat.addListener { _ in await counter.increment() }
-        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        let airPods = AirPodsCrownBetaController()
         await airPods.setRouteActive(true)
         _ = await airPods.applyVolumeDelta(1.0)
         _ = await airPods.applyStemPress(gain: 0.5)
+        _ = await airPods.setBeta(0.5)
+        await airPods.adoptBeatState(bpm: 100, beta: 0.3, grounding: false)
         let count = await counter.value
-        XCTAssertEqual(count, 0, "volume/stem must not bypass ActuatorBus beat authority")
+        XCTAssertEqual(count, 0, "volume/stem/setBeta/adoptBeatState must not bypass ActuatorBus")
+    }
+
+    /// Crown session APIs mutate β only — never UniversalBeatSync.broadcast.
+    func testCrownDeltaSetBetaDoNotBroadcast() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        let crown = CrownController()
+        _ = await crown.applyCrownDelta(2.0)
+        _ = await crown.setBeta(0.5)
+        await crown.adoptBeatState(beta: 0.25)
+        _ = await crown.dampTowardNeutral(gain: 0.5)
+        let count = await counter.value
+        XCTAssertEqual(count, 0, "CrownController must not call UniversalBeatSync on session path")
+    }
+
+    /// Session-manager crown / AirPods inputs must not fire beat listeners.
+    func testSessionManagerCrownAndAirPodsDoNotBypassBus() async {
+        let beat = UniversalBeatSync()
+        let counter = ListenerCounter()
+        await beat.addListener { _ in await counter.increment() }
+        let crown = CrownController()
+        let airPods = AirPodsCrownBetaController()
+        let manager = PharmaControlSessionManager(
+            controller: CrooksCycleController(
+                actuators: ActuatorBus(channels: []),
+                crown: crown,
+                mapper: DeltaHRVFlexAIDMapper()
+            ),
+            crown: crown,
+            airPodsCrown: airPods,
+            beatSync: beat,
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        _ = await manager.applyCrownDelta(3.0)
+        _ = await manager.setCrownBeta(0.4)
+        _ = await manager.applyAirPodsVolumeDelta(1.0)
+        _ = await manager.applyAirPodsStemPress(gain: 0.3)
+        let count = await counter.value
+        XCTAssertEqual(count, 0, "session crown/AirPods path must not bypass ActuatorBus for beat")
     }
 
     func testANEWorkPathLabelPresent() {
@@ -462,8 +505,8 @@ final class CrooksCycleControllerTests: XCTestCase {
     /// Regression: end-of-tick broadcast used to overwrite groundingBPM/β with the input.
     func testGroundingPolicyPersistsOnBeatAndCrown() async {
         let beat = UniversalBeatSync()
-        let crown = CrownController(beatSync: beat)
-        let airPods = AirPodsCrownBetaController(beatSync: beat)
+        let crown = CrownController()
+        let airPods = AirPodsCrownBetaController()
         let bus = ActuatorBus(channels: [
             BeatSyncActuatorChannel(beatSync: beat),
             CrownActuatorChannel(crown: crown),
@@ -672,7 +715,7 @@ final class CrooksCycleControllerTests: XCTestCase {
         let r1 = await manager.tickFromSCI(sciScore: 0.4, bpm: 120)
         XCTAssertTrue(r1.work.isFinite)
         let r2 = await manager.tickFromSCI(sciScore: 0.8, bpm: 118)
-        // Rising SCI → negative deltaHRV (collapse) → work changes
+        // Rising SCI → lower H → negative baseline-relative ΔH (collapse)
         XCTAssertTrue(r2.work.isFinite)
 
         let snap = await manager.snapshot()
@@ -683,6 +726,123 @@ final class CrooksCycleControllerTests: XCTestCase {
         await manager.stop()
         let stopped = await manager.snapshot()
         XCTAssertFalse(stopped.isRunning)
+    }
+
+    /// Explicit baseline at start is stored and used for relative ΔH.
+    func testBaselineEntropySetAtStart() async {
+        let manager = makeIsolatedSessionManager()
+        let baseline: Double = 3.5
+        await manager.start(baselineEntropy: baseline)
+
+        let beforeTick = await manager.snapshot()
+        XCTAssertEqual(beforeTick.baselineEntropy ?? .nan, baseline, accuracy: 1e-12)
+
+        // SCI such that H = (1 − 0.3) · 5 = 3.5 → ΔH = 0
+        _ = await manager.tickFromSCI(sciScore: 0.3, bpm: 100)
+        let snap0 = await manager.snapshot()
+        XCTAssertEqual(snap0.baselineEntropy ?? .nan, baseline, accuracy: 1e-12)
+        XCTAssertEqual(snap0.lastDeltaHRV ?? .nan, 0, accuracy: 1e-12)
+
+        // SCI = 0.5 → H = 2.5 → ΔH = 2.5 − 3.5 = −1.0 (collapse)
+        _ = await manager.tickFromSCI(sciScore: 0.5, bpm: 100)
+        let snap1 = await manager.snapshot()
+        XCTAssertEqual(snap1.lastDeltaHRV ?? .nan, -1.0, accuracy: 1e-12)
+
+        // SCI = 0.1 → H = 4.5 → ΔH = 4.5 − 3.5 = +1.0 (expansion)
+        _ = await manager.tickFromSCI(sciScore: 0.1, bpm: 100)
+        let snap2 = await manager.snapshot()
+        XCTAssertEqual(snap2.lastDeltaHRV ?? .nan, 1.0, accuracy: 1e-12)
+
+        await manager.stop()
+    }
+
+    /// First good SCI window captures baseline; capture tick has ΔH = 0; later ticks are relative.
+    func testBaselineCapturedFromFirstGoodSCI() async {
+        let manager = makeIsolatedSessionManager()
+        await manager.start() // no explicit baseline
+
+        let pre = await manager.snapshot()
+        XCTAssertNil(pre.baselineEntropy)
+
+        // First good SCI: SCI = 0.4 → H = (1 − 0.4) · 5 = 3.0 → capture baseline, ΔH = 0
+        _ = await manager.tickFromSCI(sciScore: 0.4, bpm: 110)
+        let afterCapture = await manager.snapshot()
+        XCTAssertEqual(afterCapture.baselineEntropy ?? .nan, 3.0, accuracy: 1e-12)
+        XCTAssertEqual(afterCapture.lastDeltaHRV ?? .nan, 0, accuracy: 1e-12)
+
+        // SCI = 0.6 → H = 2.0 → ΔH = 2.0 − 3.0 = −1.0
+        _ = await manager.tickFromSCI(sciScore: 0.6, bpm: 110)
+        let afterRelative = await manager.snapshot()
+        XCTAssertEqual(afterRelative.baselineEntropy ?? .nan, 3.0, accuracy: 1e-12)
+        XCTAssertEqual(afterRelative.lastDeltaHRV ?? .nan, -1.0, accuracy: 1e-12)
+
+        await manager.stop()
+    }
+
+    /// Math unit tests: SCI ↔ H inversion and sanitization are non-finite safe.
+    func testEntropyFromSCIAndBaselineSanitization() {
+        let hMax = PharmaControlSessionManager.sciMaxEntropy
+        XCTAssertEqual(hMax, 5.0, accuracy: 1e-12)
+
+        XCTAssertEqual(PharmaControlSessionManager.entropyFromSCI(1.0), 0, accuracy: 1e-12)
+        XCTAssertEqual(PharmaControlSessionManager.entropyFromSCI(0.0), hMax, accuracy: 1e-12)
+        XCTAssertEqual(PharmaControlSessionManager.entropyFromSCI(0.5), 2.5, accuracy: 1e-12)
+
+        // Out-of-range / non-finite SCI clamped
+        XCTAssertEqual(PharmaControlSessionManager.entropyFromSCI(2.0), 0, accuracy: 1e-12)
+        XCTAssertEqual(PharmaControlSessionManager.entropyFromSCI(-1.0), hMax, accuracy: 1e-12)
+        XCTAssertTrue(PharmaControlSessionManager.entropyFromSCI(.nan).isFinite)
+        XCTAssertTrue(PharmaControlSessionManager.entropyFromSCI(.infinity).isFinite)
+
+        // Bad maxEntropy falls back to default
+        let h = PharmaControlSessionManager.entropyFromSCI(0.5, maxEntropy: .nan)
+        XCTAssertEqual(h, 2.5, accuracy: 1e-12)
+
+        XCTAssertEqual(PharmaControlSessionManager.sanitizedBaselineEntropy(3.2), 3.2)
+        XCTAssertEqual(PharmaControlSessionManager.sanitizedBaselineEntropy(0), 0)
+        XCTAssertNil(PharmaControlSessionManager.sanitizedBaselineEntropy(-0.1))
+        XCTAssertNil(PharmaControlSessionManager.sanitizedBaselineEntropy(.nan))
+        XCTAssertNil(PharmaControlSessionManager.sanitizedBaselineEntropy(.infinity))
+        XCTAssertNil(PharmaControlSessionManager.sanitizedBaselineEntropy(nil))
+    }
+
+    /// Non-finite baseline at start is ignored; non-finite SCI ticks stay finite.
+    func testBaselineRelativeDeltaNonFiniteSafe() async {
+        let manager = makeIsolatedSessionManager()
+        await manager.start(baselineEntropy: .nan)
+        let snapNaN = await manager.snapshot()
+        XCTAssertNil(snapNaN.baselineEntropy, "NaN baseline must be rejected")
+
+        await manager.start(baselineEntropy: -.infinity)
+        let snapInf = await manager.snapshot()
+        XCTAssertNil(snapInf.baselineEntropy)
+
+        await manager.start(baselineEntropy: 2.5)
+        let r1 = await manager.tickFromSCI(sciScore: .nan, bpm: .nan)
+        XCTAssertTrue(r1.work.isFinite)
+        XCTAssertTrue(r1.sigmaIrr.isFinite)
+        let snap1 = await manager.snapshot()
+        XCTAssertEqual(snap1.baselineEntropy ?? .nan, 2.5, accuracy: 1e-12)
+        XCTAssertNotNil(snap1.lastDeltaHRV)
+        XCTAssertTrue(snap1.lastDeltaHRV?.isFinite == true)
+
+        let r2 = await manager.tickFromSCI(sciScore: .infinity, bpm: -.infinity)
+        XCTAssertTrue(r2.work.isFinite)
+        let snap2 = await manager.snapshot()
+        XCTAssertTrue(snap2.lastDeltaHRV?.isFinite == true)
+
+        // Explicit tick with non-finite deltaHRV is sanitized
+        let r3 = await manager.tick(PharmaControlTick(
+            deltaHRV: .nan,
+            flexAIDDeltaS: .infinity,
+            crownBeta: 0,
+            bpm: 100
+        ))
+        XCTAssertTrue(r3.work.isFinite)
+        let snap3 = await manager.snapshot()
+        XCTAssertEqual(snap3.lastDeltaHRV ?? .nan, 0, accuracy: 1e-12)
+
+        await manager.stop()
     }
 
     func testSessionManagerCrownDelta() async {
@@ -707,6 +867,21 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertEqual(morphine, -2.4, accuracy: 0.01)
         let unknown = manager.referenceDeltaS(for: "not_a_drug_xyz")
         XCTAssertEqual(unknown, 0, accuracy: 1e-12)
+    }
+
+    // MARK: - Session manager helpers
+
+    private func makeIsolatedSessionManager() -> PharmaControlSessionManager {
+        PharmaControlSessionManager(
+            controller: CrooksCycleController(
+                actuators: ActuatorBus.makeProduction(),
+                crown: CrownController(),
+                mapper: DeltaHRVFlexAIDMapper()
+            ),
+            crown: CrownController(),
+            beatSync: UniversalBeatSync(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
     }
 
     // MARK: - Thermodynamic phase

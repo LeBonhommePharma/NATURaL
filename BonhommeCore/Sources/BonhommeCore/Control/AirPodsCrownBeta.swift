@@ -37,15 +37,16 @@ public struct AirPodsCrownBetaSnapshot: Sendable, Equatable {
 /// AirPods crown-β controller.
 ///
 /// ## Inputs
-/// - `applyVolumeDelta` — volume rocker as crown proxy
-/// - `applyStemPress` — Force Sensor → soft damp toward neutral
+/// - `applyVolumeDelta` — volume rocker as crown proxy (β only)
+/// - `applyStemPress` — Force Sensor → soft damp toward neutral (β only)
 /// - `mirrorWatchCrown` — copy Watch Digital Crown β while route is live
 /// - `setRouteActive` — AVAudioSession route change (app layer)
 ///
 /// ## Beat authority
-/// Direct `broadcastBeat` is for standalone / debug paths.
-/// In session control, `BeatSyncActuatorChannel` owns `UniversalBeatSync`;
-/// this controller only holds dial state unless called explicitly.
+/// Session path uses `setBeta` / `adoptBeatState` only.
+/// Tempo broadcasts go solely through `ActuatorBus` → `BeatSyncActuatorChannel`.
+/// `debugBroadcastBeat` is for standalone / debug callers and must not be used
+/// from `PharmaControlSessionManager` or Crooks session ticks.
 public actor AirPodsCrownBetaController {
     public static let shared = AirPodsCrownBetaController()
 
@@ -54,13 +55,17 @@ public actor AirPodsCrownBetaController {
     private var lastBPM = CrooksCycleDefaults.nominalBPM
     private var isGrounding = false
     private var lastUpdate = Date()
-    private let beatSync: UniversalBeatSync
 
     /// Volume step → crown scale (up → heating, down → binding).
     public var volumeSensitivity: Double = 0.08
 
-    public init(beatSync: UniversalBeatSync = .shared) {
-        self.beatSync = beatSync
+    public init() {}
+
+    /// Legacy init kept so call sites that previously injected a beat clock still compile.
+    /// The `beatSync` parameter is **ignored** — AirPods never owns beat authority on the session path.
+    @available(*, deprecated, message: "AirPodsCrownBetaController no longer holds UniversalBeatSync; use init()")
+    public init(beatSync: UniversalBeatSync) {
+        _ = beatSync
     }
 
     public func snapshot() -> AirPodsCrownBetaSnapshot {
@@ -86,8 +91,8 @@ public actor AirPodsCrownBetaController {
     /// Positive delta (volume up) → heating β; negative → binding β.
     ///
     /// Mutates dial β only — does **not** call `UniversalBeatSync.broadcast`.
-    /// When a Crooks session bus is active, end-of-tick `broadcastBeat` is sole tempo authority;
-    /// standalone callers that need an immediate beat use `broadcastBeat` explicitly.
+    /// When a Crooks session bus is active, end-of-tick `ActuatorBus.broadcastBeat`
+    /// is sole tempo authority.
     @discardableResult
     public func applyVolumeDelta(_ delta: Double) async -> Double {
         let scaled = delta * volumeSensitivity / max(dial.sensitivity, 1e-6)
@@ -106,7 +111,7 @@ public actor AirPodsCrownBetaController {
         return beta
     }
 
-    /// Mirror Watch Digital Crown β onto the headphone dial (no re-broadcast from bus path).
+    /// Mirror Watch Digital Crown β onto the headphone dial (no re-broadcast).
     @discardableResult
     public func mirrorWatchCrown(beta: Double) -> Double {
         lastUpdate = Date()
@@ -125,9 +130,27 @@ public actor AirPodsCrownBetaController {
         return dial.dampTowardNeutral(gain: gain)
     }
 
-    /// Standalone broadcast (debug / direct callers). Session path uses ActuatorBus.
+    /// Record tempo metadata without touching `UniversalBeatSync` (session / bus path).
+    public func adoptBeatState(bpm: Double, beta: Double, grounding: Bool) {
+        _ = dial.setBeta(beta)
+        lastBPM = max(40, min(220, bpm))
+        isGrounding = grounding
+        lastUpdate = Date()
+    }
+
+    // MARK: - Debug / standalone only
+
+    /// **DEBUG / STANDALONE ONLY.** Direct `UniversalBeatSync.broadcast`.
+    ///
+    /// Session control must **not** call this. Prefer `ActuatorBus.broadcastBeat`
+    /// so `BeatSyncActuatorChannel` remains sole beat authority.
     @discardableResult
-    public func broadcastBeat(bpm: Double, beta: Double, grounding: Bool = false) async -> BeatSyncSnapshot {
+    public func debugBroadcastBeat(
+        bpm: Double,
+        beta: Double,
+        grounding: Bool = false,
+        via beatSync: UniversalBeatSync
+    ) async -> BeatSyncSnapshot {
         _ = dial.setBeta(beta)
         lastBPM = max(40, min(220, bpm))
         isGrounding = grounding
@@ -135,12 +158,16 @@ public actor AirPodsCrownBetaController {
         return await beatSync.broadcast(bpm: lastBPM, beta: dial.beta, grounding: grounding)
     }
 
-    /// Record tempo metadata without touching UniversalBeatSync (bus path).
-    public func adoptBeatState(bpm: Double, beta: Double, grounding: Bool) {
-        _ = dial.setBeta(beta)
-        lastBPM = max(40, min(220, bpm))
-        isGrounding = grounding
-        lastUpdate = Date()
+    /// - Warning: Deprecated alias of `debugBroadcastBeat`. Session path must use ActuatorBus.
+    @available(*, deprecated, renamed: "debugBroadcastBeat")
+    @discardableResult
+    public func broadcastBeat(
+        bpm: Double,
+        beta: Double,
+        grounding: Bool = false,
+        via beatSync: UniversalBeatSync
+    ) async -> BeatSyncSnapshot {
+        await debugBroadcastBeat(bpm: bpm, beta: beta, grounding: grounding, via: beatSync)
     }
 }
 
@@ -148,6 +175,8 @@ public actor AirPodsCrownBetaController {
 
 /// AirPods dial + route metadata. Does **not** call `UniversalBeatSync`
 /// (that is sole duty of `BeatSyncActuatorChannel`).
+///
+/// Bus path: `setBeta` / `adoptBeatState` / `dampTowardNeutral` only.
 public struct AirPodsCrownActuatorChannel: ActuatorChannel {
     public let id = "airpods_crown_beta"
     private let airPods: AirPodsCrownBetaController
