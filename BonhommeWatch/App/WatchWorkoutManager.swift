@@ -6,10 +6,14 @@ import BonhommeCore
 /// Provides higher-frequency HR data than the iOS relay path and computes
 /// on-wrist SCI via the FeedbackEngine.
 ///
-/// ## RR / SCI
-/// BPM→RR is a **proxy** (`RRIntervalProxy.syntheticRR`) with light physiological jitter
-/// so SCI is not stuck at 1.0 on constant BPM. Prefer real RR when HealthKit exposes it
-/// (future heartbeat-series path); until then synthetic is documented as non-clinical.
+/// ## RR / SCI provenance (mirrors iOS `WorkoutRecorder`)
+/// Prefer real beat-to-beat intervals from `HKHeartbeatSeriesSample` when HealthKit
+/// has them (optical PPG on-wrist often writes series during workouts). Otherwise
+/// BPM samples are converted via `RRIntervalProxy.syntheticRR` — a **non-clinical
+/// proxy**, not beat-to-beat HRV. Light physiological jitter prevents SCI from
+/// locking at 1.0 on constant BPM. Call sites / UI should treat `lastRRSource ==
+/// .synthetic` as fitness biofeedback only; gate consumers on
+/// `lastRRUsableForSCI` the same way phone gates adaptive music.
 @Observable
 @MainActor
 final class WatchWorkoutManager: NSObject {
@@ -26,7 +30,11 @@ final class WatchWorkoutManager: NSObject {
     private(set) var heartRateSamples: [HeartRateSample] = []
     /// Mirrors iOS `WorkoutFlowViewModel.posesCompletedCount` — only full holds.
     private(set) var posesCompletedCount: Int = 0
+    /// Provenance of the last RR window used for on-wrist SCI.
     private(set) var lastRRSource: RRIntervalSource = .synthetic
+    /// `false` when the last RR window is meaningless for SCI (near-constant),
+    /// same gate as iOS `WorkoutRecorder.lastRRUsableForAdaptiveMusic`.
+    private(set) var lastRRUsableForSCI: Bool = false
 
     /// Current phase in the workout flow.
     enum Phase: Equatable {
@@ -55,6 +63,9 @@ final class WatchWorkoutManager: NSObject {
     private var currentPlan: WorkoutPlan?
     /// Running sum for O(1) average HR.
     private var heartRateSum: Double = 0
+    /// Cached real RR intervals (ms) from the most recent heartbeat series query.
+    private var cachedRealRR: [Double] = []
+    private var lastHeartbeatSeriesFetch: Date = .distantPast
 
     override init() {
         super.init()
@@ -73,6 +84,10 @@ final class WatchWorkoutManager: NSObject {
         averageHeartRate = nil
         currentHeartRate = nil
         isPaused = false
+        cachedRealRR.removeAll(keepingCapacity: true)
+        lastRRSource = .synthetic
+        lastRRUsableForSCI = false
+        lastHeartbeatSeriesFetch = .distantPast
 
         let config = HKWorkoutConfiguration()
         config.activityType = plan.style.healthKitActivityType
@@ -233,24 +248,114 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    /// Ingest HR as HRV signals. BPM→RR is a **proxy** with light jitter (not clinical HRV).
+    /// Prefer real heartbeat-series RR when cached; else BPM→RR **proxy** with light jitter.
+    ///
+    /// Pure-constant BPM→RR without jitter yields SCI≈1.0 and must not drive policy
+    /// (`lastRRUsableForSCI` gates that path — same as phone adaptive music).
+    /// Synthetic path is **non-clinical** fitness biofeedback only.
     private func processHeartRateForSCI(bpm: Double) {
         _ = bpm
         let recentBPM = heartRateSamples.suffix(10).map(\.bpm)
         guard recentBPM.count >= 4 else { return }
 
-        // Synthetic proxy with physiological noise so SCI is not stuck at 1.0.
-        let recentRR = RRIntervalProxy.syntheticRR(fromBPMSamples: Array(recentBPM))
-        lastRRSource = .synthetic
-        guard !RRIntervalProxy.isMeaninglessForSCI(recentRR) else { return }
+        let rr: [Double]
+        let source: RRIntervalSource
+        if cachedRealRR.count >= 4 {
+            rr = Array(cachedRealRR.suffix(32))
+            source = .real
+        } else {
+            // Proxy: BPM samples → RR ms with ~5% SDNN-scale jitter (not clinical HRV).
+            rr = RRIntervalProxy.syntheticRR(fromBPMSamples: Array(recentBPM))
+            source = .synthetic
+        }
+
+        lastRRSource = source
+        // Gate consumers when RR variance is still negligible (pure-constant proxy).
+        // Jittered synthetic is normally usable; real series always preferred.
+        lastRRUsableForSCI = !RRIntervalProxy.isMeaninglessForSCI(rr)
+        guard lastRRUsableForSCI else { return }
 
         let signal = HRVSignal(
             timestamp: Date(),
-            sdnn: RRIntervalProxy.standardDeviation(recentRR),
-            rmssd: RRIntervalProxy.rmssd(recentRR),
-            rrIntervals: recentRR
+            sdnn: RRIntervalProxy.standardDeviation(rr),
+            rmssd: RRIntervalProxy.rmssd(rr),
+            rrIntervals: rr
         )
         feedbackEngine.ingest(signal)
+    }
+
+    /// Throttled fetch of recent `HKHeartbeatSeriesSample` beat-to-beat intervals.
+    /// Mirrors iOS `WorkoutRecorder.refreshRealRRIfNeeded`.
+    private func refreshRealRRIfNeeded() async {
+        let now = Date()
+        guard now.timeIntervalSince(lastHeartbeatSeriesFetch) >= 15 else { return }
+        lastHeartbeatSeriesFetch = now
+
+        let seriesType = HKSeriesType.heartbeat()
+        let predicate = HKQuery.predicateForSamples(
+            withStart: now.addingTimeInterval(-120),
+            end: now,
+            options: .strictStartDate
+        )
+
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let sampleQuery = HKSampleQuery(
+                sampleType: seriesType,
+                predicate: predicate,
+                limit: 3,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { [weak self] _, samples, _ in
+                guard let self, let seriesSamples = samples as? [HKHeartbeatSeriesSample], !seriesSamples.isEmpty else {
+                    cont.resume()
+                    return
+                }
+                Task { @MainActor in
+                    var intervals: [Double] = []
+                    for series in seriesSamples {
+                        if let beats = await self.fetchHeartbeatSeriesBeats(series) {
+                            intervals.append(contentsOf: beats)
+                        }
+                    }
+                    if intervals.count >= 4 {
+                        self.cachedRealRR = Array(intervals.suffix(64))
+                    }
+                    cont.resume()
+                }
+            }
+            healthStore.execute(sampleQuery)
+        }
+    }
+
+    /// Returns beat-to-beat RR intervals in ms, or nil on error / empty.
+    private func fetchHeartbeatSeriesBeats(_ series: HKHeartbeatSeriesSample) async -> [Double]? {
+        await withCheckedContinuation { cont in
+            var rr: [Double] = []
+            var previous: TimeInterval?
+            var settled = false
+            let finish: ([Double]?) -> Void = { result in
+                guard !settled else { return }
+                settled = true
+                cont.resume(returning: result)
+            }
+            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, _, done, error in
+                if error != nil {
+                    finish(nil)
+                    return
+                }
+                if let previous {
+                    let deltaMs = (timeSinceSeriesStart - previous) * 1000.0
+                    // Physiological RR band (~30–300 BPM); reject sensor gaps / noise.
+                    if deltaMs > 200 && deltaMs < 2000 {
+                        rr.append(deltaMs)
+                    }
+                }
+                previous = timeSinceSeriesStart
+                if done {
+                    finish(rr.isEmpty ? nil : rr)
+                }
+            }
+            healthStore.execute(query)
+        }
     }
 }
 
@@ -304,6 +409,8 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                         let n = heartRateSamples.count
                         averageHeartRate = n > 0 ? heartRateSum / Double(n) : nil
                         processHeartRateForSCI(bpm: bpm)
+                        // Opportunistically refresh real RR cache (throttled).
+                        Task { await self.refreshRealRRIfNeeded() }
                     }
                     if let avg = stats?.averageQuantity()?
                         .doubleValue(for: .count().unitDivided(by: .minute())) {
