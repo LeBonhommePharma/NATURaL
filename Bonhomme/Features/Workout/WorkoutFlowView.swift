@@ -45,6 +45,23 @@ struct WorkoutFlowView: View {
                     dismiss()
                 }
             }
+
+            // Live breath guide — subtle always; stronger during grounding.
+            // Driven by session snapshot (BreathingGuideActuatorChannel); never blocks control.
+            if showsBreathingGuide {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        BreathingGuideOverlay(
+                            breathsPerMinute: viewModel.breathsPerMinute,
+                            isGrounding: viewModel.isGrounding,
+                            alwaysVisible: true
+                        )
+                    }
+                }
+                .allowsHitTesting(false)
+            }
         }
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
@@ -62,6 +79,16 @@ struct WorkoutFlowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
             viewModel.persistState()
+        }
+    }
+
+    /// Breath ring during active / transition / countdown (not ready or summary).
+    private var showsBreathingGuide: Bool {
+        switch viewModel.phase {
+        case .active, .transition, .countdown, .cooldown:
+            return true
+        case .ready, .complete:
+            return false
         }
     }
 
@@ -124,6 +151,16 @@ struct WorkoutFlowView: View {
                             .foregroundStyle(.white.opacity(0.4))
                     }
                     .padding(.top, 8)
+                }
+
+                if !viewModel.currentVoiceCue.isEmpty {
+                    Text(viewModel.currentVoiceCue)
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                        .padding(.top, 12)
+                        .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
                 }
 
                 Spacer()
@@ -290,6 +327,17 @@ struct WorkoutFlowView: View {
                 .lineLimit(1)
                 .padding(.horizontal, 40)
                 .padding(.top, 6)
+            }
+
+            if !viewModel.currentVoiceCue.isEmpty {
+                Text(viewModel.currentVoiceCue)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 10)
+                    .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
             }
 
             Spacer()

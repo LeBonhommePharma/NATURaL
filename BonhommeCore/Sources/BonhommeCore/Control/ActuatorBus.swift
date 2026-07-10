@@ -200,13 +200,25 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
 /// Conversion: `breaths/min ≈ bpm / bpmPerBreath`.
 /// At grounding (92 BPM): 92 / 15.2 ≈ 6.05 breaths/min — clinical recovery cadence.
 ///
-/// Publishes `breathsPerMinute` into `ControlActuatorSnapshotStore` for session UI;
-/// also appends a session-log line so the rate is inspectable offline.
+/// Publishes `breathsPerMinute` + grounding flag into `ControlActuatorSnapshotStore`
+/// for session UI / Watch haptics; also appends a session-log line offline.
 public struct BreathingGuideActuatorChannel: ActuatorChannel {
     public let id = "breathing_guide"
 
     /// BPM divided by this yields seated breath rate (~6/min at grounding tempo).
     public static let bpmPerBreath: Double = 15.2
+
+    /// Default subtle breath rate when no control tick has published yet
+    /// (`nominalBPM / bpmPerBreath` ≈ 5.6/min).
+    public static var defaultBreathsPerMinute: Double {
+        CrooksCycleDefaults.nominalBPM / bpmPerBreath
+    }
+
+    /// Seconds per full inhale+exhale cycle for a given breath rate.
+    public static func breathPeriodSeconds(rate: Double) -> Double {
+        let r = rate.isFinite && rate > 0.1 ? rate : defaultBreathsPerMinute
+        return 60.0 / r
+    }
 
     public init() {}
 
@@ -214,7 +226,7 @@ public struct BreathingGuideActuatorChannel: ActuatorChannel {
         switch command {
         case .grounding:
             let rate = CrooksCycleDefaults.groundingBPM / Self.bpmPerBreath
-            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate)
+            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate, isGrounding: true)
             await SessionEventLog.shared.append(String(format: "breath %.1f/min grounding", rate))
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
@@ -222,7 +234,7 @@ public struct BreathingGuideActuatorChannel: ActuatorChannel {
             )
         case .beatBroadcast(let bpm, _, let grounding):
             let rate = bpm / Self.bpmPerBreath
-            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate)
+            await ControlActuatorSnapshotStore.shared.publishBreathRate(rate, isGrounding: grounding)
             return ActuatorChannelResult(
                 channelId: id, command: command, success: true,
                 detail: String(format: "breathe %.1f/min g=%@", rate, String(grounding))
@@ -241,12 +253,15 @@ public actor ControlActuatorSnapshotStore {
     public static let shared = ControlActuatorSnapshotStore()
 
     public private(set) var breathsPerMinute: Double = 0
+    /// Sticky grounding flag from the last breath / beat broadcast.
+    public private(set) var isGrounding: Bool = false
     public private(set) var crossDomainResidual: Double = 0
     public private(set) var crossDomainShouldGround: Bool = false
     public private(set) var crossDomainSource: String = "none"
 
-    public func publishBreathRate(_ rate: Double) {
+    public func publishBreathRate(_ rate: Double, isGrounding grounding: Bool = false) {
         breathsPerMinute = rate.isFinite ? max(0, rate) : 0
+        isGrounding = grounding
     }
 
     public func publishCrossDomain(residual: Double, shouldGround: Bool, source: String) {
@@ -257,6 +272,7 @@ public actor ControlActuatorSnapshotStore {
 
     public func reset() {
         breathsPerMinute = 0
+        isGrounding = false
         crossDomainResidual = 0
         crossDomainShouldGround = false
         crossDomainSource = "none"

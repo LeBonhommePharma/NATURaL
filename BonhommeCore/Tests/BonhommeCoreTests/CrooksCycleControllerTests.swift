@@ -292,8 +292,62 @@ final class CrooksCycleControllerTests: XCTestCase {
         let channel = BreathingGuideActuatorChannel()
         _ = await channel.execute(.beatBroadcast(bpm: CrooksCycleDefaults.groundingBPM, beta: 0, grounding: true))
         let rate = await ControlActuatorSnapshotStore.shared.breathsPerMinute
+        let grounding = await ControlActuatorSnapshotStore.shared.isGrounding
         let expected = CrooksCycleDefaults.groundingBPM / BreathingGuideActuatorChannel.bpmPerBreath
         XCTAssertEqual(rate, expected, accuracy: 1e-9)
+        XCTAssertTrue(grounding)
+    }
+
+    func testBreathGuideTimingPhaseAndBoundaries() {
+        let origin = Date(timeIntervalSinceReferenceDate: 0)
+        let period: TimeInterval = 10
+        // Mid-inhale
+        let midInhale = origin.addingTimeInterval(2.5)
+        XCTAssertEqual(BreathGuideTiming.phase(at: midInhale, period: period, origin: origin), .inhale)
+        XCTAssertGreaterThan(BreathGuideTiming.expandScale(phase01: 0.25), 0.72)
+        // Mid-exhale
+        let midExhale = origin.addingTimeInterval(7.5)
+        XCTAssertEqual(BreathGuideTiming.phase(at: midExhale, period: period, origin: origin), .exhale)
+        // Cross inhale boundary (wrap)
+        let beforeWrap = origin.addingTimeInterval(9.5)
+        let afterWrap = origin.addingTimeInterval(10.5)
+        XCTAssertEqual(
+            BreathGuideTiming.crossedBoundary(previous: beforeWrap, current: afterWrap, period: period, origin: origin),
+            .inhale
+        )
+        // Cross exhale boundary
+        let beforeExhale = origin.addingTimeInterval(4.0)
+        let afterExhale = origin.addingTimeInterval(6.0)
+        XCTAssertEqual(
+            BreathGuideTiming.crossedBoundary(previous: beforeExhale, current: afterExhale, period: period, origin: origin),
+            .exhale
+        )
+    }
+
+    func testSessionSnapshotExposesBreathGroundingSigma() async {
+        await ControlActuatorSnapshotStore.shared.reset()
+        let manager = PharmaControlSessionManager(
+            controller: CrooksCycleController(
+                actuators: ActuatorBus.makeProduction(),
+                crown: CrownController(),
+                mapper: DeltaHRVFlexAIDMapper()
+            ),
+            crown: CrownController(),
+            beatSync: UniversalBeatSync(),
+            mapper: DeltaHRVFlexAIDMapper()
+        )
+        await manager.start()
+        // High BPM + unstable SCI change to drive work / potential grounding path.
+        _ = await manager.tickFromSCI(sciScore: 0.2, bpm: 140)
+        _ = await manager.tickFromSCI(sciScore: 0.9, bpm: 140)
+        let snap = await manager.snapshot()
+        XCTAssertGreaterThan(snap.breathsPerMinute, 0)
+        XCTAssertGreaterThanOrEqual(snap.sigmaIrr, 0)
+        XCTAssertGreaterThan(snap.effectiveBreathsPerMinute, 0)
+        XCTAssertGreaterThan(snap.breathPeriodSeconds, 0)
+        // isGrounding is a Bool; just ensure it is readable / equatable.
+        _ = snap.isGrounding
+        await manager.stop()
     }
 
     /// Volume / stem mutate β only — never UniversalBeatSync.broadcast.
