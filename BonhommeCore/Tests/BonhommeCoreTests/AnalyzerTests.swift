@@ -203,6 +203,15 @@ final class AnalyzerTests: XCTestCase {
         XCTAssertNotNil(engine.latestInsight(for: .heartRateVariability))
     }
 
+    func testFeedbackEngineRefreshHRVAndSnapshot() {
+        let engine = FeedbackEngine()
+        engine.register(HRVAnalyzer())
+        XCTAssertTrue(engine.allLatestInsights().isEmpty)
+        let snap = engine.refreshHRVAndSnapshot()
+        XCTAssertNotNil(snap[.heartRateVariability])
+        XCTAssertEqual(engine.allLatestInsights().count, 1)
+    }
+
     // MARK: - AnalysisInsight Codable
 
     func testAnalysisInsightCodable() throws {

@@ -100,6 +100,21 @@ public final class FeedbackEngine: @unchecked Sendable {
         return latestInsights[signalType]
     }
 
+    /// Snapshot of all cached insights without re-running analyzers (TV / Watch relay).
+    public func allLatestInsights() -> [SignalType: AnalysisInsight] {
+        lock.lock()
+        defer { lock.unlock() }
+        return latestInsights
+    }
+
+    /// Ensure HRV is fresh, then return all cached insights (other types may be stale).
+    /// Prefer this over `analyzeAll()` on high-frequency display paths.
+    @discardableResult
+    public func refreshHRVAndSnapshot() -> [SignalType: AnalysisInsight] {
+        _ = analyze(for: .heartRateVariability)
+        return allLatestInsights()
+    }
+
     /// Clear all buffered signals and insights.
     public func reset() {
         lock.lock()

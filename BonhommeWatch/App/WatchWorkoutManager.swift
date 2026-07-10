@@ -21,6 +21,8 @@ final class WatchWorkoutManager: NSObject {
     private(set) var currentHeartRate: Double?
     private(set) var activeCalories: Double = 0
     private(set) var averageHeartRate: Double?
+    /// Peak BPM for the session (O(1); avoids full-buffer scan on result).
+    private(set) var maxHeartRate: Double?
     private(set) var heartRateSamples: [HeartRateSample] = []
     /// Mirrors iOS `WorkoutFlowViewModel.posesCompletedCount` — only full holds.
     private(set) var posesCompletedCount: Int = 0
@@ -67,6 +69,9 @@ final class WatchWorkoutManager: NSObject {
         posesCompletedCount = 0
         heartRateSamples.removeAll(keepingCapacity: true)
         heartRateSum = 0
+        maxHeartRate = nil
+        averageHeartRate = nil
+        currentHeartRate = nil
         isPaused = false
 
         let config = HKWorkoutConfiguration()
@@ -148,14 +153,15 @@ final class WatchWorkoutManager: NSObject {
             totalPoses: plan.poseCount,
             activeCalories: activeCalories,
             averageHeartRate: averageHeartRate,
-            maxHeartRate: heartRateSamples.map(\.bpm).max(),
+            maxHeartRate: maxHeartRate,
             heartRateSamples: heartRateSamples
         )
     }
 
     /// Current biofeedback snapshot for WCSession relay to iOS.
     func buildBiofeedbackSnapshot() -> BiofeedbackSnapshot {
-        let insights = feedbackEngine.analyzeAll()
+        // 2s relay: HRV-only refresh, not full multi-analyzer analyzeAll.
+        let insights = feedbackEngine.refreshHRVAndSnapshot()
         return BiofeedbackSnapshot(
             heartRate: currentHeartRate,
             activeCalories: activeCalories,
@@ -282,6 +288,11 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                         currentHeartRate = bpm
                         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: Date()))
                         heartRateSum += bpm
+                        if let peak = maxHeartRate {
+                            maxHeartRate = max(peak, bpm)
+                        } else {
+                            maxHeartRate = bpm
+                        }
                         if heartRateSamples.count > 3600 + 64 {
                             let overflow = heartRateSamples.count - 3600
                             for i in 0..<overflow {
