@@ -143,7 +143,15 @@ public actor CrooksCycleController {
     // MARK: - Control tick
 
     /// Ingest ΔH_hrv, FlexAID ΔS_config, crown β, and BPM; apply Crooks-inspired policy.
+    ///
+    /// Prefer baseline-relative physiological entropy from
+    /// `PharmaControlSessionManager.tickFromSCI` when a session baseline exists:
+    /// ```
+    ///   H = (1 − SCI) · log₂(32)     // bits
+    ///   ΔH_hrv = H − H_baseline      // collapse < 0, expansion > 0
+    /// ```
     /// - Parameters:
+    ///   - deltaHRV: Baseline-relative (or differential-fallback) ΔH_hrv in bits.
     ///   - nominalBPM: Plan/kind-aware origin for the fractional BPM work channel.
     ///   - groundingBPM: Recovery tempo when heuristic σ_irr grounding fires.
     @discardableResult
