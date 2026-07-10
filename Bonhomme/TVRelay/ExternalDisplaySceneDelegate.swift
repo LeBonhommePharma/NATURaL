@@ -53,9 +53,5 @@ struct AirPlayTVDisplayRoot: View {
     }
 }
 
-// MARK: - Singleton for UIScene access
-
-extension TVDisplayCoordinator {
-    @MainActor static let shared = TVDisplayCoordinator()
-}
+// `TVDisplayCoordinator.shared` lives on the class (AppState + UIScene share it).
 #endif

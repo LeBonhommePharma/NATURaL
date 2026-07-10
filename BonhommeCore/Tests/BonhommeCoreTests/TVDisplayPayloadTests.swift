@@ -42,6 +42,8 @@ final class TVDisplayPayloadTests: XCTestCase {
         XCTAssertEqual(decoded.biofeedback.heartRate, 72)
         XCTAssertEqual(decoded.biofeedback.sciScore, 0.85)
         XCTAssertEqual(decoded.biofeedback.sciTrend, .improving)
+        // Payload init always strips insight maps for wire size.
+        XCTAssertTrue(decoded.biofeedback.insights.isEmpty)
     }
 
     func testPayloadWithNilBiofeedback() throws {
@@ -86,5 +88,101 @@ final class TVDisplayPayloadTests: XCTestCase {
             let decoded = try JSONDecoder().decode(SCITrend.self, from: data)
             XCTAssertEqual(decoded, trend)
         }
+    }
+
+    func testStrippedForRelayClearsInsights() {
+        let insight = AnalysisInsight(
+            signalType: .heartRateVariability,
+            score: 0.9,
+            trend: .improving,
+            status: .normal,
+            summary: LocalizedString(en: "ok", fr: "ok", es: "ok", ja: "ok", zh: "ok", ko: "ok", ru: "ok", de: "ok", ar: "ok")
+        )
+        let full = BiofeedbackSnapshot(
+            heartRate: 80,
+            sciScore: 0.9,
+            sciTrend: .improving,
+            activeCalories: 10,
+            insights: [.heartRateVariability: insight]
+        )
+        let stripped = full.strippedForRelay()
+        XCTAssertTrue(stripped.insights.isEmpty)
+        XCTAssertEqual(stripped.heartRate, 80)
+        XCTAssertEqual(stripped.sciScore, 0.9)
+    }
+
+    func testFeedbackInsightsDefaultExcludesInsightsMap() {
+        let insight = AnalysisInsight(
+            signalType: .heartRateVariability,
+            score: 0.5,
+            trend: .stable,
+            status: .normal,
+            summary: LocalizedString(en: "s", fr: "s", es: "s", ja: "s", zh: "s", ko: "s", ru: "s", de: "s", ar: "s")
+        )
+        let snap = BiofeedbackSnapshot(
+            heartRate: 70,
+            activeCalories: 1,
+            feedbackInsights: [.heartRateVariability: insight]
+        )
+        XCTAssertEqual(snap.sciScore, 0.5)
+        XCTAssertTrue(snap.insights.isEmpty)
+
+        let withInsights = BiofeedbackSnapshot(
+            heartRate: 70,
+            activeCalories: 1,
+            feedbackInsights: [.heartRateVariability: insight],
+            includeInsights: true
+        )
+        XCTAssertEqual(withInsights.insights.count, 1)
+    }
+
+    // MARK: - TVRelayFraming (pure helpers)
+
+    func testLengthPrefixedRoundTrip() throws {
+        let body = Data("{\"ok\":true}".utf8)
+        let frame = try XCTUnwrap(TVRelayFraming.encodeLengthPrefixed(body))
+        let split = try XCTUnwrap(TVRelayFraming.splitFrame(frame))
+        XCTAssertEqual(split.length, body.count)
+        XCTAssertEqual(split.body, body)
+    }
+
+    func testDecodeBodyLengthRejectsOversized() {
+        var huge = UInt32(TVRelayFraming.maxPayloadBytes + 1).bigEndian
+        let header = Data(bytes: &huge, count: 4)
+        XCTAssertNil(TVRelayFraming.decodeBodyLength(fromHeader: header))
+    }
+
+    func testDecodeBodyLengthRejectsZeroAndShortHeader() {
+        var zero = UInt32(0).bigEndian
+        XCTAssertNil(TVRelayFraming.decodeBodyLength(fromHeader: Data(bytes: &zero, count: 4)))
+        XCTAssertNil(TVRelayFraming.decodeBodyLength(fromHeader: Data([0x00, 0x01])))
+    }
+
+    func testEncodeRejectsOversizedBody() {
+        let body = Data(repeating: 0xAB, count: TVRelayFraming.maxPayloadBytes + 1)
+        XCTAssertNil(TVRelayFraming.encodeLengthPrefixed(body))
+    }
+
+    func testPayloadSerializationUnderRecommendedBudget() throws {
+        let pose = PoseCatalog.seatedWarriorII
+        let payload = TVDisplayPayload(
+            currentPose: pose,
+            poseTimeRemaining: 25,
+            totalPoseTime: 40,
+            biofeedback: BiofeedbackSnapshot(
+                heartRate: 110,
+                heartRateVariability: 38,
+                sciScore: 0.65,
+                sciTrend: .stable,
+                activeCalories: 55
+            ),
+            sessionElapsed: 180,
+            isPaused: false,
+            sequenceIndex: 5,
+            sequenceTotal: 16
+        )
+        let data = try JSONEncoder().encode(payload)
+        XCTAssertLessThan(data.count, TVRelayFraming.recommendedMaxPayloadBytes)
+        XCTAssertNotNil(TVRelayFraming.encodeLengthPrefixed(data))
     }
 }

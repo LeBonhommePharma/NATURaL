@@ -21,6 +21,7 @@ struct ChairYogaActivity: GroupActivity {
 }
 
 /// Message types for synchronizing workout state across SharePlay participants.
+/// Keep this payload tiny — GroupSessionMessenger is not for bulk data.
 struct WorkoutSyncMessage: Codable, Sendable {
     enum Action: String, Codable {
         case startPose
@@ -31,5 +32,12 @@ struct WorkoutSyncMessage: Codable, Sendable {
 
     let action: Action
     let poseIndex: Int?
+    /// Wall-clock seconds since reference date for last-writer / ordering.
     let timestamp: Double
+
+    init(action: Action, poseIndex: Int? = nil, timestamp: Double = Date().timeIntervalSince1970) {
+        self.action = action
+        self.poseIndex = poseIndex
+        self.timestamp = timestamp
+    }
 }

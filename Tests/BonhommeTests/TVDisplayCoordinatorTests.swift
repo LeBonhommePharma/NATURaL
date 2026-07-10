@@ -46,19 +46,15 @@ final class TVDisplayCoordinatorTests: XCTestCase {
         )
 
         let jsonData = try JSONEncoder().encode(payload)
+        let framed = try XCTUnwrap(TVRelayFraming.encodeLengthPrefixed(jsonData))
+        let split = try XCTUnwrap(TVRelayFraming.splitFrame(framed))
+        XCTAssertEqual(split.length, jsonData.count)
 
-        // Simulate length-prefixed framing (4-byte big-endian header + body)
-        var length = UInt32(jsonData.count).bigEndian
-        let header = Data(bytes: &length, count: 4)
-        let framed = header + jsonData
-
-        // Decode: read 4-byte header, then body
-        let readLength = framed.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        XCTAssertEqual(Int(readLength), jsonData.count)
-
-        let body = framed.suffix(from: 4)
-        let decoded = try JSONDecoder().decode(TVDisplayPayload.self, from: body)
+        let decoded = try JSONDecoder().decode(TVDisplayPayload.self, from: split.body)
         XCTAssertEqual(decoded.currentPose.id, "seated-mountain")
+        // Nil biofeedback metrics remain nil after wire round-trip.
+        XCTAssertNil(decoded.biofeedback.heartRate)
+        XCTAssertNil(decoded.biofeedback.sciScore)
     }
 
     // MARK: - Bonjour Service Type
@@ -68,5 +64,11 @@ final class TVDisplayCoordinatorTests: XCTestCase {
         let serviceType = "_bonhomme._tcp"
         XCTAssertTrue(serviceType.hasPrefix("_"))
         XCTAssertTrue(serviceType.hasSuffix("._tcp"))
+    }
+
+    func testFramingRejectsPathologicalLength() {
+        var huge = UInt32(TVRelayFraming.maxPayloadBytes + 100).bigEndian
+        let header = Data(bytes: &huge, count: 4)
+        XCTAssertNil(TVRelayFraming.decodeBodyLength(fromHeader: header))
     }
 }

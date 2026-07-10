@@ -20,7 +20,8 @@ final class AppState {
 
     let healthKitManager = HealthKitManager()
     let subscriptionManager = SubscriptionManager()
-    let tvDisplayCoordinator = TVDisplayCoordinator()
+    /// Shared with ExternalDisplaySceneDelegate so AirPlay UI sees the same payloads.
+    let tvDisplayCoordinator = TVDisplayCoordinator.shared
     let careKitBridge = CareKitBridge()
     let phoneConnectivityBridge = PhoneConnectivityBridge()
     let workoutStateStore = WorkoutStateStore()

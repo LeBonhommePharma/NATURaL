@@ -307,12 +307,13 @@ final class WorkoutFlowViewModel {
     }
 
     /// Builds a TVDisplayPayload from current state for TV relay.
-    /// Uses FeedbackEngine insights to populate the SCI score and trend.
+    /// HRV-only refresh (not `analyzeAll`) + wire-stripped biofeedback (nil HR/SCI OK).
     func buildTVPayload() -> TVDisplayPayload? {
         guard let pose = currentPose else { return nil }
 
         // Display path: refresh HRV only; avoid full multi-analyzer analyzeAll every tick.
         let insights = feedbackEngine.refreshHRVAndSnapshot()
+        // includeInsights defaults false — keeps Bonjour frame under TVRelayFraming.maxPayloadBytes.
         return TVDisplayPayload(
             currentPose: pose,
             poseTimeRemaining: poseTimeRemaining,

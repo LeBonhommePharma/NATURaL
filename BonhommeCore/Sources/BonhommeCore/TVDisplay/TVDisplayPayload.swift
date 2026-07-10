@@ -54,10 +54,13 @@ public struct BiofeedbackSnapshot: Codable, Sendable {
     // MARK: - Convenience Initializer from FeedbackEngine Insights
 
     /// Builds a snapshot by extracting SCI score/trend from the HRV insight.
+    /// - Parameter includeInsights: When `false` (default for wire/relay), omits the
+    ///   full insight dictionary so TV/Watch payloads stay under framing size limits.
     public init(
         heartRate: Double? = nil,
         activeCalories: Double = 0,
-        feedbackInsights: [SignalType: AnalysisInsight]
+        feedbackInsights: [SignalType: AnalysisInsight],
+        includeInsights: Bool = false
     ) {
         let hrvInsight = feedbackInsights[.heartRateVariability]
         self.init(
@@ -66,7 +69,21 @@ public struct BiofeedbackSnapshot: Codable, Sendable {
             sciTrend: hrvInsight?.trend.asSCITrend ?? .stable,
             activeCalories: activeCalories,
             timestamp: Date(),
-            insights: feedbackInsights
+            // Wire path: metrics only. Full insights bloat JSON (LocalizedString summaries).
+            insights: includeInsights ? feedbackInsights : [:]
+        )
+    }
+
+    /// Returns a copy with `insights` cleared — safe for Bonjour / WCSession size budgets.
+    public func strippedForRelay() -> BiofeedbackSnapshot {
+        BiofeedbackSnapshot(
+            heartRate: heartRate,
+            heartRateVariability: heartRateVariability,
+            sciScore: sciScore,
+            sciTrend: sciTrend,
+            activeCalories: activeCalories,
+            timestamp: timestamp,
+            insights: [:]
         )
     }
 }
@@ -89,6 +106,8 @@ public extension InsightTrend {
 /// Codable message sent from the iPhone workout session to the TV display
 /// (native tvOS via Bonjour or AirPlay second-screen). Contains everything
 /// the TV needs to render the current workout state without any HealthKit access.
+///
+/// Biofeedback fields may be nil (HR / SCI not yet available); TV views must tolerate that.
 public struct TVDisplayPayload: Codable, Sendable {
     /// The current chair yoga pose being performed.
     public let currentPose: Pose
@@ -96,7 +115,7 @@ public struct TVDisplayPayload: Codable, Sendable {
     public let poseTimeRemaining: TimeInterval
     /// Total duration of the current pose hold.
     public let totalPoseTime: TimeInterval
-    /// Real-time biofeedback metrics.
+    /// Real-time biofeedback metrics (nil HR/SCI is valid — show idle gauges).
     public let biofeedback: BiofeedbackSnapshot
     /// Total elapsed time since the workout session started.
     public let sessionElapsed: TimeInterval
@@ -120,7 +139,8 @@ public struct TVDisplayPayload: Codable, Sendable {
         self.currentPose = currentPose
         self.poseTimeRemaining = poseTimeRemaining
         self.totalPoseTime = totalPoseTime
-        self.biofeedback = biofeedback
+        // Always strip insight maps before storage — TV UI never renders them.
+        self.biofeedback = biofeedback.strippedForRelay()
         self.sessionElapsed = sessionElapsed
         self.isPaused = isPaused
         self.sequenceIndex = sequenceIndex
