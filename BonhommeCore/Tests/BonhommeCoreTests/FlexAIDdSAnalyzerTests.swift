@@ -377,6 +377,59 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
             "Most constrained pose should be first")
     }
 
+    /// analyzeBatch free-H cache + batch circular path must match per-pose analyze.
+    func testBatchMatchesSingleAnalyze() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let free = makeConformation(bondCount: 4, spread: 180)
+        let poses = [
+            makePose(conformation: makeConformation(bondCount: 4, spread: 20), dockingScore: -8.0),
+            makePose(conformation: makeConformation(bondCount: 4, spread: 40), dockingScore: -7.0),
+        ]
+
+        let batch = analyzer.analyzeBatch(freeConformation: free, dockingPoses: poses)
+        XCTAssertEqual(batch.count, 2)
+
+        for pose in poses {
+            guard let single = analyzer.analyze(freeConformation: free, dockingPose: pose) else {
+                XCTFail("single analyze failed")
+                continue
+            }
+            guard let match = batch.first(where: { $0.dockingScore == pose.dockingScore }) else {
+                XCTFail("missing batch result for score \(pose.dockingScore)")
+                continue
+            }
+            XCTAssertEqual(match.totalDeltaSConfig, single.totalDeltaSConfig, accuracy: 1e-9,
+                "Batch free-H cache must match single-pose analyze")
+            XCTAssertEqual(match.bondResults.count, single.bondResults.count)
+            let byId = Dictionary(uniqueKeysWithValues: single.bondResults.map { ($0.bondId, $0) })
+            for br in match.bondResults {
+                guard let s = byId[br.bondId] else {
+                    XCTFail("missing bond \(br.bondId)")
+                    continue
+                }
+                XCTAssertEqual(br.freeEntropy, s.freeEntropy, accuracy: 1e-9)
+                XCTAssertEqual(br.boundEntropy, s.boundEntropy, accuracy: 1e-9)
+            }
+        }
+    }
+
+    /// Batch circularShannonEntropy matches per-array circularShannonEntropy.
+    func testCircularEntropyBatchMatchesSingle() {
+        let calc = EntropyCalculator(binCount: 32)
+        let arrays: [[Double]] = [
+            (0..<200).map { -180 + 360 * Double($0) / 199 },
+            (0..<150).map { Double($0 % 40) - 20 },
+            (0..<100).map { 170 + Double($0 % 10) },
+        ]
+        let batch = calc.circularShannonEntropyBatch(arrays)
+        XCTAssertEqual(batch.count, arrays.count)
+        for i in arrays.indices {
+            let single = calc.circularShannonEntropy(arrays[i])
+            XCTAssertEqual(batch[i], single, accuracy: 1e-9,
+                "batch[\(i)] should match single circular entropy")
+        }
+    }
+
     // MARK: - Cross-Domain Validation
 
     /// Validate correlation between ΔS_config and ΔH_hrv using synthetic data.

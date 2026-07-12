@@ -1,9 +1,10 @@
 /*
  * entropy_neon.cpp — ARM NEON-accelerated Shannon entropy.
  *
- * Uses 128-bit NEON (float64x2_t, 2-wide double) for vectorized
- * min/max finding without an intermediate clean-copy allocation.
- * Histogram and entropy reduction remain scalar (irregular bin stores).
+ * Adaptive: 2-wide min/max; histogram scatter remains scalar.
+ * Circular: 2-wide floor-fmod wrap + bin index (parity with AVX2).
+ * Fixed-domain: 2-wide clamp + bin index.
+ * Entropy reduce over bins is always scalar (bin_count is small).
  */
 
 #if defined(__aarch64__)
@@ -98,6 +99,19 @@ double shannon_entropy_neon(const double* values, size_t count, int bin_count) {
     return entropy;
 }
 
+// Scalar wrap + bin — parity with core / AVX2 scalar fallback.
+static inline void circular_bin_scalar(double a, double bin_width, int bin_count,
+                                        std::vector<int>& bins) {
+    if (!std::isfinite(a)) return;
+    a = std::fmod(a, 360.0);
+    if (a > 180.0) a -= 360.0;
+    if (a < -180.0) a += 360.0;
+    int idx = static_cast<int>((a + 180.0) / bin_width);
+    if (idx < 0) idx = 0;
+    if (idx >= bin_count) idx = bin_count - 1;
+    bins[static_cast<size_t>(idx)]++;
+}
+
 double circular_shannon_entropy_neon(const double* angles, size_t count, int bin_count) {
     if (!angles || count < 2 || bin_count < 1) return 0.0;
 
@@ -107,22 +121,59 @@ double circular_shannon_entropy_neon(const double* angles, size_t count, int bin
     }
     if (clean_count < 2) return 0.0;
 
-    double bin_width = 360.0 / static_cast<double>(bin_count);
+    const double bin_width = 360.0 / static_cast<double>(bin_count);
+    const double inv_width = 1.0 / bin_width;
     std::vector<int> bins(static_cast<size_t>(bin_count), 0);
 
-    for (size_t i = 0; i < count; ++i) {
-        double a = angles[i];
-        if (!std::isfinite(a)) continue;
-        a = std::fmod(a, 360.0);
-        if (a > 180.0) a -= 360.0;
-        if (a < -180.0) a += 360.0;
-        int idx = static_cast<int>((a + 180.0) / bin_width);
-        if (idx < 0) idx = 0;
-        if (idx >= bin_count) idx = bin_count - 1;
-        bins[static_cast<size_t>(idx)]++;
+    // Vectorized wrap + bin (2-wide float64), mirrors AVX2 floor-based fmod.
+    // floor-based remainder + wrap to [-180,180) matches std::fmod for this domain.
+    const float64x2_t v360   = vdupq_n_f64(360.0);
+    const float64x2_t v180   = vdupq_n_f64(180.0);
+    const float64x2_t vn180  = vdupq_n_f64(-180.0);
+    const float64x2_t vinv_w = vdupq_n_f64(inv_width);
+    const float64x2_t vzero  = vdupq_n_f64(0.0);
+    const float64x2_t vimax  = vdupq_n_f64(static_cast<double>(bin_count - 1));
+
+    const size_t simd_end = (count / 2) * 2;
+    for (size_t i = 0; i < simd_end; i += 2) {
+        const double a0 = angles[i];
+        const double a1 = angles[i + 1];
+        if (!std::isfinite(a0) || !std::isfinite(a1)) {
+            circular_bin_scalar(a0, bin_width, bin_count, bins);
+            circular_bin_scalar(a1, bin_width, bin_count, bins);
+            continue;
+        }
+
+        float64x2_t a = vld1q_f64(&angles[i]);
+
+        // fmod: a - floor(a/360) * 360  (vrndmq = round toward −∞)
+        float64x2_t ratio = vdivq_f64(a, v360);
+        float64x2_t floored = vrndmq_f64(ratio);
+        a = vfmsq_f64(a, floored, v360); // a − floored * 360
+
+        // Wrap to [-180, 180)
+        uint64x2_t gt180 = vcgtq_f64(a, v180);
+        a = vbslq_f64(gt180, vsubq_f64(a, v360), a);
+        uint64x2_t ltn180 = vcltq_f64(a, vn180);
+        a = vbslq_f64(ltn180, vaddq_f64(a, v360), a);
+
+        // Bin index: floor((a + 180) * inv_width), clamp to [0, bin_count-1]
+        float64x2_t fidx = vmulq_f64(vaddq_f64(a, v180), vinv_w);
+        fidx = vrndmq_f64(fidx);
+        fidx = vmaxq_f64(fidx, vzero);
+        fidx = vminq_f64(fidx, vimax);
+
+        alignas(16) double idx_arr[2];
+        vst1q_f64(idx_arr, fidx);
+        bins[static_cast<size_t>(static_cast<int>(idx_arr[0]))]++;
+        bins[static_cast<size_t>(static_cast<int>(idx_arr[1]))]++;
     }
 
-    double total = static_cast<double>(clean_count);
+    for (size_t i = simd_end; i < count; ++i) {
+        circular_bin_scalar(angles[i], bin_width, bin_count, bins);
+    }
+
+    const double total = static_cast<double>(clean_count);
     double entropy = 0.0;
     for (int i = 0; i < bin_count; ++i) {
         if (bins[static_cast<size_t>(i)] > 0) {

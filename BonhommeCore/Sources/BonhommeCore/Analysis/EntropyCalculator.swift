@@ -86,6 +86,50 @@ public struct EntropyCalculator: Sendable {
         }
         #endif
 
+        return circularShannonEntropyScalar(angles)
+    }
+
+    /// Batch circular Shannon entropy for multiple independent angle arrays.
+    ///
+    /// Uses Accel batch C API when linked and data is large enough to amortize
+    /// dispatch (multi-bond FlexAID∆S path). Falls back to per-array
+    /// ``circularShannonEntropy(_:)`` (which may still use single-array Accel).
+    ///
+    /// - Parameter arrays: One angle sample array per histogram (e.g. one bond).
+    /// - Returns: Entropy in bits for each array, same order as `arrays`.
+    public func circularShannonEntropyBatch(_ arrays: [[Double]]) -> [Double] {
+        guard !arrays.isEmpty else { return [] }
+
+        #if BONHOMME_ACCEL
+        let total = arrays.reduce(0) { $0 + $1.count }
+        let maxLen = arrays.map(\.count).max() ?? 0
+        // Multi-item or large single: one C call beats N Swift/C round-trips.
+        if arrays.count >= 2 || maxLen >= AccelEntropy.delegationThreshold,
+           total >= AccelEntropy.delegationThreshold {
+            var flat: [Double] = []
+            var offsets: [Int] = []
+            var lengths: [Int] = []
+            flat.reserveCapacity(total)
+            offsets.reserveCapacity(arrays.count)
+            lengths.reserveCapacity(arrays.count)
+            for a in arrays {
+                offsets.append(flat.count)
+                lengths.append(a.count)
+                flat.append(contentsOf: a)
+            }
+            if let results = AccelEntropy.circularShannonEntropyBatch(
+                flat: flat, offsets: offsets, lengths: lengths, binCount: binCount
+            ) {
+                return results
+            }
+        }
+        #endif
+
+        return arrays.map { circularShannonEntropy($0) }
+    }
+
+    /// Scalar circular entropy (no Accel). Used by single-path and tests.
+    private func circularShannonEntropyScalar(_ angles: [Double]) -> Double {
         let clean = angles.filter { $0.isFinite }
         guard clean.count >= 2 else { return 0 }
 

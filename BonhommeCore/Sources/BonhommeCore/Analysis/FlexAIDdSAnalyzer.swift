@@ -345,6 +345,51 @@ public struct FlexAIDdSAnalyzer: Sendable {
         freeConformation: LigandConformation,
         dockingPose: DockingPose
     ) -> FlexAIDdSResult? {
+        analyze(
+            freeConformation: freeConformation,
+            dockingPose: dockingPose,
+            freeEntropyByBondId: nil
+        )
+    }
+
+    // MARK: - Batch Analysis
+
+    /// Analyze multiple docking poses for the same ligand (e.g., top N poses from FlexAID).
+    /// Returns results sorted by |ΔS_config| descending (most constrained first).
+    ///
+    /// Free-state bond entropies are computed **once** (via batch circular Shannon)
+    /// and reused for every pose — docking only changes the bound conformation.
+    public func analyzeBatch(
+        freeConformation: LigandConformation,
+        dockingPoses: [DockingPose]
+    ) -> [FlexAIDdSResult] {
+        guard !dockingPoses.isEmpty else { return [] }
+
+        // One free-state entropy pass for all poses (batch Accel when available).
+        let freeHs = entropyCalc.circularShannonEntropyBatch(
+            freeConformation.bonds.map(\.angles)
+        )
+        let freeEntropyByBondId = Dictionary(uniqueKeysWithValues:
+            zip(freeConformation.bonds.map(\.bondId), freeHs)
+        )
+
+        return dockingPoses.compactMap { pose in
+            analyze(
+                freeConformation: freeConformation,
+                dockingPose: pose,
+                freeEntropyByBondId: freeEntropyByBondId
+            )
+        }.sorted { abs($0.totalDeltaSConfig) > abs($1.totalDeltaSConfig) }
+    }
+
+    // MARK: - Internal pairing + batch bond entropy
+
+    /// Core analyze with optional precomputed free-state H per bondId.
+    private func analyze(
+        freeConformation: LigandConformation,
+        dockingPose: DockingPose,
+        freeEntropyByBondId: [String: Double]?
+    ) -> FlexAIDdSResult? {
         let boundConf = dockingPose.boundConformation
 
         guard !freeConformation.bonds.isEmpty else { return nil }
@@ -360,20 +405,11 @@ public struct FlexAIDdSAnalyzer: Sendable {
 
         let boundById = Dictionary(uniqueKeysWithValues: boundConf.bonds.map { ($0.bondId, $0) })
 
-        var bondResults: [BondEntropyResult] = []
-        bondResults.reserveCapacity(freeConformation.bonds.count)
-
-        for freeBond in freeConformation.bonds {
-            // freeIds == boundIds guarantees every free bondId exists in boundById
-            guard let boundBond = boundById[freeBond.bondId] else { return nil }
-            let hFree = entropyCalc.circularShannonEntropy(freeBond.angles)
-            let hBound = entropyCalc.circularShannonEntropy(boundBond.angles)
-            bondResults.append(BondEntropyResult(
-                bondId: freeBond.bondId,
-                freeEntropy: hFree,
-                boundEntropy: hBound
-            ))
-        }
+        guard let bondResults = bondEntropyResults(
+            freeBonds: freeConformation.bonds,
+            boundById: boundById,
+            freeEntropyByBondId: freeEntropyByBondId
+        ) else { return nil }
 
         return FlexAIDdSResult(
             substanceId: freeConformation.substanceId,
@@ -384,17 +420,55 @@ public struct FlexAIDdSAnalyzer: Sendable {
         )
     }
 
-    // MARK: - Batch Analysis
+    /// Per-bond free/bound entropies. Uses one batch circular call for all arrays
+    /// that still need computing (free missing from cache + all bound).
+    private func bondEntropyResults(
+        freeBonds: [TorsionalAngleDistribution],
+        boundById: [String: TorsionalAngleDistribution],
+        freeEntropyByBondId: [String: Double]?
+    ) -> [BondEntropyResult]? {
+        var freeH = freeEntropyByBondId ?? [:]
 
-    /// Analyze multiple docking poses for the same ligand (e.g., top N poses from FlexAID).
-    /// Returns results sorted by |ΔS_config| descending (most constrained first).
-    public func analyzeBatch(
-        freeConformation: LigandConformation,
-        dockingPoses: [DockingPose]
-    ) -> [FlexAIDdSResult] {
-        dockingPoses.compactMap { pose in
-            analyze(freeConformation: freeConformation, dockingPose: pose)
-        }.sorted { abs($0.totalDeltaSConfig) > abs($1.totalDeltaSConfig) }
+        // Collect angle arrays for a single batch: missing free H, then bound H in free-bond order.
+        var batchArrays: [[Double]] = []
+        var freeBatchBondIds: [String] = []
+        freeBatchBondIds.reserveCapacity(freeBonds.count)
+        batchArrays.reserveCapacity(freeBonds.count * 2)
+
+        for freeBond in freeBonds {
+            guard boundById[freeBond.bondId] != nil else { return nil }
+            if freeH[freeBond.bondId] == nil {
+                freeBatchBondIds.append(freeBond.bondId)
+                batchArrays.append(freeBond.angles)
+            }
+        }
+        for freeBond in freeBonds {
+            guard let boundBond = boundById[freeBond.bondId] else { return nil }
+            batchArrays.append(boundBond.angles)
+        }
+
+        let batchHs = entropyCalc.circularShannonEntropyBatch(batchArrays)
+        guard batchHs.count == batchArrays.count else { return nil }
+
+        var cursor = 0
+        for bondId in freeBatchBondIds {
+            freeH[bondId] = batchHs[cursor]
+            cursor += 1
+        }
+
+        var bondResults: [BondEntropyResult] = []
+        bondResults.reserveCapacity(freeBonds.count)
+        for freeBond in freeBonds {
+            guard let hFree = freeH[freeBond.bondId] else { return nil }
+            let hBound = batchHs[cursor]
+            cursor += 1
+            bondResults.append(BondEntropyResult(
+                bondId: freeBond.bondId,
+                freeEntropy: hFree,
+                boundEntropy: hBound
+            ))
+        }
+        return bondResults
     }
 
     // MARK: - Entropy-to-Energy Conversion
