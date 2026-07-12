@@ -207,4 +207,83 @@ final class EntropyCalculatorTests: XCTestCase {
         XCTAssertEqual(calc.shannonEntropy([.nan, .infinity, 500.0], domainMin: 300, domainMax: 1500), 0)
         XCTAssertEqual(calc.shannonEntropy([.nan, .nan], domainMin: 300, domainMax: 1500), 0)
     }
+
+    // MARK: - Batch circular Shannon
+
+    func testCircularBatchEmptyReturnsEmpty() {
+        XCTAssertEqual(calc.circularShannonEntropyBatch([]), [])
+    }
+
+    func testCircularBatchSingleArrayMatchesSingle() {
+        let a = (0..<300).map { -90.0 + Double($0) * 0.5 }
+        let batch = calc.circularShannonEntropyBatch([a])
+        XCTAssertEqual(batch.count, 1)
+        XCTAssertEqual(batch[0], calc.circularShannonEntropy(a), accuracy: 1e-12)
+    }
+
+    func testCircularBatchManyBondsMatchSingles() {
+        // FlexAID-style: 8 bonds with different spreads / centers
+        var arrays: [[Double]] = []
+        for b in 0..<8 {
+            let center = -150.0 + 40.0 * Double(b)
+            let spread = 10.0 + 15.0 * Double(b % 3)
+            let n = 80 + b * 17 // odd/even mix for SIMD tails
+            arrays.append((0..<n).map { i in
+                center - spread + 2 * spread * Double(i) / Double(max(n - 1, 1))
+            })
+        }
+        let batch = calc.circularShannonEntropyBatch(arrays)
+        XCTAssertEqual(batch.count, arrays.count)
+        for i in arrays.indices {
+            XCTAssertEqual(batch[i], calc.circularShannonEntropy(arrays[i]), accuracy: 1e-12,
+                           "batch[\(i)] vs single")
+        }
+    }
+
+    func testCircularBatchWithNaNMatchesFiniteOnly() {
+        // Interleave non-finite *alongside* clean samples (do not replace them).
+        let clean = (0..<200).map { Double($0 % 50) - 25 }
+        var dirty: [Double] = []
+        dirty.reserveCapacity(clean.count + 20)
+        for (i, v) in clean.enumerated() {
+            if i % 20 == 0 { dirty.append(.nan) }
+            if i % 20 == 10 { dirty.append(.infinity) }
+            dirty.append(v)
+        }
+        dirty.append(-.infinity)
+
+        let batch = calc.circularShannonEntropyBatch([dirty, clean])
+        XCTAssertEqual(batch.count, 2)
+        XCTAssertEqual(batch[0], batch[1], accuracy: 1e-12)
+        XCTAssertEqual(batch[0], calc.circularShannonEntropy(clean), accuracy: 1e-12)
+    }
+
+    func testCircularBatchWraparoundMultiRevolution() {
+        // Multi-turn equivalents of a narrow cluster near −10°
+        let primary = (0..<400).map { _ in -10.0 + Double.random(in: -0.5...0.5) }
+        let wrapped = primary.map { $0 + 360.0 } + primary.map { $0 - 720.0 }
+        let batch = calc.circularShannonEntropyBatch([primary, wrapped])
+        // Wrapped has 2× samples of same shape → same H for uniform noise cluster
+        XCTAssertEqual(batch[0], calc.circularShannonEntropy(primary), accuracy: 1e-12)
+        XCTAssertLessThan(batch[0], 2.0)
+        XCTAssertLessThan(batch[1], 2.5)
+    }
+
+    func testCircularBatchDegenerateAndUniform() {
+        let deg = Array(repeating: 33.0, count: 100)
+        let uniform = (0..<512).map { -180.0 + 360.0 * Double($0) / 512.0 }
+        let batch = calc.circularShannonEntropyBatch([deg, uniform, [1.0], []])
+        XCTAssertEqual(batch[0], 0, accuracy: 1e-12)
+        XCTAssertGreaterThan(batch[1], log2(32.0) * 0.9)
+        XCTAssertEqual(batch[2], 0, accuracy: 1e-12) // single value
+        XCTAssertEqual(batch[3], 0, accuracy: 1e-12) // empty
+    }
+
+    func testBinCountClampMinimumOne() {
+        let c = EntropyCalculator(binCount: 0)
+        XCTAssertEqual(c.binCount, 1)
+        // Should not crash
+        _ = c.circularShannonEntropy([1, 2, 3, 4])
+        _ = c.circularShannonEntropyBatch([[1, 2, 3], [4, 5, 6]])
+    }
 }

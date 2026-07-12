@@ -103,3 +103,55 @@ TEST_CASE("Z-score outliers: flags |z| > 2", "[statistics]") {
         REQUIRE(flags[i] == 0);
     }
 }
+
+TEST_CASE("Z-score: non-finite values flagged as outliers", "[statistics]") {
+    std::vector<double> vals = {1.0, 2.0, 3.0, 4.0, 5.0, NAN, INFINITY};
+    std::vector<int32_t> flags(vals.size(), -1);
+    REQUIRE(ba_zscore_outliers(vals.data(), vals.size(), 2.0, flags.data()) == BA_OK);
+    REQUIRE(flags[5] == 1);
+    REQUIRE(flags[6] == 1);
+    // Finite cluster should not all be outliers
+    int finite_outliers = 0;
+    for (int i = 0; i < 5; ++i) finite_outliers += flags[i];
+    REQUIRE(finite_outliers == 0);
+}
+
+TEST_CASE("Z-score: zero variance clears all flags", "[statistics]") {
+    std::vector<double> vals(20, 7.0);
+    std::vector<int32_t> flags(vals.size(), -1);
+    REQUIRE(ba_zscore_outliers(vals.data(), vals.size(), 2.0, flags.data()) == BA_OK);
+    for (auto f : flags) REQUIRE(f == 0);
+}
+
+TEST_CASE("Z-score: invalid threshold", "[statistics]") {
+    double v[3] = {1, 2, 3};
+    int32_t flags[3] = {};
+    REQUIRE(ba_zscore_outliers(v, 3, 0.0, flags) == BA_ERR_INVALID_PARAM);
+    REQUIRE(ba_zscore_outliers(v, 3, -1.0, flags) == BA_ERR_INVALID_PARAM);
+}
+
+TEST_CASE("Stats: all NaN returns zero mean and SD", "[statistics]") {
+    std::vector<double> vals = {NAN, NAN, INFINITY};
+    double mean = -1, sd = -1;
+    REQUIRE(ba_descriptive_stats(vals.data(), vals.size(), &mean, &sd) == BA_OK);
+    REQUIRE(mean == 0.0);
+    REQUIRE(sd == 0.0);
+}
+
+TEST_CASE("Stats: null pointer errors", "[statistics]") {
+    double v[2] = {1, 2}, mean = 0, sd = 0;
+    REQUIRE(ba_descriptive_stats(nullptr, 2, &mean, &sd) == BA_ERR_NULL_PTR);
+    REQUIRE(ba_descriptive_stats(v, 2, nullptr, &sd) == BA_ERR_NULL_PTR);
+    REQUIRE(ba_descriptive_stats(v, 0, &mean, &sd) == BA_ERR_INSUFFICIENT_DATA);
+}
+
+TEST_CASE("Pairwise: null and stride errors", "[pairwise]") {
+    double data[2] = {1, 2};
+    double scores[1] = {};
+    auto fn = [](const void*, const void*, void*) -> double { return 1.0; };
+    REQUIRE(ba_pairwise_scores(nullptr, 2, sizeof(double), fn, nullptr, scores)
+            == BA_ERR_NULL_PTR);
+    REQUIRE(ba_pairwise_scores(data, 2, 0, fn, nullptr, scores) == BA_ERR_INVALID_PARAM);
+    REQUIRE(ba_pairwise_scores(data, 1, sizeof(double), fn, nullptr, scores)
+            == BA_ERR_INSUFFICIENT_DATA);
+}

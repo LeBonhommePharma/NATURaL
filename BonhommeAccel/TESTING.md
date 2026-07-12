@@ -97,8 +97,8 @@ rm -rf BonhommeAccel/build
 | `BA_ENABLE_ROCM` | `OFF` | ROCm/HIP backend (requires HIP; runtime device probe) |
 | `BA_ENABLE_METAL` | `ON` on Apple, else `OFF` | Metal GPU backend (Apple Silicon / macOS) |
 | `BA_ENABLE_AVX2` | `ON` | AVX2 SIMD (x86_64) |
-| `BA_ENABLE_AVX512` | `ON` | AVX-512 flags reserved for future sources |
-| `BA_ENABLE_NEON` | `ON` | ARM NEON (arm64 / aarch64) |
+| `BA_ENABLE_AVX512` | `ON` | AVX-512 kernels on x86_64 only (`entropy_avx512` / `correlation_avx512`); off on arm64 |
+| `BA_ENABLE_NEON` | `ON` | ARM NEON (arm64 / aarch64): adaptive min/max, circular wrap+bin, fixed clamp+bin, Pearson |
 
 Example: host CPU SIMD only, no OpenMP / no Metal:
 
@@ -120,11 +120,38 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release \
 
 `ba_detect_best_backend()` picks the first available compiled backend with a live device:
 
-1. CUDA → 2. ROCm → 3. Metal → 4. NEON/AVX2 → 5. OpenMP → 6. Scalar
+1. CUDA → 2. ROCm → 3. Metal → 4. NEON / AVX2 / AVX-512 (when compiled + CPU supports) → 5. OpenMP → 6. Scalar
 
-On Apple Silicon with default options, expect **Metal**. Metal MSL kernels use **float32** (Apple GPUs lack double); histogram bins remain exact integers and entropy is reduced on the host in double. GPU kernel failures fall back to NEON/AVX2/scalar. Pearson under Metal uses float32 GPU reduction with double SIMD/scalar fallback on failure.
+On Apple Silicon with default options, expect **Metal** as the *advertised* backend. Size-aware dispatch still runs **NEON** (or scalar) when:
 
-CUDA/ROCm paths use full double precision on device.
+| API | GPU used only if |
+|-----|------------------|
+| Single Shannon / circular | `n ≥ 8192` |
+| Pearson | `n ≥ 16384` |
+| Multi-item batch | `max_len ≥ 8192` **or** total elements ≥ 32768 (Metal multi-histogram); otherwise OpenMP+NEON / NEON loop |
+
+Metal MSL kernels use **float32** (Apple GPUs lack double); histogram bins remain exact integers and entropy is reduced on the host in double. GPU kernel / alloc failures return a **−1** sentinel (entropy) or NaN (Pearson) and fall back to NEON/AVX2/scalar. CUDA/ROCm use full double on device with the same failure-sentinel pattern.
+
+### NEON coverage (arm64)
+
+| Kernel | NEON work |
+|--------|-----------|
+| Adaptive Shannon | 2-wide min/max; scalar histogram |
+| **Circular Shannon** | 2-wide floor-fmod wrap + bin index (AVX2 parity); scalar bin scatter |
+| Fixed-domain Shannon | 2-wide clamp + bin index |
+| Pearson | 2-wide sums/moments after finite-pair filter |
+| Batch | Serial or OpenMP over items; each item uses NEON kernels when compiled |
+
+Linear regression, incomplete beta, and descriptive stats remain scalar (or OpenMP for pairwise callbacks).
+
+### FlexAIDdS Swift integration (Path A, Accel optional)
+
+When analyzing ligands, `FlexAIDdSAnalyzer`:
+
+1. Packs free + bound bond angle arrays into `EntropyCalculator.circularShannonEntropyBatch`
+2. On `analyzeBatch`, precomputes free-state H **once** and reuses it for every pose
+
+Path A XCTest covers this without linking Accel. With `BONHOMME_ACCEL=1`, the batch path hits `ba_circular_shannon_entropy_batch`.
 
 ---
 
@@ -132,13 +159,25 @@ CUDA/ROCm paths use full double precision on device.
 
 Catch2 sources under `BonhommeAccel/tests/`:
 
-- `test_entropy.cpp` — Shannon / circular Shannon entropy
-- `test_correlation.cpp` — correlation kernels
-- `test_pairwise.cpp` — pairwise stats
-- `test_incomplete_beta.cpp` — incomplete beta / significance helpers
-- `reference_values.h` — shared reference constants
+| File | Tags / focus |
+|------|----------------|
+| `test_entropy.cpp` | Adaptive / circular / fixed / batch / FlexAID-style / backend parity |
+| **`test_circular_simd.cpp`** | Wrap edges, multi-revolution, odd-length SIMD tails, NaN parity, size-threshold parity, FlexAID multi-bond batch packing, API error paths |
+| `test_correlation.cpp` | Pearson / regression + large-N GPU path + NaN filter |
+| `test_pairwise.cpp` | Pairwise scores + descriptive stats / z-score (incl. NaN) |
+| `test_incomplete_beta.cpp` | Incomplete beta / Pearson p-values |
+| `reference_values.h` | `ENTROPY_TOL`, `CORR_TOL`, `DEFAULT_BIN_COUNT`, … |
 
-Executable: `ba_tests` (discovered into CTest via `catch_discover_tests`).
+Executable: `ba_tests` (CTest via `catch_discover_tests`). Expect on the order of **~80–90** discovered tests after a clean configure (count grows with new `TEST_CASE`s).
+
+### Useful filters
+
+```bash
+ctest --test-dir build -R circular --output-on-failure
+ctest --test-dir build -R 'simd|batch|flexaids' --output-on-failure
+./build/ba_tests "[entropy][circular]" -s
+./build/ba_tests "[correlation]" -s
+```
 
 ---
 

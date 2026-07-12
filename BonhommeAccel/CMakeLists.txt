@@ -399,6 +399,7 @@ if(BA_BUILD_TESTS)
 
     add_executable(ba_tests
         tests/test_entropy.cpp
+        tests/test_circular_simd.cpp
         tests/test_correlation.cpp
         tests/test_pairwise.cpp
         tests/test_incomplete_beta.cpp

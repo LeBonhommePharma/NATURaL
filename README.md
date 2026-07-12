@@ -913,13 +913,19 @@ Concise truth table against current code. Details: [POKEDRUG_PLAN.md](POKEDRUG_P
 # Path A — Swift-only BonhommeCore (default; no Accel link required)
 cd BonhommeCore && swift test
 # or: make test
+# Focused:
+#   swift test --filter EntropyCalculatorTests
+#   swift test --filter FlexAIDdSAnalyzerTests
 
-# Path B — BonhommeAccel C++ (opt-in)
+# Path B — BonhommeAccel C++ (opt-in; ~85 Catch2 cases)
 make accel   # cmake + build + ctest
+# Focused: ctest --test-dir BonhommeAccel/build -R 'circular|simd|batch' --output-on-failure
 
 # Xcode
 xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
+
+Full Accel dual-path notes, GPU size thresholds, and NEON coverage: [`BonhommeAccel/TESTING.md`](BonhommeAccel/TESTING.md).
 
 ### 🏅 Arena Badges Earned
 
@@ -928,12 +934,14 @@ xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhon
 | 🟢 `LocalizedStringTests` | 5 | Codable, hashable, EN/FR resolution |
 | 🟢 `PoseTests` | 5 | Init, codable, difficulty/category enums |
 | 🟢 `PoseCatalogTests` | 10 | Unique IDs, bilingual coverage, distribution |
-| 🟢 `WorkoutPlanTests` | 4 | Duration calc, codable, edge cases |
+| 🟢 `WorkoutPlanTests` | 13 | Duration calc, codable, workout kinds / BPM |
 | 🟢 `TVDisplayPayloadTests` | 4 | Codable roundtrip, nil biofeedback, SCI trend |
 | 🟢 `WorkoutResultTests` | 3 | Result codable, nil heart rate |
-| 🟡 `AnalyzerTests` | 17 | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal, EntropyCalculator edge cases + parity |
-| 🟡 `DrugResponseAnalyzerTests` | 24 | Sympathomimetic/parasympathomimetic detection, dose-response curves, profile matching, batch aggregation, Cohen's d, AUC |
-| 🔴 `FlexAIDdSAnalyzerTests` | 27 | Torsional entropy, ΔS_config, kcal/mol conversion, cross-domain validation, BindingEntropyProfile registry, DockingInsightAnalyzer pipeline |
+| 🟡 `AnalyzerTests` | 17 | Shannon entropy, SCI scoring, medication adherence, FeedbackEngine multi-signal |
+| 🟡 `EntropyCalculatorTests` | ~20 | Linear/circular/fixed domain, NaN guards, **batch circular** parity, wraparound |
+| 🟡 `DrugResponseAnalyzerTests` | 24 | Sympathomimetic/parasympathomimetic detection, dose-response, Cohen's d, AUC |
+| 🔴 `FlexAIDdSAnalyzerTests` | ~37 | Torsional ΔS_config, **analyzeBatch free-H cache**, multi-bond batch parity, cross-domain, docking insights |
+| 🔵 `BonhommeAccel ctest` | ~85 | NEON circular SIMD, batch packing, correlation, stats, incomplete beta (Path B) |
 | 🟢 `WorkoutFlowViewModelTests` | 3 | Plan structure, TV payload, localization |
 | 🟢 `TVDisplayCoordinatorTests` | 3 | Payload size <10KB, framing, Bonjour type |
 | 🟣 `WorkoutFlowUITests` | 5 | Home screen, navigation, countdown, a11y |

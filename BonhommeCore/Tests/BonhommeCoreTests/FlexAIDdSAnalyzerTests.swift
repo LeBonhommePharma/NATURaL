@@ -430,6 +430,101 @@ final class FlexAIDdSAnalyzerTests: XCTestCase {
         }
     }
 
+    /// Empty pose list → empty results (no crash).
+    func testAnalyzeBatchEmptyPoses() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let free = makeConformation(bondCount: 2, spread: 180)
+        let results = analyzer.analyzeBatch(freeConformation: free, dockingPoses: [])
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    /// Free-state H for each bond is identical across poses when free conformation is shared.
+    func testAnalyzeBatchReusesIdenticalFreeEntropy() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let free = makeConformation(bondCount: 5, spread: 160)
+        let poses = (0..<4).map { i in
+            makePose(
+                conformation: makeConformation(bondCount: 5, spread: Double(10 + i * 15)),
+                dockingScore: -5.0 - Double(i)
+            )
+        }
+        let batch = analyzer.analyzeBatch(freeConformation: free, dockingPoses: poses)
+        XCTAssertEqual(batch.count, 4)
+
+        // Free entropy per bondId must be the same in every pose result
+        let referenceFree = Dictionary(uniqueKeysWithValues:
+            batch[0].bondResults.map { ($0.bondId, $0.freeEntropy) }
+        )
+        for result in batch {
+            for br in result.bondResults {
+                guard let ref = referenceFree[br.bondId] else {
+                    XCTFail("missing free H for \(br.bondId)")
+                    continue
+                }
+                XCTAssertEqual(br.freeEntropy, ref, accuracy: 1e-12,
+                    "Free H for \(br.bondId) must be cached across poses")
+            }
+        }
+    }
+
+    /// Large multi-bond ligand: batch path stays consistent with single analyze.
+    func testLargeMultiBondBatchParity() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let free = makeConformation(bondCount: 12, spread: 180)
+        let pose = makePose(conformation: makeConformation(bondCount: 12, spread: 12),
+                            dockingScore: -10.0)
+        let single = analyzer.analyze(freeConformation: free, dockingPose: pose)
+        let batch = analyzer.analyzeBatch(freeConformation: free, dockingPoses: [pose])
+        XCTAssertNotNil(single)
+        XCTAssertEqual(batch.count, 1)
+        guard let s = single, let b = batch.first else { return }
+        XCTAssertEqual(b.totalDeltaSConfig, s.totalDeltaSConfig, accuracy: 1e-9)
+        XCTAssertEqual(b.bondResults.count, 12)
+        XCTAssertTrue(b.bindingDetected)
+    }
+
+    /// Mismatched bond count in one of several poses is dropped from batch.
+    func testAnalyzeBatchSkipsMismatchedPoses() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let free = makeConformation(bondCount: 3, spread: 180)
+        let good = makePose(conformation: makeConformation(bondCount: 3, spread: 20),
+                            dockingScore: -8.0)
+        let bad = makePose(conformation: makeConformation(bondCount: 2, spread: 20),
+                           dockingScore: -9.0)
+        let results = analyzer.analyzeBatch(freeConformation: free, dockingPoses: [good, bad])
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].dockingScore, -8.0)
+    }
+
+    /// Per-bond free/bound from analyze equals entropy(of:) for same angle arrays.
+    func testAnalyzeMatchesEntropyOfPerBond() {
+        let analyzer = FlexAIDdSAnalyzer()
+        let freeBonds = [
+            makeAngles(bondId: "a", spread: 100, count: 180),
+            makeAngles(bondId: "b", center: 40, spread: 80, count: 150),
+        ]
+        let boundBonds = [
+            makeAngles(bondId: "a", spread: 12, count: 180),
+            makeAngles(bondId: "b", center: 40, spread: 8, count: 150),
+        ]
+        let free = LigandConformation(
+            substanceId: "x", name: LocalizedString(en: "x", fr: "x"), bonds: freeBonds
+        )
+        let bound = LigandConformation(
+            substanceId: "x", name: LocalizedString(en: "x", fr: "x"), bonds: boundBonds
+        )
+        let pose = makePose(conformation: bound)
+        guard let result = analyzer.analyze(freeConformation: free, dockingPose: pose) else {
+            return XCTFail("analyze failed")
+        }
+        for br in result.bondResults {
+            let freeDist = freeBonds.first { $0.bondId == br.bondId }!
+            let boundDist = boundBonds.first { $0.bondId == br.bondId }!
+            XCTAssertEqual(br.freeEntropy, analyzer.entropy(of: freeDist), accuracy: 1e-12)
+            XCTAssertEqual(br.boundEntropy, analyzer.entropy(of: boundDist), accuracy: 1e-12)
+        }
+    }
+
     // MARK: - Cross-Domain Validation
 
     /// Validate correlation between ΔS_config and ΔH_hrv using synthetic data.
