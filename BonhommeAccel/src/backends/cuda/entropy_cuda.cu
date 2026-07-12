@@ -112,13 +112,16 @@ static double entropy_from_bins_host(const int* bins, int bin_count, int total) 
 // Batch Entropy
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Failure sentinel: valid Shannon entropy is always >= 0. Caller falls back to CPU.
+static constexpr double kCudaFail = -1.0;
+
 void shannon_entropy_batch_cuda(
     const double* flat, const size_t* offsets, const size_t* lengths,
     size_t batch_count, int bin_count, double* out_entropies
 ) {
     if (!cuda_is_available() || !flat || !offsets || !lengths || !out_entropies || bin_count < 1) {
         if (out_entropies) {
-            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kCudaFail;
         }
         return;
     }
@@ -138,7 +141,7 @@ void shannon_entropy_batch_cuda(
         cudaMalloc(&d_bins, bin_count * sizeof(int)) != cudaSuccess) {
         if (d_flat) cudaFree(d_flat);
         if (d_bins) cudaFree(d_bins);
-        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kCudaFail;
         return;
     }
 
@@ -184,7 +187,7 @@ void shannon_entropy_batch_cuda(
 
         if (cudaMemcpy(h_bins.data(), d_bins, bin_count * sizeof(int),
                        cudaMemcpyDeviceToHost) != cudaSuccess) {
-            out_entropies[b] = 0.0;
+            out_entropies[b] = kCudaFail;
             continue;
         }
         out_entropies[b] = entropy_from_bins_host(h_bins.data(), bin_count, clean_count);
@@ -200,7 +203,7 @@ void circular_shannon_entropy_batch_cuda(
 ) {
     if (!cuda_is_available() || !flat || !offsets || !lengths || !out_entropies || bin_count < 1) {
         if (out_entropies) {
-            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kCudaFail;
         }
         return;
     }
@@ -220,7 +223,7 @@ void circular_shannon_entropy_batch_cuda(
         cudaMalloc(&d_bins, bin_count * sizeof(int)) != cudaSuccess) {
         if (d_flat) cudaFree(d_flat);
         if (d_bins) cudaFree(d_bins);
-        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kCudaFail;
         return;
     }
 
@@ -253,7 +256,7 @@ void circular_shannon_entropy_batch_cuda(
 
         if (cudaMemcpy(h_bins.data(), d_bins, bin_count * sizeof(int),
                        cudaMemcpyDeviceToHost) != cudaSuccess) {
-            out_entropies[b] = 0.0;
+            out_entropies[b] = kCudaFail;
             continue;
         }
         out_entropies[b] = entropy_from_bins_host(h_bins.data(), bin_count, clean_count);
@@ -267,7 +270,7 @@ double shannon_entropy_cuda(const double* values, size_t count, int bin_count) {
     if (!values || count < 2 || bin_count < 1) return 0.0;
     size_t offset = 0;
     size_t length = count;
-    double out = 0.0;
+    double out = kCudaFail;
     shannon_entropy_batch_cuda(values, &offset, &length, 1, bin_count, &out);
     return out;
 }
@@ -276,7 +279,7 @@ double circular_shannon_entropy_cuda(const double* angles, size_t count, int bin
     if (!angles || count < 2 || bin_count < 1) return 0.0;
     size_t offset = 0;
     size_t length = count;
-    double out = 0.0;
+    double out = kCudaFail;
     circular_shannon_entropy_batch_cuda(angles, &offset, &length, 1, bin_count, &out);
     return out;
 }

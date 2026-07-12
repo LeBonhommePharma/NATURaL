@@ -1,5 +1,7 @@
 /*
  * statistics.cpp — Descriptive statistics and z-score outlier detection (scalar).
+ *
+ * Filters non-finite values (NaN/Inf) for parity with correlation/entropy paths.
  */
 
 #include "statistics.h"
@@ -12,19 +14,24 @@ DescriptiveStats descriptive_stats(const double* values, size_t count) {
     if (!values || count < 1) return result;
 
     double sum = 0.0;
+    size_t n = 0;
     for (size_t i = 0; i < count; ++i) {
+        if (!std::isfinite(values[i])) continue;
         sum += values[i];
+        ++n;
     }
-    result.mean = sum / static_cast<double>(count);
+    if (n < 1) return result;
 
-    if (count < 2) return result;
+    result.mean = sum / static_cast<double>(n);
+    if (n < 2) return result;
 
     double var_sum = 0.0;
     for (size_t i = 0; i < count; ++i) {
+        if (!std::isfinite(values[i])) continue;
         double d = values[i] - result.mean;
         var_sum += d * d;
     }
-    result.sd = std::sqrt(var_sum / static_cast<double>(count - 1));
+    result.sd = std::sqrt(var_sum / static_cast<double>(n - 1));
 
     return result;
 }
@@ -46,6 +53,11 @@ void zscore_outliers(const double* values, size_t count,
     }
 
     for (size_t i = 0; i < count; ++i) {
+        if (!std::isfinite(values[i])) {
+            // Non-finite inputs are treated as outliers (not a valid z-score).
+            out_flags[i] = 1;
+            continue;
+        }
         double z = (values[i] - stats.mean) / stats.sd;
         out_flags[i] = (std::abs(z) > threshold) ? 1 : 0;
     }

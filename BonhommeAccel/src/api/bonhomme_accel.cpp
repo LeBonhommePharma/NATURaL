@@ -5,7 +5,8 @@
  * backend via ba::get_backend(), and translates C++ results to C structs.
  *
  * Dispatch: CUDA / ROCm / Metal / NEON / AVX2 / OpenMP when compiled in,
- * else scalar core. GPU paths fall back to SIMD/scalar on kernel failure.
+ * else scalar core. GPU paths fall back to SIMD/scalar on kernel failure
+ * and when N is below the GPU break-even threshold (launch + sync dominate).
  */
 
 #include "BonhommeAccel.h"
@@ -39,13 +40,27 @@
 #endif
 
 #include <cmath>
+#include <cstddef>
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GPU break-even thresholds
+//
+// Histogram entropy is O(n) with a tiny bin reduce. GPU path pays:
+//   buffer alloc + H2D + kernel launch + waitUntilCompleted/D2H.
+// On Apple Silicon that is typically multi-millisecond; NEON finishes
+// typical SCI/HRV and docking windows (64–4k samples) in microseconds.
+// Tuned conservatively so Metal/CUDA only run when they can win.
+// ═══════════════════════════════════════════════════════════════════════════
+
+static constexpr size_t kGpuEntropyMinN  = 8192;
+static constexpr size_t kGpuPearsonMinN  = 16384;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Version
 // ═══════════════════════════════════════════════════════════════════════════
 
 const char* ba_version(void) {
-    return "1.1.0";
+    return "1.1.1";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,7 +103,7 @@ const char* ba_status_string(BAStatus status) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CPU fallbacks (used when GPU returns failure sentinel or for missing kernels)
+// CPU fallbacks (used when GPU returns failure sentinel or for small-N skip)
 // ═══════════════════════════════════════════════════════════════════════════
 
 static double fallback_shannon(const double* values, size_t count, int bin_count) {
@@ -121,19 +136,89 @@ static double fallback_pearson(const double* x, const double* y, size_t count) {
 #endif
 }
 
+/** Best CPU batch path: OpenMP (SIMD per item) > SIMD loop > scalar. */
+static void fallback_shannon_batch(const double* values_flat,
+                                    const size_t* offsets, const size_t* lengths,
+                                    size_t batch_count, int bin_count,
+                                    double* out_entropies) {
+#if defined(BA_HAS_OPENMP)
+    ba::omp::shannon_entropy_batch_omp(values_flat, offsets, lengths,
+                                        batch_count, bin_count, out_entropies);
+#elif defined(BA_HAS_AVX2)
+    ba::simd::shannon_entropy_batch_avx2(values_flat, offsets, lengths,
+                                          batch_count, bin_count, out_entropies);
+#elif defined(BA_HAS_NEON)
+    for (size_t b = 0; b < batch_count; ++b) {
+        out_entropies[b] = ba::simd::shannon_entropy_neon(
+            values_flat + offsets[b], lengths[b], bin_count);
+    }
+#else
+    ba::core::shannon_entropy_batch(values_flat, offsets, lengths,
+                                     batch_count, bin_count, out_entropies);
+#endif
+}
+
+static void fallback_circular_batch(const double* values_flat,
+                                     const size_t* offsets, const size_t* lengths,
+                                     size_t batch_count, int bin_count,
+                                     double* out_entropies) {
+#if defined(BA_HAS_OPENMP)
+    ba::omp::circular_shannon_entropy_batch_omp(values_flat, offsets, lengths,
+                                                 batch_count, bin_count, out_entropies);
+#elif defined(BA_HAS_NEON)
+    for (size_t b = 0; b < batch_count; ++b) {
+        out_entropies[b] = ba::simd::circular_shannon_entropy_neon(
+            values_flat + offsets[b], lengths[b], bin_count);
+    }
+#elif defined(BA_HAS_AVX2)
+    for (size_t b = 0; b < batch_count; ++b) {
+        out_entropies[b] = ba::simd::circular_shannon_entropy_avx2(
+            values_flat + offsets[b], lengths[b], bin_count);
+    }
+#else
+    ba::core::circular_shannon_entropy_batch(
+        values_flat, offsets, lengths, batch_count, bin_count, out_entropies);
+#endif
+}
+
+static bool is_gpu_backend(BABackend b) {
+    return b == BA_BACKEND_METAL || b == BA_BACKEND_CUDA || b == BA_BACKEND_ROCM;
+}
+
+/** Max array length in a batch (for GPU break-even decisions). */
+static size_t batch_max_length(const size_t* lengths, size_t batch_count) {
+    size_t m = 0;
+    for (size_t b = 0; b < batch_count; ++b) {
+        if (lengths[b] > m) m = lengths[b];
+    }
+    return m;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Internal dispatch helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
 static double dispatch_shannon(const double* values, size_t count, int bin_count) {
-    switch (ba::get_backend()) {
+    BABackend be = ba::get_backend();
+
+    // Skip GPU for small N — launch/sync cost dwarfs the work.
+    if (is_gpu_backend(be) && count < kGpuEntropyMinN) {
+        return fallback_shannon(values, count, bin_count);
+    }
+
+    switch (be) {
 #if defined(BA_HAS_CUDA)
-        case BA_BACKEND_CUDA:
-            return ba::cuda::shannon_entropy_cuda(values, count, bin_count);
+        case BA_BACKEND_CUDA: {
+            double r = ba::cuda::shannon_entropy_cuda(values, count, bin_count);
+            // Failure sentinel (-1); valid entropy is always >= 0.
+            return (r >= 0.0) ? r : fallback_shannon(values, count, bin_count);
+        }
 #endif
 #if defined(BA_HAS_ROCM)
-        case BA_BACKEND_ROCM:
-            return ba::rocm::shannon_entropy_hip(values, count, bin_count);
+        case BA_BACKEND_ROCM: {
+            double r = ba::rocm::shannon_entropy_hip(values, count, bin_count);
+            return (r >= 0.0) ? r : fallback_shannon(values, count, bin_count);
+        }
 #endif
 #if defined(BA_HAS_METAL)
         case BA_BACKEND_METAL: {
@@ -156,14 +241,24 @@ static double dispatch_shannon(const double* values, size_t count, int bin_count
 }
 
 static double dispatch_circular(const double* angles, size_t count, int bin_count) {
-    switch (ba::get_backend()) {
+    BABackend be = ba::get_backend();
+
+    if (is_gpu_backend(be) && count < kGpuEntropyMinN) {
+        return fallback_circular(angles, count, bin_count);
+    }
+
+    switch (be) {
 #if defined(BA_HAS_CUDA)
-        case BA_BACKEND_CUDA:
-            return ba::cuda::circular_shannon_entropy_cuda(angles, count, bin_count);
+        case BA_BACKEND_CUDA: {
+            double r = ba::cuda::circular_shannon_entropy_cuda(angles, count, bin_count);
+            return (r >= 0.0) ? r : fallback_circular(angles, count, bin_count);
+        }
 #endif
 #if defined(BA_HAS_ROCM)
-        case BA_BACKEND_ROCM:
-            return ba::rocm::circular_shannon_entropy_hip(angles, count, bin_count);
+        case BA_BACKEND_ROCM: {
+            double r = ba::rocm::circular_shannon_entropy_hip(angles, count, bin_count);
+            return (r >= 0.0) ? r : fallback_circular(angles, count, bin_count);
+        }
 #endif
 #if defined(BA_HAS_METAL)
         case BA_BACKEND_METAL: {
@@ -189,24 +284,50 @@ static void dispatch_shannon_batch(const double* values_flat,
                                     const size_t* offsets, const size_t* lengths,
                                     size_t batch_count, int bin_count,
                                     double* out_entropies) {
-    switch (ba::get_backend()) {
+    BABackend be = ba::get_backend();
+    const size_t max_len = batch_max_length(lengths, batch_count);
+
+    // Metal/CUDA batch today is serial per-item GPU wait. For multi-item
+    // batches (FlexAIDdS multi-bond) or sub-threshold sizes, OpenMP+SIMD wins.
+    if (is_gpu_backend(be)) {
+        const bool multi = batch_count > 1;
+        const bool small = max_len < kGpuEntropyMinN;
+        if (multi || small) {
+            fallback_shannon_batch(values_flat, offsets, lengths,
+                                   batch_count, bin_count, out_entropies);
+            return;
+        }
+    }
+
+    switch (be) {
 #if defined(BA_HAS_CUDA)
         case BA_BACKEND_CUDA:
             ba::cuda::shannon_entropy_batch_cuda(values_flat, offsets, lengths,
                                                   batch_count, bin_count, out_entropies);
+            for (size_t b = 0; b < batch_count; ++b) {
+                if (out_entropies[b] < 0.0) {
+                    out_entropies[b] = fallback_shannon(
+                        values_flat + offsets[b], lengths[b], bin_count);
+                }
+            }
             return;
 #endif
 #if defined(BA_HAS_ROCM)
         case BA_BACKEND_ROCM:
             ba::rocm::shannon_entropy_batch_hip(values_flat, offsets, lengths,
                                                  batch_count, bin_count, out_entropies);
+            for (size_t b = 0; b < batch_count; ++b) {
+                if (out_entropies[b] < 0.0) {
+                    out_entropies[b] = fallback_shannon(
+                        values_flat + offsets[b], lengths[b], bin_count);
+                }
+            }
             return;
 #endif
 #if defined(BA_HAS_METAL)
         case BA_BACKEND_METAL:
             ba::metal::shannon_entropy_batch_metal(values_flat, offsets, lengths,
                                                     batch_count, bin_count, out_entropies);
-            // Per-item GPU failure sentinel (-1) → CPU fallback
             for (size_t b = 0; b < batch_count; ++b) {
                 if (out_entropies[b] < 0.0) {
                     out_entropies[b] = fallback_shannon(
@@ -247,17 +368,42 @@ static void dispatch_circular_batch(const double* values_flat,
                                      const size_t* offsets, const size_t* lengths,
                                      size_t batch_count, int bin_count,
                                      double* out_entropies) {
-    switch (ba::get_backend()) {
+    BABackend be = ba::get_backend();
+    const size_t max_len = batch_max_length(lengths, batch_count);
+
+    if (is_gpu_backend(be)) {
+        const bool multi = batch_count > 1;
+        const bool small = max_len < kGpuEntropyMinN;
+        if (multi || small) {
+            fallback_circular_batch(values_flat, offsets, lengths,
+                                    batch_count, bin_count, out_entropies);
+            return;
+        }
+    }
+
+    switch (be) {
 #if defined(BA_HAS_CUDA)
         case BA_BACKEND_CUDA:
             ba::cuda::circular_shannon_entropy_batch_cuda(
                 values_flat, offsets, lengths, batch_count, bin_count, out_entropies);
+            for (size_t b = 0; b < batch_count; ++b) {
+                if (out_entropies[b] < 0.0) {
+                    out_entropies[b] = fallback_circular(
+                        values_flat + offsets[b], lengths[b], bin_count);
+                }
+            }
             return;
 #endif
 #if defined(BA_HAS_ROCM)
         case BA_BACKEND_ROCM:
             ba::rocm::circular_shannon_entropy_batch_hip(
                 values_flat, offsets, lengths, batch_count, bin_count, out_entropies);
+            for (size_t b = 0; b < batch_count; ++b) {
+                if (out_entropies[b] < 0.0) {
+                    out_entropies[b] = fallback_circular(
+                        values_flat + offsets[b], lengths[b], bin_count);
+                }
+            }
             return;
 #endif
 #if defined(BA_HAS_METAL)
@@ -303,14 +449,24 @@ static void dispatch_circular_batch(const double* values_flat,
 }
 
 static double dispatch_pearson(const double* x, const double* y, size_t count) {
-    switch (ba::get_backend()) {
+    BABackend be = ba::get_backend();
+
+    if (is_gpu_backend(be) && count < kGpuPearsonMinN) {
+        return fallback_pearson(x, y, count);
+    }
+
+    switch (be) {
 #if defined(BA_HAS_CUDA)
-        case BA_BACKEND_CUDA:
-            return ba::cuda::pearson_correlation_cuda(x, y, count);
+        case BA_BACKEND_CUDA: {
+            double r = ba::cuda::pearson_correlation_cuda(x, y, count);
+            return std::isfinite(r) ? r : fallback_pearson(x, y, count);
+        }
 #endif
 #if defined(BA_HAS_ROCM)
-        case BA_BACKEND_ROCM:
-            return ba::rocm::pearson_correlation_hip(x, y, count);
+        case BA_BACKEND_ROCM: {
+            double r = ba::rocm::pearson_correlation_hip(x, y, count);
+            return std::isfinite(r) ? r : fallback_pearson(x, y, count);
+        }
 #endif
 #if defined(BA_HAS_METAL)
         case BA_BACKEND_METAL: {
@@ -505,7 +661,13 @@ BAStatus ba_pairwise_scores(
             return BA_OK;
 #endif
         default:
+            // Prefer OpenMP for pairwise even when SIMD/Metal is "best" —
+            // host callbacks cannot run on GPU/SIMD.
+#if defined(BA_HAS_OPENMP)
+            ba::omp::pairwise_scores_omp(data, n, stride, score_fn, user_data, out_scores);
+#else
             ba::core::pairwise_scores(data, n, stride, score_fn, user_data, out_scores);
+#endif
             return BA_OK;
     }
 }

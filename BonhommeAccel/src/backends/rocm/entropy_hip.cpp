@@ -111,13 +111,16 @@ static double entropy_from_bins_host(const int* bins, int bin_count, int total) 
 // Batch Entropy
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Failure sentinel: valid Shannon entropy is always >= 0. Caller falls back to CPU.
+static constexpr double kHipFail = -1.0;
+
 void shannon_entropy_batch_hip(
     const double* flat, const size_t* offsets, const size_t* lengths,
     size_t batch_count, int bin_count, double* out_entropies
 ) {
     if (!hip_is_available() || !flat || !offsets || !lengths || !out_entropies || bin_count < 1) {
         if (out_entropies) {
-            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kHipFail;
         }
         return;
     }
@@ -137,7 +140,7 @@ void shannon_entropy_batch_hip(
         hipMalloc(&d_bins, bin_count * sizeof(int)) != hipSuccess) {
         if (d_flat) hipFree(d_flat);
         if (d_bins) hipFree(d_bins);
-        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kHipFail;
         return;
     }
 
@@ -181,7 +184,7 @@ void shannon_entropy_batch_hip(
 
         if (hipMemcpy(h_bins.data(), d_bins, bin_count * sizeof(int),
                       hipMemcpyDeviceToHost) != hipSuccess) {
-            out_entropies[b] = 0.0;
+            out_entropies[b] = kHipFail;
             continue;
         }
         out_entropies[b] = entropy_from_bins_host(h_bins.data(), bin_count, clean_count);
@@ -197,7 +200,7 @@ void circular_shannon_entropy_batch_hip(
 ) {
     if (!hip_is_available() || !flat || !offsets || !lengths || !out_entropies || bin_count < 1) {
         if (out_entropies) {
-            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+            for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kHipFail;
         }
         return;
     }
@@ -217,7 +220,7 @@ void circular_shannon_entropy_batch_hip(
         hipMalloc(&d_bins, bin_count * sizeof(int)) != hipSuccess) {
         if (d_flat) hipFree(d_flat);
         if (d_bins) hipFree(d_bins);
-        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = 0.0;
+        for (size_t b = 0; b < batch_count; ++b) out_entropies[b] = kHipFail;
         return;
     }
 
@@ -249,7 +252,7 @@ void circular_shannon_entropy_batch_hip(
 
         if (hipMemcpy(h_bins.data(), d_bins, bin_count * sizeof(int),
                       hipMemcpyDeviceToHost) != hipSuccess) {
-            out_entropies[b] = 0.0;
+            out_entropies[b] = kHipFail;
             continue;
         }
         out_entropies[b] = entropy_from_bins_host(h_bins.data(), bin_count, clean_count);
@@ -263,7 +266,7 @@ double shannon_entropy_hip(const double* values, size_t count, int bin_count) {
     if (!values || count < 2 || bin_count < 1) return 0.0;
     size_t offset = 0;
     size_t length = count;
-    double out = 0.0;
+    double out = kHipFail;
     shannon_entropy_batch_hip(values, &offset, &length, 1, bin_count, &out);
     return out;
 }
@@ -272,7 +275,7 @@ double circular_shannon_entropy_hip(const double* angles, size_t count, int bin_
     if (!angles || count < 2 || bin_count < 1) return 0.0;
     size_t offset = 0;
     size_t length = count;
-    double out = 0.0;
+    double out = kHipFail;
     circular_shannon_entropy_batch_hip(angles, &offset, &length, 1, bin_count, &out);
     return out;
 }

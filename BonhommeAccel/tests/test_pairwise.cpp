@@ -81,6 +81,16 @@ TEST_CASE("Stats: single value has SD=0", "[statistics]") {
     REQUIRE(sd == 0.0);
 }
 
+TEST_CASE("Stats: NaN/Inf filtered from mean and SD", "[statistics]") {
+    // Finite-only mean of {1,2,3,4,5} = 3; sample SD = sqrt(2.5)
+    std::vector<double> vals = {1.0, NAN, 2.0, INFINITY, 3.0, 4.0, -INFINITY, 5.0};
+    double mean = 0.0, sd = 0.0;
+    BAStatus s = ba_descriptive_stats(vals.data(), vals.size(), &mean, &sd);
+    REQUIRE(s == BA_OK);
+    REQUIRE_THAT(mean, WithinAbs(3.0, CORR_TOL));
+    REQUIRE_THAT(sd, WithinAbs(std::sqrt(2.5), CORR_TOL));
+}
+
 TEST_CASE("Z-score outliers: flags |z| > 2", "[statistics]") {
     std::vector<double> vals = {10.0, 10.0, 10.0, 10.0, 10.0, 50.0};
     std::vector<int32_t> flags(vals.size(), -1);

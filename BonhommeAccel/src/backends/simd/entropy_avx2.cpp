@@ -35,34 +35,51 @@ static inline double hmax_pd(__m256d v) {
 double shannon_entropy_avx2(const double* values, size_t count, int bin_count) {
     if (!values || count < 2 || bin_count < 1) return 0.0;
 
-    // Pre-filter non-finite values
-    std::vector<double> clean;
-    clean.reserve(count);
-    for (size_t i = 0; i < count; ++i) {
-        if (std::isfinite(values[i])) clean.push_back(values[i]);
-    }
+    // Single pass min/max without allocating a cleaned copy.
+    double min_val = std::numeric_limits<double>::max();
+    double max_val = std::numeric_limits<double>::lowest();
+    size_t clean_count = 0;
 
-    size_t n = clean.size();
-    if (n < 2) return 0.0;
-
-    // AVX2 min/max
-    size_t simd_end = (n / 4) * 4;
+    size_t simd_end = (count / 4) * 4;
     __m256d vmin = _mm256_set1_pd(std::numeric_limits<double>::max());
     __m256d vmax = _mm256_set1_pd(std::numeric_limits<double>::lowest());
+    bool any_simd_finite = false;
 
     for (size_t i = 0; i < simd_end; i += 4) {
-        __m256d v = _mm256_loadu_pd(&clean[i]);
-        vmin = _mm256_min_pd(vmin, v);
-        vmax = _mm256_max_pd(vmax, v);
+        bool all_finite = true;
+        for (int k = 0; k < 4; ++k) {
+            double v = values[i + static_cast<size_t>(k)];
+            if (!std::isfinite(v)) {
+                all_finite = false;
+            } else {
+                ++clean_count;
+                min_val = std::min(min_val, v);
+                max_val = std::max(max_val, v);
+            }
+        }
+        // Vector min/max only for all-finite lanes (NaN poisons _mm256_min_pd).
+        if (all_finite) {
+            __m256d v = _mm256_loadu_pd(&values[i]);
+            vmin = _mm256_min_pd(vmin, v);
+            vmax = _mm256_max_pd(vmax, v);
+            any_simd_finite = true;
+        }
     }
 
-    double min_val = hmin_pd(vmin);
-    double max_val = hmax_pd(vmax);
-
-    for (size_t i = simd_end; i < n; ++i) {
-        min_val = std::min(min_val, clean[i]);
-        max_val = std::max(max_val, clean[i]);
+    if (any_simd_finite) {
+        min_val = std::min(min_val, hmin_pd(vmin));
+        max_val = std::max(max_val, hmax_pd(vmax));
     }
+
+    for (size_t i = simd_end; i < count; ++i) {
+        double v = values[i];
+        if (!std::isfinite(v)) continue;
+        ++clean_count;
+        min_val = std::min(min_val, v);
+        max_val = std::max(max_val, v);
+    }
+
+    if (clean_count < 2) return 0.0;
 
     double range = max_val - min_val;
     if (range <= 0.0) return 0.0;
@@ -70,14 +87,16 @@ double shannon_entropy_avx2(const double* values, size_t count, int bin_count) {
     double bin_width = range / static_cast<double>(bin_count);
 
     std::vector<int> bins(static_cast<size_t>(bin_count), 0);
-    for (size_t i = 0; i < n; ++i) {
-        int idx = static_cast<int>((clean[i] - min_val) / bin_width);
+    for (size_t i = 0; i < count; ++i) {
+        double v = values[i];
+        if (!std::isfinite(v)) continue;
+        int idx = static_cast<int>((v - min_val) / bin_width);
         if (idx < 0) idx = 0;
         if (idx >= bin_count) idx = bin_count - 1;
         bins[static_cast<size_t>(idx)]++;
     }
 
-    double total = static_cast<double>(n);
+    double total = static_cast<double>(clean_count);
     double entropy = 0.0;
     for (int i = 0; i < bin_count; ++i) {
         if (bins[static_cast<size_t>(i)] > 0) {

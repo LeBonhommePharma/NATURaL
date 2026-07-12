@@ -7,7 +7,10 @@
  *   AVX2/AVX-512 (x86 SIMD) | NEON (ARM SIMD) | OpenMP (CPU threads) | Scalar
  *
  * Thread-safe, stateless API. All functions take caller-owned buffers.
- * Runtime backend detection via ba_detect_best_backend().
+ * Runtime backend detection via ba_detect_best_backend() (GPU → SIMD → OpenMP → Scalar).
+ * Metal MSL kernels use float32 (Apple GPU constraint); CUDA/ROCm use double.
+ * GPU failures fall back to SIMD/scalar automatically. Sub-threshold N and
+ * multi-item batches skip GPU (OpenMP + SIMD) — launch/sync dominates there.
  *
  * Ported from BonhommeCore's Swift EntropyCalculator for mathematical parity
  * with FlexAIDdS molecular docking entropy and NATURaL HRV entropy.
@@ -129,7 +132,7 @@ BAStatus ba_circular_shannon_entropy(
  * Shannon entropy with caller-specified fixed domain [domain_min, domain_max].
  *
  * Values outside the domain are clamped to the nearest edge.
- * Does NOT filter NaN/Inf — caller is responsible for clean input.
+ * Filters non-finite values (NaN, Inf), matching the adaptive/circular paths.
  *
  * @param values     Input array.
  * @param count      Number of elements.

@@ -31,7 +31,7 @@ void circular_shannon_entropy_batch_metal(const double* flat, const size_t* offs
                                            int bin_count, double* out_entropies);
 
 /**
- * Pearson r via float32 GPU reduction.
+ * Pearson r: host filter + double means, float32 GPU second-moment reduce.
  * Returns a value in [-1, 1], or NaN on GPU failure (caller falls back).
  */
 double pearson_correlation_metal(const double* x, const double* y, size_t count);

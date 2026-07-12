@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(BonhommeAccel
-    VERSION 1.1.0
+    VERSION 1.1.1
     LANGUAGES CXX
     DESCRIPTION "GPU/SIMD accelerated Shannon entropy and statistics for NATURaL/FlexAIDdS"
 )
