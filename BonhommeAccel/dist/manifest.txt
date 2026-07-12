@@ -1,0 +1,9 @@
+BonhommeAccel Apple dist
+built_at=2026-07-12T15:49:45Z
+ios_deployment_target=17.0
+iphoneos=arm64
+iphonesimulator=arm64
+xcframework=/Users/lp.more/Projects/NATURaL/BonhommeAccel/dist/BonhommeAccel.xcframework
+cmake_version=cmake version 4.4.0
+sdk_iphoneos=/Applications/Xcode-beta.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS27.0.sdk
+sdk_iphonesimulator=/Applications/Xcode-beta.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.0.sdk
