@@ -16,7 +16,7 @@ Zero external Swift dependencies. Proprietary codebase.
 - **Data import, not code import**: `FlexAIDdSAnalyzer` consumes `DockingPose` structs (torsional angles from FlexAID runs) and computes configurational entropy penalty (ΔS_config) independently
 - **Reference database**: `BindingEntropyProfile` embeds published ΔS_config values for 60+ substances, enabling validation without running docking
 - **Cross-domain validation**: `CrossDomainValidator` correlates molecular |ΔS_config| with physiological |ΔH_hrv| via Pearson correlation (p < 0.05, n >= 5) — this is the project's novel contribution
-- **Acceleration parity**: `BonhommeAccel` (C++20) mirrors FlexAIDdS's GPU/SIMD dispatch pattern for entropy, with `ba_circular_shannon_entropy()` matching FlexAIDdS's torsional binning
+- **Acceleration parity**: `BonhommeAccel` (C++20) mirrors FlexAIDdS's GPU/SIMD dispatch for entropy; `ba_circular_shannon_entropy()` / batch APIs match FlexAIDdS torsional binning. On arm64, circular path is **NEON vectorized** (wrap+bin); Metal is size-gated. `FlexAIDdSAnalyzer` uses `circularShannonEntropyBatch` and caches free-state H across poses.
 
 ### FlexAIDdS Integration Data Flow
 ```
@@ -158,20 +158,23 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 
 Default SPM `swift test` must remain Swift-only: do not wire Accel into the `BonhommeCore` test target. Accel is opt-in via `BONHOMME_ACCEL=1` (Package.swift) or explicit Xcode Path C wiring — never the default package test graph. See `BonhommeAccel/TESTING.md`.
 
-Swift unit tests: `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control). Xcode-level: `Tests/BonhommeTests/`, `Tests/BonhommeUITests/`. C++ Catch2: `BonhommeAccel/tests/` (entropy, correlation, pairwise, incomplete_beta + `reference_values.h`).
+Swift unit tests: `BonhommeCore/Tests/BonhommeCoreTests/` (analysis, models, poses, Crooks control, FlexAIDdS batch free-H cache, `EntropyCalculator.circularShannonEntropyBatch`). Xcode-level: `Tests/BonhommeTests/`, `Tests/BonhommeUITests/`.
+
+C++ Catch2 (`BonhommeAccel/tests/`): `test_entropy.cpp`, **`test_circular_simd.cpp`** (NEON wrap/batch stress), `test_correlation.cpp`, `test_pairwise.cpp`, `test_incomplete_beta.cpp`, `reference_values.h`. Backend thresholds and filters: `BonhommeAccel/TESTING.md`.
 
 ```bash
 # Path A — Swift-only (default; must not require Accel build)
 cd BonhommeCore && swift test
 cd BonhommeCore && swift test --filter EntropyCalculatorTests
+cd BonhommeCore && swift test --filter FlexAIDdSAnalyzerTests
 make test
 
-# Path B — Accel CMake + ctest (opt-in)
+# Path B — Accel CMake + ctest (opt-in; ~85 Catch2 cases)
 cd BonhommeAccel
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON -DBA_ENABLE_OPENMP=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
-# or: make accel-configure && make accel-build && make accel-test
+ctest --test-dir build -R 'circular|simd|batch' --output-on-failure
 # or: make accel
 
 # Xcode
