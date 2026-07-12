@@ -65,6 +65,135 @@ kernel void circular_histogram(
 }
 )MSL";
 
+// Threadgroup min/max/count of finite float values (one partial per TG).
+// Host reduces TG partials in double-friendly float storage.
+// TG size should be a power of two (dispatch uses 256).
+constexpr const char* kMinMaxReduceKernel = R"MSL(
+#include <metal_stdlib>
+using namespace metal;
+
+kernel void minmax_reduce(
+    device const float* data       [[buffer(0)]],
+    device float* out_mins         [[buffer(1)]],
+    device float* out_maxs         [[buffer(2)]],
+    device uint* out_counts        [[buffer(3)]],
+    constant uint& count           [[buffer(4)]],
+    uint tid                       [[thread_position_in_grid]],
+    uint tid_in_tg                 [[thread_position_in_threadgroup]],
+    uint tg_id                     [[threadgroup_position_in_grid]],
+    uint tg_size                   [[threads_per_threadgroup]]
+) {
+    threadgroup float min_s[256];
+    threadgroup float max_s[256];
+    threadgroup uint  cnt_s[256];
+
+    float lmin = INFINITY;
+    float lmax = -INFINITY;
+    uint  lcnt = 0u;
+    if (tid < count) {
+        float v = data[tid];
+        if (isfinite(v)) {
+            lmin = v;
+            lmax = v;
+            lcnt = 1u;
+        }
+    }
+
+    min_s[tid_in_tg] = lmin;
+    max_s[tid_in_tg] = lmax;
+    cnt_s[tid_in_tg] = lcnt;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    for (uint stride = tg_size / 2; stride > 0; stride >>= 1) {
+        if (tid_in_tg < stride) {
+            min_s[tid_in_tg] = min(min_s[tid_in_tg], min_s[tid_in_tg + stride]);
+            max_s[tid_in_tg] = max(max_s[tid_in_tg], max_s[tid_in_tg + stride]);
+            cnt_s[tid_in_tg] += cnt_s[tid_in_tg + stride];
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    if (tid_in_tg == 0) {
+        out_mins[tg_id] = min_s[0];
+        out_maxs[tg_id] = max_s[0];
+        out_counts[tg_id] = cnt_s[0];
+    }
+}
+)MSL";
+
+// Multi-item adaptive histogram: 2D grid (local element x, batch item y).
+// bins layout: item * bin_count + bin (strided planes).
+constexpr const char* kShannonHistogramBatchKernel = R"MSL(
+#include <metal_stdlib>
+using namespace metal;
+
+kernel void shannon_histogram_batch(
+    device const float* data           [[buffer(0)]],
+    device const uint* offsets         [[buffer(1)]],
+    device const uint* lengths         [[buffer(2)]],
+    device atomic_uint* bins           [[buffer(3)]],
+    device const float* min_vals       [[buffer(4)]],
+    device const float* bin_widths     [[buffer(5)]],
+    constant uint& bin_count           [[buffer(6)]],
+    constant uint& batch_count         [[buffer(7)]],
+    uint2 tid                          [[thread_position_in_grid]]
+) {
+    uint item = tid.y;
+    uint local = tid.x;
+    if (item >= batch_count) return;
+    uint len = lengths[item];
+    if (local >= len) return;
+
+    float width = bin_widths[item];
+    if (!(width > 0.0f)) return;
+
+    float v = data[offsets[item] + local];
+    if (!isfinite(v)) return;
+
+    int idx = (int)((v - min_vals[item]) / width);
+    if (idx < 0) idx = 0;
+    if (idx >= (int)bin_count) idx = (int)bin_count - 1;
+    atomic_fetch_add_explicit(&bins[item * bin_count + (uint)idx], 1u,
+                              memory_order_relaxed);
+}
+)MSL";
+
+// Multi-item circular histogram: same 2D layout, shared circular bin_width.
+constexpr const char* kCircularHistogramBatchKernel = R"MSL(
+#include <metal_stdlib>
+using namespace metal;
+
+kernel void circular_histogram_batch(
+    device const float* data           [[buffer(0)]],
+    device const uint* offsets         [[buffer(1)]],
+    device const uint* lengths         [[buffer(2)]],
+    device atomic_uint* bins           [[buffer(3)]],
+    constant uint& bin_count           [[buffer(4)]],
+    constant uint& batch_count         [[buffer(5)]],
+    constant float& bin_width          [[buffer(6)]],
+    uint2 tid                          [[thread_position_in_grid]]
+) {
+    uint item = tid.y;
+    uint local = tid.x;
+    if (item >= batch_count) return;
+    uint len = lengths[item];
+    if (local >= len) return;
+
+    float a = data[offsets[item] + local];
+    if (!isfinite(a)) return;
+
+    a = fmod(a, 360.0f);
+    if (a > 180.0f) a -= 360.0f;
+    if (a < -180.0f) a += 360.0f;
+
+    int idx = (int)((a + 180.0f) / bin_width);
+    if (idx < 0) idx = 0;
+    if (idx >= (int)bin_count) idx = (int)bin_count - 1;
+    atomic_fetch_add_explicit(&bins[item * bin_count + (uint)idx], 1u,
+                              memory_order_relaxed);
+}
+)MSL";
+
 // Threadgroup reduction of x/y sums for Pearson means (float32).
 constexpr const char* kPearsonMeansKernel = R"MSL(
 #include <metal_stdlib>

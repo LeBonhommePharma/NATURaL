@@ -52,8 +52,11 @@
 // Tuned conservatively so Metal/CUDA only run when they can win.
 // ═══════════════════════════════════════════════════════════════════════════
 
-static constexpr size_t kGpuEntropyMinN  = 8192;
-static constexpr size_t kGpuPearsonMinN  = 16384;
+static constexpr size_t kGpuEntropyMinN     = 8192;
+/** Multi-item Metal batches: use GPU when total elements reach this even if
+ *  no single item hits kGpuEntropyMinN (amortized multi-hist launch). */
+static constexpr size_t kGpuEntropyMinTotal = 32768;
+static constexpr size_t kGpuPearsonMinN     = 16384;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Version
@@ -126,6 +129,20 @@ static double fallback_circular(const double* angles, size_t count, int bin_coun
 #endif
 }
 
+static double fallback_shannon_fixed(const double* values, size_t count, int bin_count,
+                                      double domain_min, double domain_max) {
+#if defined(BA_HAS_NEON)
+    return ba::simd::shannon_entropy_fixed_neon(values, count, bin_count,
+                                                 domain_min, domain_max);
+#elif defined(BA_HAS_AVX2)
+    return ba::simd::shannon_entropy_fixed_avx2(values, count, bin_count,
+                                                 domain_min, domain_max);
+#else
+    return ba::core::shannon_entropy_fixed(values, count, bin_count,
+                                            domain_min, domain_max);
+#endif
+}
+
 static double fallback_pearson(const double* x, const double* y, size_t count) {
 #if defined(BA_HAS_NEON)
     return ba::simd::pearson_correlation_neon(x, y, count);
@@ -192,6 +209,39 @@ static size_t batch_max_length(const size_t* lengths, size_t batch_count) {
         if (lengths[b] > m) m = lengths[b];
     }
     return m;
+}
+
+/** Sum of lengths across a batch (Metal multi-hist amortization threshold). */
+static size_t batch_total_elements(const size_t* lengths, size_t batch_count) {
+    size_t t = 0;
+    for (size_t b = 0; b < batch_count; ++b) {
+        t += lengths[b];
+    }
+    return t;
+}
+
+/**
+ * Whether a GPU backend should attempt this batch.
+ * Metal: multi-item OK when max_len >= kGpuEntropyMinN OR total >= kGpuEntropyMinTotal
+ *   (true multi-histogram amortizes a single wait).
+ * CUDA/ROCm: still serial per-item waits — skip multi-item and sub-threshold.
+ */
+static bool gpu_batch_eligible(BABackend be, const size_t* lengths,
+                                size_t batch_count, size_t max_len) {
+#if defined(BA_HAS_METAL)
+    if (be == BA_BACKEND_METAL) {
+        if (max_len >= kGpuEntropyMinN) return true;
+        if (batch_total_elements(lengths, batch_count) >= kGpuEntropyMinTotal)
+            return true;
+        return false;
+    }
+#else
+    (void)lengths;
+    (void)batch_count;
+#endif
+    // CUDA / ROCm (and unknown GPU): multi-item still serial GPU waits.
+    if (batch_count > 1) return false;
+    return max_len >= kGpuEntropyMinN;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -280,6 +330,40 @@ static double dispatch_circular(const double* angles, size_t count, int bin_coun
     }
 }
 
+/** Fixed-domain Shannon: no GPU kernel yet — prefer NEON/AVX2 (incl. Metal fallback). */
+static double dispatch_shannon_fixed(const double* values, size_t count, int bin_count,
+                                      double domain_min, double domain_max) {
+    BABackend be = ba::get_backend();
+
+    switch (be) {
+#if defined(BA_HAS_NEON)
+        case BA_BACKEND_NEON:
+            return ba::simd::shannon_entropy_fixed_neon(values, count, bin_count,
+                                                        domain_min, domain_max);
+        // Metal has no fixed-domain kernel; use NEON like adaptive small-N fallback.
+        case BA_BACKEND_METAL:
+            return ba::simd::shannon_entropy_fixed_neon(values, count, bin_count,
+                                                        domain_min, domain_max);
+#endif
+#if defined(BA_HAS_AVX2)
+        case BA_BACKEND_AVX2:
+        case BA_BACKEND_AVX512:
+            return ba::simd::shannon_entropy_fixed_avx2(values, count, bin_count,
+                                                        domain_min, domain_max);
+#endif
+#if defined(BA_HAS_CUDA) || defined(BA_HAS_ROCM)
+        case BA_BACKEND_CUDA:
+        case BA_BACKEND_ROCM:
+            // No GPU fixed-domain kernel — SIMD/scalar CPU path.
+            return fallback_shannon_fixed(values, count, bin_count,
+                                           domain_min, domain_max);
+#endif
+        default:
+            return fallback_shannon_fixed(values, count, bin_count,
+                                           domain_min, domain_max);
+    }
+}
+
 static void dispatch_shannon_batch(const double* values_flat,
                                     const size_t* offsets, const size_t* lengths,
                                     size_t batch_count, int bin_count,
@@ -287,16 +371,13 @@ static void dispatch_shannon_batch(const double* values_flat,
     BABackend be = ba::get_backend();
     const size_t max_len = batch_max_length(lengths, batch_count);
 
-    // Metal/CUDA batch today is serial per-item GPU wait. For multi-item
-    // batches (FlexAIDdS multi-bond) or sub-threshold sizes, OpenMP+SIMD wins.
-    if (is_gpu_backend(be)) {
-        const bool multi = batch_count > 1;
-        const bool small = max_len < kGpuEntropyMinN;
-        if (multi || small) {
-            fallback_shannon_batch(values_flat, offsets, lengths,
-                                   batch_count, bin_count, out_entropies);
-            return;
-        }
+    // GPU eligibility: Metal multi-hist can amortize multi-item batches when
+    // total work is large; CUDA/ROCm remain single-item-only (serial waits).
+    if (is_gpu_backend(be) &&
+        !gpu_batch_eligible(be, lengths, batch_count, max_len)) {
+        fallback_shannon_batch(values_flat, offsets, lengths,
+                               batch_count, bin_count, out_entropies);
+        return;
     }
 
     switch (be) {
@@ -371,14 +452,11 @@ static void dispatch_circular_batch(const double* values_flat,
     BABackend be = ba::get_backend();
     const size_t max_len = batch_max_length(lengths, batch_count);
 
-    if (is_gpu_backend(be)) {
-        const bool multi = batch_count > 1;
-        const bool small = max_len < kGpuEntropyMinN;
-        if (multi || small) {
-            fallback_circular_batch(values_flat, offsets, lengths,
-                                    batch_count, bin_count, out_entropies);
-            return;
-        }
+    if (is_gpu_backend(be) &&
+        !gpu_batch_eligible(be, lengths, batch_count, max_len)) {
+        fallback_circular_batch(values_flat, offsets, lengths,
+                                batch_count, bin_count, out_entropies);
+        return;
     }
 
     switch (be) {
@@ -529,9 +607,8 @@ BAStatus ba_shannon_entropy_fixed(
     if (count < 2) return BA_ERR_INSUFFICIENT_DATA;
     if (bin_count < 1 || domain_max <= domain_min) return BA_ERR_INVALID_PARAM;
 
-    // Fixed-domain path has no GPU specialization yet (scalar is correct).
-    *out_entropy = ba::core::shannon_entropy_fixed(values, count, bin_count,
-                                                    domain_min, domain_max);
+    *out_entropy = dispatch_shannon_fixed(values, count, bin_count,
+                                           domain_min, domain_max);
     return BA_OK;
 }
 

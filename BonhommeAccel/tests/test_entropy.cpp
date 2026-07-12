@@ -208,6 +208,56 @@ TEST_CASE("Fixed-domain entropy: fewer than 2 finite returns 0", "[entropy][fixe
     REQUIRE(result == 0.0);
 }
 
+TEST_CASE("Fixed-domain entropy: large array with NaN matches scalar semantics",
+          "[entropy][fixed][simd]") {
+    // N large enough to exercise SIMD lanes (NEON 2-wide / AVX2 4-wide) plus tail.
+    constexpr size_t N = 4096;
+    std::vector<double> vals(N);
+    std::vector<double> finite_only;
+    finite_only.reserve(N);
+
+    for (size_t i = 0; i < N; ++i) {
+        // Sprinkle NaN/Inf so mixed finite pairs hit scalar lane fallback.
+        if (i % 17 == 0) {
+            vals[i] = NAN;
+        } else if (i % 23 == 0) {
+            vals[i] = (i % 2 == 0) ? INFINITY : -INFINITY;
+        } else if (i % 31 == 0) {
+            // Out-of-domain values must clamp identically on SIMD and scalar.
+            vals[i] = (i % 2 == 0) ? -50.0 : 150.0;
+            finite_only.push_back(vals[i]);
+        } else {
+            vals[i] = 100.0 * static_cast<double>(i % 97) / 97.0;
+            finite_only.push_back(vals[i]);
+        }
+    }
+
+    double h_mixed = 0.0;
+    double h_finite = 0.0;
+    BAStatus s1 = ba_shannon_entropy_fixed(vals.data(), vals.size(),
+                                            DEFAULT_BIN_COUNT, 0.0, 100.0, &h_mixed);
+    BAStatus s2 = ba_shannon_entropy_fixed(finite_only.data(), finite_only.size(),
+                                            DEFAULT_BIN_COUNT, 0.0, 100.0, &h_finite);
+    REQUIRE(s1 == BA_OK);
+    REQUIRE(s2 == BA_OK);
+    REQUIRE(!std::isnan(h_mixed));
+    REQUIRE(!std::isinf(h_mixed));
+    REQUIRE(h_mixed > 0.0);
+    REQUIRE_THAT(h_mixed, WithinAbs(h_finite, ENTROPY_TOL));
+
+    // Odd length exercises SIMD tail + last partial vector.
+    std::vector<double> odd = vals;
+    odd.push_back(42.5);
+    odd.push_back(NAN);
+    odd.push_back(7.0);
+    double h_odd = 0.0;
+    BAStatus s3 = ba_shannon_entropy_fixed(odd.data(), odd.size(),
+                                            DEFAULT_BIN_COUNT, 0.0, 100.0, &h_odd);
+    REQUIRE(s3 == BA_OK);
+    REQUIRE(!std::isnan(h_odd));
+    REQUIRE(h_odd > 0.0);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Batch Entropy
 // ═══════════════════════════════════════════════════════════════════════════
@@ -272,6 +322,79 @@ TEST_CASE("Batch circular entropy: matches individual calls", "[entropy][batch][
         ba_circular_shannon_entropy(flat.data() + offsets[b], lengths[b],
                                      DEFAULT_BIN_COUNT, &individual);
         REQUIRE_THAT(batch_results[b], WithinAbs(individual, ENTROPY_TOL));
+    }
+}
+
+// Large multi-item batches exercise Metal multi-histogram (when Metal is the
+// active backend and total_elements >= 32768 or max_len >= 8192). Float32
+// paths may differ slightly from pure double; compare batch vs individual.
+TEST_CASE("Large batch entropy: multi-item matches individual", "[entropy][batch][gpu]") {
+    constexpr size_t n_items = 4;
+    constexpr size_t n_per = 10000; // max_len >= kGpuEntropyMinN
+    std::vector<double> flat;
+    std::vector<size_t> offsets, lengths;
+    flat.reserve(n_items * n_per);
+
+    for (size_t b = 0; b < n_items; ++b) {
+        offsets.push_back(flat.size());
+        lengths.push_back(n_per);
+        for (size_t i = 0; i < n_per; ++i) {
+            // Distinct ranges per item; sprinkle a few NaNs.
+            double v = static_cast<double>(b) * 10.0 +
+                       100.0 * static_cast<double>(i) / static_cast<double>(n_per);
+            if (i % 997 == 0) v = NAN;
+            flat.push_back(v);
+        }
+    }
+
+    std::vector<double> batch_results(n_items, -1.0);
+    REQUIRE(ba_shannon_entropy_batch(flat.data(), offsets.data(), lengths.data(),
+                                      n_items, DEFAULT_BIN_COUNT,
+                                      batch_results.data()) == BA_OK);
+
+    for (size_t b = 0; b < n_items; ++b) {
+        double individual = -1.0;
+        REQUIRE(ba_shannon_entropy(flat.data() + offsets[b], lengths[b],
+                                    DEFAULT_BIN_COUNT, &individual) == BA_OK);
+        REQUIRE(std::isfinite(batch_results[b]));
+        REQUIRE(batch_results[b] >= 0.0);
+        // Metal multi-hist vs single may use host vs GPU min/max on the same
+        // float data — allow modest float32 slack.
+        REQUIRE_THAT(batch_results[b], WithinAbs(individual, 1e-5));
+    }
+}
+
+TEST_CASE("Large batch circular entropy: multi-item matches individual",
+          "[entropy][batch][circular][gpu]") {
+    constexpr size_t n_items = 8;
+    constexpr size_t n_per = 5000; // total 40000 >= kGpuEntropyMinTotal
+    std::vector<double> flat;
+    std::vector<size_t> offsets, lengths;
+    flat.reserve(n_items * n_per);
+
+    for (size_t b = 0; b < n_items; ++b) {
+        offsets.push_back(flat.size());
+        lengths.push_back(n_per);
+        double center = -180.0 + 45.0 * static_cast<double>(b);
+        for (size_t i = 0; i < n_per; ++i) {
+            double a = center + 30.0 * (static_cast<double>(i) / n_per - 0.5);
+            if (i % 1009 == 0) a = NAN;
+            flat.push_back(a);
+        }
+    }
+
+    std::vector<double> batch_results(n_items, -1.0);
+    REQUIRE(ba_circular_shannon_entropy_batch(flat.data(), offsets.data(),
+                                               lengths.data(), n_items,
+                                               DEFAULT_BIN_COUNT,
+                                               batch_results.data()) == BA_OK);
+
+    for (size_t b = 0; b < n_items; ++b) {
+        double individual = -1.0;
+        REQUIRE(ba_circular_shannon_entropy(flat.data() + offsets[b], lengths[b],
+                                             DEFAULT_BIN_COUNT, &individual) == BA_OK);
+        REQUIRE(std::isfinite(batch_results[b]));
+        REQUIRE_THAT(batch_results[b], WithinAbs(individual, 1e-5));
     }
 }
 
