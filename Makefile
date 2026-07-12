@@ -26,13 +26,15 @@ coverage: ## Run tests with code coverage
 
 # --- BonhommeAccel (C++20) — Path B: CMake + ctest (opt-in) ---
 # Separate from `make test`. Full docs: BonhommeAccel/TESTING.md
+# OpenMP: BA_ENABLE_OPENMP=ON by default. On Apple, CMake auto-detects Homebrew
+# libomp (brew install libomp). Stale build/ may cache OpenMP=OFF — use accel-clean.
 
 ACCEL_DIR := BonhommeAccel
 ACCEL_BUILD := $(ACCEL_DIR)/build
 ACCEL_JOBS := $(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 
-accel-configure: ## Configure BonhommeAccel (CMake, tests ON)
-	cmake -B $(ACCEL_BUILD) -S $(ACCEL_DIR) -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON
+accel-configure: ## Configure BonhommeAccel (CMake, tests ON; OpenMP ON if libomp found)
+	cmake -B $(ACCEL_BUILD) -S $(ACCEL_DIR) -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON -DBA_ENABLE_OPENMP=ON
 
 accel-build: ## Build BonhommeAccel library + ba_tests
 	cmake --build $(ACCEL_BUILD) -j $(ACCEL_JOBS)

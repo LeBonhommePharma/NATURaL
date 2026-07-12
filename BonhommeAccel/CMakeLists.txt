@@ -49,6 +49,7 @@ set(BACKEND_SOURCES "")
 
 # SIMD backends
 set(BA_HAS_AVX2_BACKEND OFF)
+set(BA_HAS_AVX512_BACKEND OFF)
 set(BA_HAS_NEON_BACKEND OFF)
 
 # Host processor and CMAKE_OSX_ARCHITECTURES (cross-compile iOS/watchOS arm64).
@@ -73,6 +74,13 @@ if(BA_ENABLE_AVX2 AND _BA_TARGET_X86 AND NOT _BA_TARGET_ARM64)
     set(BA_HAS_AVX2_BACKEND ON)
 endif()
 
+# AVX-512: dedicated TUs, x86_64 only (never on pure arm64 / Apple Silicon).
+if(BA_ENABLE_AVX512 AND _BA_TARGET_X86 AND NOT _BA_TARGET_ARM64)
+    list(APPEND BACKEND_SOURCES src/backends/simd/entropy_avx512.cpp)
+    list(APPEND BACKEND_SOURCES src/backends/simd/correlation_avx512.cpp)
+    set(BA_HAS_AVX512_BACKEND ON)
+endif()
+
 if(BA_ENABLE_NEON AND _BA_TARGET_ARM64)
     list(APPEND BACKEND_SOURCES src/backends/simd/entropy_neon.cpp)
     # NEON Pearson lives in correlation_simd.cpp (same TU as AVX2 kernels)
@@ -81,13 +89,82 @@ if(BA_ENABLE_NEON AND _BA_TARGET_ARM64)
 endif()
 
 # OpenMP
+# AppleClang does not ship libomp. On macOS, Homebrew's `libomp` package provides
+# the runtime + headers; CMake's FindOpenMP fails unless we set the AppleClang-style
+# -Xpreprocessor -fopenmp flags and point at that library before find_package.
 set(BA_HAS_OPENMP_BACKEND OFF)
 if(BA_ENABLE_OPENMP)
+    if(APPLE)
+        # Honour explicit user/cache overrides; only inject hints when unset.
+        if(NOT OpenMP_CXX_FLAGS AND NOT OpenMP_omp_LIBRARY)
+            set(_BA_LIBOMP_PREFIX "")
+            # Prefer explicit env / common Homebrew prefixes (no brew fork if possible).
+            foreach(_ba_omp_cand
+                "$ENV{HOMEBREW_PREFIX}/opt/libomp"
+                "/opt/homebrew/opt/libomp"
+                "/usr/local/opt/libomp")
+                if(_ba_omp_cand AND EXISTS "${_ba_omp_cand}/include/omp.h")
+                    set(_BA_LIBOMP_PREFIX "${_ba_omp_cand}")
+                    break()
+                endif()
+            endforeach()
+            if(NOT _BA_LIBOMP_PREFIX)
+                find_program(BA_BREW_EXECUTABLE brew)
+                if(BA_BREW_EXECUTABLE)
+                    execute_process(
+                        COMMAND "${BA_BREW_EXECUTABLE}" --prefix libomp
+                        OUTPUT_VARIABLE _BA_LIBOMP_PREFIX
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET
+                        RESULT_VARIABLE _BA_BREW_LIBOMP_RC
+                    )
+                    if(NOT _BA_BREW_LIBOMP_RC EQUAL 0)
+                        unset(_BA_LIBOMP_PREFIX)
+                    endif()
+                endif()
+            endif()
+            if(_BA_LIBOMP_PREFIX AND EXISTS "${_BA_LIBOMP_PREFIX}/include/omp.h")
+                set(_BA_LIBOMP_LIB "")
+                if(EXISTS "${_BA_LIBOMP_PREFIX}/lib/libomp.dylib")
+                    set(_BA_LIBOMP_LIB "${_BA_LIBOMP_PREFIX}/lib/libomp.dylib")
+                elseif(EXISTS "${_BA_LIBOMP_PREFIX}/lib/libomp.a")
+                    set(_BA_LIBOMP_LIB "${_BA_LIBOMP_PREFIX}/lib/libomp.a")
+                endif()
+                if(_BA_LIBOMP_LIB)
+                    # Cache so reconfigures and find_package(OpenMP) see the same values.
+                    set(OpenMP_C_FLAGS   "-Xpreprocessor -fopenmp -I${_BA_LIBOMP_PREFIX}/include"
+                        CACHE STRING "OpenMP C compiler flags (AppleClang + libomp)")
+                    set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${_BA_LIBOMP_PREFIX}/include"
+                        CACHE STRING "OpenMP CXX compiler flags (AppleClang + libomp)")
+                    set(OpenMP_C_LIB_NAMES   "omp" CACHE STRING "OpenMP C library names")
+                    set(OpenMP_CXX_LIB_NAMES "omp" CACHE STRING "OpenMP CXX library names")
+                    set(OpenMP_omp_LIBRARY "${_BA_LIBOMP_LIB}"
+                        CACHE FILEPATH "OpenMP runtime library (Homebrew libomp)")
+                    message(STATUS "BonhommeAccel: AppleClang OpenMP via libomp at ${_BA_LIBOMP_PREFIX}")
+                endif()
+            endif()
+            unset(_BA_LIBOMP_PREFIX)
+            unset(_BA_LIBOMP_LIB)
+            unset(_ba_omp_cand)
+        endif()
+    endif()
+
     find_package(OpenMP QUIET)
     if(OpenMP_CXX_FOUND)
         list(APPEND BACKEND_SOURCES src/backends/openmp/entropy_omp.cpp)
         list(APPEND BACKEND_SOURCES src/backends/openmp/pairwise_omp.cpp)
         set(BA_HAS_OPENMP_BACKEND ON)
+    else()
+        if(APPLE)
+            message(STATUS
+                "BonhommeAccel: OpenMP not found (AppleClang needs Homebrew libomp). "
+                "Install with: brew install libomp  — then reconfigure. "
+                "Or pass -DOpenMP_CXX_FLAGS=\"-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include\" "
+                "-DOpenMP_CXX_LIB_NAMES=omp "
+                "-DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib")
+        else()
+            message(STATUS "BonhommeAccel: OpenMP not found; OpenMP backend disabled")
+        endif()
     endif()
 endif()
 
@@ -217,6 +294,9 @@ target_compile_options(BonhommeAccel PRIVATE
 if(BA_HAS_AVX2_BACKEND)
     target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_AVX2)
 endif()
+if(BA_HAS_AVX512_BACKEND)
+    target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_AVX512)
+endif()
 if(BA_HAS_NEON_BACKEND)
     target_compile_definitions(BonhommeAccel PRIVATE BA_HAS_NEON)
 endif()
@@ -232,9 +312,15 @@ if(BA_HAS_AVX2_BACKEND)
     endforeach()
 endif()
 
-# AVX-512 flags (kernels not yet implemented — flag reserved)
-if(BA_ENABLE_AVX512 AND (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"))
-    # Future: dedicated AVX-512 TUs would get -mavx512f here
+# AVX-512 flags for dedicated TUs only (keeps rest of library free of -mavx512*)
+if(BA_HAS_AVX512_BACKEND)
+    foreach(src src/backends/simd/entropy_avx512.cpp src/backends/simd/correlation_avx512.cpp)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+            set_source_files_properties(${src} PROPERTIES
+                COMPILE_FLAGS "$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-mavx512f -mavx512dq>"
+            )
+        endif()
+    endforeach()
 endif()
 
 # OpenMP linking
@@ -292,6 +378,7 @@ endif()
 message(STATUS "BonhommeAccel backends:")
 message(STATUS "  NEON   = ${BA_HAS_NEON_BACKEND}")
 message(STATUS "  AVX2   = ${BA_HAS_AVX2_BACKEND}")
+message(STATUS "  AVX512 = ${BA_HAS_AVX512_BACKEND}")
 message(STATUS "  OpenMP = ${BA_HAS_OPENMP_BACKEND}")
 message(STATUS "  Metal  = ${BA_HAS_METAL_BACKEND}")
 message(STATUS "  CUDA   = ${BA_HAS_CUDA_BACKEND}")

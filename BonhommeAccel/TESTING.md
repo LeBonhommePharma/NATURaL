@@ -92,7 +92,7 @@ rm -rf BonhommeAccel/build
 | Option | Default | Meaning |
 |--------|---------|---------|
 | `BA_BUILD_TESTS` | `ON` | Build Catch2 `ba_tests` and register with CTest |
-| `BA_ENABLE_OPENMP` | `ON` | OpenMP backend if toolchain finds OpenMP |
+| `BA_ENABLE_OPENMP` | `ON` | OpenMP backend if toolchain finds OpenMP. On Apple, auto-detects Homebrew `libomp` (`brew install libomp`) and injects AppleClang `-Xpreprocessor -fopenmp` hints |
 | `BA_ENABLE_CUDA` | `OFF` | CUDA backend (requires `nvcc`; runtime device probe) |
 | `BA_ENABLE_ROCM` | `OFF` | ROCm/HIP backend (requires HIP; runtime device probe) |
 | `BA_ENABLE_METAL` | `ON` on Apple, else `OFF` | Metal GPU backend (Apple Silicon / macOS) |
@@ -330,7 +330,7 @@ watchOS / tvOS: `./scripts/build-accel-apple.sh --with-watchos` / `--with-tvos` 
 |---------|--------------|-----|
 | `ctest` finds 0 tests | Configure without tests or empty build dir | Re-run `cmake -B build -DBA_BUILD_TESTS=ON` then rebuild |
 | Catch2 fetch fails | Network / git blocked | Retry; ensure `git` can reach `github.com/catchorg/Catch2` |
-| OpenMP not found | Normal on some Apple toolchains | Build continues without OpenMP; core + SIMD still test |
+| OpenMP not found / `OpenMP = OFF` | AppleClang has no bundled libomp | `brew install libomp`, then clean reconfigure (`rm -rf BonhommeAccel/build && make accel`). CMake auto-detects `/opt/homebrew/opt/libomp` (or `brew --prefix libomp`). Manual override: `-DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" -DOpenMP_CXX_LIB_NAMES=omp -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib` |
 | SPM `swift test` fails after Accel work | Accidental SPM dependency on Accel | Keep default `BonhommeCore` deps empty (no `BONHOMME_ACCEL` in env); do not force Accel into default test graph |
 | Stale Accel results | Old `build/` tree | `rm -rf BonhommeAccel/build` and reconfigure |
 | `Undefined symbol: _ba_shannon_entropy` | `BONHOMME_ACCEL` on but `.a` not linked / wrong search path | Build Accel for the destination; set `BONHOMME_ACCEL_LIB` or Xcode Library Search Paths |
