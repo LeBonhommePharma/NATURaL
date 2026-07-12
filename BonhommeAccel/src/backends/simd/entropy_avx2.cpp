@@ -201,6 +201,96 @@ double circular_shannon_entropy_avx2(const double* angles, size_t count, int bin
     return entropy;
 }
 
+// ---------------------------------------------------------------------------
+// Fixed-domain Shannon entropy (AVX2 clamp + bin index)
+//
+// Semantics match core::shannon_entropy_fixed:
+//   filter non-finite, clamp to [domain_min, domain_max],
+//   bin with truncating cast, clean_count < 2 → 0.
+// ---------------------------------------------------------------------------
+
+double shannon_entropy_fixed_avx2(const double* values, size_t count, int bin_count,
+                                   double domain_min, double domain_max) {
+    if (!values || count < 2 || bin_count < 1) return 0.0;
+
+    size_t clean_count = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (std::isfinite(values[i])) ++clean_count;
+    }
+    if (clean_count < 2) return 0.0;
+
+    double range = domain_max - domain_min;
+    if (range <= 0.0) return 0.0;
+
+    double bin_width = range / static_cast<double>(bin_count);
+    std::vector<int> bins(static_cast<size_t>(bin_count), 0);
+
+    const __m256d v_dmin = _mm256_set1_pd(domain_min);
+    const __m256d v_dmax = _mm256_set1_pd(domain_max);
+    const __m256d v_bw   = _mm256_set1_pd(bin_width);
+    const __m256d v_zero = _mm256_setzero_pd();
+    const __m256d v_imax = _mm256_set1_pd(static_cast<double>(bin_count - 1));
+
+    size_t simd_end = (count / 4) * 4;
+    for (size_t i = 0; i < simd_end; i += 4) {
+        bool all_finite = true;
+        for (int k = 0; k < 4; ++k) {
+            if (!std::isfinite(values[i + static_cast<size_t>(k)])) {
+                all_finite = false;
+                break;
+            }
+        }
+
+        if (all_finite) {
+            __m256d v = _mm256_loadu_pd(&values[i]);
+            // Clamp to [domain_min, domain_max]
+            v = _mm256_max_pd(v, v_dmin);
+            v = _mm256_min_pd(v, v_dmax);
+            // Bin index (non-negative after clamp → trunc toward zero matches scalar cast)
+            __m256d fidx = _mm256_div_pd(_mm256_sub_pd(v, v_dmin), v_bw);
+            fidx = _mm256_max_pd(fidx, v_zero);
+            fidx = _mm256_min_pd(fidx, v_imax);
+
+            alignas(32) double idx_arr[4];
+            _mm256_store_pd(idx_arr, fidx);
+            for (int k = 0; k < 4; ++k) {
+                bins[static_cast<size_t>(static_cast<int>(idx_arr[k]))]++;
+            }
+        } else {
+            for (int k = 0; k < 4; ++k) {
+                double v = values[i + static_cast<size_t>(k)];
+                if (!std::isfinite(v)) continue;
+                v = std::max(domain_min, std::min(domain_max, v));
+                int idx = static_cast<int>((v - domain_min) / bin_width);
+                if (idx < 0) idx = 0;
+                if (idx >= bin_count) idx = bin_count - 1;
+                bins[static_cast<size_t>(idx)]++;
+            }
+        }
+    }
+
+    for (size_t i = simd_end; i < count; ++i) {
+        double v = values[i];
+        if (!std::isfinite(v)) continue;
+        v = std::max(domain_min, std::min(domain_max, v));
+        int idx = static_cast<int>((v - domain_min) / bin_width);
+        if (idx < 0) idx = 0;
+        if (idx >= bin_count) idx = bin_count - 1;
+        bins[static_cast<size_t>(idx)]++;
+    }
+
+    double total = static_cast<double>(clean_count);
+    double entropy = 0.0;
+    for (int i = 0; i < bin_count; ++i) {
+        if (bins[static_cast<size_t>(i)] > 0) {
+            double p = static_cast<double>(bins[static_cast<size_t>(i)]) / total;
+            entropy -= p * std::log2(p);
+        }
+    }
+
+    return entropy;
+}
+
 void shannon_entropy_batch_avx2(const double* flat, const size_t* offsets,
                                  const size_t* lengths, size_t batch_count,
                                  int bin_count, double* out) {
