@@ -1,5 +1,5 @@
 /*
- * correlation_simd.h — Declarations for NEON/AVX2 Pearson correlation kernels.
+ * correlation_simd.h — Declarations for NEON/AVX2/AVX-512 Pearson correlation kernels.
  */
 
 #ifndef BA_CORRELATION_SIMD_H
@@ -11,6 +11,10 @@ namespace ba::simd {
 
 #if defined(BA_HAS_AVX2)
 double pearson_correlation_avx2(const double* x, const double* y, size_t count);
+#endif
+
+#if defined(BA_HAS_AVX512)
+double pearson_correlation_avx512(const double* x, const double* y, size_t count);
 #endif
 
 #if defined(BA_HAS_NEON)

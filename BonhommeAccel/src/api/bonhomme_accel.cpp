@@ -17,7 +17,7 @@
 #include "../core/incomplete_beta.h"
 #include "../core/pairwise.h"
 
-#if defined(BA_HAS_NEON) || defined(BA_HAS_AVX2)
+#if defined(BA_HAS_NEON) || defined(BA_HAS_AVX2) || defined(BA_HAS_AVX512)
 #include "../backends/simd/entropy_simd.h"
 #include "../backends/simd/correlation_simd.h"
 #endif
@@ -112,6 +112,8 @@ const char* ba_status_string(BAStatus status) {
 static double fallback_shannon(const double* values, size_t count, int bin_count) {
 #if defined(BA_HAS_NEON)
     return ba::simd::shannon_entropy_neon(values, count, bin_count);
+#elif defined(BA_HAS_AVX512)
+    return ba::simd::shannon_entropy_avx512(values, count, bin_count);
 #elif defined(BA_HAS_AVX2)
     return ba::simd::shannon_entropy_avx2(values, count, bin_count);
 #else
@@ -122,6 +124,8 @@ static double fallback_shannon(const double* values, size_t count, int bin_count
 static double fallback_circular(const double* angles, size_t count, int bin_count) {
 #if defined(BA_HAS_NEON)
     return ba::simd::circular_shannon_entropy_neon(angles, count, bin_count);
+#elif defined(BA_HAS_AVX512)
+    return ba::simd::circular_shannon_entropy_avx512(angles, count, bin_count);
 #elif defined(BA_HAS_AVX2)
     return ba::simd::circular_shannon_entropy_avx2(angles, count, bin_count);
 #else
@@ -146,6 +150,8 @@ static double fallback_shannon_fixed(const double* values, size_t count, int bin
 static double fallback_pearson(const double* x, const double* y, size_t count) {
 #if defined(BA_HAS_NEON)
     return ba::simd::pearson_correlation_neon(x, y, count);
+#elif defined(BA_HAS_AVX512)
+    return ba::simd::pearson_correlation_avx512(x, y, count);
 #elif defined(BA_HAS_AVX2)
     return ba::simd::pearson_correlation_avx2(x, y, count);
 #else
@@ -161,6 +167,9 @@ static void fallback_shannon_batch(const double* values_flat,
 #if defined(BA_HAS_OPENMP)
     ba::omp::shannon_entropy_batch_omp(values_flat, offsets, lengths,
                                         batch_count, bin_count, out_entropies);
+#elif defined(BA_HAS_AVX512)
+    ba::simd::shannon_entropy_batch_avx512(values_flat, offsets, lengths,
+                                            batch_count, bin_count, out_entropies);
 #elif defined(BA_HAS_AVX2)
     ba::simd::shannon_entropy_batch_avx2(values_flat, offsets, lengths,
                                           batch_count, bin_count, out_entropies);
@@ -185,6 +194,11 @@ static void fallback_circular_batch(const double* values_flat,
 #elif defined(BA_HAS_NEON)
     for (size_t b = 0; b < batch_count; ++b) {
         out_entropies[b] = ba::simd::circular_shannon_entropy_neon(
+            values_flat + offsets[b], lengths[b], bin_count);
+    }
+#elif defined(BA_HAS_AVX512)
+    for (size_t b = 0; b < batch_count; ++b) {
+        out_entropies[b] = ba::simd::circular_shannon_entropy_avx512(
             values_flat + offsets[b], lengths[b], bin_count);
     }
 #elif defined(BA_HAS_AVX2)
@@ -280,9 +294,15 @@ static double dispatch_shannon(const double* values, size_t count, int bin_count
         case BA_BACKEND_NEON:
             return ba::simd::shannon_entropy_neon(values, count, bin_count);
 #endif
+#if defined(BA_HAS_AVX512)
+        case BA_BACKEND_AVX512:
+            return ba::simd::shannon_entropy_avx512(values, count, bin_count);
+#endif
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
+#if !defined(BA_HAS_AVX512)
         case BA_BACKEND_AVX512:
+#endif
             return ba::simd::shannon_entropy_avx2(values, count, bin_count);
 #endif
         default:
@@ -320,9 +340,15 @@ static double dispatch_circular(const double* angles, size_t count, int bin_coun
         case BA_BACKEND_NEON:
             return ba::simd::circular_shannon_entropy_neon(angles, count, bin_count);
 #endif
+#if defined(BA_HAS_AVX512)
+        case BA_BACKEND_AVX512:
+            return ba::simd::circular_shannon_entropy_avx512(angles, count, bin_count);
+#endif
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
+#if !defined(BA_HAS_AVX512)
         case BA_BACKEND_AVX512:
+#endif
             return ba::simd::circular_shannon_entropy_avx2(angles, count, bin_count);
 #endif
         default:
@@ -348,6 +374,7 @@ static double dispatch_shannon_fixed(const double* values, size_t count, int bin
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
         case BA_BACKEND_AVX512:
+            // No dedicated fixed-domain AVX-512 kernel; AVX2 path is correct.
             return ba::simd::shannon_entropy_fixed_avx2(values, count, bin_count,
                                                         domain_min, domain_max);
 #endif
@@ -423,9 +450,17 @@ static void dispatch_shannon_batch(const double* values_flat,
                                                 batch_count, bin_count, out_entropies);
             return;
 #endif
+#if defined(BA_HAS_AVX512)
+        case BA_BACKEND_AVX512:
+            ba::simd::shannon_entropy_batch_avx512(values_flat, offsets, lengths,
+                                                    batch_count, bin_count, out_entropies);
+            return;
+#endif
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
+#if !defined(BA_HAS_AVX512)
         case BA_BACKEND_AVX512:
+#endif
             ba::simd::shannon_entropy_batch_avx2(values_flat, offsets, lengths,
                                                   batch_count, bin_count, out_entropies);
             return;
@@ -510,9 +545,19 @@ static void dispatch_circular_batch(const double* values_flat,
             }
             return;
 #endif
+#if defined(BA_HAS_AVX512)
+        case BA_BACKEND_AVX512:
+            for (size_t b = 0; b < batch_count; ++b) {
+                out_entropies[b] = ba::simd::circular_shannon_entropy_avx512(
+                    values_flat + offsets[b], lengths[b], bin_count);
+            }
+            return;
+#endif
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
+#if !defined(BA_HAS_AVX512)
         case BA_BACKEND_AVX512:
+#endif
             for (size_t b = 0; b < batch_count; ++b) {
                 out_entropies[b] = ba::simd::circular_shannon_entropy_avx2(
                     values_flat + offsets[b], lengths[b], bin_count);
@@ -557,9 +602,15 @@ static double dispatch_pearson(const double* x, const double* y, size_t count) {
         case BA_BACKEND_NEON:
             return ba::simd::pearson_correlation_neon(x, y, count);
 #endif
+#if defined(BA_HAS_AVX512)
+        case BA_BACKEND_AVX512:
+            return ba::simd::pearson_correlation_avx512(x, y, count);
+#endif
 #if defined(BA_HAS_AVX2)
         case BA_BACKEND_AVX2:
+#if !defined(BA_HAS_AVX512)
         case BA_BACKEND_AVX512:
+#endif
             return ba::simd::pearson_correlation_avx2(x, y, count);
 #endif
         default:

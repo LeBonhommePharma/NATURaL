@@ -1,5 +1,5 @@
 /*
- * entropy_simd.h — Declarations for NEON/AVX2 Shannon entropy kernels.
+ * entropy_simd.h — Declarations for NEON/AVX2/AVX-512 Shannon entropy kernels.
  */
 
 #ifndef BA_ENTROPY_SIMD_H
@@ -24,6 +24,14 @@ double shannon_entropy_fixed_avx2(const double* values, size_t count, int bin_co
 void shannon_entropy_batch_avx2(const double* flat, const size_t* offsets,
                                  const size_t* lengths, size_t batch_count,
                                  int bin_count, double* out);
+#endif
+
+#if defined(BA_HAS_AVX512)
+double shannon_entropy_avx512(const double* values, size_t count, int bin_count);
+double circular_shannon_entropy_avx512(const double* angles, size_t count, int bin_count);
+void shannon_entropy_batch_avx512(const double* flat, const size_t* offsets,
+                                   const size_t* lengths, size_t batch_count,
+                                   int bin_count, double* out);
 #endif
 
 } // namespace ba::simd
