@@ -40,8 +40,12 @@ final class LowLatencyAudioRouter {
     private var lastProfile: AirFoilQualityProfile = .standard
     private var lastAppliedBufferMs: Double = 0
     private var lastAppliedSampleRate: Double = 0
+    /// Continuous buffer → fleet publish task while engine is running.
+    private var bufferPublishTask: Task<Void, Never>?
+    /// Interval for continuous measured buffer publish (seconds).
+    var bufferPublishInterval: TimeInterval = 1.0
 
-    /// Achieved session metrics after last `apply`.
+    /// Achieved session metrics after last `apply` / refresh.
     private(set) var achievedIOBufferDuration: TimeInterval = 0
     private(set) var achievedSampleRate: Double = 0
     private(set) var isRunning = false
@@ -69,8 +73,7 @@ final class LowLatencyAudioRouter {
         try session.setPreferredIOBufferDuration(profile.ioBufferDuration)
         try session.setActive(true, options: [])
 
-        achievedSampleRate = session.sampleRate
-        achievedIOBufferDuration = session.ioBufferDuration
+        refreshAchievedMetrics(from: session)
         lastAppliedSampleRate = achievedSampleRate
         lastAppliedBufferMs = achievedIOBufferDuration * 1000.0
         lastProfile = profile
@@ -89,7 +92,50 @@ final class LowLatencyAudioRouter {
         }
         started = true
         isRunning = engine.isRunning
+        startContinuousBufferPublish()
         return profile
+    }
+
+    /// Re-read session sample rate / IO buffer into achieved metrics.
+    func refreshAchievedMetrics(from session: AVAudioSession = .sharedInstance()) {
+        achievedSampleRate = session.sampleRate
+        achievedIOBufferDuration = session.ioBufferDuration
+        lastAppliedBufferMs = achievedIOBufferDuration * 1000.0
+        lastAppliedSampleRate = achievedSampleRate
+    }
+
+    /// Continuous publish of measured buffer latency into ClusterFleet + iCloud presence.
+    func startContinuousBufferPublish() {
+        bufferPublishTask?.cancel()
+        bufferPublishTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                guard self.isRunning else {
+                    try? await Task.sleep(for: .seconds(self.bufferPublishInterval))
+                    continue
+                }
+                self.refreshAchievedMetrics()
+                let ms = self.achievedIOBufferDuration * 1000.0
+                if ms > 0 {
+                    let coord = ClusterFleetPresenceCoordinator.shared
+                    await ClusterFleet.shared.publishBufferLatency(
+                        deviceId: coord.localDeviceId,
+                        bufferLatencyMs: ms,
+                        displayName: coord.localDisplayName,
+                        platform: coord.currentPlatform,
+                        asLocalHost: true
+                    )
+                }
+                // Presence coordinator also heartbeats; this keeps buffer hot-path live.
+                await ClusterFleetPresenceCoordinator.shared.noteEngineBufferSample(ms: ms)
+                try? await Task.sleep(for: .seconds(self.bufferPublishInterval))
+            }
+        }
+    }
+
+    func stopContinuousBufferPublish() {
+        bufferPublishTask?.cancel()
+        bufferPublishTask = nil
     }
 
     /// Apply profile recommended by current ClusterFleet snapshot.
@@ -135,6 +181,7 @@ final class LowLatencyAudioRouter {
     }
 
     func stop() {
+        stopContinuousBufferPublish()
         sourceNode.stop()
         if engine.isRunning {
             engine.stop()
@@ -145,9 +192,14 @@ final class LowLatencyAudioRouter {
 
     /// Report measured buffer latency back into ClusterFleet for the local device id.
     func publishLocalLatency(to fleet: ClusterFleet = .shared, deviceId: String) async {
+        refreshAchievedMetrics()
         let ms = achievedIOBufferDuration * 1000.0
         guard ms > 0 else { return }
-        await fleet.updateMeasuredLatency(deviceId: deviceId, latencyMs: ms)
+        await fleet.publishBufferLatency(
+            deviceId: deviceId,
+            bufferLatencyMs: ms,
+            asLocalHost: deviceId == ClusterFleetPresenceCoordinator.shared.localDeviceId
+        )
     }
 
     /// Human-readable diagnostics for debug UI.
