@@ -28,6 +28,34 @@ public struct ProgramPhase: Codable, Sendable, Identifiable {
         self.endTime = endTime
         self.targetSCIRange = targetSCIRange
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, startTime, endTime, targetSCILower, targetSCIUpper
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        startTime = try c.decode(TimeInterval.self, forKey: .startTime)
+        endTime = try c.decode(TimeInterval.self, forKey: .endTime)
+        if let lo = try c.decodeIfPresent(Double.self, forKey: .targetSCILower),
+           let hi = try c.decodeIfPresent(Double.self, forKey: .targetSCIUpper) {
+            targetSCIRange = lo...hi
+        } else {
+            targetSCIRange = nil
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(startTime, forKey: .startTime)
+        try c.encode(endTime, forKey: .endTime)
+        try c.encodeIfPresent(targetSCIRange?.lowerBound, forKey: .targetSCILower)
+        try c.encodeIfPresent(targetSCIRange?.upperBound, forKey: .targetSCIUpper)
+    }
 }
 
 // MARK: - YouTubeWorkoutProgram
@@ -61,24 +89,37 @@ public struct YouTubeWorkoutProgram: Codable, Sendable, Identifiable {
         self.phases = phases
         self.programDescription = programDescription
     }
-}
 
-// MARK: - ClosedRange Codable
-
-extension ClosedRange: @retroactive Encodable where Bound: Encodable {
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.unkeyedContainer()
-        try c.encode(lowerBound)
-        try c.encode(upperBound)
+    private enum CodingKeys: String, CodingKey {
+        case id, title, youtubeID, expectedDuration
+        case activityTypeRaw, locationTypeRaw
+        case phases, programDescription
     }
-}
 
-extension ClosedRange: @retroactive Decodable where Bound: Decodable {
     public init(from decoder: Decoder) throws {
-        var c = try decoder.unkeyedContainer()
-        let lo = try c.decode(Bound.self)
-        let hi = try c.decode(Bound.self)
-        self = lo...hi
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        youtubeID = try c.decode(String.self, forKey: .youtubeID)
+        expectedDuration = try c.decode(TimeInterval.self, forKey: .expectedDuration)
+        let activityRaw = try c.decode(UInt.self, forKey: .activityTypeRaw)
+        activityType = HKWorkoutActivityType(rawValue: activityRaw) ?? .other
+        let locationRaw = try c.decode(Int.self, forKey: .locationTypeRaw)
+        locationType = HKWorkoutSessionLocationType(rawValue: locationRaw) ?? .unknown
+        phases = try c.decode([ProgramPhase].self, forKey: .phases)
+        programDescription = try c.decode(String.self, forKey: .programDescription)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(youtubeID, forKey: .youtubeID)
+        try c.encode(expectedDuration, forKey: .expectedDuration)
+        try c.encode(activityType.rawValue, forKey: .activityTypeRaw)
+        try c.encode(locationType.rawValue, forKey: .locationTypeRaw)
+        try c.encode(phases, forKey: .phases)
+        try c.encode(programDescription, forKey: .programDescription)
     }
 }
 
