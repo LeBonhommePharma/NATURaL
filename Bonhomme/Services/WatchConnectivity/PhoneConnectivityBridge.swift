@@ -63,12 +63,21 @@ final class PhoneConnectivityBridge: NSObject {
             print("✅ WCSession already activated (iOS)")
             wcSession = session
             isWatchReachable = session.isReachable
+            syncWatchIntoClusterFleet(session: session)
             return
         }
         
         session.activate()
         wcSession = session
         print("🔄 WCSession activation requested (iOS)")
+    }
+
+    /// Auto-upsert Apple Watch into ClusterFleet (paired / reachable).
+    private func syncWatchIntoClusterFleet(session: WCSession) {
+        ClusterFleetPresenceCoordinator.shared.syncWatchCompanion(
+            isPaired: session.isPaired,
+            isReachable: session.isReachable
+        )
     }
 
     // MARK: - Commands to Watch
@@ -147,9 +156,11 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
                 if !session.isReachable {
                     print("⚠️ Watch is not reachable (may be disconnected or out of range)")
                 }
+                syncWatchIntoClusterFleet(session: session)
             case .inactive:
                 print("⚠️ WCSession is inactive (iOS)")
                 isWatchReachable = false
+                syncWatchIntoClusterFleet(session: session)
             case .notActivated:
                 print("⚠️ WCSession is not activated (iOS)")
                 isWatchReachable = false
@@ -162,10 +173,19 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
         print("⚠️ WCSession became inactive (iOS)")
+        Task { @MainActor in
+            self.syncWatchIntoClusterFleet(session: session)
+        }
     }
 
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         print("⚠️ WCSession deactivated (iOS) - reactivating...")
+        Task { @MainActor in
+            ClusterFleetPresenceCoordinator.shared.syncWatchCompanion(
+                isPaired: false,
+                isReachable: false
+            )
+        }
         session.activate()
     }
 
@@ -177,6 +197,13 @@ extension PhoneConnectivityBridge: WCSessionDelegate {
             } else {
                 print("⚠️ Watch became unreachable (iOS)")
             }
+            self.syncWatchIntoClusterFleet(session: session)
+        }
+    }
+
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            self.syncWatchIntoClusterFleet(session: session)
         }
     }
 

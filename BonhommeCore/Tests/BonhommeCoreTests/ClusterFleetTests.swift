@@ -178,4 +178,144 @@ final class ClusterFleetTests: XCTestCase {
             XCTAssertTrue(r.success, "channel \(r.channelId) failed: \(r.detail)")
         }
     }
+
+    // MARK: - Presence / auto-upsert
+
+    func testPresenceRecordRoundTrip() throws {
+        let record = FleetPresenceRecord(
+            deviceId: "dev-1",
+            displayName: "iPad",
+            platform: .iPadOS,
+            bufferLatencyMs: 8.5,
+            sessionActive: true
+        )
+        let data = try FleetPresenceCodec.encode(record)
+        let decoded = try FleetPresenceCodec.decode(data)
+        XCTAssertEqual(decoded.deviceId, "dev-1")
+        XCTAssertEqual(decoded.platform, .iPadOS)
+        XCTAssertEqual(decoded.bufferLatencyMs ?? 0, 8.5, accuracy: 1e-9)
+        XCTAssertEqual(
+            FleetPresenceRecord.deviceId(fromKVSKey: FleetPresenceRecord.kvsKey(for: "dev-1")),
+            "dev-1"
+        )
+    }
+
+    func testStableLocalIdentity() {
+        var stored: String?
+        let a = FleetLocalIdentity.stableDeviceId(stored: stored) { stored = $0 }
+        let b = FleetLocalIdentity.stableDeviceId(stored: stored) { stored = $0 }
+        XCTAssertEqual(a, b)
+        XCTAssertFalse(a.isEmpty)
+    }
+
+    func testApplyPresenceRecordsUpsertsICloudPeers() async {
+        let fleet = ClusterFleet()
+        let localId = "local-host"
+        await fleet.ensureLocalHost(id: localId, platform: .iOS, displayName: "iPhone")
+
+        let peers = [
+            FleetPresenceRecord(
+                deviceId: "ipad-1",
+                displayName: "LPad",
+                platform: .iPadOS,
+                bufferLatencyMs: 10,
+                isActive: true,
+                updatedAt: Date()
+            ),
+            FleetPresenceRecord(
+                deviceId: "mac-1",
+                displayName: "LMac",
+                platform: .macOS,
+                bufferLatencyMs: 6,
+                isActive: true,
+                updatedAt: Date()
+            ),
+            // Mirrored copy of local must not demote host.
+            FleetPresenceRecord(
+                deviceId: localId,
+                displayName: "Ghost",
+                platform: .iOS,
+                bufferLatencyMs: 99,
+                updatedAt: Date()
+            )
+        ]
+        await fleet.applyPresenceRecords(peers, localDeviceId: localId)
+        let snap = await fleet.snapshot()
+        XCTAssertEqual(snap.icloudPeers.filter { $0.id != localId }.count, 2)
+        XCTAssertTrue(snap.devices.contains { $0.id == "ipad-1" && $0.platform == .iPadOS })
+        XCTAssertTrue(snap.devices.contains { $0.id == "mac-1" && $0.platform == .macOS })
+        let host = snap.devices.first { $0.id == localId }
+        XCTAssertEqual(host?.isLocalHost, true)
+        XCTAssertNotEqual(host?.displayName, "Ghost")
+    }
+
+    func testWatchCompanionSurvivesRouteRefresh() async {
+        let fleet = ClusterFleet()
+        await fleet.upsertCompanion(
+            id: "watch-companion",
+            kind: .watchCompanion,
+            displayName: "Apple Watch",
+            active: true,
+            platform: .watchOS
+        )
+        await fleet.refreshAudioRoutes([
+            FleetRoutePort(uid: "sp", portType: "Speaker", portName: "Speaker")
+        ])
+        let snap = await fleet.snapshot()
+        XCTAssertTrue(snap.hasWatchCompanion)
+        XCTAssertEqual(snap.devices.count, 2)
+    }
+
+    func testPublishBufferLatencyUpdatesLocalHost() async throws {
+        let fleet = ClusterFleet()
+        await fleet.publishBufferLatency(
+            deviceId: "host-1",
+            bufferLatencyMs: 5.3,
+            displayName: "iPhone",
+            platform: .iOS,
+            asLocalHost: true
+        )
+        let snap = await fleet.snapshot()
+        let host = try XCTUnwrap(snap.devices.first { $0.id == "host-1" })
+        XCTAssertTrue(host.isLocalHost)
+        XCTAssertEqual(host.bufferLatencyMs ?? 0, 5.3, accuracy: 1e-9)
+        XCTAssertEqual(host.latencyMs, 5.3, accuracy: 1e-9)
+    }
+
+    func testPruneStaleCompanions() async {
+        let fleet = ClusterFleet()
+        await fleet.applyPresenceRecords(
+            [
+                FleetPresenceRecord(
+                    deviceId: "old-ipad",
+                    displayName: "Old",
+                    platform: .iPadOS,
+                    isActive: true,
+                    updatedAt: Date().addingTimeInterval(-1000)
+                )
+            ],
+            localDeviceId: "me",
+            staleAfter: 300
+        )
+        var snap = await fleet.snapshot()
+        XCTAssertFalse(snap.devices.contains { $0.id == "old-ipad" && $0.isActive })
+
+        await fleet.upsertCompanion(
+            id: "fresh",
+            kind: .icloudPeer,
+            displayName: "Fresh",
+            active: true,
+            platform: .macOS
+        )
+        await fleet.pruneStaleCompanions(staleAfter: 300)
+        snap = await fleet.snapshot()
+        XCTAssertTrue(snap.devices.contains { $0.id == "fresh" && $0.isActive })
+    }
+
+    func testPlatformCompanionKind() {
+        XCTAssertEqual(FleetPlatform.watchOS.companionKind, .watchCompanion)
+        XCTAssertEqual(FleetPlatform.iPadOS.companionKind, .icloudPeer)
+        XCTAssertEqual(FleetPlatform.macOS.companionKind, .icloudPeer)
+        XCTAssertEqual(FleetPlatform.iOS.companionKind, .icloudPeer)
+    }
 }

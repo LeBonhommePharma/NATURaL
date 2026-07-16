@@ -18,6 +18,8 @@ public enum FleetDeviceKind: String, Sendable, Codable, CaseIterable, Equatable 
     case carAudio
     case watchCompanion
     case tvRelay
+    /// Same-iCloud Apple device peer (iPhone / iPad / Mac) via presence sync.
+    case icloudPeer
     case unknown
 
     /// Typical one-way latency priors (ms) when hardware has not measured yet.
@@ -32,6 +34,7 @@ public enum FleetDeviceKind: String, Sendable, Codable, CaseIterable, Equatable 
         case .carAudio: return 50
         case .watchCompanion: return 45
         case .tvRelay: return 90
+        case .icloudPeer: return 60
         case .unknown: return 25
         }
     }
@@ -51,6 +54,39 @@ public enum FleetDeviceKind: String, Sendable, Codable, CaseIterable, Equatable 
             return false
         }
     }
+
+    /// Non-route devices that must survive `refreshAudioRoutes` replacement.
+    public var isCompanionMembership: Bool {
+        switch self {
+        case .watchCompanion, .tvRelay, .icloudPeer:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+/// OS family for iCloud peer presence (same Apple ID).
+public enum FleetPlatform: String, Sendable, Codable, CaseIterable, Equatable {
+    case iOS
+    case iPadOS
+    case macOS
+    case watchOS
+    case tvOS
+    case visionOS
+    case unknown
+
+    public var displayLabel: String { rawValue }
+
+    /// Map to fleet device kind for presence records.
+    public var companionKind: FleetDeviceKind {
+        switch self {
+        case .watchOS: return .watchCompanion
+        case .tvOS: return .tvRelay
+        case .iOS, .iPadOS, .macOS, .visionOS: return .icloudPeer
+        case .unknown: return .icloudPeer
+        }
+    }
 }
 
 /// A single synchronized endpoint in the ClusterFleet.
@@ -64,6 +100,12 @@ public struct FleetDevice: Sendable, Equatable, Identifiable {
     /// Applied compensation delay from the last plan (ms).
     public var compensationDelayMs: Double
     public var lastSeen: Date
+    /// Platform for iCloud / Watch companions (nil for pure audio ports).
+    public var platform: FleetPlatform?
+    /// True when this entry is the local host device presence row.
+    public var isLocalHost: Bool
+    /// Last published IO buffer duration (ms) when known.
+    public var bufferLatencyMs: Double?
 
     public init(
         id: String,
@@ -72,7 +114,10 @@ public struct FleetDevice: Sendable, Equatable, Identifiable {
         isActive: Bool = true,
         latencyMs: Double? = nil,
         compensationDelayMs: Double = 0,
-        lastSeen: Date = Date()
+        lastSeen: Date = Date(),
+        platform: FleetPlatform? = nil,
+        isLocalHost: Bool = false,
+        bufferLatencyMs: Double? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -81,6 +126,9 @@ public struct FleetDevice: Sendable, Equatable, Identifiable {
         self.latencyMs = latencyMs ?? kind.defaultLatencyMs
         self.compensationDelayMs = max(0, compensationDelayMs)
         self.lastSeen = lastSeen
+        self.platform = platform
+        self.isLocalHost = isLocalHost
+        self.bufferLatencyMs = bufferLatencyMs
     }
 }
 
@@ -106,6 +154,14 @@ public struct ClusterFleetSnapshot: Sendable, Equatable {
             default: return false
             }
         }
+    }
+
+    public var hasWatchCompanion: Bool {
+        activeDevices.contains { $0.kind == .watchCompanion }
+    }
+
+    public var icloudPeers: [FleetDevice] {
+        activeDevices.filter { $0.kind == .icloudPeer }
     }
 
     public init(
@@ -224,16 +280,13 @@ public actor ClusterFleet {
     // MARK: Membership
 
     /// Replace active audio-route devices from session route description.
-    /// Companion devices (Watch / TV) with ids outside this set are preserved.
+    /// Companion devices (Watch / TV / iCloud peers / local host) are preserved.
     public func refreshAudioRoutes(_ ports: [FleetRoutePort]) {
         let now = Date()
         var keepCompanion: [String: FleetDevice] = [:]
         for (id, device) in devices {
-            switch device.kind {
-            case .watchCompanion, .tvRelay:
+            if device.kind.isCompanionMembership || device.isLocalHost {
                 keepCompanion[id] = device
-            default:
-                break
             }
         }
 
@@ -249,7 +302,10 @@ public actor ClusterFleet {
                 isActive: true,
                 latencyMs: prior?.latencyMs ?? kind.defaultLatencyMs,
                 compensationDelayMs: prior?.compensationDelayMs ?? 0,
-                lastSeen: now
+                lastSeen: now,
+                platform: prior?.platform,
+                isLocalHost: prior?.isLocalHost ?? false,
+                bufferLatencyMs: prior?.bufferLatencyMs
             )
         }
         devices = next
@@ -257,25 +313,115 @@ public actor ClusterFleet {
         qualityProfile = AirFoilQualityRouter.profile(for: Array(devices.values), targetLatencyMs: targetLatencyMs)
     }
 
+    /// Insert or update a companion (Watch, TV, iCloud peer, or local host row).
     public func upsertCompanion(
         id: String,
         kind: FleetDeviceKind,
         displayName: String,
         latencyMs: Double? = nil,
-        active: Bool = true
+        active: Bool = true,
+        platform: FleetPlatform? = nil,
+        isLocalHost: Bool = false,
+        bufferLatencyMs: Double? = nil
     ) {
-        precondition(kind == .watchCompanion || kind == .tvRelay || kind == .unknown)
+        precondition(
+            kind.isCompanionMembership || kind == .unknown || isLocalHost,
+            "upsertCompanion is for companion membership, not audio ports"
+        )
         let prior = devices[id]
+        let resolvedLatency = latencyMs
+            ?? bufferLatencyMs
+            ?? prior?.latencyMs
+            ?? kind.defaultLatencyMs
         devices[id] = FleetDevice(
             id: id,
             kind: kind,
             displayName: displayName,
             isActive: active,
-            latencyMs: latencyMs ?? prior?.latencyMs ?? kind.defaultLatencyMs,
+            latencyMs: resolvedLatency,
             compensationDelayMs: prior?.compensationDelayMs ?? 0,
-            lastSeen: Date()
+            lastSeen: Date(),
+            platform: platform ?? prior?.platform,
+            isLocalHost: isLocalHost || (prior?.isLocalHost ?? false),
+            bufferLatencyMs: bufferLatencyMs ?? prior?.bufferLatencyMs
         )
         recomputePlan()
+    }
+
+    /// Ensure the local host row exists (iPhone / iPad / Mac running this process).
+    public func ensureLocalHost(
+        id: String,
+        platform: FleetPlatform,
+        displayName: String,
+        bufferLatencyMs: Double? = nil
+    ) {
+        upsertCompanion(
+            id: id,
+            kind: .icloudPeer,
+            displayName: displayName,
+            latencyMs: bufferLatencyMs,
+            active: true,
+            platform: platform,
+            isLocalHost: true,
+            bufferLatencyMs: bufferLatencyMs
+        )
+    }
+
+    /// Apply remote presence heartbeats from same-iCloud peers (and optional Watch rows).
+    ///
+    /// - Parameters:
+    ///   - records: Decoded presence payloads (KVS / CloudKit / WCSession).
+    ///   - localDeviceId: This process's stable id — never demoted by a remote copy.
+    ///   - staleAfter: Peers not seen within this interval become inactive.
+    public func applyPresenceRecords(
+        _ records: [FleetPresenceRecord],
+        localDeviceId: String,
+        staleAfter: TimeInterval = FleetPresenceRecord.defaultStaleInterval
+    ) {
+        let now = Date()
+        for record in records {
+            // Never overwrite local host from a mirrored remote of ourselves.
+            if record.deviceId == localDeviceId {
+                continue
+            }
+            let age = now.timeIntervalSince(record.updatedAt)
+            let active = record.isActive && age <= staleAfter
+            let kind = record.platform.companionKind
+            let prior = devices[record.deviceId]
+            let latency = record.bufferLatencyMs
+                ?? record.pathLatencyMs
+                ?? prior?.latencyMs
+                ?? kind.defaultLatencyMs
+            devices[record.deviceId] = FleetDevice(
+                id: record.deviceId,
+                kind: kind,
+                displayName: record.displayName,
+                isActive: active,
+                latencyMs: latency,
+                compensationDelayMs: prior?.compensationDelayMs ?? 0,
+                lastSeen: record.updatedAt,
+                platform: record.platform,
+                isLocalHost: false,
+                bufferLatencyMs: record.bufferLatencyMs
+            )
+        }
+        recomputePlan()
+    }
+
+    /// Mark companions inactive when `lastSeen` is older than `staleAfter`.
+    public func pruneStaleCompanions(staleAfter: TimeInterval = FleetPresenceRecord.defaultStaleInterval) {
+        let now = Date()
+        var changed = false
+        for (id, device) in devices {
+            guard device.kind.isCompanionMembership, !device.isLocalHost else { continue }
+            if device.isActive && now.timeIntervalSince(device.lastSeen) > staleAfter {
+                var updated = device
+                updated.isActive = false
+                devices[id] = updated
+                changed = true
+            }
+        }
+        if changed { recomputePlan() }
     }
 
     public func removeDevice(id: String) {
@@ -289,6 +435,36 @@ public actor ClusterFleet {
         device.lastSeen = Date()
         devices[deviceId] = device
         recomputePlan()
+    }
+
+    /// Publish continuous IO buffer measurement onto a device row (creates local host if needed).
+    public func publishBufferLatency(
+        deviceId: String,
+        bufferLatencyMs: Double,
+        displayName: String? = nil,
+        platform: FleetPlatform? = nil,
+        asLocalHost: Bool = false
+    ) {
+        let ms = bufferLatencyMs.isFinite ? max(0, bufferLatencyMs) : 0
+        if var device = devices[deviceId] {
+            device.bufferLatencyMs = ms
+            // Prefer measured buffer as path latency for compensation when positive.
+            if ms > 0 { device.latencyMs = ms }
+            device.lastSeen = Date()
+            device.isActive = true
+            if asLocalHost { device.isLocalHost = true }
+            if let platform { device.platform = platform }
+            if let displayName, !displayName.isEmpty { device.displayName = displayName }
+            devices[deviceId] = device
+            recomputePlan()
+        } else if asLocalHost {
+            ensureLocalHost(
+                id: deviceId,
+                platform: platform ?? .unknown,
+                displayName: displayName ?? "This Device",
+                bufferLatencyMs: ms
+            )
+        }
     }
 
     // MARK: Spatial + tempo (state only)

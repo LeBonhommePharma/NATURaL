@@ -66,6 +66,10 @@ final class AppState {
             feedbackEngine: feedbackEngine,
             medicationTracker: medicationTracker
         )
+
+        // ClusterFleet: iCloud peer heartbeats (iPhone/iPad/Mac) + Watch auto-upsert hooks.
+        // Watch membership is also driven by PhoneConnectivityBridge reachability.
+        ClusterFleetPresenceCoordinator.shared.start()
     }
 
     /// Detects recoverable local activity and auto-loads it into a runnable restored session.

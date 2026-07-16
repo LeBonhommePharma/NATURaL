@@ -97,7 +97,10 @@ final class MusicService: ObservableObject {
                 { snap in await self?.applyBeatSync(snap) }
             ])
             // Warm low-latency session from current fleet quality profile.
+            // `apply` also starts continuous buffer → fleet publish while running.
             try? await LowLatencyAudioRouter.shared.applyFromFleet()
+            // Ensure iCloud presence / Watch membership loops are live for the session.
+            ClusterFleetPresenceCoordinator.shared.start()
         }
     }
 

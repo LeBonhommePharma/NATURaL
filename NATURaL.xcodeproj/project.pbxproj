@@ -78,6 +78,7 @@
 		EDEE89A8675D8B0A03BDBC64 /* CompanionListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E5851C481D6F2C635A5F16 /* CompanionListener.swift */; };
 		EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E476F8E5973738F1E1B3844 /* MusicService.swift */; };
 		907ABE29B38644258CAEEB61 /* LowLatencyAudioRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68CA5F4748A43899AE001B9 /* LowLatencyAudioRouter.swift */; };
+		76CFA6186FD349D9A02B66E9 /* ClusterFleetPresenceCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23FB1F35D2EA424AA7F2F207 /* ClusterFleetPresenceCoordinator.swift */; };
 		F29B15D27C7DA1AACC0AC1AA /* MedicationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */; };
 		F3F7A9D411AB20AC7E2336B8 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2116565DC2151DED0D9D89F7 /* BonhommeCore */; };
 		FD49833D260B4FF35CDC6473 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53AE2127BD0406C5E0B209B /* HealthKitManager.swift */; };
@@ -138,6 +139,7 @@
 		0548EA572BDA6A5A2A713EDF /* WorkoutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRecorder.swift; sourceTree = "<group>"; };
 		0E476F8E5973738F1E1B3844 /* MusicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicService.swift; sourceTree = "<group>"; };
 		D68CA5F4748A43899AE001B9 /* LowLatencyAudioRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LowLatencyAudioRouter.swift; sourceTree = "<group>"; };
+		23FB1F35D2EA424AA7F2F207 /* ClusterFleetPresenceCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClusterFleetPresenceCoordinator.swift; sourceTree = "<group>"; };
 		1B7EA9136C4131977C6C8296 /* TVRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVRootView.swift; sourceTree = "<group>"; };
 		243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFlowUITests.swift; sourceTree = "<group>"; };
 		2641A7B30E9FE011D3F54CE4 /* MedicationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTracker.swift; sourceTree = "<group>"; };
@@ -499,6 +501,7 @@
 			children = (
 				0E476F8E5973738F1E1B3844 /* MusicService.swift */,
 				D68CA5F4748A43899AE001B9 /* LowLatencyAudioRouter.swift */,
+				23FB1F35D2EA424AA7F2F207 /* ClusterFleetPresenceCoordinator.swift */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -939,6 +942,7 @@
 				EC6E020914E50BA731EAF436 /* WorkoutRecorder.swift in Sources */,
 				EE7A5360BFFDA59E0AF715AF /* MusicService.swift in Sources */,
 				907ABE29B38644258CAEEB61 /* LowLatencyAudioRouter.swift in Sources */,
+				76CFA6186FD349D9A02B66E9 /* ClusterFleetPresenceCoordinator.swift in Sources */,
 				E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */,
 				8269669262800477717015BA /* ChairYogaActivity.swift in Sources */,
 				0E49383CD358A88C9AECA630 /* SessionCoordinator.swift in Sources */,
