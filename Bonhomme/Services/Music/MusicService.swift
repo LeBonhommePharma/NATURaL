@@ -86,6 +86,7 @@ final class MusicService: ObservableObject {
     /// 3. `WorkoutFlowViewModel.tickPharmaControl` must **not** call rate APIs
     /// 4. Watch crown / AirPods mutate β only on the bus path (no phone `playbackRate`)
     /// 5. First-play / post-crossfade re-apply via the same private method (restore, not a second owner)
+    /// 6. Same broadcast also updates `ClusterFleet` spatial/tempo state (not a second beat authority)
     func bindUniversalBeatSync() {
         guard !beatBound else { return }
         beatBound = true
@@ -95,6 +96,8 @@ final class MusicService: ObservableObject {
             await UniversalBeatSync.shared.replaceListeners([
                 { snap in await self?.applyBeatSync(snap) }
             ])
+            // Warm low-latency session from current fleet quality profile.
+            try? await LowLatencyAudioRouter.shared.applyFromFleet()
         }
     }
 
@@ -104,6 +107,13 @@ final class MusicService: ObservableObject {
     /// Local dual-engine path has no MusicKit rate control (nodes stay at rate 1.0).
     private func applyBeatSync(_ snap: BeatSyncSnapshot) async {
         lastBeat = snap
+        // Fleet adopts tempo/β for spatial + latency plan (listener path only).
+        await ClusterFleet.shared.adoptBeat(snap)
+        let fleetSnap = await ClusterFleet.shared.snapshot()
+        LowLatencyAudioRouter.shared.applySpatialState(
+            yawDegrees: fleetSnap.listenerYawDegrees,
+            depth: fleetSnap.spatialDepth
+        )
         guard isPlaying, !isCrossfading else { return }
         guard backend == .musicKit else { return }
         let player = ApplicationMusicPlayer.shared
@@ -159,6 +169,24 @@ final class MusicService: ObservableObject {
             }
         }
         await setAirPodsRouteActive(headphonesActive)
+
+        // ClusterFleet: real route ports → fleet devices (single shared session).
+        let ports = outputs.map { port in
+            FleetRoutePort(
+                uid: port.uid,
+                portType: port.portType.rawValue,
+                portName: port.portName
+            )
+        }
+        await ClusterFleet.shared.refreshAudioRoutes(ports)
+        // Re-apply quality profile when route changes (AirPods ↔ speaker).
+        try? await LowLatencyAudioRouter.shared.applyFromFleet()
+        if let first = ports.first {
+            await LowLatencyAudioRouter.shared.publishLocalLatency(
+                to: .shared,
+                deviceId: first.uid.isEmpty ? first.portName : first.uid
+            )
+        }
     }
 
     // MARK: - Playback
@@ -257,6 +285,7 @@ final class MusicService: ObservableObject {
         fadeTask?.cancel()
         isCrossfading = false
         stopAudioRouteObserver()
+        LowLatencyAudioRouter.shared.stop()
         // Reset so the next session can rebind the beat listener + route observer.
         beatBound = false
         Task {

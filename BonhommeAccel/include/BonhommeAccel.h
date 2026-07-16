@@ -51,7 +51,7 @@ typedef enum BABackend {
 BABackend ba_detect_best_backend(void);
 
 /**
- * Get the currently active backend (after detection).
+ * Get the currently active backend (after detection / override).
  */
 BABackend ba_get_active_backend(void);
 
@@ -65,6 +65,32 @@ const char* ba_backend_name(BABackend backend);
  * Library version string (semver). Returns a static string.
  */
 const char* ba_version(void);
+
+/**
+ * Force the active backend (sticky until `ba_clear_backend_override`).
+ * Does not verify that GPU/SIMD kernels were compiled for `backend`;
+ * dispatch paths still fall back if a kernel is unavailable.
+ * Thread-safe.
+ */
+void ba_set_backend_override(BABackend backend);
+
+/**
+ * Clear sticky override and re-probe hardware on next `ba_get_active_backend`.
+ * Thread-safe.
+ */
+void ba_clear_backend_override(void);
+
+/**
+ * Workload-aware backend recommendation.
+ *
+ * For small N, GPU launch overhead dominates — prefer CPU SIMD / OpenMP even
+ * when Metal/CUDA is the “fastest” peak-throughput device. Uses the same
+ * thresholds as internal dispatch helpers so callers can pre-select policy.
+ *
+ * @param element_count  Number of samples (or total batch elements).
+ * @return Recommended backend (never BA_BACKEND_ROCM/CUDA/METAL below GPU floor).
+ */
+BABackend ba_recommend_backend_for_n(size_t element_count);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Error Handling

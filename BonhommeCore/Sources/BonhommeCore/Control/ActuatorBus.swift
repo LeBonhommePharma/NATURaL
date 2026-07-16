@@ -286,7 +286,7 @@ public actor ControlActuatorSnapshotStore {
 
 /// Multiplexes Crooks commands to all registered channels.
 ///
-/// Default wiring: beat · crown · AirPods · cross-domain · log · breathing.
+/// Default wiring: beat · crown · AirPods · fleet · haptics · cross-domain · log · breathing.
 /// `BeatSyncActuatorChannel` is the only path that calls `UniversalBeatSync.broadcast`.
 public actor ActuatorBus {
     public static let shared = ActuatorBus.makeProduction()
@@ -303,6 +303,8 @@ public actor ActuatorBus {
             BeatSyncActuatorChannel(),
             CrownActuatorChannel(),
             AirPodsCrownActuatorChannel(),
+            ClusterFleetActuatorChannel(),
+            HapticActuatorChannel(),
             CrossDomainActuatorChannel(),
             SessionLogActuatorChannel(),
             BreathingGuideActuatorChannel()

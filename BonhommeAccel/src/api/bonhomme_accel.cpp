@@ -70,12 +70,47 @@ const char* ba_version(void) {
 // Backend Management
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Keep in sync with kGpuEntropyMinN below — single source for recommend API.
+static constexpr size_t kRecommendGpuMinN = 4096;
+
+static BABackend cpu_fallback_backend() {
+#if defined(BA_HAS_NEON) && (defined(__aarch64__) || defined(_M_ARM64))
+    return BA_BACKEND_NEON;
+#elif defined(BA_HAS_AVX512)
+    return BA_BACKEND_AVX512;
+#elif defined(BA_HAS_AVX2)
+    return BA_BACKEND_AVX2;
+#elif defined(BA_HAS_OPENMP)
+    return BA_BACKEND_OPENMP;
+#else
+    return BA_BACKEND_SCALAR;
+#endif
+}
+
 BABackend ba_detect_best_backend(void) {
     return ba::get_backend();
 }
 
 BABackend ba_get_active_backend(void) {
     return ba::get_backend();
+}
+
+void ba_set_backend_override(BABackend backend) {
+    ba::g_active_backend.store(static_cast<int>(backend), std::memory_order_release);
+}
+
+void ba_clear_backend_override(void) {
+    ba::g_active_backend.store(-1, std::memory_order_release);
+}
+
+BABackend ba_recommend_backend_for_n(size_t element_count) {
+    BABackend peak = ba::probe_best_backend();
+    const bool is_gpu =
+        peak == BA_BACKEND_METAL || peak == BA_BACKEND_CUDA || peak == BA_BACKEND_ROCM;
+    if (is_gpu && element_count < kRecommendGpuMinN) {
+        return cpu_fallback_backend();
+    }
+    return peak;
 }
 
 const char* ba_backend_name(BABackend backend) {

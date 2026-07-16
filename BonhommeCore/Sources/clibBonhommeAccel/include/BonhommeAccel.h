@@ -51,7 +51,7 @@ typedef enum BABackend {
 BABackend ba_detect_best_backend(void);
 
 /**
- * Get the currently active backend (after detection).
+ * Get the currently active backend (after detection / override).
  */
 BABackend ba_get_active_backend(void);
 
@@ -65,6 +65,23 @@ const char* ba_backend_name(BABackend backend);
  * Library version string (semver). Returns a static string.
  */
 const char* ba_version(void);
+
+/**
+ * Force the active backend (sticky until `ba_clear_backend_override`).
+ * Thread-safe.
+ */
+void ba_set_backend_override(BABackend backend);
+
+/**
+ * Clear sticky override and re-probe hardware on next `ba_get_active_backend`.
+ * Thread-safe.
+ */
+void ba_clear_backend_override(void);
+
+/**
+ * Workload-aware backend recommendation (CPU for small N, peak device for large N).
+ */
+BABackend ba_recommend_backend_for_n(size_t element_count);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Error Handling

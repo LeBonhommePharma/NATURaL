@@ -188,16 +188,18 @@ final class CrooksCycleControllerTests: XCTestCase {
         XCTAssertTrue(ids.contains("universal_beat_sync"))
         XCTAssertTrue(ids.contains("crown_beta_dial"))
         XCTAssertTrue(ids.contains("airpods_crown_beta"))
+        XCTAssertTrue(ids.contains("cluster_fleet"))
+        XCTAssertTrue(ids.contains("haptic_feedback"))
         XCTAssertTrue(ids.contains("delta_hrv_flexaid"))
         XCTAssertTrue(ids.contains("session_log"))
         XCTAssertTrue(ids.contains("breathing_guide"))
-        XCTAssertEqual(ids.count, 6)
+        XCTAssertEqual(ids.count, 8)
     }
 
     func testActuatorBusGroundingAllSucceed() async {
         let bus = ActuatorBus.makeProduction()
         let results = await bus.executeGrounding(sigmaIrr: 0.2, bpm: 140, beta: 0.5)
-        XCTAssertEqual(results.count, 6)
+        XCTAssertEqual(results.count, 8)
         for r in results {
             XCTAssertTrue(r.success, "channel \(r.channelId) failed: \(r.detail)")
             XCTAssertFalse(r.detail.isEmpty)

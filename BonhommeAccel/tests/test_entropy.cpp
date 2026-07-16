@@ -515,3 +515,23 @@ TEST_CASE("Circular entropy on active backend is finite", "[backend][parity]") {
     REQUIRE(std::isfinite(h));
     REQUIRE(h > 4.0); // near-uniform over 36 bins → ~5.17 bits
 }
+
+TEST_CASE("Backend override and clear re-probes", "[backend][dispatch]") {
+    BABackend peak = ba_detect_best_backend();
+    ba_set_backend_override(BA_BACKEND_SCALAR);
+    REQUIRE(ba_get_active_backend() == BA_BACKEND_SCALAR);
+    ba_clear_backend_override();
+    BABackend again = ba_get_active_backend();
+    REQUIRE(again == peak);
+}
+
+TEST_CASE("Recommend backend prefers CPU for small N", "[backend][dispatch]") {
+    BABackend small = ba_recommend_backend_for_n(64);
+    REQUIRE(small != BA_BACKEND_METAL);
+    REQUIRE(small != BA_BACKEND_CUDA);
+    REQUIRE(small != BA_BACKEND_ROCM);
+    // Large N may still be GPU if available — just ensure valid enum.
+    BABackend large = ba_recommend_backend_for_n(1 << 20);
+    REQUIRE(large >= BA_BACKEND_SCALAR);
+    REQUIRE(large <= BA_BACKEND_ROCM);
+}

@@ -62,4 +62,28 @@ public enum AccelBackend: Int, Sendable {
         return "unavailable"
         #endif
     }
+
+    /// Sticky override of the active C++ backend (test / policy). No-op without Accel.
+    public static func setOverride(_ backend: AccelBackend) {
+        #if canImport(clibBonhommeAccel)
+        ba_set_backend_override(BABackend(rawValue: UInt32(backend.rawValue)))
+        #endif
+    }
+
+    /// Clear sticky override so the next query re-probes hardware.
+    public static func clearOverride() {
+        #if canImport(clibBonhommeAccel)
+        ba_clear_backend_override()
+        #endif
+    }
+
+    /// Workload-aware recommendation (CPU SIMD for small N, peak device for large N).
+    public static func recommend(forElementCount n: Int) -> AccelBackend {
+        #if canImport(clibBonhommeAccel)
+        let raw = ba_recommend_backend_for_n(n > 0 ? size_t(n) : 0)
+        return AccelBackend(rawValue: Int(raw.rawValue)) ?? .scalar
+        #else
+        return .scalar
+        #endif
+    }
 }
