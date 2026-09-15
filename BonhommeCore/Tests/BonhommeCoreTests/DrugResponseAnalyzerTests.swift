@@ -1067,15 +1067,36 @@ final class DrugResponseAnalyzerTests: XCTestCase {
     /// `significanceThreshold * sqrt(nWindows)` against the extreme peak.
     func testNoProfileSignificanceUsesMultiplicityAdjustedThreshold() {
         let nWindows = 4
-        let measurements = (0..<nWindows).map { i in
+        let measurements: [EntropyMeasurement] = [
             EntropyMeasurement(
-                minutesPostDose: Double((i + 1) * 30),
+                minutesPostDose: 30,
                 entropy: 2.5,
-                deltaH: i == 1 ? -0.7 : -0.1,  // extreme at 60 min
+                deltaH: -0.1,
                 rrCount: 50,
                 coherenceScore: 0.5
-            )
-        }
+            ),
+            EntropyMeasurement(
+                minutesPostDose: 60,
+                entropy: 2.5,
+                deltaH: -0.7,
+                rrCount: 50,
+                coherenceScore: 0.5
+            ),
+            EntropyMeasurement(
+                minutesPostDose: 90,
+                entropy: 2.5,
+                deltaH: -0.1,
+                rrCount: 50,
+                coherenceScore: 0.5
+            ),
+            EntropyMeasurement(
+                minutesPostDose: 120,
+                entropy: 2.5,
+                deltaH: -0.1,
+                rrCount: 50,
+                coherenceScore: 0.5
+            ),
+        ]
         let peakDeltaH = -0.7
         let expectedThreshold = DrugResponseAnalyzer.significanceThreshold * sqrt(Double(nWindows))
         // 0.4 * 2 = 0.8
