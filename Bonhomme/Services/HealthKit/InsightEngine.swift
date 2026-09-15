@@ -243,7 +243,7 @@ final class InsightEngine: ObservableObject {
             let session = makeSession(instructions: Self.wellnessInstructions)
             let prompt = buildInsightPrompt(from: insights)
             let options = GenerationOptions(
-                samplingMode: nil,
+                sampling: nil,
                 temperature: 0.4,
                 maximumResponseTokens: 200
             )
@@ -273,7 +273,7 @@ final class InsightEngine: ObservableObject {
                 heartRate: heartRate
             )
             let options = GenerationOptions(
-                samplingMode: nil,
+                sampling: nil,
                 temperature: 0.35,
                 maximumResponseTokens: 80
             )
@@ -298,7 +298,7 @@ final class InsightEngine: ObservableObject {
             let session = makeSession(instructions: Self.wellnessInstructions)
             let prompt = buildWorkoutSummaryPrompt(result: result, insights: insights)
             let options = GenerationOptions(
-                samplingMode: nil,
+                sampling: nil,
                 temperature: 0.4,
                 maximumResponseTokens: 240
             )
