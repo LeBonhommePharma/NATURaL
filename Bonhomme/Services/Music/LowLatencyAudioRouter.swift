@@ -104,7 +104,7 @@ final class LowLatencyAudioRouter {
         lastAppliedSampleRate = achievedSampleRate
     }
 
-    /// Continuous publish of measured buffer latency into ClusterFleet + iCloud presence.
+    /// Continuous publish of measured buffer latency into local ClusterFleet membership.
     func startContinuousBufferPublish() {
         bufferPublishTask?.cancel()
         bufferPublishTask = Task { [weak self] in

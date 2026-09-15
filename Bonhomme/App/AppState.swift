@@ -8,7 +8,6 @@ final class AppState {
     /// True while any workout UI (new or restored) is on-screen.
     /// Guards scenePhase.active re-detect so mid-session 5s persist does not spawn a second auto-load.
     var isWorkoutActive = false
-    var isPremium = true
     var healthKitAuthorized = false
 
     /// Set when a killed-app workout state is detected and auto-loaded on launch/active.
@@ -19,7 +18,6 @@ final class AppState {
     var shouldAutoPresentRestoredSession = false
 
     let healthKitManager = HealthKitManager()
-    let subscriptionManager = SubscriptionManager()
     /// Shared with ExternalDisplaySceneDelegate so AirPlay UI sees the same payloads.
     let tvDisplayCoordinator = TVDisplayCoordinator.shared
     let careKitBridge = CareKitBridge()
@@ -35,25 +33,14 @@ final class AppState {
     /// Consent-gated prescription import (HealthKit clinical + manual + CareKit).
     let prescriptionService: MedicationPrescriptionService
 
-    /// CloudKit / local / ephemeral storage mode for user-visible sync UX.
+    /// On-device or ephemeral storage mode for user-visible storage UX.
     let persistenceSync = PersistenceSyncStatus()
 
     init() {
-        // Register all signal analyzers at app level so data persists across sessions
-        do {
-            feedbackEngine.register(HRVAnalyzer())
-            feedbackEngine.register(MedicationAnalyzer())
-            feedbackEngine.register(DockingInsightAnalyzer())
-            
-            medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
-            
-            print("✅ AppState initialized successfully")
-        } catch {
-            // If any analyzer registration fails, we still need to initialize medicationTracker
-            // with whatever analyzers were successfully registered
-            medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
-            print("⚠️ AppState initialization completed with warnings: \(error.localizedDescription)")
-        }
+        feedbackEngine.register(HRVAnalyzer())
+        feedbackEngine.register(MedicationAnalyzer())
+        feedbackEngine.register(DockingInsightAnalyzer())
+        medicationTracker = MedicationTracker(feedbackEngine: feedbackEngine)
 
         prescriptionService = MedicationPrescriptionService(
             healthKitManager: healthKitManager,
@@ -67,9 +54,7 @@ final class AppState {
             medicationTracker: medicationTracker
         )
 
-        // ClusterFleet: iCloud peer heartbeats (iPhone/iPad/Mac) + Watch auto-upsert hooks.
-        // Watch membership is also driven by PhoneConnectivityBridge reachability.
-        ClusterFleetPresenceCoordinator.shared.start()
+        // ClusterFleet: local host + Watch auto-upsert. No iCloud presence.
     }
 
     /// Detects recoverable local activity and auto-loads it into a runnable restored session.

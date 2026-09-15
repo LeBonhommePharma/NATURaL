@@ -1,4 +1,5 @@
 // Bonhomme/Features/Workout/YouTubeWorkoutViewModel.swift
+#if DEBUG
 import SwiftUI
 import Observation
 import BonhommeCore
@@ -96,3 +97,4 @@ final class YouTubeWorkoutViewModel {
         return range.contains(entropyIndex)
     }
 }
+#endif

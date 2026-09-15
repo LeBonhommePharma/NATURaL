@@ -1,5 +1,5 @@
 // Bonhomme/Features/Workout/YouTubeWorkoutScreen.swift
-#if canImport(UIKit)
+#if DEBUG && canImport(UIKit)
 import SwiftUI
 import BonhommeCore
 

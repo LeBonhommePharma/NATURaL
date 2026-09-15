@@ -3,14 +3,10 @@ import SwiftData
 import SwiftUI
 import Observation
 import BonhommeCore
-#if canImport(CloudKit)
-import CloudKit
-#endif
 
 // MARK: - Workout Record
 
-/// Persisted workout history with CloudKit sync via SwiftData.
-/// Each completed workout is saved here for offline access and cross-device sync.
+/// Persisted on-device workout history in SwiftData.
 @Model
 final class WorkoutRecord {
     var planId: String
@@ -94,7 +90,7 @@ final class WorkoutRecord {
 
 // MARK: - User Preferences
 
-/// User preferences synced across devices via CloudKit.
+/// On-device user preferences.
 @Model
 final class UserPreferences {
     var preferredLanguage: String?
@@ -107,7 +103,7 @@ final class UserPreferences {
 
     // MARK: Clinical / medication consent (mirror of ConsentStore)
     // Authoritative gate is ConsentStore (UserDefaults); these fields support
-    // CloudKit-visible preference sync and UI binding when a ModelContext is available.
+    // local UI binding when a ModelContext is available.
 
     /// Whether the user explicitly opted in to clinical medication reads.
     var clinicalMedicationConsentGranted: Bool = false
@@ -140,7 +136,7 @@ final class UserPreferences {
 
 // MARK: - Session Streak
 
-/// Tracks daily practice streaks synced via CloudKit.
+/// Tracks daily practice streaks on this device.
 @Model
 final class SessionStreak {
     var currentStreak: Int = 0
@@ -191,7 +187,7 @@ final class SessionStreak {
 
 // MARK: - Medication Schedule
 
-/// User-defined medication reminders, synced via CloudKit.
+/// User-defined medication reminders stored on this device.
 /// Complements HealthKit clinical records with user-managed schedules.
 @Model
 final class MedicationSchedule {
@@ -290,7 +286,7 @@ final class DrugResponseRecord {
     var baselineEntropy: Double
     var peakDeltaH: Double
     var peakTimeMinutes: Double
-    /// ResponseDirection raw value (CloudKit requires primitive types).
+    /// ResponseDirection raw value (SwiftData requires a primitive stored type).
     var responseDirection: String
     var effectSize: Double
     var deltaHAUC: Double
@@ -340,30 +336,26 @@ final class DrugResponseRecord {
     }
 }
 
-// MARK: - Persistence Mode & Sync Status
+// MARK: - Persistence Mode & Storage Status
 
 /// How SwiftData is hosting app data after ModelContainer initialization.
-/// Used for user-visible CloudKit fallback / conflict messaging.
 enum PersistenceStorageMode: String, Sendable, Equatable, CaseIterable {
-    /// SwiftData + CloudKit iCloud sync is active.
-    case cloudKitSynced
-    /// On-device durable store; iCloud sync is not active this session.
+    /// Durable on-device store. This is the shipping mode; analysis never leaves the device.
     case localOnly
     /// In-memory only — not durable across app launches.
     case ephemeral
 }
 
-/// Result of the three-tier ModelContainer bootstrap (CloudKit → local → memory).
+/// Result of the local → memory ModelContainer bootstrap.
 struct PersistenceBootstrap {
     let container: ModelContainer
     let mode: PersistenceStorageMode
-    /// Underlying error from a failed higher tier (CloudKit and/or local), if any.
+    /// Underlying error from a failed local store, if any.
     let underlyingErrorDescription: String?
 }
 
-/// Observable CloudKit / storage status for banners and settings copy.
-/// Messaging deliberately avoids silent-data-loss claims: we state what is
-/// available (on-device vs temporary) without asserting that data vanished.
+/// Observable on-device storage status. Local storage is the intended product,
+/// not a fallback from iCloud. The banner is only for ephemeral/unusable disk.
 @Observable
 @MainActor
 final class PersistenceSyncStatus {
@@ -372,20 +364,19 @@ final class PersistenceSyncStatus {
     private(set) var isRetrying = false
     /// User-facing result of the last Retry attempt (success path recommends restart).
     private(set) var retryFeedback: String?
-    /// True when retry proved CloudKit can open but the live container was not swapped mid-session.
+    /// True when retry proved local storage can open but the live container was not swapped mid-session.
     private(set) var restartRecommended = false
     /// User dismissed the home banner; settings card can still show status.
     var isBannerDismissed = false
 
-    var needsAttention: Bool { mode != .cloudKitSynced }
+    var needsAttention: Bool { mode == .ephemeral || underlyingErrorDescription != nil }
 
     var shouldShowBanner: Bool { needsAttention && !isBannerDismissed }
 
     func apply(mode: PersistenceStorageMode, errorDescription: String?) {
         self.mode = mode
         self.underlyingErrorDescription = errorDescription
-        if mode == .cloudKitSynced {
-            isBannerDismissed = true
+        if mode == .localOnly && errorDescription == nil {
             retryFeedback = nil
             restartRecommended = false
         }
@@ -403,12 +394,10 @@ final class PersistenceSyncStatus {
 
     var bannerTitle: String {
         switch mode {
-        case .cloudKitSynced:
-            return LocalizedString(en: "iCloud sync on", fr: "Sync iCloud activée").localized
         case .localOnly:
             return LocalizedString(
-                en: "iCloud sync unavailable",
-                fr: "Sync iCloud indisponible"
+                en: "On this device",
+                fr: "Sur cet appareil"
             ).localized
         case .ephemeral:
             return LocalizedString(
@@ -420,15 +409,10 @@ final class PersistenceSyncStatus {
 
     var bannerMessage: String {
         switch mode {
-        case .cloudKitSynced:
-            return LocalizedString(
-                en: "Workouts and preferences sync across your devices with iCloud.",
-                fr: "Les séances et préférences se synchronisent sur vos appareils via iCloud."
-            ).localized
         case .localOnly:
             return LocalizedString(
-                en: "Your data stays on this device. Cross-device iCloud sync is not active right now — nothing was silently discarded.",
-                fr: "Vos données restent sur cet appareil. La sync iCloud multi-appareils n'est pas active — rien n'a été supprimé en silence."
+                en: "Your records stay on this device. Analysis runs locally. NATURaL does not collect or receive them.",
+                fr: "Vos dossiers restent sur cet appareil. L’analyse s’exécute localement. NATURaL ne les collecte pas et ne les reçoit pas."
             ).localized
         case .ephemeral:
             return LocalizedString(
@@ -440,107 +424,52 @@ final class PersistenceSyncStatus {
 
     var settingsDetail: String {
         switch mode {
-        case .cloudKitSynced:
-            return LocalizedString(
-                en: "CloudKit sync active for history, streaks, and preferences.",
-                fr: "Sync CloudKit active pour l'historique, les séries et les préférences."
-            ).localized
         case .localOnly:
             return LocalizedString(
-                en: "Local-only mode. Sign into iCloud and use Retry, then reopen the app if prompted.",
-                fr: "Mode local uniquement. Connectez-vous à iCloud, réessayez, puis rouvrez l'app si demandé."
+                en: "Health, medication and session records stay on this device. We do not collect them.",
+                fr: "Les dossiers de santé, de médicaments et de séances restent sur cet appareil. Nous ne les collectons pas."
             ).localized
         case .ephemeral:
             return LocalizedString(
-                en: "In-memory fallback. Free disk space or fix iCloud, then Retry / reopen the app.",
-                fr: "Repli en mémoire. Libérez de l'espace ou corrigez iCloud, puis Réessayer / rouvrir l'app."
+                en: "Temporary memory storage. Free disk space, then retry and reopen the app.",
+                fr: "Stockage temporaire. Libérez de l’espace, puis réessayez et rouvrez l’app."
             ).localized
         }
     }
 
     var systemImageName: String {
         switch mode {
-        case .cloudKitSynced: return "checkmark.icloud.fill"
-        case .localOnly: return "icloud.slash"
+        case .localOnly: return "lock.iphone"
         case .ephemeral: return "exclamationmark.triangle.fill"
         }
     }
 
     var accentColor: Color {
         switch mode {
-        case .cloudKitSynced: return .green
-        case .localOnly: return .orange
+        case .localOnly: return .mint
         case .ephemeral: return .red
         }
     }
 
-    /// Attempts to open a CloudKit-backed container without replacing the live store mid-session.
-    /// On success, recommends restart so the next launch can adopt CloudKit safely.
-    func retryCloudKitConnection() async {
+    /// Tests local storage without swapping the live container during a workout.
+    func retryLocalStorage() async {
         guard !isRetrying else { return }
         isRetrying = true
-        retryFeedback = nil
-        restartRecommended = false
         defer { isRetrying = false }
-
-        #if canImport(CloudKit)
         do {
-            let account = try await CKContainer.default().accountStatus()
-            switch account {
-            case .noAccount:
-                retryFeedback = LocalizedString(
-                    en: "No iCloud account on this device. Sign in under Settings → Apple ID, then try again. On-device data is unchanged.",
-                    fr: "Aucun compte iCloud sur cet appareil. Connectez-vous dans Réglages → Identifiant Apple, puis réessayez. Les données sur l'appareil sont inchangées."
-                ).localized
-                return
-            case .restricted:
-                retryFeedback = LocalizedString(
-                    en: "iCloud access is restricted on this device (Screen Time / MDM). On-device data is unchanged.",
-                    fr: "L'accès iCloud est restreint sur cet appareil (Temps d'écran / MDM). Les données sur l'appareil sont inchangées."
-                ).localized
-                return
-            case .temporarilyUnavailable:
-                retryFeedback = LocalizedString(
-                    en: "iCloud is temporarily unavailable. Check your network and try again. On-device data is unchanged.",
-                    fr: "iCloud est temporairement indisponible. Vérifiez le réseau et réessayez. Les données sur l'appareil sont inchangées."
-                ).localized
-                return
-            case .couldNotDetermine:
-                // Continue to container probe — status alone is inconclusive.
-                break
-            case .available:
-                break
-            @unknown default:
-                break
-            }
-        } catch {
-            // Account probe failed; still try ModelContainer open below.
-            underlyingErrorDescription = error.localizedDescription
-        }
-        #endif
-
-        do {
-            _ = try PersistenceConfiguration.makeCloudKitContainer()
+            _ = try PersistenceConfiguration.makeLocalContainer()
             restartRecommended = true
-            retryFeedback = LocalizedString(
-                en: "iCloud is reachable. Quit and reopen NATURaL to enable cross-device sync. Data already on this device stays on this device until then.",
-                fr: "iCloud est joignable. Quittez et rouvrez NATURaL pour activer la sync multi-appareils. Les données déjà sur cet appareil y restent d'ici là."
-            ).localized
+            retryFeedback = LocalizedString(en: "Local storage is available. Reopen NATURaL after finishing this session.", fr: "Le stockage local est disponible. Rouvrez NATURaL après cette séance.").localized
         } catch {
-            underlyingErrorDescription = error.localizedDescription
-            restartRecommended = false
-            retryFeedback = LocalizedString(
-                en: "Still unable to start iCloud sync. Check network and iCloud sign-in, then try again. Your data on this device is unchanged.",
-                fr: "Impossible de démarrer la sync iCloud. Vérifiez le réseau et la connexion iCloud, puis réessayez. Vos données sur cet appareil sont inchangées."
-            ).localized
+            retryFeedback = LocalizedString(en: "Storage is still unavailable. Check available space and try again. Existing files have not been removed.", fr: "Le stockage reste indisponible. Vérifiez l’espace disponible et réessayez. Les fichiers existants n’ont pas été supprimés.").localized
         }
     }
 }
 
 // MARK: - Model Container Configuration
 
-/// Creates the shared ModelContainer with CloudKit sync for the NATURaL app.
-/// Three-tier bootstrap: CloudKit → local-only → in-memory.
+/// Creates the on-device health-data ModelContainer for the NATURaL app.
+/// Shipping path: durable local storage, then visible in-memory fallback. Never CloudKit.
 enum PersistenceConfiguration {
     static let storeName = "NATURaL"
     static let sharedStoreName = "NATURaLShared"
@@ -555,22 +484,33 @@ enum PersistenceConfiguration {
         ])
     }
 
-    /// CloudKit-backed container only (throws on failure). Used by bootstrap and Retry.
-    static func makeCloudKitContainer(schema: Schema? = nil) throws -> ModelContainer {
-        let schema = schema ?? makeSchema()
-        let config = ModelConfiguration(
-            storeName,
-            schema: schema,
-            cloudKitDatabase: .automatic
-        )
-        return try ModelContainer(for: schema, configurations: [config])
+    /// Health records and recovery snapshots must not enter device backups.
+    /// Exclude their containing directories, including future SQLite WAL and preferences files.
+    /// The named store is preserved; this does not move or delete existing records.
+    static func protectLocalHealthStorage() throws {
+        let files = FileManager.default
+        let library = try files.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        var directories = [
+            library.appendingPathComponent("Application Support", isDirectory: true),
+            library.appendingPathComponent("Preferences", isDirectory: true),
+            try files.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        ]
+        if let group = files.containerURL(forSecurityApplicationGroupIdentifier: "group.com.natural.Bonhomme") {
+            directories.append(group)
+        }
+        for var directory in directories {
+            try files.createDirectory(at: directory, withIntermediateDirectories: true)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try directory.setResourceValues(values)
+            try files.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: directory.path)
+        }
     }
 
-    /// Durable on-device store without CloudKit.
+    /// Durable on-device store. Analysis never leaves this container.
     static func makeLocalContainer(schema: Schema? = nil) throws -> ModelContainer {
+        try protectLocalHealthStorage()
         let schema = schema ?? makeSchema()
-        // Same store name as CloudKit path so a previously local "NATURaL" file remains reachable
-        // when CloudKit cannot attach.
         let config = ModelConfiguration(
             storeName,
             schema: schema,
@@ -594,76 +534,30 @@ enum PersistenceConfiguration {
         let schema = makeSchema()
 
         do {
-            let container = try makeCloudKitContainer(schema: schema)
-            print("✅ ModelContainer ready with CloudKit sync")
-            return PersistenceBootstrap(
-                container: container,
-                mode: .cloudKitSynced,
-                underlyingErrorDescription: nil
-            )
+            return PersistenceBootstrap(container: try makeLocalContainer(schema: schema), mode: .localOnly, underlyingErrorDescription: nil)
         } catch {
-            let cloudError = error
-            print("⚠️ Failed to create CloudKit container: \(error.localizedDescription)")
-            print("   Falling back to local-only storage.")
-
+            let localError = error
             do {
-                let container = try makeLocalContainer(schema: schema)
-                return PersistenceBootstrap(
-                    container: container,
-                    mode: .localOnly,
-                    underlyingErrorDescription: cloudError.localizedDescription
-                )
+                return PersistenceBootstrap(container: try makeEphemeralContainer(schema: schema), mode: .ephemeral, underlyingErrorDescription: localError.localizedDescription)
             } catch {
-                let localError = error
-                print("❌ CRITICAL: Failed to create local container: \(error.localizedDescription)")
-                print("   Using in-memory storage. Data will not persist across launches.")
-
-                do {
-                    let container = try makeEphemeralContainer(schema: schema)
-                    return PersistenceBootstrap(
-                        container: container,
-                        mode: .ephemeral,
-                        underlyingErrorDescription:
-                            "\(cloudError.localizedDescription); \(localError.localizedDescription)"
-                    )
-                } catch {
-                    // Minimal single-model in-memory so the app can still present UI.
-                    print("❌ FATAL: Full in-memory container failed: \(error.localizedDescription)")
-                    do {
-                        let minimal = try ModelContainer(
-                            for: WorkoutRecord.self,
-                            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-                        )
-                        return PersistenceBootstrap(
-                            container: minimal,
-                            mode: .ephemeral,
-                            underlyingErrorDescription: error.localizedDescription
-                        )
-                    } catch {
-                        // Absolute last resort — bootstrap has nowhere left to go.
-                        fatalError(
-                            "SwiftData ModelContainer could not be created: \(error.localizedDescription)"
-                        )
-                    }
-                }
+                // An unusable model schema is a programming error, not a recoverable disk failure.
+                fatalError("Unable to create even an in-memory model container: \(error.localizedDescription)")
             }
         }
     }
 
-    /// Back-compat: prefer CloudKit; on failure fall through to local/ephemeral via bootstrap.
+    /// Backward-compatible entry point for the on-device bootstrap.
     static func makeContainer() throws -> ModelContainer {
         bootstrap().container
     }
 
-    /// Shared app group container for widget access (local; no CloudKit requirement).
+    /// Shared app group container for widget access on this device only.
     static func makeSharedContainer() throws -> ModelContainer {
         let schema = Schema([
             WorkoutRecord.self,
             SessionStreak.self,
         ])
 
-        // groupContainer: .automatic needs App Groups entitlement at runtime.
-        // Keep CloudKit off for the shared store until widget sync is explicitly enabled.
         let config = ModelConfiguration(
             sharedStoreName,
             schema: schema,
