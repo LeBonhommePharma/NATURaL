@@ -11,18 +11,17 @@ final class WorkoutFlowViewModelTests: XCTestCase {
     func testBeginnerFlowTotalDuration() {
         let plan = PoseCatalog.beginnerFlow
         XCTAssertGreaterThan(plan.totalDuration, 0)
-        // Beginner: 7 free poses + transitions
+        // Beginner: 7 starter poses + transitions
         let poseDuration = plan.poses.reduce(0) { $0 + $1.durationSeconds }
         let transitions = TimeInterval(max(0, plan.poses.count - 1)) * plan.transitionSeconds
         XCTAssertEqual(plan.totalDuration, poseDuration + transitions)
     }
 
     func testEnergizingChairFlowPlanStructure() {
-        // Production chair catalog: energizing flow is the morning-style free plan.
+        // Production chair catalog: energizing flow is the morning-style starter sequence.
         guard let plan = PoseCatalog.chairYogaPlans.first(where: { $0.id == "chair-energizer" }) else {
             return XCTFail("missing chair-energizer plan")
         }
-        XCTAssertTrue(plan.isFree)
         XCTAssertGreaterThan(plan.poseCount, 5)
         XCTAssertEqual(plan.name.en, "Energizing Chair Flow")
         XCTAssertEqual(plan.name.fr, "Flux énergisant sur chaise")

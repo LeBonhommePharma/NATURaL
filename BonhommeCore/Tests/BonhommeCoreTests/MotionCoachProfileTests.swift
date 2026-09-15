@@ -24,7 +24,6 @@ final class MotionCoachProfileTests: XCTestCase {
             voiceCueText: LocalizedString(en: voiceCueText, fr: voiceCueText),
             modifications: LocalizedStringArray(en: [], fr: []),
             breathingPattern: LocalizedString(en: breathingPattern, fr: breathingPattern),
-            isFree: false
         )
     }
 

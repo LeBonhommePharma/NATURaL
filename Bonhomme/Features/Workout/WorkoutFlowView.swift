@@ -1,23 +1,54 @@
 import SwiftUI
 import BonhommeCore
 
+/// Create services only when a destination appears. Eager NavigationLink construction
+/// must not mutate the shared feedback engine during a parent SwiftUI body update.
+struct WorkoutFlowView: View {
+    private let plan: WorkoutPlan?
+    private let feedbackEngine: FeedbackEngine?
+    private let restoredViewModel: WorkoutFlowViewModel?
+    @State private var viewModel: WorkoutFlowViewModel?
+
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+        self.plan = plan
+        self.feedbackEngine = feedbackEngine
+        restoredViewModel = nil
+    }
+
+    init(restoredViewModel: WorkoutFlowViewModel) {
+        plan = nil
+        feedbackEngine = nil
+        self.restoredViewModel = restoredViewModel
+    }
+
+    var body: some View {
+        Group {
+            if let viewModel { WorkoutSessionView(viewModel: viewModel) }
+            else { ProgressView() }
+        }
+        .task {
+            guard viewModel == nil else { return }
+            if let restoredViewModel { viewModel = restoredViewModel }
+            else if let plan, let feedbackEngine {
+                viewModel = WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine)
+            }
+        }
+    }
+}
+
 /// The main guided workout screen that drives the pose-by-pose flow.
 /// On iPad (regular width), displays a 60/40 split with pose visual and metrics panel.
-struct WorkoutFlowView: View {
+private struct WorkoutSessionView: View {
     @State private var viewModel: WorkoutFlowViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Shared app state — used to mark any live workout as presenting so scene-active
     /// auto-load cannot re-enter and spawn a second session from 5s persist state.
     @Environment(AppState.self) private var appState
 
-    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
-        _viewModel = State(initialValue: WorkoutFlowViewModel(plan: plan, feedbackEngine: feedbackEngine))
-    }
-
-    /// Initializer for restoring a killed-app workout session.
-    init(restoredViewModel: WorkoutFlowViewModel) {
-        _viewModel = State(initialValue: restoredViewModel)
+    init(viewModel: WorkoutFlowViewModel) {
+        _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
@@ -26,17 +57,17 @@ struct WorkoutFlowView: View {
 
             switch viewModel.phase {
             case .ready:
-                readyView
+                scrollableSessionContent { readyView }
             case .countdown(let seconds):
                 CountdownView(secondsRemaining: seconds)
             case .active(let poseIndex):
-                if sizeClass == .regular {
-                    iPadActivePoseView(poseIndex: poseIndex)
+                if sizeClass == .regular && !dynamicTypeSize.isAccessibilitySize {
+                    scrollableSessionContent { iPadActivePoseView(poseIndex: poseIndex) }
                 } else {
-                    activePoseView(poseIndex: poseIndex)
+                    scrollableSessionContent { activePoseView(poseIndex: poseIndex) }
                 }
             case .transition(let nextIndex, let seconds):
-                transitionView(nextIndex: nextIndex, seconds: seconds)
+                scrollableSessionContent { transitionView(nextIndex: nextIndex, seconds: seconds) }
             case .cooldown:
                 cooldownView
             case .complete:
@@ -44,6 +75,8 @@ struct WorkoutFlowView: View {
                 SummaryView(
                     result: viewModel.buildResult(),
                     sciScore: sciScore,
+                    healthSaveFailed: viewModel.healthSaveFailed,
+                    isFinishing: viewModel.isFinishing,
                     drugResponse: appState.medicationTracker.latestDrugResponse
                         ?? viewModel.insightEngine.latestDrugResponse
                 ) {
@@ -67,6 +100,9 @@ struct WorkoutFlowView: View {
                 }
                 .allowsHitTesting(false)
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if showsSessionControls { sessionControls }
         }
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
@@ -92,6 +128,7 @@ struct WorkoutFlowView: View {
             )
         }
         .onDisappear {
+            if viewModel.phase != .ready && viewModel.phase != .complete { viewModel.stop() }
             appState.noteWorkoutDismissed()
         }
         .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
@@ -107,6 +144,48 @@ struct WorkoutFlowView: View {
         case .ready, .complete:
             return false
         }
+    }
+
+    /// Scrollable content keeps instructions reachable on short windows and at large text sizes.
+    private func scrollableSessionContent<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
+        GeometryReader { geometry in
+            ScrollView {
+                content()
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+            }
+        }
+    }
+
+    private var showsSessionControls: Bool {
+        switch viewModel.phase {
+        case .countdown, .active, .transition: return true
+        default: return false
+        }
+    }
+
+    private var sessionControls: some View {
+        HStack(spacing: 24) {
+            Button {
+                if viewModel.isPaused { viewModel.resume() } else { viewModel.pause() }
+            } label: {
+                Label(viewModel.isPaused
+                      ? LocalizedString(en: "Resume", fr: "Reprendre").localized
+                      : LocalizedString(en: "Pause", fr: "Pause").localized,
+                      systemImage: viewModel.isPaused ? "play.fill" : "pause.fill")
+                    .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .accessibilityIdentifier("session.pauseResume")
+            .tint(.cyan)
+            Button(role: .destructive) { viewModel.stop() } label: {
+                Label(LocalizedString(en: "End", fr: "Terminer").localized, systemImage: "stop.fill")
+                    .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .accessibilityIdentifier("session.end")
+        }
+        .font(.headline)
+        .buttonStyle(.bordered)
+        .padding(.horizontal, 24).padding(.vertical, 8)
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - iPad Active Pose (60/40 Split)
@@ -126,6 +205,7 @@ struct WorkoutFlowView: View {
                     .padding(.horizontal, 56)
 
                 Text(pose.name.localized)
+                    .accessibilityIdentifier("session.pose.name")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.top, 20)
@@ -182,20 +262,6 @@ struct WorkoutFlowView: View {
 
                 Spacer()
 
-                // Controls
-                HStack(spacing: 40) {
-                    Button { viewModel.pause() } label: {
-                        Image(systemName: "pause.circle.fill")
-                            .font(.system(size: 52))
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    Button { viewModel.stop() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 52))
-                            .foregroundStyle(.red.opacity(0.7))
-                    }
-                }
-                .padding(.bottom, 40)
             }
             .frame(maxWidth: .infinity)
 
@@ -300,7 +366,8 @@ struct WorkoutFlowView: View {
                 .padding(.horizontal, 28)
 
             Text(pose.name.localized)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .accessibilityIdentifier("session.pose.name")
+                .font(.title.bold())
                 .foregroundStyle(.white)
                 .padding(.top, 16)
 
@@ -319,7 +386,7 @@ struct WorkoutFlowView: View {
             .padding(.top, 6)
 
             Text(pose.description.localized)
-                .font(.system(size: 16))
+                .font(.body)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
@@ -341,7 +408,7 @@ struct WorkoutFlowView: View {
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.4))
                 }
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 40)
                 .padding(.top, 6)
             }
@@ -351,7 +418,7 @@ struct WorkoutFlowView: View {
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.72))
                     .multilineTextAlignment(.center)
-                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 28)
                     .padding(.top, 10)
                     .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
@@ -367,19 +434,7 @@ struct WorkoutFlowView: View {
                 totalPoses: viewModel.plan.poseCount
             )
 
-            HStack(spacing: 40) {
-                Button { viewModel.pause() } label: {
-                    Image(systemName: "pause.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-                Button { viewModel.stop() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.red.opacity(0.7))
-                }
-            }
-            .padding(.bottom, 32)
+
         }
     }
 
@@ -436,7 +491,7 @@ struct WorkoutFlowView: View {
                 .foregroundStyle(.cyan)
 
             Text(LocalizedString(en: "Great work!", fr: "Excellent travail!").localized)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(.title.bold())
                 .foregroundStyle(.white)
 
             Text(LocalizedString(en: "Wrapping up your session...", fr: "Fin de votre séance...").localized)

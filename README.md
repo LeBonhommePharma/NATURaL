@@ -1,3 +1,5 @@
+> **App Store preparation:** The first release makes every chair-yoga plan free. Current release scope, verification evidence, signing steps and remaining submission gates are in [Docs/AppStore/README.md](Docs/AppStore/README.md). Historical architecture notes below may describe features outside the shipping targets.
+
 <h1 align="center">
 <pre>
 ╔══════════════════════════════════════════════════════════╗
@@ -428,7 +430,7 @@ PharmaControlSessionManager
 | 🫁 | Breathing guide | BreathingGuideView + Watch haptics | iOS / watchOS |
 | 🔥 | Crooks session control | PharmaControlSessionManager / ActuatorBus | iOS / watchOS |
 | 👥 | Group sessions | SharePlay (`GroupActivity`) | iOS |
-| 💰 | Subscriptions | StoreKit 2 | iOS |
+| 💰 | Monetization | All features currently free | iOS |
 | 🏥 | Care + consent prescriptions | CareKitStore + ConsentStore | iOS |
 | 💾 | Data persistence + sync | SwiftData + CloudKit (`DrugResponseRecord`) | iOS |
 | 🤖 | On-device AI insights | FoundationModels (iOS 26+) + templates | iOS |
@@ -797,8 +799,7 @@ public struct LocalizedString: Codable, Sendable, Hashable {
 │   ├── ✨ Features/
 │   │   ├── 🏋️ Workout/                 # Flow VM, guided session UI, home (iPad split)
 │   │   ├── 📊 Summary/                 # Post-workout charts + SwiftData persistence
-│   │   ├── 📜 History/                 # Blended NATURaL + Fitness+ timeline
-│   │   └── 💰 Paywall/                 # StoreKit 2 subscription view
+│   │   └── 📜 History/                 # Blended NATURaL + Fitness+ timeline
 │   ├── ⚙️ Services/
 │   │   ├── ❤️ HealthKit/               # HR, InsightEngine (FM), MedicationTracker,
 │   │   │                            # MedicationPrescriptionService, Fitness+
@@ -808,7 +809,6 @@ public struct LocalizedString: Codable, Sendable, Hashable {
 │   │   ├── ⌚ WatchConnectivity/       # PhoneConnectivityBridge (iOS ↔ Watch)
 │   │   ├── 👥 SharePlay/               # GroupActivity session coordinator
 │   │   ├── 🗣️ Siri/                    # App Intents (adherence intent still stub)
-│   │   └── 💳 Subscription/            # StoreKit 2 entitlements
 │   ├── 📺 TVRelay/                     # Coordinator, AirPlay, native companion
 │   └── 🎨 Shared/Components/           # Activity rings, reusable views
 ├── 📦 BonhommeCore/                    # Shared Swift Package (all platforms)

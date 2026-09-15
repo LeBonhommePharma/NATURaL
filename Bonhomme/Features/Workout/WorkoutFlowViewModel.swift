@@ -25,6 +25,8 @@ final class WorkoutFlowViewModel {
     private(set) var phase: Phase = .ready
     private(set) var poseTimeRemaining: TimeInterval = 0
     private(set) var elapsedTime: TimeInterval = 0
+    private(set) var healthSaveFailed = false
+    private(set) var isFinishing = false
 
     let plan: WorkoutPlan
     let recorder = WorkoutRecorder()
@@ -78,7 +80,13 @@ final class WorkoutFlowViewModel {
 
     // MARK: - Private
 
+    private var didStartSessionServices = false
     private var timerTask: Task<Void, Never>?
+    private var healthStartupTask: Task<Void, Never>?
+    private var musicStartupTask: Task<Void, Never>?
+    private var controlStartupTask: Task<Void, Never>?
+    private var elapsedAnchor: Date?
+    private var sessionEndDate: Date?
     private var sessionStartDate: Date?
     private var persistenceCounter: Int = 0
     private var liveActivity: Activity<WorkoutActivityAttributes>?
@@ -145,27 +153,33 @@ final class WorkoutFlowViewModel {
     /// (`onHRVIngest` is already wired in `init`.)
     func resumeRestoredSession() {
         guard isRestoredSession else { return }
+        isRestoredSession = false
+        didStartSessionServices = true
+        elapsedAnchor = Date()
 
         musicService.bindUniversalBeatSync()
-        Task {
+        controlStartupTask = Task {
             await pharmaControl.start(
                 nominalBPM: plan.style.nominalBPM,
                 groundingBPM: plan.style.groundingBPM
             )
+            guard !Task.isCancelled, phase != .complete else { return }
             // Attempt to recover the existing HealthKit workout session.
-            await recoverHealthKitSession()
+            healthStartupTask = Task { await recoverHealthKitSession() }
 
             // Resume music (fire-and-forget; never block pose recovery).
-            Task { [weak self] in
-                guard let self else { return }
+            musicStartupTask = Task { [self] in
                 await self.musicService.requestAuthorization()
+                guard !Task.isCancelled, phase != .complete, !isPaused else { return }
                 await self.musicService.prefetchPlaylists(style: self.plan.style)
+                guard !Task.isCancelled, phase != .complete, !isPaused else { return }
                 await self.musicService.playWorkoutMusic(
                     mood: self.musicService.adaptiveMood,
                     style: self.plan.style
                 )
             }
 
+            guard !Task.isCancelled, phase != .complete, !isPaused else { return }
             // Resume at the current phase (preserve remaining transition seconds).
             switch phase {
             case .active(let idx):
@@ -198,6 +212,7 @@ final class WorkoutFlowViewModel {
             // Pass `plan.style` so the restored HKWorkout is logged under
             // the correct HKWorkoutActivityType, not the `.chairYoga` default.
             try await recorder.start(style: plan.style)
+            if isPaused { recorder.pause() }
         } catch {
             // Fresh start failed (auth / HealthKit unavailable) — continue pose flow.
         }
@@ -206,6 +221,8 @@ final class WorkoutFlowViewModel {
     /// Persist current state to UserDefaults. Called every 5 seconds during
     /// active workouts and on scene phase changes.
     func persistState() {
+        guard phase != .complete, phase != .ready else { return }
+        updateElapsedTime()
         let persistedPhase: WorkoutStateStore.PersistedPhase
         switch phase {
         case .ready: persistedPhase = .ready
@@ -230,6 +247,11 @@ final class WorkoutFlowViewModel {
     // MARK: - Controls
 
     func start() {
+        guard phase == .ready else { return }
+        elapsedTime = 0
+        elapsedAnchor = Date()
+        sessionEndDate = nil
+        healthSaveFailed = false
         // BUG 8 (minor) FIX: Reset persistence counter so the first persist fires
         // predictably at tick 5, regardless of any prior session on this VM instance.
         persistenceCounter = 0
@@ -237,7 +259,7 @@ final class WorkoutFlowViewModel {
         sessionStartDate = Date()
         phase = .countdown(secondsRemaining: 3)
         musicService.bindUniversalBeatSync()
-        Task {
+        controlStartupTask = Task {
             await pharmaControl.start(
                 nominalBPM: plan.style.nominalBPM,
                 groundingBPM: plan.style.groundingBPM
@@ -247,7 +269,11 @@ final class WorkoutFlowViewModel {
     }
 
     func pause() {
+        guard !isPaused, phase != .ready, phase != .complete else { return }
+        updateElapsedTime()
+        elapsedAnchor = nil
         isPaused = true
+        musicStartupTask?.cancel()
         recorder.pause()
         musicService.pause()
         timerTask?.cancel()
@@ -255,10 +281,12 @@ final class WorkoutFlowViewModel {
     }
 
     func resume() {
+        guard isPaused, phase != .complete else { return }
+        elapsedAnchor = Date()
         isPaused = false
         recorder.resume()
-        Task { [weak self] in
-            guard let self else { return }
+        musicStartupTask = Task { [weak self] in
+            guard let self, !Task.isCancelled, self.phase != .complete else { return }
             await self.musicService.playWorkoutMusic(mood: self.musicService.adaptiveMood, style: self.plan.style)
         }
 
@@ -283,6 +311,8 @@ final class WorkoutFlowViewModel {
         case .transition(let nextIdx, let secs):
             // Resume remaining transition window (do not restart full transitionSeconds).
             startTransition(to: nextIdx, remainingSeconds: secs)
+        case .cooldown:
+            startCooldown()
         case .countdown(let secs):
             // Unlikely but guard against a pause hitting right during the 3-2-1.
             startCountdownSequence(remainingSeconds: secs)
@@ -292,7 +322,15 @@ final class WorkoutFlowViewModel {
     }
 
     func stop() {
+        guard phase != .complete else { return }
+        updateElapsedTime()
+        elapsedAnchor = nil
+        sessionEndDate = Date()
         timerTask?.cancel()
+        healthStartupTask?.cancel()
+        musicStartupTask?.cancel()
+        controlStartupTask?.cancel()
+        isFinishing = true
         phase = .complete
         stateStore.clear()
         musicService.stop()
@@ -301,10 +339,14 @@ final class WorkoutFlowViewModel {
         // Drug/docking-aware session narrative — fire-and-forget (never blocks UI).
         generateSessionNarrativeAsync()
         Task {
+            defer { isFinishing = false }
+            await controlStartupTask?.value
             await pharmaControl.stop()
+            await healthStartupTask?.value
             let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
             let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
-            try? await recorder.end(metadata: metadata)
+            do { try await recorder.end(metadata: metadata) }
+            catch { healthSaveFailed = true }
         }
     }
 
@@ -365,12 +407,11 @@ final class WorkoutFlowViewModel {
     // MARK: - Result
 
     func buildResult() -> WorkoutResult {
-        stateStore.clear()
         return WorkoutResult(
             workoutPlanId: plan.id,
             workoutPlanName: plan.name.localized,
             startDate: sessionStartDate ?? Date(),
-            endDate: Date(),
+            endDate: sessionEndDate ?? Date(),
             totalDuration: elapsedTime,
             // BUG 5 FIX: Use the explicitly tracked counter instead of currentPoseIndex + 1.
             // currentPoseIndex + 1 over-counts when stop() is called before any pose completes
@@ -492,33 +533,34 @@ final class WorkoutFlowViewModel {
     private func startCountdownSequence(remainingSeconds: Int? = nil) {
         timerTask?.cancel()
         let startFrom = remainingSeconds ?? 3
-        let isResume = remainingSeconds != nil
         timerTask = Task {
             for i in stride(from: max(1, startFrom), through: 1, by: -1) {
                 phase = .countdown(secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
+                updateElapsedTime()
             }
 
-            // Only kick off HK / music / Live Activity on a fresh countdown, not mid-resume.
-            if !isResume {
+            // Countdown completion happens once, including after pausing before services started.
+            if !didStartSessionServices {
+                didStartSessionServices = true
                 // Start HealthKit recording in background — don't block workout flow.
-                Task { [weak self] in
-                    guard let self else { return }
+                healthStartupTask = Task { [self] in
                     do {
-                        try await self.recorder.start(style: self.plan.style)
-                        print("✅ HealthKit workout session started successfully")
+                        try await recorder.start(style: plan.style)
+                        if isPaused { recorder.pause() }
                     } catch {
-                        print("⚠️ HealthKit workout session failed to start: \(error)")
+                        if !Task.isCancelled { healthSaveFailed = true }
                     }
                 }
 
                 // Music is fire-and-forget — never block the pose flow.
-                Task { [weak self] in
-                    guard let self else { return }
-                    await self.musicService.requestAuthorization()
-                    await self.musicService.prefetchPlaylists(style: self.plan.style)
-                    await self.musicService.playWorkoutMusic(mood: .calm, style: self.plan.style)
+                musicStartupTask = Task { [self] in
+                    await musicService.requestAuthorization()
+                    guard !Task.isCancelled, phase != .complete, !isPaused else { return }
+                    await musicService.prefetchPlaylists(style: plan.style)
+                    guard !Task.isCancelled, phase != .complete, !isPaused else { return }
+                    await musicService.playWorkoutMusic(mood: .calm, style: plan.style)
                 }
 
                 startLiveActivity()
@@ -602,9 +644,7 @@ final class WorkoutFlowViewModel {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
                 poseTimeRemaining = max(0, poseTimeRemaining - 1)
-                if let start = sessionStartDate {
-                    elapsedTime = Date().timeIntervalSince(start)
-                }
+                updateElapsedTime()
 
                 // Update Live Activity every tick
                 updateLiveActivity()
@@ -614,13 +654,15 @@ final class WorkoutFlowViewModel {
                 persistenceCounter += 1
                 if persistenceCounter % 5 == 0 {
                     persistState()
-                    Task { [weak self] in
-                        await self?.adaptMusicToCurrentSCI()
+                    Task { [self] in
+                        await self.adaptMusicToCurrentSCI()
                     }
                     await tickPharmaControl()
+                    guard !Task.isCancelled, !isPaused, phase == .active(poseIndex: index) else { return }
                 }
             }
 
+            guard !Task.isCancelled, !isPaused, phase == .active(poseIndex: index) else { return }
             // BUG 5 FIX: Pose reached zero naturally — it was fully held. Count it.
             posesCompletedCount += 1
 
@@ -643,6 +685,7 @@ final class WorkoutFlowViewModel {
                 phase = .transition(nextPoseIndex: nextIndex, secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
+                updateElapsedTime()
             }
             beginPose(at: nextIndex)
         }
@@ -654,20 +697,17 @@ final class WorkoutFlowViewModel {
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
 
-            // Build metadata with latest SCI score for HKWorkout enrichment
-            let sciInsight = feedbackEngine.latestInsight(for: .heartRateVariability)
-            let metadata = buildWorkoutMetadata(sciScore: sciInsight?.score)
-            try? await recorder.end(metadata: metadata)
-
-            musicService.stop()
-            insightEngine.clearPoseCueCache()
-            endLiveActivity()
-            stateStore.clear()
-            await pharmaControl.stop()
-            // Drug/docking-aware session narrative before complete UI (async, non-blocking).
-            generateSessionNarrativeAsync()
-            phase = .complete
+            // Finish through the same cancellation and cleanup path as early end.
+            stop()
         }
+    }
+
+    /// Accumulate only running time; suspended and killed-app intervals are excluded.
+    private func updateElapsedTime() {
+        guard let elapsedAnchor else { return }
+        let now = Date()
+        elapsedTime += max(0, now.timeIntervalSince(elapsedAnchor))
+        self.elapsedAnchor = now
     }
 
     // MARK: - Crooks Pharma Control
@@ -678,10 +718,13 @@ final class WorkoutFlowViewModel {
         _ = feedbackEngine.analyze(for: .heartRateVariability)
         let sci = feedbackEngine.latestInsight(for: .heartRateVariability)?.score
         let bpm = recorder.currentHeartRate ?? plan.style.nominalBPM
+        guard !Task.isCancelled, !isPaused, phase != .complete else { return }
         let result = await pharmaControl.tickFromSCI(sciScore: sci, bpm: bpm)
+        guard !Task.isCancelled, !isPaused, phase != .complete else { return }
         sigmaIrr = result.sigmaIrr
         crooksPhase = result.phase
         let snap = await pharmaControl.snapshot()
+        guard !Task.isCancelled, !isPaused, phase != .complete else { return }
         crownBeta = snap.crownBeta
         // Breath UI / Watch consumers read these; never block on UI work here.
         breathsPerMinute = snap.effectiveBreathsPerMinute
@@ -692,7 +735,7 @@ final class WorkoutFlowViewModel {
         // Grounding mood adapt must never block the pose/control timer (full crossfade).
         if result.didGround {
             Task { [weak self] in
-                guard let self else { return }
+                guard let self, !Task.isCancelled, !self.isPaused, self.phase != .complete else { return }
                 await self.musicService.adaptToSCI(
                     score: 0.2,
                     trend: .declining,
@@ -709,7 +752,8 @@ final class WorkoutFlowViewModel {
     ///
     /// Gated when SCI is driven by pure-constant proxy RR (meaningless coherence).
     private func adaptMusicToCurrentSCI() async {
-        guard recorder.lastRRUsableForAdaptiveMusic else { return }
+        guard !Task.isCancelled, !isPaused, phase != .complete,
+              recorder.lastRRUsableForAdaptiveMusic else { return }
         let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
         await musicService.adaptToSCI(
             score: insight?.score,

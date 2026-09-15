@@ -12,7 +12,7 @@ The codebase has solid test coverage for core mathematical/analysis modules (ent
 
 1. **Cross-cutting orchestration** (FeedbackEngine, SignalAnalyzer pipeline)
 2. **HealthKit integration** (authorization, data collection, background delivery)
-3. **Service layer** (persistence, music, connectivity, CareKit, subscriptions)
+3. **Service layer** (persistence, music, connectivity, CareKit, feature flags)
 4. **PokeDrug pharmacological framework** (matchup logic, stats, evolution, habitat)
 5. **UI components** (visualization views, TV display, motion coaching)
 6. **Platform-specific flows** (watch connectivity, SharePlay, TV relay, live activities)
@@ -319,7 +319,6 @@ func testSCIVisualizationView_PlotsDynamically()
 - `ChairYogaActivity.swift` — SharePlay session
 - `SessionCoordinator.swift` — Collaborative state
 - `ResearchKitBridge.swift` — Survey collection
-- `SubscriptionManager.swift` — IAP handling
 - `WorkoutIntents.swift` — Siri intents
 
 **Severity**: 🟡 **Medium** (mostly integration/glue logic)
@@ -338,9 +337,9 @@ func testMusicService_RespectsCrossfadeDelay()
 func testPhoneConnectivityBridge_SendsAndReceives()
 func testPhoneConnectivityBridge_RecoversFromDisconnect()
 
-// SubscriptionManager (3 tests)
-func testSubscriptionManager_FetchesEntitlements()
-func testSubscriptionManager_HandlesPurchase()
+// WorkoutFlow gating (3 tests)
+func testWorkoutFlow_UsesUnlockedSessions()
+func testWorkoutFlow_HandlesFeatureFallback()
 ```
 
 ---
@@ -649,8 +648,6 @@ Bonhomme/Services/ (10 other)
 ├── ❌ PhoneConnectivityBridge (0 tests)
 ├── ❌ ChairYogaActivity (0 tests)
 ├── ❌ SessionCoordinator (0 tests)
-├── ❌ SubscriptionManager (0 tests)
-├── ❌ Entitlement (0 tests)
 └── ❌ WorkoutIntents (0 tests)
 
 BonhommeCore/UI/ (1 file)

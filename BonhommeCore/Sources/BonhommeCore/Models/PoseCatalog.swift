@@ -187,7 +187,6 @@ public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
     public let poses: [Pose]
     /// Seconds between pose holds during which the cue for the next pose is shown.
     public let transitionSeconds: TimeInterval
-    public let isFree: Bool
 
     public init(
         id: String,
@@ -196,7 +195,6 @@ public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
         style: YogaStyle = .chairYoga,
         poses: [Pose],
         transitionSeconds: TimeInterval = 5,
-        isFree: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -204,7 +202,6 @@ public struct WorkoutPlan: Codable, Sendable, Identifiable, Hashable {
         self.style = style
         self.poses = poses
         self.transitionSeconds = transitionSeconds
-        self.isFree = isFree
     }
 
     public var poseCount: Int { poses.count }
@@ -298,7 +295,6 @@ public enum PoseCatalog {
             de: "Natürliche tiefe Atmung, 4 Zählzeiten einatmen, 4 Zählzeiten ausatmen",
             ar: "تنفس عميق طبيعي، 4 عدّات شهيق، 4 عدّات زفير"
         ),
-        isFree: true
     )
 
     public static let seatedCatCow = Pose(
@@ -382,7 +378,6 @@ public enum PoseCatalog {
             de: "Einatmen für die Kuh, ausatmen für die Katze — ein voller Atemzug pro Zyklus",
             ar: "شهيق لوضعية البقرة، زفير لوضعية القطة — نَفَس كامل واحد لكل دورة"
         ),
-        isFree: true
     )
 
     public static let seatedSpinalTwist = Pose(
@@ -466,7 +461,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Verlängern, ausatmen zum Vertiefen der Drehung",
             ar: "استنشق للاستطالة، وازفر لتعميق اللفّ"
         ),
-        isFree: true
     )
 
     public static let seatedForwardFold = Pose(
@@ -559,7 +553,6 @@ public enum PoseCatalog {
             de: "Ausatmen zum tieferen Beugen, einatmen zum Schaffen von Raum",
             ar: "ازفر للانحناء أعمق، واستنشق لخلق مساحة"
         ),
-        isFree: true
     )
 
     public static let neckRolls = Pose(
@@ -643,7 +636,6 @@ public enum PoseCatalog {
             de: "Langsame, gleichmäßige Atmung durchgehend",
             ar: "تنفس بطيء ومنتظم طوال التمرين"
         ),
-        isFree: true
     )
 
     public static let shoulderRolls = Pose(
@@ -708,7 +700,6 @@ public enum PoseCatalog {
             de: "Einatmen wenn die Schultern steigen, ausatmen wenn sie zurück und nach unten rollen",
             ar: "استنشق عندما ترتفع الكتفان، وازفر عندما تدوران للخلف وللأسفل"
         ),
-        isFree: true
     )
 
     public static let seatedMeditation = Pose(
@@ -782,10 +773,9 @@ public enum PoseCatalog {
             de: "Natürliche Atmung — beobachten ohne zu kontrollieren",
             ar: "تنفس طبيعي — راقب دون تحكّم"
         ),
-        isFree: true
     )
 
-    // MARK: - Intermediate Poses (Premium)
+    // MARK: - Intermediate Poses
 
     public static let seatedEagleArms = Pose(
         id: "seated-eagle-arms",
@@ -868,7 +858,6 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atmung, einatmen um die Ellbogen zu heben, ausatmen um die Schultern zu lösen",
             ar: "تنفس ثابت، استنشق لرفع المرفقين، وازفر لإرخاء الكتفين"
         ),
-        isFree: true
     )
 
     public static let seatedPigeon = Pose(
@@ -961,7 +950,6 @@ public enum PoseCatalog {
             de: "Langsames Ausatmen, um in die Hüftdehnung loszulassen",
             ar: "زفير بطيء للاسترخاء في تمدد الورك"
         ),
-        isFree: true
     )
 
     public static let seatedWarriorII = Pose(
@@ -1045,7 +1033,6 @@ public enum PoseCatalog {
             de: "Starke gleichmäßige Atemzüge, einatmen zum Verlängern, ausatmen zum Erden",
             ar: "أنفاس قوية وثابتة، استنشق للاستطالة، وازفر للثبات"
         ),
-        isFree: true
     )
 
     public static let seatedSideBend = Pose(
@@ -1129,7 +1116,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Verlängern, ausatmen um tiefer zu beugen",
             ar: "استنشق للاستطالة، وازفر للانحناء أعمق"
         ),
-        isFree: true
     )
 
     public static let seatedHeartOpener = Pose(
@@ -1213,7 +1199,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Öffnen, ausatmen um die Anstrengung zu mildern",
             ar: "استنشق للانفتاح، وازفر لتخفيف الجهد"
         ),
-        isFree: true
     )
 
     public static let seatedAnklesToKnees = Pose(
@@ -1297,7 +1282,6 @@ public enum PoseCatalog {
             de: "Langsame Atemzüge, ausatmen um in die Hüftdehnung loszulassen",
             ar: "أنفاس بطيئة، ازفر للاسترخاء في تمدد الورك"
         ),
-        isFree: true
     )
 
     public static let seatedExtendedSideBend = Pose(
@@ -1381,10 +1365,9 @@ public enum PoseCatalog {
             de: "Einatmen um die Körperseite zu verlängern, ausatmen um zu vertiefen",
             ar: "استنشق لإطالة جانب الجسم، وازفر للتعمق"
         ),
-        isFree: true
     )
 
-    // MARK: - Advanced Poses (Premium)
+    // MARK: - Advanced Poses
 
     public static let seatedSunSalutation = Pose(
         id: "seated-sun-salutation",
@@ -1467,7 +1450,6 @@ public enum PoseCatalog {
             de: "Ein Einatmen oder Ausatmen pro Bewegung — koordinierte Atem-Bewegung",
             ar: "شهيق أو زفير واحد لكل حركة — تنسيق بين النَّفَس والحركة"
         ),
-        isFree: true
     )
 
     public static let seatedTreePose = Pose(
@@ -1551,7 +1533,6 @@ public enum PoseCatalog {
             de: "Gleichmäßige, ruhige Atemzüge zur Aufrechterhaltung des Gleichgewichts",
             ar: "أنفاس ثابتة وهادئة للحفاظ على التوازن"
         ),
-        isFree: true
     )
 
     // MARK: - Additional Poses
@@ -1618,7 +1599,6 @@ public enum PoseCatalog {
             de: "Atmen Sie die ganze Zeit natürlich",
             ar: "تنفّس بشكل طبيعي طوال التمرين"
         ),
-        isFree: true
     )
 
     public static let seatedWristStretches = Pose(
@@ -1693,7 +1673,6 @@ public enum PoseCatalog {
             de: "Langsame Atmung, ausatmen während Sie die Dehnung vertiefen",
             ar: "تنفس بطيء، ازفر عند تعميق التمدد"
         ),
-        isFree: true
     )
 
     public static let seatedHighKneeLifts = Pose(
@@ -1777,7 +1756,6 @@ public enum PoseCatalog {
             de: "Ausatmen zum Heben, einatmen zum Senken",
             ar: "ازفر للرفع، واستنشق للإنزال"
         ),
-        isFree: true
     )
 
     public static let seatedGoddess = Pose(
@@ -1861,7 +1839,6 @@ public enum PoseCatalog {
             de: "Tiefe Bauchatmung, ausatmen um weiter zu öffnen",
             ar: "أنفاس بطنية عميقة، ازفر لتفتح أوسع"
         ),
-        isFree: true
     )
 
     public static let seatedReverseWarrior = Pose(
@@ -1945,7 +1922,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Strecken, ausatmen um tiefer einzusinken",
             ar: "استنشق للامتداد، وازفر للاستقرار أعمق"
         ),
-        isFree: true
     )
 
     public static let seatedCrescentMoon = Pose(
@@ -2029,7 +2005,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Hochstrecken, ausatmen zum Seitenbeugen",
             ar: "استنشق للاستطالة للأعلى، وازفر للانحناء إلى الجانب"
         ),
-        isFree: true
     )
 
     public static let seatedChestExpansion = Pose(
@@ -2113,7 +2088,6 @@ public enum PoseCatalog {
             de: "Einatmen zum Heben und Erweitern, ausatmen zum Lösen",
             ar: "استنشق للرفع والتوسع، وازفر للإرخاء"
         ),
-        isFree: true
     )
 
     public static let seatedThreadTheNeedle = Pose(
@@ -2197,7 +2171,6 @@ public enum PoseCatalog {
             de: "Ausatmen um tiefer zu fädeln, einatmen um Raum zu schaffen",
             ar: "ازفر للتمرير أعمق، واستنشق لخلق مساحة"
         ),
-        isFree: true
     )
 
     public static let seatedBreathOfJoy = Pose(
@@ -2290,7 +2263,6 @@ public enum PoseCatalog {
             de: "Drei Stakkato-Einatmungen durch die Nase, eine vollständige Ausatmung durch den Mund",
             ar: "ثلاث شهقات متقطعة من الأنف، وزفير كامل واحد من الفم"
         ),
-        isFree: true
     )
 
     public static let seatedHalfMoon = Pose(
@@ -2374,7 +2346,6 @@ public enum PoseCatalog {
             de: "Gleichmäßige Atemzüge zur Aufrechterhaltung des Gleichgewichts — ausatmen um weiter zu strecken",
             ar: "أنفاس ثابتة للحفاظ على التوازن — ازفر للامتداد أبعد"
         ),
-        isFree: true
     )
 
     // MARK: - Workout Plan Collections
@@ -2397,7 +2368,6 @@ public enum PoseCatalog {
             style: .chairYoga,
             poses: [seatedMountain, neckRolls, shoulderRolls, seatedCatCow, seatedAnkleCircles, seatedWristStretches, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         WorkoutPlan(
             id: "chair-full-body",
@@ -2416,7 +2386,6 @@ public enum PoseCatalog {
             style: .chairYoga,
             poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedForwardFold, seatedSideBend, seatedHeartOpener, seatedEagleArms, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         WorkoutPlan(
             id: "chair-energizer",
@@ -2435,7 +2404,6 @@ public enum PoseCatalog {
             style: .chairYoga,
             poses: [seatedMountain, seatedHighKneeLifts, seatedChestExpansion, seatedCrescentMoon, seatedGoddess, seatedBreathOfJoy, seatedMeditation],
             transitionSeconds: 4,
-            isFree: true
         ),
         WorkoutPlan(
             id: "lower-back-relief",
@@ -2461,7 +2429,6 @@ public enum PoseCatalog {
             style: .chairYoga,
             poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedForwardFold, seatedSideBend, seatedThreadTheNeedle, seatedMeditation],
             transitionSeconds: 6,
-            isFree: true
         ),
     ]
 
@@ -2483,7 +2450,6 @@ public enum PoseCatalog {
             style: .vinyasa,
             poses: [seatedMountain, seatedCatCow, seatedWarriorII, seatedReverseWarrior, seatedSideBend, seatedCrescentMoon, seatedForwardFold, seatedMeditation],
             transitionSeconds: 4,
-            isFree: true
         ),
         WorkoutPlan(
             id: "seated-power-vinyasa",
@@ -2502,7 +2468,6 @@ public enum PoseCatalog {
             style: .vinyasa,
             poses: [seatedSunSalutation, seatedWarriorII, seatedGoddess, seatedCrescentMoon, seatedReverseWarrior, seatedChestExpansion, seatedBreathOfJoy, seatedMeditation],
             transitionSeconds: 3,
-            isFree: true
         ),
     ]
 
@@ -2524,7 +2489,6 @@ public enum PoseCatalog {
             style: .hatha,
             poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedForwardFold, seatedSideBend, seatedExtendedSideBend, seatedHeartOpener, seatedTreePose, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         // Free starter for sparse kind coverage
         genericBuilder(
@@ -2557,7 +2521,6 @@ public enum PoseCatalog {
             style: .yin,
             poses: [seatedForwardFold, seatedSpinalTwist, seatedPigeon, seatedAnklesToKnees, seatedThreadTheNeedle, seatedMeditation],
             transitionSeconds: 8,
-            isFree: true
         ),
         genericBuilder(
             id: "yin-starter",
@@ -2590,7 +2553,6 @@ public enum PoseCatalog {
             style: .restorative,
             poses: [seatedMountain, neckRolls, shoulderRolls, seatedForwardFold, seatedThreadTheNeedle, seatedMeditation],
             transitionSeconds: 8,
-            isFree: true
         ),
         WorkoutPlan(
             id: "restorative-evening-wind-down",
@@ -2609,7 +2571,6 @@ public enum PoseCatalog {
             style: .restorative,
             poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedPigeon, seatedAnklesToKnees, seatedForwardFold, seatedMeditation],
             transitionSeconds: 10,
-            isFree: true
         ),
     ]
 
@@ -2631,7 +2592,6 @@ public enum PoseCatalog {
             style: .power,
             poses: [seatedSunSalutation, seatedWarriorII, seatedGoddess, seatedHighKneeLifts, seatedChestExpansion, seatedHalfMoon, seatedBreathOfJoy],
             transitionSeconds: 3,
-            isFree: true
         ),
         // Free starter — sparse kind was single-plan only
         genericBuilder(
@@ -2665,7 +2625,6 @@ public enum PoseCatalog {
             style: .standingBalance,
             poses: [seatedMountain, seatedTreePose, seatedHighKneeLifts, seatedEagleArms, seatedHalfMoon, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         genericBuilder(
             id: "standing-balance-starter",
@@ -2697,7 +2656,6 @@ public enum PoseCatalog {
             style: .prenatal,
             poses: [seatedMountain, seatedCatCow, neckRolls, shoulderRolls, seatedSideBend, seatedAnkleCircles, seatedMeditation],
             transitionSeconds: 6,
-            isFree: true
         ),
         genericBuilder(
             id: "prenatal-starter",
@@ -2730,7 +2688,6 @@ public enum PoseCatalog {
             style: .pranayama,
             poses: [seatedMountain, seatedCatCow, seatedSpinalTwist, seatedMeditation],
             transitionSeconds: 6,
-            isFree: true
         ),
         genericBuilder(
             id: "pranayama-starter",
@@ -2762,7 +2719,6 @@ public enum PoseCatalog {
             style: .matYoga,
             poses: [seatedMountain, seatedCatCow, seatedForwardFold, seatedSideBend, seatedWarriorII, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         genericBuilder(
             id: "mat-starter",
@@ -2791,7 +2747,6 @@ public enum PoseCatalog {
             style: .strength,
             poses: [seatedHighKneeLifts, seatedWarriorII, seatedGoddess, seatedChestExpansion, seatedBreathOfJoy, seatedMountain],
             transitionSeconds: 4,
-            isFree: true
         ),
         genericBuilder(
             id: "strength-starter",
@@ -2821,7 +2776,6 @@ public enum PoseCatalog {
             style: .cardio,
             poses: [seatedBreathOfJoy, seatedHighKneeLifts, seatedSunSalutation, seatedReverseWarrior, seatedMeditation],
             transitionSeconds: 3,
-            isFree: true
         ),
         genericBuilder(
             id: "cardio-starter",
@@ -2851,7 +2805,6 @@ public enum PoseCatalog {
             style: .mobility,
             poses: [neckRolls, shoulderRolls, seatedCatCow, seatedSpinalTwist, seatedAnkleCircles, seatedWristStretches, seatedAnklesToKnees],
             transitionSeconds: 5,
-            isFree: true
         ),
         genericBuilder(
             id: "mobility-starter",
@@ -2880,7 +2833,6 @@ public enum PoseCatalog {
             style: .meditation,
             poses: [seatedMountain, seatedCatCow, seatedMeditation, seatedForwardFold, seatedMeditation],
             transitionSeconds: 8,
-            isFree: true
         ),
         genericBuilder(
             id: "meditation-starter",
@@ -2910,7 +2862,6 @@ public enum PoseCatalog {
             style: .general,
             poses: [seatedMountain, neckRolls, seatedCatCow, seatedHighKneeLifts, seatedSideBend, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         ),
         genericBuilder(
             id: "general-starter",
@@ -2942,14 +2893,13 @@ public enum PoseCatalog {
             style: .chairYoga,
             poses: [seatedMountain, neckRolls, shoulderRolls, seatedCatCow, seatedAnkleCircles, seatedWristStretches, seatedMeditation],
             transitionSeconds: 5,
-            isFree: true
         )
     }
 
     // MARK: - Pose Collections
 
     public static let allPoses: [Pose] = [
-        // Beginner (Free)
+        // Beginner
         seatedMountain,
         seatedCatCow,
         seatedSpinalTwist,
@@ -2960,7 +2910,7 @@ public enum PoseCatalog {
         seatedWristStretches,
         seatedHighKneeLifts,
         seatedMeditation,
-        // Intermediate (Premium)
+        // Intermediate
         seatedEagleArms,
         seatedPigeon,
         seatedWarriorII,
@@ -2972,16 +2922,13 @@ public enum PoseCatalog {
         seatedReverseWarrior,
         seatedCrescentMoon,
         seatedChestExpansion,
-        // Advanced (Premium)
+        // Advanced
         seatedSunSalutation,
         seatedTreePose,
         seatedThreadTheNeedle,
         seatedBreathOfJoy,
         seatedHalfMoon,
     ]
-
-    public static let freePoses: [Pose] = allPoses.filter(\.isFree)
-    public static let premiumPoses: [Pose] = allPoses.filter { !$0.isFree }
 
     /// Returns all workout plans for a given style / kind.
     public static func plans(for style: YogaStyle) -> [WorkoutPlan] {
@@ -3014,7 +2961,7 @@ public enum PoseCatalog {
         plans(for: style).count
     }
 
-    /// Build a lightweight free plan for any kind using common free poses.
+    /// Build a standard starter plan for any kind using common core poses.
     public static func genericBuilder(
         id: String,
         kind: WorkoutKind,
@@ -3031,7 +2978,6 @@ public enum PoseCatalog {
             style: kind,
             poses: blocks,
             transitionSeconds: transitionSeconds,
-            isFree: true
         )
     }
 }

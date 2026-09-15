@@ -4,7 +4,6 @@ import BonhommeCore
 /// Detail view showing all workout plans for a specific yoga style.
 struct StyleDetailView: View {
     let style: YogaStyle
-    @Environment(AppState.self) private var appState
     
     var body: some View {
         ScrollView {
@@ -86,11 +85,7 @@ struct StyleDetailView: View {
     
     private func planCard(plan: WorkoutPlan) -> some View {
         NavigationLink {
-            if !plan.isFree && !appState.isPremium {
-                PaywallView()
-            } else {
-                WorkoutFlowView(plan: plan)
-            }
+            WorkoutFlowView(plan: plan)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
@@ -106,17 +101,12 @@ struct StyleDetailView: View {
                     }
                     
                     Spacer()
-                    
-                    if !plan.isFree {
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(.orange)
-                            .font(.system(size: 16))
-                    }
                 }
                 
                 HStack(spacing: 16) {
                     Label("\(plan.poseCount) poses", systemImage: "list.number")
                     Label(formattedDuration(plan.totalDuration), systemImage: "clock")
+                    Label(LocalizedString(en: "FREE", fr: "GRATUIT").localized, systemImage: "checkmark.seal.fill")
                 }
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)

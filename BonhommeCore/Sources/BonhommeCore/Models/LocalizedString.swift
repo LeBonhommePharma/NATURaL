@@ -35,28 +35,39 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     /// All supported language codes.
     public static let supportedLanguages = ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]
 
+    /// Match the ordered OS language list, including regional and script variants.
+    public static func preferredLanguage(in identifiers: [String]) -> String {
+        identifiers.lazy.map(normalizedLanguage).first(where: supportedLanguages.contains) ?? "en"
+    }
+
+    public static func normalizedLanguage(_ identifier: String) -> String {
+        identifier.replacingOccurrences(of: "_", with: "-")
+            .split(separator: "-").first.map { String($0).lowercased() } ?? "en"
+    }
+
     /// Returns the appropriate translation for the current locale.
     /// Falls back to English if the locale's language is not supported or translation is empty.
     public var localized: String {
-        let lang = Locale.current.language.languageCode?.identifier ?? "en"
+        let lang = LocalizedString.preferredLanguage(in: Locale.preferredLanguages)
         return value(for: lang)
     }
 
     /// Explicitly resolve for a given language code.
     /// Falls back to English if the translation for the requested language is empty.
     public func value(for languageCode: String) -> String {
+        let languageCode = Self.normalizedLanguage(languageCode)
         let resolved: String
         switch true {
-        case languageCode.hasPrefix("fr"): resolved = fr
-        case languageCode.hasPrefix("es"): resolved = es
-        case languageCode.hasPrefix("ja"): resolved = ja
-        case languageCode.hasPrefix("zh"): resolved = zh
-        case languageCode.hasPrefix("ko"): resolved = ko
-        case languageCode.hasPrefix("ru"): resolved = ru
-        case languageCode.hasPrefix("de"): resolved = de
-        case languageCode.hasPrefix("ar"): resolved = ar
-        case languageCode.hasPrefix("it"): resolved = it
-        case languageCode.hasPrefix("pt"): resolved = pt
+        case languageCode == "fr": resolved = fr
+        case languageCode == "es": resolved = es
+        case languageCode == "ja": resolved = ja
+        case languageCode == "zh": resolved = zh
+        case languageCode == "ko": resolved = ko
+        case languageCode == "ru": resolved = ru
+        case languageCode == "de": resolved = de
+        case languageCode == "ar": resolved = ar
+        case languageCode == "it": resolved = it
+        case languageCode == "pt": resolved = pt
         default: resolved = en
         }
         return resolved.isEmpty ? en : resolved
@@ -94,23 +105,24 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
     }
 
     public var localized: [String] {
-        let lang = Locale.current.language.languageCode?.identifier ?? "en"
+        let lang = LocalizedString.preferredLanguage(in: Locale.preferredLanguages)
         return value(for: lang)
     }
 
     public func value(for languageCode: String) -> [String] {
+        let languageCode = LocalizedString.normalizedLanguage(languageCode)
         let resolved: [String]
         switch true {
-        case languageCode.hasPrefix("fr"): resolved = fr
-        case languageCode.hasPrefix("es"): resolved = es
-        case languageCode.hasPrefix("ja"): resolved = ja
-        case languageCode.hasPrefix("zh"): resolved = zh
-        case languageCode.hasPrefix("ko"): resolved = ko
-        case languageCode.hasPrefix("ru"): resolved = ru
-        case languageCode.hasPrefix("de"): resolved = de
-        case languageCode.hasPrefix("ar"): resolved = ar
-        case languageCode.hasPrefix("it"): resolved = it
-        case languageCode.hasPrefix("pt"): resolved = pt
+        case languageCode == "fr": resolved = fr
+        case languageCode == "es": resolved = es
+        case languageCode == "ja": resolved = ja
+        case languageCode == "zh": resolved = zh
+        case languageCode == "ko": resolved = ko
+        case languageCode == "ru": resolved = ru
+        case languageCode == "de": resolved = de
+        case languageCode == "ar": resolved = ar
+        case languageCode == "it": resolved = it
+        case languageCode == "pt": resolved = pt
         default: resolved = en
         }
         return resolved.isEmpty ? en : resolved

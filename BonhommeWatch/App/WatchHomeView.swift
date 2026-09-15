@@ -1,50 +1,50 @@
 import SwiftUI
 import BonhommeCore
 
-/// Plan selection screen for the watchOS companion app.
-/// Shows available workout plans with pose count and duration,
-/// and links to WatchSessionView for workout execution.
+/// A wrist-first library: one gentle starting point, followed by every available plan.
 struct WatchHomeView: View {
-    @Environment(WatchWorkoutManager.self) private var manager
-
     var body: some View {
         NavigationStack {
             List {
-                // Free plan first
-                planRow(plan: PoseCatalog.beginnerFlow)
-
-                // All other plans
-                ForEach(PoseCatalog.allPlans.filter { !$0.isFree }) { plan in
-                    planRow(plan: plan)
+                VStack(alignment: .leading, spacing: 6) {
+                    Image("Bloom").resizable().scaledToFit()
+                        .frame(maxWidth: .infinity).frame(height: 80)
+                        .accessibilityHidden(true)
+                    Text(LocalizedString(en: "A moment for you.", fr: "Un moment pour vous.").localized)
+                        .font(.title3.bold())
+                    Text(LocalizedString(en: "Take a seat. Find your breath.", fr: "Asseyez-vous. Retrouvez votre souffle.").localized)
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                .listRowBackground(Color.clear)
+                Section(LocalizedString(en: "Start gently", fr: "Commencez en douceur").localized) {
+                    planRow(PoseCatalog.beginnerFlow)
+                }
+                Section(LocalizedString(en: "Explore your practice", fr: "Explorez votre pratique").localized) {
+                    ForEach(PoseCatalog.allPlans.filter { $0.id != PoseCatalog.beginnerFlow.id }) { plan in
+                        planRow(plan)
+                    }
                 }
             }
             .navigationTitle("NATURaL")
+            .tint(.mint)
         }
     }
 
-    private func planRow(plan: WorkoutPlan) -> some View {
+    private func planRow(_ plan: WorkoutPlan) -> some View {
         NavigationLink {
             WatchSessionView(plan: plan)
         } label: {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(plan.name.localized)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
+                    .font(.headline).foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     Label("\(plan.poseCount)", systemImage: "figure.yoga")
-                    Label(formattedDuration(plan.totalDuration), systemImage: "clock")
+                    Label("\(Int(plan.totalDuration) / 60) min", systemImage: "clock")
                 }
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.mint)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
         }
-    }
-
-    private func formattedDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        return "\(minutes)m"
     }
 }

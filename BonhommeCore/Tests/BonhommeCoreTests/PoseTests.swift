@@ -6,14 +6,13 @@ final class PoseTests: XCTestCase {
     // MARK: - Pose Model
 
     func testPoseInitialization() {
-        let pose = makePose(id: "test-pose", isFree: true)
+        let pose = makePose(id: "test-pose")
         XCTAssertEqual(pose.id, "test-pose")
         XCTAssertEqual(pose.name.en, "Test Pose")
         XCTAssertEqual(pose.name.fr, "Posture test")
         XCTAssertEqual(pose.durationSeconds, 30)
         XCTAssertEqual(pose.difficulty, .beginner)
         XCTAssertEqual(pose.category, .spine)
-        XCTAssertTrue(pose.isFree)
     }
 
     func testPoseIdentifiable() {
@@ -31,7 +30,6 @@ final class PoseTests: XCTestCase {
         XCTAssertEqual(decoded.difficulty, original.difficulty)
         XCTAssertEqual(decoded.category, original.category)
         XCTAssertEqual(decoded.durationSeconds, original.durationSeconds)
-        XCTAssertEqual(decoded.isFree, original.isFree)
     }
 
     func testPoseHashable() {
@@ -84,7 +82,7 @@ final class PoseTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func makePose(id: String, isFree: Bool = false) -> Pose {
+    private func makePose(id: String) -> Pose {
         Pose(
             id: id,
             name: LocalizedString(en: "Test Pose", fr: "Posture test"),
@@ -97,7 +95,6 @@ final class PoseTests: XCTestCase {
             modifications: LocalizedStringArray(en: ["Mod A"], fr: ["Mod A-FR"]),
             contraindications: LocalizedStringArray(en: [], fr: []),
             breathingPattern: LocalizedString(en: "Breathe", fr: "Respirez"),
-            isFree: isFree
         )
     }
 }

@@ -55,6 +55,9 @@
                ReferencedContainer = "container:NATURaL.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference skipped="NO" parallelizable="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C708235B5A6E91D489B1A866" BuildableName="BonhommeUITests.xctest" BlueprintName="BonhommeUITests" ReferencedContainer="container:NATURaL.xcodeproj" />
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

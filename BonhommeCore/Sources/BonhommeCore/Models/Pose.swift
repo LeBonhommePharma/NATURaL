@@ -369,7 +369,6 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
     public let modifications: LocalizedStringArray
     public let contraindications: LocalizedStringArray
     public let breathingPattern: LocalizedString
-    public let isFree: Bool
 
     public init(
         id: String,
@@ -384,7 +383,6 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
         modifications: LocalizedStringArray,
         contraindications: LocalizedStringArray = LocalizedStringArray(en: [], fr: [], es: [], ja: [], zh: [], ko: [], ru: [], de: [], ar: []),
         breathingPattern: LocalizedString = LocalizedString(en: "", fr: "", es: "", ja: "", zh: "", ko: "", ru: "", de: "", ar: ""),
-        isFree: Bool
     ) {
         self.id = id
         self.name = name
@@ -398,7 +396,6 @@ public struct Pose: Codable, Sendable, Identifiable, Hashable {
         self.modifications = modifications
         self.contraindications = contraindications
         self.breathingPattern = breathingPattern
-        self.isFree = isFree
     }
 
     public var kinematics: PoseKinematics {

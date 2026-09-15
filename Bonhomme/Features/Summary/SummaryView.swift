@@ -9,12 +9,15 @@ import BonhommeCore
 struct SummaryView: View {
     let result: WorkoutResult
     var sciScore: Double? = nil
+    var healthSaveFailed = false
+    var isFinishing = false
     var drugResponse: DrugResponseResult? = nil
     let onDismiss: () -> Void
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
     @State private var hasPersisted = false
+    @State private var saveError = false
     @State private var ringData: ActivityRingService.RingData?
     @State private var shareCardImage: Data?
 
@@ -28,6 +31,25 @@ struct SummaryView: View {
         ScrollView {
             VStack(spacing: 24) {
                 celebrationHeader
+                if saveError {
+                    VStack(spacing: 10) {
+                        Text(LocalizedString(en: "Your session could not be saved on this device.", fr: "Votre séance n’a pas pu être enregistrée sur cet appareil.").localized)
+                        Button(LocalizedString(en: "Try saving again", fr: "Réessayer l’enregistrement").localized) {
+                            do { try modelContext.save(); saveError = false }
+                            catch { saveError = true }
+                        }
+                    }
+                    .padding().background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal)
+                }
+                if healthSaveFailed {
+                    Label(LocalizedString(en: "This workout was not saved to Apple Health. Check Health permissions before your next session.", fr: "Cette séance n’a pas été enregistrée dans Apple Santé. Vérifiez les autorisations avant la prochaine séance.").localized, systemImage: "heart.slash")
+                        .font(.callout)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+                        .padding(.horizontal)
+                }
                 activityRingsCard
                 statGrid
                 if !result.heartRateSamples.isEmpty {
@@ -42,12 +64,12 @@ struct SummaryView: View {
                 }
 
                 shareSection
-                doneButton
             }
         }
         .safeAreaInset(edge: .bottom) {
-            // Ensures Done button is fully scrollable even on smaller screens
-            Color.clear.frame(height: 20)
+            doneButton
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
         }
         .background(Color(.systemBackground))
         .task {
@@ -253,7 +275,9 @@ struct SummaryView: View {
         Button {
             onDismiss()
         } label: {
-            Text(LocalizedString(en: "Done", fr: "Terminé").localized)
+            Text(isFinishing
+                 ? LocalizedString(en: "Finishing session…", fr: "Fin de la séance…").localized
+                 : LocalizedString(en: "Done", fr: "Terminé").localized)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -261,17 +285,18 @@ struct SummaryView: View {
                 .background(accentColor, in: RoundedRectangle(cornerRadius: 14))
         }
         .padding(.horizontal, 40)
-        .padding(.bottom, 32)
+        .disabled(isFinishing)
+        .accessibilityIdentifier("summary.done")
     }
 
     // MARK: - Persistence
 
     /// Saves the workout to SwiftData and records CareKit completion.
     private func persistWorkoutResult() async {
-        // 1. Save to SwiftData for history and CloudKit sync
+        // 1. Save to local SwiftData history
         let record = WorkoutRecord(from: result, sciScore: sciScore)
         modelContext.insert(record)
-        try? modelContext.save()
+        do { try modelContext.save() } catch { saveError = true }
 
         // 2. Update session streak
         let streakDescriptor = FetchDescriptor<SessionStreak>()
@@ -281,7 +306,7 @@ struct SummaryView: View {
             modelContext.insert(streak)
         }
         streak.recordSession()
-        try? modelContext.save()
+        do { try modelContext.save() } catch { saveError = true }
 
         // 2b. Push streak + session vitals into App Group for widgets.
         AppGroupStore.writeStreak(
@@ -321,7 +346,7 @@ struct SummaryView: View {
                 profileMatchConfidence: response.profileMatch?.confidence
             )
             modelContext.insert(record)
-            try? modelContext.save()
+            do { try modelContext.save() } catch { saveError = true }
         }
 
         // 5. Save mindful session to HealthKit
@@ -357,7 +382,7 @@ struct SummaryView: View {
             HStack {
                 Image(systemName: "pill.fill")
                     .foregroundStyle(.cyan)
-                Text(LocalizedString(en: "Drug Response", fr: "Réponse médicamenteuse").localized)
+                Text(LocalizedString(en: "Signal changes near a dose", fr: "Variations du signal près d’une prise").localized)
                     .font(.system(size: 16, weight: .semibold))
             }
 

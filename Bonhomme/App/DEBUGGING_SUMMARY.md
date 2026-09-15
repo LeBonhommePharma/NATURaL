@@ -74,7 +74,7 @@ do {
 
 **Features**:
 - ✅ System information (platform, HealthKit, locale)
-- ✅ AppState status (workout active, premium, authorization)
+- ✅ AppState status (workout active, plan access, authorization)
 - ✅ Manager initialization status
 - ✅ CareKit prescription monitoring
 - ✅ Debug actions (diagnostics, console print, clear state)
@@ -177,7 +177,6 @@ The `SessionProgressView` you were viewing is well-implemented:
 BonhommeApp (SwiftUI App)
 ├── AppState (@Observable, @MainActor)
 │   ├── HealthKitManager
-│   ├── SubscriptionManager
 │   ├── TVDisplayCoordinator
 │   ├── CareKitBridge
 │   ├── PhoneConnectivityBridge

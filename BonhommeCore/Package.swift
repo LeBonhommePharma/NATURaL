@@ -81,6 +81,7 @@ let package = Package(
             name: "BonhommeCore",
             dependencies: coreDependencies,
             path: "Sources/BonhommeCore",
+            resources: [.process("Resources")],
             swiftSettings: coreSwiftSettings,
             linkerSettings: coreLinkerSettings
         ),

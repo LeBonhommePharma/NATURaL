@@ -5,17 +5,10 @@ import BonhommeCore
 struct StyleDetailView: View {
     @Environment(AppState.self) private var appState
     let style: YogaStyle
+    @State private var selectedPlan: WorkoutPlan?
 
     private var plans: [WorkoutPlan] {
         PoseCatalog.plans(for: style)
-    }
-
-    private var freePlans: [WorkoutPlan] {
-        plans.filter(\.isFree)
-    }
-
-    private var premiumPlans: [WorkoutPlan] {
-        plans.filter { !$0.isFree }
     }
 
     var body: some View {
@@ -24,29 +17,21 @@ struct StyleDetailView: View {
                 // Style header
                 styleHeader
 
-                // Free plans
-                if !freePlans.isEmpty {
-                    sectionHeader(
-                        title: LocalizedString(en: "Free", fr: "Gratuit"),
-                        systemImage: "gift"
-                    )
-                    ForEach(freePlans) { plan in
-                        planCard(plan: plan, locked: false)
-                    }
-                }
-
-                // Premium plans
-                if !premiumPlans.isEmpty {
-                    sectionHeader(
-                        title: LocalizedString(en: "Premium", fr: "Premium"),
-                        systemImage: "star.fill"
-                    )
-                    ForEach(premiumPlans) { plan in
-                        planCard(plan: plan, locked: !appState.isPremium)
-                    }
+                sectionHeader(
+                    title: LocalizedString(en: "Find your rhythm", fr: "Trouvez votre rythme"),
+                    systemImage: "sparkles"
+                )
+                ForEach(plans) { plan in
+                    planCard(plan: plan)
                 }
             }
             .padding(.vertical)
+        }
+        .fullScreenCover(item: $selectedPlan) { plan in
+            NavigationStack {
+                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
+            }
+            .interactiveDismissDisabled()
         }
         .navigationTitle(style.localizedName.localized)
         .navigationBarTitleDisplayMode(.inline)
@@ -106,14 +91,8 @@ struct StyleDetailView: View {
 
     // MARK: - Plan Card
 
-    private func planCard(plan: WorkoutPlan, locked: Bool) -> some View {
-        NavigationLink {
-            if locked {
-                PaywallView()
-            } else {
-                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
-            }
-        } label: {
+    private func planCard(plan: WorkoutPlan) -> some View {
+        Button { selectedPlan = plan } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -129,20 +108,15 @@ struct StyleDetailView: View {
 
                     Spacer()
 
-                    if locked {
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(.orange)
-                    } else {
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 16) {
                     Label("\(plan.poseCount) poses", systemImage: "list.number")
                     Label(formattedDuration(plan.totalDuration), systemImage: "clock")
 
-                    if plan.isFree {
+                    Group {
                         Text(LocalizedString(en: "FREE", fr: "GRATUIT").localized)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.green)

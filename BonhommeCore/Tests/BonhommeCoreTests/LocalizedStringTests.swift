@@ -3,6 +3,17 @@ import XCTest
 
 final class LocalizedStringTests: XCTestCase {
 
+    func testOSLanguagePreferenceMatching() {
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["sv-SE", "FR_ca", "en-US"]), "fr")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["pt-BR", "en"]), "pt")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["zh-Hant-TW"]), "zh")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["ar-SA"]), "ar")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["french", "sv"]), "en")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: []), "en")
+        XCTAssertEqual(LocalizedString(en: "Hello", fr: "Bonjour").value(for: "FR_ca"), "Bonjour")
+        XCTAssertEqual(LocalizedStringArray(en: ["Hello"], fr: ["Bonjour"]).value(for: "FR_ca"), ["Bonjour"])
+    }
+
     // MARK: - LocalizedString
 
     func testLocalizedStringStoresValues() {
@@ -30,7 +41,8 @@ final class LocalizedStringTests: XCTestCase {
     func testExplicitLanguageResolution() {
         let str = LocalizedString(
             en: "Mountain", fr: "Montagne", es: "Montaña", ja: "山",
-            zh: "山", ko: "산", ru: "Гора", de: "Berg", ar: "جبل"
+            zh: "山", ko: "산", ru: "Гора", de: "Berg", ar: "جبل",
+            it: "Montagna", pt: "Montanha"
         )
         XCTAssertEqual(str.value(for: "en"), "Mountain")
         XCTAssertEqual(str.value(for: "fr"), "Montagne")
@@ -45,8 +57,9 @@ final class LocalizedStringTests: XCTestCase {
         XCTAssertEqual(str.value(for: "de"), "Berg")
         XCTAssertEqual(str.value(for: "de-AT"), "Berg")
         XCTAssertEqual(str.value(for: "ar"), "جبل")
+        XCTAssertEqual(str.value(for: "it"), "Montagna")
+        XCTAssertEqual(str.value(for: "pt"), "Montanha")
         // Unsupported language falls back to English
-        XCTAssertEqual(str.value(for: "pt"), "Mountain")
         XCTAssertEqual(str.value(for: "sv"), "Mountain")
     }
 
@@ -73,6 +86,8 @@ final class LocalizedStringTests: XCTestCase {
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("ru"))
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("de"))
         XCTAssertTrue(LocalizedString.supportedLanguages.contains("ar"))
+        XCTAssertTrue(LocalizedString.supportedLanguages.contains("it"))
+        XCTAssertTrue(LocalizedString.supportedLanguages.contains("pt"))
     }
 
     func testLocalizedStringHashableConformance() {
