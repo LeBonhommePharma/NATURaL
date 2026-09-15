@@ -10,10 +10,10 @@ Install **Bonhomme** (iOS) and **BonhommeWatch** (watchOS) onto the lab devices 
 | Watch scheme | `BonhommeWatch` |
 | Development Team | **`ZJLX84G8QV`** |
 | Bundle ID (iOS) | `com.natural.Bonhomme` |
-| Bundle ID (Watch) | `com.natural.BonhommeWatch` |
+| Bundle ID (Watch) | `com.natural.Bonhomme.watchkitapp` |
 | Entitlements (iOS) | `Bonhomme/Bonhomme.entitlements` |
 | Entitlements (Watch) | `BonhommeWatch/BonhommeWatch.entitlements` |
-| Min iOS / watchOS | 18.6 / 10.0 (as set on Bonhomme / BonhommeWatch targets) |
+| Min iOS / watchOS | 18.0 / 10.0 (as set on Bonhomme / BonhommeWatch targets) |
 
 ---
 

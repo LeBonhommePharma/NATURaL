@@ -1,118 +1,125 @@
 import XCTest
 
-/// UI tests for the workout flow, designed to run on Xcode iOS Simulator.
-///
-/// To run:
-///   1. Open NATURaL.xcodeproj in Xcode
-///   2. Select an iPhone simulator (iPhone 15 Pro, iOS 17+)
-///   3. Cmd+U or Product > Test
-///
-/// These tests verify the complete user journey through the app.
+/// Release journeys: fresh launch, free session entry and local-data navigation.
 final class WorkoutFlowUITests: XCTestCase {
-
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+                               "-natural.didFinishWelcome", "NO",
+                               "-natural.motionCoachHeroDismissed", "NO"]
         app.launch()
-    }
-
-    override func tearDownWithError() throws {
-        app = nil
-    }
-
-    // MARK: - Home Screen
-
-    func testHomeScreenShowsAppTitle() {
-        XCTAssertTrue(app.staticTexts["NATURaL"].exists)
-    }
-
-    func testHomeScreenShowsBeginnerWorkout() {
-        // English locale
-        let gentleFlow = app.staticTexts["Gentle Chair Flow"]
-        let enchaînement = app.staticTexts["Enchaînement doux sur chaise"]
-        XCTAssertTrue(gentleFlow.exists || enchaînement.exists,
-                      "Beginner flow card should be visible in either language")
-    }
-
-    func testHomeScreenShowsMultipleWorkoutPlans() {
-        // Should show at least the free beginner flow + premium plans
-        let cells = app.buttons.matching(NSPredicate(format: "label CONTAINS 'poses'"))
-        XCTAssertGreaterThanOrEqual(cells.count, 2)
-    }
-
-    // MARK: - Workout Flow
-
-    func testTapBeginnerFlowNavigatesToWorkout() {
-        // Tap on the beginner flow
-        let gentleFlow = app.staticTexts["Gentle Chair Flow"]
-        let enchaînement = app.staticTexts["Enchaînement doux sur chaise"]
-        if gentleFlow.exists {
-            gentleFlow.tap()
-        } else if enchaînement.exists {
-            enchaînement.tap()
-        }
-
-        // Should see the "Begin Session" or "Commencer la séance" button
-        let beginEN = app.buttons["Begin Session"]
-        let beginFR = app.buttons["Commencer la séance"]
-        XCTAssertTrue(beginEN.waitForExistence(timeout: 3) || beginFR.waitForExistence(timeout: 3))
-    }
-
-    func testBeginSessionStartsCountdown() {
-        navigateToWorkoutReady()
-
-        let beginEN = app.buttons["Begin Session"]
-        let beginFR = app.buttons["Commencer la séance"]
-        if beginEN.exists { beginEN.tap() }
-        else if beginFR.exists { beginFR.tap() }
-
-        // Should see countdown number (3, 2, or 1) and "Get Ready" / "Préparez-vous"
-        let getReady = app.staticTexts["Get Ready"]
-        let préparez = app.staticTexts["Préparez-vous"]
-        XCTAssertTrue(getReady.waitForExistence(timeout: 2) || préparez.waitForExistence(timeout: 2))
-    }
-
-    // MARK: - Localization
-
-    func testFrenchLocaleShowsFrenchContent() {
-        // This test verifies the app renders correctly regardless of locale.
-        // The actual language depends on the simulator's language setting.
-        // Verify that SOME text is visible on the home screen.
-        let anyText = app.staticTexts.firstMatch
-        XCTAssertTrue(anyText.waitForExistence(timeout: 5))
-    }
-
-    // MARK: - TV Section
-
-    func testTVDisplaySectionVisible() {
-        let tvEN = app.staticTexts["TV Display"]
-        let tvFR = app.staticTexts["Affichage TV"]
-        XCTAssertTrue(tvEN.exists || tvFR.exists, "TV display section should be visible")
-    }
-
-    // MARK: - Accessibility
-
-    func testHomeScreenSupportsVoiceOver() {
-        // All buttons and text should be accessible
-        let buttons = app.buttons.allElementsBoundByIndex
-        for button in buttons {
-            XCTAssertFalse(button.label.isEmpty, "Button has empty accessibility label")
+        addUIInterruptionMonitor(withDescription: "Optional media permissions") { alert in
+            for label in ["Don’t Allow", "Don't Allow", "Not Now"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
         }
     }
 
-    // MARK: - Helpers
+    private func finishWelcome() {
+        let continueButton = app.buttons["welcome.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 10), "Welcome must launch without a crash or permissions gate")
+        for _ in 0..<5 where !continueButton.isHittable { app.swipeUp() }
+        XCTAssertTrue(continueButton.isHittable)
+        let welcome = XCTAttachment(screenshot: app.screenshot())
+        welcome.name = "Welcome"
+        welcome.lifetime = .keepAlways
+        add(welcome)
+        continueButton.tap()
+        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
+    }
 
-    private func navigateToWorkoutReady() {
-        let gentleFlow = app.staticTexts["Gentle Chair Flow"]
-        let enchaînement = app.staticTexts["Enchaînement doux sur chaise"]
-        if gentleFlow.exists { gentleFlow.tap() }
-        else if enchaînement.exists { enchaînement.tap() }
+    func testWelcomeLeadsToFreeSession() {
+        finishWelcome()
+        let start = app.buttons["home.start"]
+        for _ in 0..<4 where !start.isHittable { app.swipeUp() }
+        XCTAssertTrue(start.isHittable)
+        let home = XCTAttachment(screenshot: app.screenshot())
+        home.name = "Home"
+        home.lifetime = .keepAlways
+        add(home)
+        start.tap()
+        XCTAssertTrue(app.buttons["Begin Session"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Subscribe"].exists)
+    }
 
-        // Wait for ready screen
+    func testLargestTextKeepsWelcomeAndSessionEntryReachable() {
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        finishWelcome()
+        let start = app.buttons["home.start"]
+        for _ in 0..<8 where !start.isHittable { app.swipeUp() }
+        XCTAssertTrue(start.isHittable)
+        start.tap()
         let begin = app.buttons["Begin Session"]
-        let commencer = app.buttons["Commencer la séance"]
-        _ = begin.waitForExistence(timeout: 3) || commencer.waitForExistence(timeout: 3)
+        for _ in 0..<8 where !begin.isHittable { app.swipeUp() }
+        XCTAssertTrue(begin.isHittable)
+        let preview = XCTAttachment(screenshot: app.screenshot())
+        preview.name = "Session entry at largest text size"
+        preview.lifetime = .keepAlways
+        add(preview)
+    }
+
+    func testSessionCanPauseResumeAndEnd() {
+        finishWelcome()
+        app.buttons["home.start"].tap()
+        app.buttons["Begin Session"].tap()
+        let control = app.buttons["session.pauseResume"]
+        XCTAssertTrue(control.waitForExistence(timeout: 8))
+        control.tap()
+        XCTAssertTrue(control.label.contains("Resume"))
+        control.tap()
+        XCTAssertTrue(control.label.contains("Pause"))
+        // End during countdown: this must remain responsive without sensor permissions.
+        addUIInterruptionMonitor(withDescription: "Optional music access") { alert in
+            if alert.buttons["Don’t Allow"].exists { alert.buttons["Don’t Allow"].tap(); return true }
+            if alert.buttons["Don't Allow"].exists { alert.buttons["Don't Allow"].tap(); return true }
+            return false
+        }
+        app.buttons["session.end"].tap()
+        XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
+    }
+
+    func testActivePoseCanPauseAndFinish() {
+        finishWelcome()
+        app.buttons["home.start"].tap()
+        let begin = app.buttons["Begin Session"]
+        XCTAssertTrue(begin.waitForExistence(timeout: 5))
+        begin.tap()
+        XCTAssertTrue(app.staticTexts["session.pose.name"].waitForExistence(timeout: 15))
+        app.tap() // Dispatch an optional system permission interruption to its monitor.
+        let pause = app.buttons["session.pauseResume"]
+        pause.tap()
+        XCTAssertTrue(pause.label.contains("Resume"))
+        let preview = XCTAttachment(screenshot: app.screenshot())
+        preview.name = "Paused guided session"
+        preview.lifetime = .keepAlways
+        add(preview)
+        pause.tap()
+        app.buttons["session.end"].tap()
+        XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(app.buttons["home.history"].waitForExistence(timeout: 5))
+    }
+
+    func testLocalHistoryAvailableWithoutHealthAuthorization() {
+        finishWelcome()
+        app.buttons["home.history"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Refresh Health history"].exists)
+    }
+
+    func testPrivacyAndHealthControlsAreReachable() {
+        finishWelcome()
+        app.buttons["home.about"].tap()
+        XCTAssertTrue(app.navigationBars["About & Privacy"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Choose Health permissions"].exists)
     }
 }

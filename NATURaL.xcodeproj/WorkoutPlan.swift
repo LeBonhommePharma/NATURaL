@@ -7,7 +7,6 @@ public struct WorkoutPlan: Identifiable, Codable, Sendable {
     public let description: LocalizedString
     public let style: YogaStyle
     public let poses: [YogaPose]
-    public let isFree: Bool
     
     public init(
         id: UUID = UUID(),
@@ -15,14 +14,12 @@ public struct WorkoutPlan: Identifiable, Codable, Sendable {
         description: LocalizedString,
         style: YogaStyle,
         poses: [YogaPose],
-        isFree: Bool = true
     ) {
         self.id = id
         self.name = name
         self.description = description
         self.style = style
         self.poses = poses
-        self.isFree = isFree
     }
     
     public var poseCount: Int {

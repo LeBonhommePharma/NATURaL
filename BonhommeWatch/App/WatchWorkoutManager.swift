@@ -21,6 +21,9 @@ final class WatchWorkoutManager: NSObject {
     // MARK: - Published State
 
     private(set) var isRecording = false
+    private(set) var isStarting = false
+    private(set) var isEnding = false
+    private(set) var saveFailed = false
     private(set) var isPaused = false
     private(set) var currentHeartRate: Double?
     private(set) var activeCalories: Double = 0
@@ -60,12 +63,16 @@ final class WatchWorkoutManager: NSObject {
     private var builder: HKLiveWorkoutBuilder?
     private var timerTask: Task<Void, Never>?
     private var sessionStartDate: Date?
+    private var activeSegmentStart: TimeInterval?
+    private var completedActiveTime: TimeInterval = 0
+    private var cooldownRemaining: TimeInterval = 5
     private var currentPlan: WorkoutPlan?
     /// Running sum for O(1) average HR.
     private var heartRateSum: Double = 0
     /// Cached real RR intervals (ms) from the most recent heartbeat series query.
     private var cachedRealRR: [Double] = []
     private var lastHeartbeatSeriesFetch: Date = .distantPast
+    private var recordingGeneration = UUID()
 
     override init() {
         super.init()
@@ -75,9 +82,28 @@ final class WatchWorkoutManager: NSObject {
     // MARK: - Workout Lifecycle
 
     func start(plan: WorkoutPlan) async throws {
+        guard !isStarting, !isEnding else { throw WatchWorkoutError.operationInProgress }
+        guard !isRecording else { return }
+        isStarting = true
+        defer { isStarting = false }
+        try Task.checkCancellation()
+        try await healthStore.requestAuthorization(
+            toShare: [HKObjectType.workoutType(), HKQuantityType(.activeEnergyBurned)],
+            read: [HKQuantityType(.heartRate), HKQuantityType(.heartRateVariabilitySDNN), HKSeriesType.heartbeat()]
+        )
+        try Task.checkCancellation()
+        saveFailed = false
+        feedbackEngine.reset()
+        elapsedTime = 0
+        completedActiveTime = 0
+        activeSegmentStart = nil
+        cooldownRemaining = 5
+        phase = .idle
+        activeCalories = 0
         currentPlan = plan
         sessionStartDate = Date()
         posesCompletedCount = 0
+        recordingGeneration = UUID()
         heartRateSamples.removeAll(keepingCapacity: true)
         heartRateSum = 0
         maxHeartRate = nil
@@ -93,8 +119,9 @@ final class WatchWorkoutManager: NSObject {
         config.activityType = plan.style.healthKitActivityType
         config.locationType = .indoor
 
-        session = try HKWorkoutSession(healthStore: healthStore, configuration: config)
-        session?.delegate = self
+        let newSession = try HKWorkoutSession(healthStore: healthStore, configuration: config)
+        session = newSession
+        newSession.delegate = self
 
         builder = session?.associatedWorkoutBuilder()
         builder?.delegate = self
@@ -104,19 +131,64 @@ final class WatchWorkoutManager: NSObject {
         )
 
         session?.startActivity(with: Date())
-        try await builder?.beginCollection(at: Date())
+        do {
+            guard let builder else { throw WatchWorkoutError.startFailed }
+            try await beginCollection(builder)
+            try Task.checkCancellation()
+            guard session === newSession, !saveFailed else { throw WatchWorkoutError.startFailed }
+        } catch {
+            session?.end()
+            builder?.discardWorkout()
+            session = nil
+            builder = nil
+            throw error
+        }
         isRecording = true
+        activeSegmentStart = ProcessInfo.processInfo.systemUptime
 
         beginPose(at: 0)
     }
 
+    private func beginCollection(_ builder: HKLiveWorkoutBuilder) async throws {
+        let gate = WatchCollectionStartGate()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                gate.continuation = continuation
+                if Task.isCancelled {
+                    gate.finish(.failure(CancellationError()))
+                    return
+                }
+                gate.timeout = Task {
+                    do { try await Task.sleep(for: .seconds(15)) }
+                    catch { return }
+                    gate.finish(.failure(WatchWorkoutError.startFailed))
+                }
+                builder.beginCollection(withStart: Date()) { success, error in
+                    Task { @MainActor in
+                        if let error { gate.finish(.failure(error)) }
+                        else if success { gate.finish(.success(())) }
+                        else { gate.finish(.failure(WatchWorkoutError.startFailed)) }
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in gate.finish(.failure(CancellationError())) }
+        }
+    }
+
     func pause() {
+        guard isRecording, !isEnding, !isPaused else { return }
+        updateElapsedTime()
+        completedActiveTime = elapsedTime
+        activeSegmentStart = nil
         isPaused = true
         session?.pause()
         timerTask?.cancel()
     }
 
     func resume() {
+        guard isRecording, !isEnding, isPaused else { return }
+        activeSegmentStart = ProcessInfo.processInfo.systemUptime
         isPaused = false
         session?.resume()
         // Restore timers for every timer-bearing phase (not only .active).
@@ -143,13 +215,30 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func end() async throws {
+        guard isRecording, !isEnding else { return }
+        isEnding = true
+        updateElapsedTime()
+        activeSegmentStart = nil
         timerTask?.cancel()
         session?.end()
-        try await builder?.endCollection(at: Date())
-        _ = try await builder?.finishWorkout()
-        isRecording = false
-        isPaused = false
-        phase = .complete
+        defer {
+            isRecording = false
+            isPaused = false
+            isEnding = false
+            session = nil
+            builder = nil
+            phase = .complete
+        }
+        do {
+            guard let builder else { throw WatchWorkoutError.saveFailed }
+            try await builder.endCollection(at: Date())
+            let workout = try await builder.finishWorkout()
+            guard workout != nil else { throw WatchWorkoutError.saveFailed }
+        } catch {
+            saveFailed = true
+            builder?.discardWorkout()
+            throw error
+        }
     }
 
     // MARK: - Result
@@ -186,6 +275,12 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: - Timer Logic
 
+    private func updateElapsedTime() {
+        elapsedTime = completedActiveTime + (activeSegmentStart.map {
+            max(0, ProcessInfo.processInfo.systemUptime - $0)
+        } ?? 0)
+    }
+
     private func beginPose(at index: Int) {
         guard let plan = currentPlan, index < plan.poses.count else {
             phase = .cooldown
@@ -203,13 +298,14 @@ final class WatchWorkoutManager: NSObject {
         guard let plan = currentPlan else { return }
         timerTask?.cancel()
         timerTask = Task {
+            var lastTick = ProcessInfo.processInfo.systemUptime
             while poseTimeRemaining > 0 {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
-                poseTimeRemaining = max(0, poseTimeRemaining - 1)
-                if let start = sessionStartDate {
-                    elapsedTime = Date().timeIntervalSince(start)
-                }
+                let now = ProcessInfo.processInfo.systemUptime
+                poseTimeRemaining = max(0, poseTimeRemaining - (now - lastTick))
+                lastTick = now
+                updateElapsedTime()
             }
 
             // Pose fully held — mirror iOS posesCompletedCount.
@@ -230,10 +326,11 @@ final class WatchWorkoutManager: NSObject {
         timerTask?.cancel()
         timerTask = Task {
             let transitionDuration = remainingSeconds ?? Int(plan.transitionSeconds)
-            for i in stride(from: max(1, transitionDuration), through: 1, by: -1) {
+            for i in stride(from: max(0, transitionDuration), through: 1, by: -1) {
                 phase = .transition(nextPoseIndex: nextIndex, secondsRemaining: i)
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
+                updateElapsedTime()
             }
             beginPose(at: nextIndex)
         }
@@ -242,8 +339,15 @@ final class WatchWorkoutManager: NSObject {
     private func startCooldown() {
         timerTask?.cancel()
         timerTask = Task {
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { return }
+            var lastTick = ProcessInfo.processInfo.systemUptime
+            while cooldownRemaining > 0 {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                let now = ProcessInfo.processInfo.systemUptime
+                cooldownRemaining = max(0, cooldownRemaining - (now - lastTick))
+                lastTick = now
+                updateElapsedTime()
+            }
             try? await end()
         }
     }
@@ -287,6 +391,8 @@ final class WatchWorkoutManager: NSObject {
     /// Throttled fetch of recent `HKHeartbeatSeriesSample` beat-to-beat intervals.
     /// Mirrors iOS `WorkoutRecorder.refreshRealRRIfNeeded`.
     private func refreshRealRRIfNeeded() async {
+        guard isRecording, !isEnding else { return }
+        let generation = recordingGeneration
         let now = Date()
         guard now.timeIntervalSince(lastHeartbeatSeriesFetch) >= 15 else { return }
         lastHeartbeatSeriesFetch = now
@@ -316,7 +422,7 @@ final class WatchWorkoutManager: NSObject {
                             intervals.append(contentsOf: beats)
                         }
                     }
-                    if intervals.count >= 4 {
+                    if self.recordingGeneration == generation, self.isRecording, !self.isEnding, intervals.count >= 4 {
                         self.cachedRealRR = Array(intervals.suffix(64))
                     }
                     cont.resume()
@@ -337,12 +443,12 @@ final class WatchWorkoutManager: NSObject {
                 settled = true
                 cont.resume(returning: result)
             }
-            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, _, done, error in
+            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, precededByGap, done, error in
                 if error != nil {
                     finish(nil)
                     return
                 }
-                if let previous {
+                if let previous, !precededByGap {
                     let deltaMs = (timeSinceSeriesStart - previous) * 1000.0
                     // Physiological RR band (~30–300 BPM); reject sensor gaps / noise.
                     if deltaMs > 200 && deltaMs < 2000 {
@@ -367,12 +473,30 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
         didChangeTo toState: HKWorkoutSessionState,
         from fromState: HKWorkoutSessionState,
         date: Date
-    ) {}
+    ) {
+        Task { @MainActor in
+            guard self.session === workoutSession, !self.isEnding else { return }
+            switch toState {
+            case .paused: self.pause()
+            case .running:
+                if self.isPaused { self.resume() }
+            case .ended:
+                if self.isRecording { try? await self.end() }
+            default: break
+            }
+        }
+    }
 
     nonisolated func workoutSession(
         _ workoutSession: HKWorkoutSession,
         didFailWithError error: Error
-    ) {}
+    ) {
+        Task { @MainActor in
+            guard self.session === workoutSession else { return }
+            self.saveFailed = true
+            try? await self.end()
+        }
+    }
 }
 
 // MARK: - HKLiveWorkoutBuilderDelegate
@@ -383,6 +507,7 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
         didCollectDataOf collectedTypes: Set<HKSampleType>
     ) {
         Task { @MainActor in
+            guard self.builder === workoutBuilder, isRecording, !isPaused, !isEnding else { return }
             for type in collectedTypes {
                 guard let quantityType = type as? HKQuantityType else { continue }
 
@@ -432,4 +557,24 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilderDidCollectEvent(
         _ workoutBuilder: HKLiveWorkoutBuilder
     ) {}
+}
+
+private enum WatchWorkoutError: Error {
+    case operationInProgress
+    case startFailed
+    case saveFailed
+}
+
+@MainActor
+private final class WatchCollectionStartGate {
+    var continuation: CheckedContinuation<Void, Error>?
+    var timeout: Task<Void, Never>?
+
+    func finish(_ result: Result<Void, Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        timeout?.cancel()
+        timeout = nil
+        continuation.resume(with: result)
+    }
 }

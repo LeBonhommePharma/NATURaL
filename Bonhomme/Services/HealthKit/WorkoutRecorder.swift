@@ -17,6 +17,10 @@ import BonhommeCore
 @MainActor
 final class WorkoutRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
+    @Published private(set) var isStarting = false
+    @Published private(set) var isEnding = false
+    @Published private(set) var recordingError: Error?
+    private var isPaused = false
     @Published var currentHeartRate: Double?
     @Published var activeCalories: Double = 0
     @Published var averageHeartRate: Double?
@@ -48,15 +52,24 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     /// Cached real RR intervals (ms) from the most recent heartbeat series query.
     private var cachedRealRR: [Double] = []
     private var lastHeartbeatSeriesFetch: Date = .distantPast
+    private var recordingGeneration = UUID()
 
     /// Start (or **reuse**) a HealthKit workout session for `style`.
     /// If already recording, returns immediately so restore cannot orphan a second session.
     func start(style: YogaStyle = .chairYoga) async throws {
+        guard !isStarting, !isEnding else { throw WorkoutRecorderError.operationInProgress }
         if isRecording {
             // Reuse active session — avoids dual/orphaned workouts on restore.
             return
         }
 
+        isStarting = true
+        defer { isStarting = false }
+        try Task.checkCancellation()
+        recordingError = nil
+        isPaused = false
+        lastHeartbeatSeriesFetch = .distantPast
+        recordingGeneration = UUID()
         heartRateSamples.removeAll(keepingCapacity: true)
         heartRateSum = 0
         currentHeartRate = nil
@@ -74,6 +87,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             } catch {
                 // Live path failed (beginCollection timeout / auth) — fall back to builder.
                 await teardownLiveSessionArtifacts()
+                try Task.checkCancellation()
                 try await startBuilderSession(style: style)
             }
         } else {
@@ -82,6 +96,8 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     func pause() {
+        guard isRecording, !isEnding, !isPaused else { return }
+        isPaused = true
         if #available(iOS 26.0, *), usesLiveSession, let session = session as? HKWorkoutSession {
             session.pause()
         }
@@ -93,6 +109,8 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     func resume() {
+        guard isRecording, !isEnding, isPaused else { return }
+        isPaused = false
         if #available(iOS 26.0, *), usesLiveSession, let session = session as? HKWorkoutSession {
             session.resume()
         }
@@ -109,38 +127,40 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     /// Ends the workout using the correct ordering:
     /// 1. session.end() (live path)  2. endCollection  3. addMetadata  4. finishWorkout
     func end(metadata: WorkoutMetadata? = nil) async throws {
+        guard !isEnding else { throw WorkoutRecorderError.operationInProgress }
+        guard isRecording else {
+            if let recordingError { throw recordingError }
+            throw WorkoutRecorderError.notRecording
+        }
+        isEnding = true
         stopQueries()
         queriesSuspended = false
-
-        if #available(iOS 26.0, *), usesLiveSession,
-           let session = session as? HKWorkoutSession,
-           let builder = builder as? HKLiveWorkoutBuilder {
-            session.end()
-            try await builder.endCollection(at: Date())
-            if let metadata {
-                try await builder.addMetadata(Self.healthKitMetadata(from: metadata))
-            }
-            _ = try await builder.finishWorkout()
-        } else if let builder = builder as? HKWorkoutBuilder {
-            try await builder.endCollection(at: Date())
-            if let metadata {
-                try await builder.addMetadata(Self.healthKitMetadata(from: metadata))
-            }
-            _ = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<HKWorkout?, Error>) in
-                builder.finishWorkout { workout, error in
-                    if let error {
-                        cont.resume(throwing: error)
-                    } else {
-                        cont.resume(returning: workout)
-                    }
-                }
-            }
+        defer {
+            isRecording = false
+            isEnding = false
+            isPaused = false
+            session = nil
+            builder = nil
+            usesLiveSession = false
         }
-
-        isRecording = false
-        session = nil
-        builder = nil
-        usesLiveSession = false
+        do {
+            if #available(iOS 26.0, *), let session = session as? HKWorkoutSession {
+                session.end()
+            }
+            guard let builder = builder as? HKWorkoutBuilder else {
+                throw WorkoutRecorderError.saveFailed
+            }
+            try await builder.endCollection(at: Date())
+            if let metadata {
+                try await builder.addMetadata(Self.healthKitMetadata(from: metadata))
+            }
+            let workout = try await builder.finishWorkout()
+            guard workout != nil else { throw WorkoutRecorderError.saveFailed }
+        } catch {
+            recordingError = error
+            (builder as? HKWorkoutBuilder)?.discardWorkout()
+            throw error
+        }
     }
 
     // MARK: - iOS 26+ Live Session
@@ -166,34 +186,15 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
         session.startActivity(with: Date())
 
-        // beginCollection can stall on simulator / incomplete auth — race a timeout.
-        // Only mark recording on confirmed success; otherwise throw so caller can fall back.
-        let began = await withTaskGroup(of: Bool.self) { group -> Bool in
-            group.addTask {
-                do {
-                    try await builder.beginCollection(at: Date())
-                    return true
-                } catch {
-                    return false
-                }
-            }
-            group.addTask {
-                try? await Task.sleep(for: .seconds(3))
-                return false
-            }
-            let first = await group.next() ?? false
-            group.cancelAll()
-            return first
+        // A callback gate returns on timeout without waiting for an uncancellable
+        // HealthKit child task. Late callbacks cannot resume the continuation twice.
+        try await beginCollection(builder)
+        try Task.checkCancellation()
+        guard self.session === session else {
+            throw recordingError ?? WorkoutRecorderError.beginCollectionFailed
         }
 
-        guard began else {
-            session.end()
-            self.session = nil
-            self.builder = nil
-            usesLiveSession = false
-            throw WorkoutRecorderError.beginCollectionFailed
-        }
-
+        recordingError = nil
         isRecording = true
     }
 
@@ -202,6 +203,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         if let session = session as? HKWorkoutSession {
             session.end()
         }
+        (builder as? HKWorkoutBuilder)?.discardWorkout()
         session = nil
         builder = nil
         usesLiveSession = false
@@ -223,10 +225,46 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         self.builder = builder
         usesLiveSession = false
 
-        try await builder.beginCollection(at: Date())
+        do {
+            try await beginCollection(builder)
+            try Task.checkCancellation()
+        } catch {
+            builder.discardWorkout()
+            self.builder = nil
+            recordingError = error
+            throw error
+        }
         startHeartRateQuery()
         startEnergyQuery()
+        recordingError = nil
         isRecording = true
+    }
+
+    private func beginCollection(_ builder: HKWorkoutBuilder) async throws {
+        let gate = WorkoutCollectionStartGate()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                gate.continuation = continuation
+                if Task.isCancelled {
+                    gate.finish(.failure(CancellationError()))
+                    return
+                }
+                gate.timeout = Task {
+                    do { try await Task.sleep(for: .seconds(5)) }
+                    catch { return }
+                    gate.finish(.failure(WorkoutRecorderError.beginCollectionFailed))
+                }
+                builder.beginCollection(withStart: Date()) { success, error in
+                    Task { @MainActor in
+                        if let error { gate.finish(.failure(error)) }
+                        else if success { gate.finish(.success(())) }
+                        else { gate.finish(.failure(WorkoutRecorderError.beginCollectionFailed)) }
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in gate.finish(.failure(CancellationError())) }
+        }
     }
 
     private func startHeartRateQuery() {
@@ -242,14 +280,16 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             predicate: predicate,
             anchor: nil,
             limit: HKObjectQueryNoLimit
-        ) { [weak self] _, samples, _, _, _ in
+        ) { [weak self] query, samples, _, _, _ in
             Task { @MainActor in
-                self?.processHeartRateSamples(samples)
+                guard let self, self.heartRateQuery === query else { return }
+                self.processHeartRateSamples(samples)
             }
         }
-        query.updateHandler = { [weak self] _, samples, _, _, _ in
+        query.updateHandler = { [weak self] query, samples, _, _, _ in
             Task { @MainActor in
-                self?.processHeartRateSamples(samples)
+                guard let self, self.heartRateQuery === query else { return }
+                self.processHeartRateSamples(samples)
             }
         }
         heartRateQuery = query
@@ -268,14 +308,16 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             predicate: predicate,
             anchor: nil,
             limit: HKObjectQueryNoLimit
-        ) { [weak self] _, samples, _, _, _ in
+        ) { [weak self] query, samples, _, _, _ in
             Task { @MainActor in
-                self?.processEnergySamples(samples)
+                guard let self, self.energyQuery === query else { return }
+                self.processEnergySamples(samples)
             }
         }
-        query.updateHandler = { [weak self] _, samples, _, _, _ in
+        query.updateHandler = { [weak self] query, samples, _, _, _ in
             Task { @MainActor in
-                self?.processEnergySamples(samples)
+                guard let self, self.energyQuery === query else { return }
+                self.processEnergySamples(samples)
             }
         }
         energyQuery = query
@@ -294,7 +336,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     private func processHeartRateSamples(_ samples: [HKSample]?) {
-        guard let quantitySamples = samples as? [HKQuantitySample] else { return }
+        guard isRecording, !isPaused, !isEnding, let quantitySamples = samples as? [HKQuantitySample] else { return }
         for sample in quantitySamples {
             let bpm = sample.quantity.doubleValue(for: .count().unitDivided(by: .minute()))
             recordHeartRate(bpm: bpm, timestamp: sample.endDate)
@@ -302,7 +344,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     private func processEnergySamples(_ samples: [HKSample]?) {
-        guard let quantitySamples = samples as? [HKQuantitySample] else { return }
+        guard isRecording, !isPaused, !isEnding, let quantitySamples = samples as? [HKQuantitySample] else { return }
         var added = 0.0
         for sample in quantitySamples {
             added += sample.quantity.doubleValue(for: .kilocalorie())
@@ -316,6 +358,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
     /// Record BPM, ring-buffer samples, and synthesize / prefer real RR for FeedbackEngine ingest.
     func recordHeartRate(bpm: Double, timestamp: Date = Date()) {
+        guard isRecording, !isPaused, !isEnding, bpm.isFinite, bpm > 0 else { return }
         currentHeartRate = bpm
         heartRateSamples.append(HeartRateSample(bpm: bpm, timestamp: timestamp))
         heartRateSum += bpm
@@ -378,6 +421,8 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
     /// Throttled fetch of recent `HKHeartbeatSeriesSample` beat-to-beat intervals.
     private func refreshRealRRIfNeeded() async {
+        guard isRecording, !isEnding else { return }
+        let generation = recordingGeneration
         let now = Date()
         guard now.timeIntervalSince(lastHeartbeatSeriesFetch) >= 15 else { return }
         lastHeartbeatSeriesFetch = now
@@ -407,7 +452,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
                             intervals.append(contentsOf: beats)
                         }
                     }
-                    if intervals.count >= 4 {
+                    if self.recordingGeneration == generation, self.isRecording, !self.isEnding, intervals.count >= 4 {
                         self.cachedRealRR = Array(intervals.suffix(64))
                     }
                     cont.resume()
@@ -428,12 +473,12 @@ final class WorkoutRecorder: NSObject, ObservableObject {
                 settled = true
                 cont.resume(returning: result)
             }
-            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, _, done, error in
+            let query = HKHeartbeatSeriesQuery(heartbeatSeries: series) { _, timeSinceSeriesStart, precededByGap, done, error in
                 if error != nil {
                     finish(nil)
                     return
                 }
-                if let previous {
+                if let previous, !precededByGap {
                     let deltaMs = (timeSinceSeriesStart - previous) * 1000.0
                     if deltaMs > 200 && deltaMs < 2000 {
                         rr.append(deltaMs)
@@ -449,13 +494,16 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     private static func healthKitMetadata(from metadata: WorkoutMetadata) -> [String: Any] {
-        [
+        var values: [String: Any] = [
             HKMetadataKeyWorkoutBrandName: "NATURaL",
             "NATURaLYogaStyle": metadata.styleName,
             "NATURaLPlanId": metadata.planId,
             "NATURaLPlanName": metadata.planName,
-            "NATURaLSCIScore": metadata.sciScore as Any,
         ]
+        if let score = metadata.sciScore, score.isFinite {
+            values["NATURaLSCIScore"] = score
+        }
+        return values
     }
 }
 
@@ -463,6 +511,23 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
 enum WorkoutRecorderError: Error {
     case beginCollectionFailed
+    case operationInProgress
+    case saveFailed
+    case notRecording
+}
+
+@MainActor
+private final class WorkoutCollectionStartGate {
+    var continuation: CheckedContinuation<Void, Error>?
+    var timeout: Task<Void, Never>?
+
+    func finish(_ result: Result<Void, Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        timeout?.cancel()
+        timeout = nil
+        continuation.resume(with: result)
+    }
 }
 
 // MARK: - Live session delegates (iOS 26+)
@@ -482,7 +547,18 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
         _ workoutSession: HKWorkoutSession,
         didFailWithError error: Error
     ) {
-        // Log error; in production, surface to UI
+        Task { @MainActor in
+            guard self.session === workoutSession else { return }
+            self.recordingError = error
+            guard !self.isEnding else { return }
+            self.stopQueries()
+            workoutSession.end()
+            (self.builder as? HKWorkoutBuilder)?.discardWorkout()
+            self.session = nil
+            self.builder = nil
+            self.isRecording = false
+            self.usesLiveSession = false
+        }
     }
 }
 
@@ -493,6 +569,7 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
         didCollectDataOf collectedTypes: Set<HKSampleType>
     ) {
         Task { @MainActor in
+            guard self.builder === workoutBuilder, isRecording, !isPaused, !isEnding else { return }
             for type in collectedTypes {
                 guard let quantityType = type as? HKQuantityType else { continue }
 

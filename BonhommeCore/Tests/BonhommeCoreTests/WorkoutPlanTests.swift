@@ -9,7 +9,6 @@ final class WorkoutPlanTests: XCTestCase {
         XCTAssertEqual(plan.name.en, "Test Plan")
         XCTAssertEqual(plan.name.fr, "Plan test")
         XCTAssertEqual(plan.poseCount, 2)
-        XCTAssertFalse(plan.isFree)
         XCTAssertEqual(plan.style, .chairYoga) // default style
     }
 
@@ -21,10 +20,8 @@ final class WorkoutPlanTests: XCTestCase {
             style: .vinyasa,
             poses: [makePose()],
             transitionSeconds: 5,
-            isFree: true
         )
         XCTAssertEqual(plan.style, .vinyasa)
-        XCTAssertTrue(plan.isFree)
     }
 
     func testYogaStyleLocalizedNames() {
@@ -133,7 +130,6 @@ final class WorkoutPlanTests: XCTestCase {
         XCTAssertEqual(decoded.name, original.name)
         XCTAssertEqual(decoded.poseCount, original.poseCount)
         XCTAssertEqual(decoded.transitionSeconds, original.transitionSeconds)
-        XCTAssertEqual(decoded.isFree, original.isFree)
     }
 
     // MARK: - Helpers
@@ -149,7 +145,6 @@ final class WorkoutPlanTests: XCTestCase {
             imageName: "pose.test",
             voiceCueText: LocalizedString(en: "Cue", fr: "Indice"),
             modifications: LocalizedStringArray(en: ["Mod"], fr: ["Mod"]),
-            isFree: false
         )
     }
 
@@ -159,8 +154,7 @@ final class WorkoutPlanTests: XCTestCase {
             name: LocalizedString(en: "Test Plan", fr: "Plan test"),
             description: LocalizedString(en: "A test plan", fr: "Un plan test"),
             poses: [makePose(), makePose()],
-            transitionSeconds: transitionSeconds,
-            isFree: false
+            transitionSeconds: transitionSeconds
         )
     }
 }

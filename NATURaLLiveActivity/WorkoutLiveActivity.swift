@@ -4,6 +4,7 @@ import WidgetKit
 
 /// Live Activity presentation for the NATURaLLiveActivity extension.
 /// Attributes type must match the app’s `WorkoutActivityAttributes` (shared source file).
+@main
 struct WorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in

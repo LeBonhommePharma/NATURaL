@@ -55,7 +55,7 @@ Workout plan structure with:
 - Localized name and description
 - Associated yoga style
 - Array of poses
-- Free/Premium flag
+- Plan-access metadata
 - Computed properties for pose count and total duration
 
 #### 5. `/repo/BonhommeCore/PoseCatalog.swift`
@@ -77,11 +77,11 @@ Central catalog with:
   1. Gentle Beginner Flow (Hatha) - FREE
   2. Morning Energizer (Vinyasa) - FREE
   3. Evening Relaxation (Restorative) - FREE
-  4. Balance & Stability (Standing Balance) - PREMIUM
-  5. Strength Builder (Power) - PREMIUM
+  4. Balance & Stability (Standing Balance) - standard access
+  5. Strength Builder (Power) - standard access
   6. Gentle Chair Yoga (Chair Yoga) - FREE
   7. Breathing Practice (Pranayama) - FREE
-  8. Yin Deep Stretch (Yin) - PREMIUM
+  8. Yin Deep Stretch (Yin) - standard access
 
 - **Helper methods**:
   - `plans(for style:)` - Get all plans for a specific style
@@ -93,8 +93,8 @@ SwiftUI view that:
 - Displays header with style icon, name, and description
 - Lists all workout plans for the selected style
 - Shows empty state when no plans available
-- Navigates to WorkoutFlowView or PaywallView based on premium status
-- Displays plan details (pose count, duration, premium badge)
+- Navigates to WorkoutFlowView and presents all plan details
+- Displays plan details (pose count and duration)
 
 ## Result
 
@@ -103,7 +103,7 @@ The app now displays:
 2. ✅ **8 workout plans** distributed across styles
 3. ✅ **12 individual yoga poses** used in the plans
 4. ✅ **Multilingual support structure** (11 languages - currently English/French populated, 9 more need translations)
-5. ✅ **Premium/Free distinction** for monetization
+5. ✅ **Plan-type metadata** for monetization
 6. ✅ **Complete navigation flow** from home → style → plan → workout
 
 ### Distribution by Style
@@ -162,7 +162,7 @@ mv BonhommeCorePoseCatalog.swift BonhommeCore/PoseCatalog.swift
 
 ### 5. **Testing**
    - Verify all plans load correctly
-   - Test premium vs free plan access
+   - Test plan access paths and completion flows
    - Validate localization switches with device language
 
 ## Files Modified

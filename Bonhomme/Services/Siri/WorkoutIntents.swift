@@ -11,13 +11,13 @@ struct WorkoutPlanEntity: AppEntity {
     let id: String
     let name: String
     let poseCount: Int
-    let isFree: Bool
+    let isAvailable: Bool
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
             title: "\(name)",
             subtitle: "\(poseCount) poses",
-            image: .init(systemName: isFree ? "figure.yoga" : "lock.fill")
+            image: .init(systemName: "figure.yoga")
         )
     }
 }
@@ -42,7 +42,7 @@ struct WorkoutPlanQuery: EntityQuery {
             id: plan.id,
             name: plan.name.localized,
             poseCount: plan.poseCount,
-            isFree: plan.isFree
+            isAvailable: true
         )
     }
 }

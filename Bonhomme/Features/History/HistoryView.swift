@@ -1,128 +1,80 @@
 import SwiftUI
+import SwiftData
 import HealthKit
+import BonhommeCore
 
-/// Blended workout history showing both NATURaL and Fitness+ yoga sessions
-/// in a unified timeline.
+/// Local sessions are always visible, even when Health permission is unavailable.
 struct HistoryView: View {
-    @State private var sessions: [WorkoutHistoryItem] = []
-    @State private var isLoading = true
-
+    @Query(sort: \WorkoutRecord.startDate, order: .reverse) private var savedSessions: [WorkoutRecord]
+    @State private var healthSessions: [HKWorkout] = []
+    @State private var isLoading = false
+    @State private var healthError = false
     private let fitnessPlusReader = FitnessPlusReader()
 
     var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("Loading history...")
-            } else if sessions.isEmpty {
-                ContentUnavailableView(
-                    "No Yoga Sessions",
-                    systemImage: "figure.yoga",
-                    description: Text("Complete a workout to see your history here.")
-                )
-            } else {
-                List(sessions) { item in
-                    historyRow(item)
+        List {
+            Section(LocalizedString(en: "Your practice", fr: "Votre pratique").localized) {
+                if savedSessions.isEmpty {
+                    ContentUnavailableView(
+                        LocalizedString(en: "Your next chapter starts here", fr: "Votre prochaine étape commence ici").localized,
+                        systemImage: "leaf",
+                        description: Text(LocalizedString(en: "Complete a session and it will appear here, even without Apple Health.", fr: "Terminez une séance pour la retrouver ici, même sans Apple Santé.").localized)
+                    )
+                }
+                ForEach(savedSessions) { item in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.planName).font(.headline)
+                        Text(item.startDate, style: .date).foregroundStyle(.secondary)
+                        Label("\(Int(item.totalDuration) / 60) min", systemImage: "clock")
+                            .font(.subheadline).foregroundStyle(.teal)
+                    }
+                    .padding(.vertical, 6)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("history.session")
                 }
             }
-        }
-        .navigationTitle("History")
-        .task { await loadHistory() }
-    }
-
-    private func historyRow(_ item: WorkoutHistoryItem) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.date, style: .date)
-                    .font(.system(size: 16, weight: .semibold))
-
-                HStack(spacing: 12) {
-                    Label(item.formattedDuration, systemImage: "clock")
-                    if let cal = item.calories {
-                        Label("\(Int(cal)) cal", systemImage: "flame.fill")
+            Section(LocalizedString(en: "From Apple Health · last 30 days", fr: "Apple Santé · 30 derniers jours").localized) {
+                if isLoading { ProgressView() }
+                if healthError {
+                    Text(LocalizedString(en: "Health history could not load. Your local sessions are still available.", fr: "L’historique Santé n’a pas pu être chargé. Vos séances locales restent disponibles.").localized)
+                }
+                ForEach(healthSessions, id: \.uuid) { workout in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(workout.startDate, style: .date).font(.headline)
+                        Text("\(Int(workout.duration) / 60) min · \(workout.sourceRevision.source.name)")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+                if !isLoading && !healthError && healthSessions.isEmpty {
+                    Text(LocalizedString(en: "No additional shared yoga sessions. You can manage Health access in About & Privacy.", fr: "Aucune autre séance de yoga partagée. Gérez les accès Santé dans À propos et confidentialité.").localized)
+                        .foregroundStyle(.secondary)
+                }
+                Button(LocalizedString(en: "Refresh Health history", fr: "Actualiser l’historique Santé").localized) {
+                    Task { await loadHistory() }
+                }
+                .disabled(isLoading)
             }
-
-            Spacer()
-
-            Text(item.source.displayName)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(item.source.color.opacity(0.15), in: Capsule())
-                .foregroundStyle(item.source.color)
         }
-        .padding(.vertical, 4)
+        .navigationTitle(LocalizedString(en: "History", fr: "Historique").localized)
+        .task { await loadHistory() }
+        .refreshable { await loadHistory() }
     }
 
-    private func loadHistory() async {
+    @MainActor private func loadHistory() async {
+        guard !isLoading else { return }
         isLoading = true
+        healthError = false
         defer { isLoading = false }
-
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let from = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         do {
-            let allWorkouts = try await fitnessPlusReader.fetchAllYogaSessions(
-                from: thirtyDaysAgo,
-                to: Date()
-            )
-
-            sessions = allWorkouts.map { workout in
-                let isApple = [
-                    "com.apple.health.workout-app",
-                    "com.apple.Health",
-                    "com.apple.workout",
-                ].contains(workout.sourceRevision.source.bundleIdentifier)
-
-                let activeEnergyType = HKQuantityType(.activeEnergyBurned)
-                let calories = workout.statistics(for: activeEnergyType)?
-                    .sumQuantity()?
-                    .doubleValue(for: .kilocalorie())
-
-                return WorkoutHistoryItem(
-                    id: workout.uuid.uuidString,
-                    date: workout.startDate,
-                    duration: workout.duration,
-                    calories: calories,
-                    source: isApple ? .fitnessPlus : .natural
-                )
-            }
+            let workouts = try await fitnessPlusReader.fetchAllYogaSessions(from: from, to: Date())
+            // Use source identity; an Apple Watch workout is not necessarily Fitness+.
+            healthSessions = workouts.filter {
+                !$0.sourceRevision.source.bundleIdentifier.hasPrefix("com.natural.Bonhomme")
+            }.sorted { $0.startDate > $1.startDate }
         } catch {
-            sessions = []
-        }
-    }
-}
-
-struct WorkoutHistoryItem: Identifiable {
-    let id: String
-    let date: Date
-    let duration: TimeInterval
-    let calories: Double?
-    let source: WorkoutSource
-
-    var formattedDuration: String {
-        let minutes = Int(duration) / 60
-        return "\(minutes) min"
-    }
-
-    enum WorkoutSource {
-        case natural
-        case fitnessPlus
-
-        var displayName: String {
-            switch self {
-            case .natural: return "NATURaL"
-            case .fitnessPlus: return "Fitness+"
-            }
-        }
-
-        var color: Color {
-            switch self {
-            case .natural: return .cyan
-            case .fitnessPlus: return .green
-            }
+            healthError = true
         }
     }
 }

@@ -43,7 +43,7 @@ In DEBUG builds, tap the **ladybug icon** (🐞) in the top-right corner to open
 
 ### Features:
 - **System Information**: Platform, HealthKit status, locale
-- **AppState Status**: Workout state, premium status, authorization
+- **AppState Status**: Workout state, plan access, authorization
 - **Managers Status**: All initialized managers
 - **CareKit Status**: Prescribed workouts
 - **Debug Actions**:
@@ -126,7 +126,6 @@ Click the diamond icon next to @Suite
 
 2. AppState.init
    ├── HealthKitManager
-   ├── SubscriptionManager
    ├── TVDisplayCoordinator
    ├── CareKitBridge
    ├── PhoneConnectivityBridge

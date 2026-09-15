@@ -14,6 +14,8 @@ struct WatchSessionView: View {
     let plan: WorkoutPlan
 
     @State private var selectedTab = 0
+    @State private var startError: String?
+    @State private var startupTask: Task<Void, Never>?
     @State private var relayTask: Task<Void, Never>?
     @State private var crownRotationalDelta: Double = 0
     @State private var sigmaIrr: Double = 0
@@ -31,6 +33,7 @@ struct WatchSessionView: View {
             controlsTab.tag(2)
         }
         .tabViewStyle(.verticalPage)
+        .navigationBarBackButtonHidden(manager.isRecording)
         .focusable()
         .digitalCrownRotation(
             $crownRotationalDelta,
@@ -43,7 +46,7 @@ struct WatchSessionView: View {
         )
         .onChange(of: crownRotationalDelta) { oldValue, newValue in
             let delta = newValue - oldValue
-            guard abs(delta) > 1e-6 else { return }
+            guard manager.isRecording, !manager.isPaused, !manager.isEnding, abs(delta) > 1e-6 else { return }
             Task {
                 // Apply β immediately for responsive dial feel.
                 let beta = await PharmaControlSessionManager.shared.applyCrownDelta(delta)
@@ -54,7 +57,7 @@ struct WatchSessionView: View {
             crownTickTask?.cancel()
             crownTickTask = Task {
                 try? await Task.sleep(for: .milliseconds(150))
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, manager.isRecording, !manager.isPaused, !manager.isEnding else { return }
                 let bpm = manager.currentHeartRate ?? plan.style.nominalBPM
                 let sci = manager.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
                 let beta = await PharmaControlSessionManager.shared.snapshot().crownBeta
@@ -68,10 +71,25 @@ struct WatchSessionView: View {
             }
         }
         .onAppear { startWorkout() }
+        .alert(LocalizedString(en: "Unable to start", fr: "Démarrage impossible").localized, isPresented: Binding(get: { startError != nil }, set: { if !$0 { startError = nil } })) {
+            Button(LocalizedString(en: "Try again", fr: "Réessayer").localized) { startWorkout() }
+            Button(LocalizedString(en: "Back", fr: "Retour").localized, role: .cancel) { dismiss() }
+        } message: {
+            Text(startError ?? "")
+        }
         .onDisappear {
+            startupTask?.cancel()
             relayTask?.cancel()
             crownTickTask?.cancel()
             breathHaptics.stop()
+        }
+        .onChange(of: manager.isPaused) { _, paused in
+            crownTickTask?.cancel()
+            if paused { breathHaptics.stop() }
+            else if manager.isRecording && !manager.isEnding { breathHaptics.start() }
+        }
+        .onChange(of: manager.isEnding) { _, ending in
+            if ending { breathHaptics.stop(); crownTickTask?.cancel() }
         }
         .onChange(of: manager.phase) { _, newPhase in
             if case .complete = newPhase {
@@ -109,6 +127,10 @@ struct WatchSessionView: View {
                     .foregroundStyle(.white)
 
             case .complete:
+                if manager.saveFailed {
+                    Text(LocalizedString(en: "Workout ended. Health could not save this session.", fr: "Séance terminée. Santé n’a pas pu l’enregistrer.").localized)
+                        .font(.footnote).foregroundStyle(.orange)
+                }
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 40))
                     .foregroundStyle(.green)
@@ -159,7 +181,7 @@ struct WatchSessionView: View {
 
             if !kinematics.setupSteps.isEmpty {
                 let stepIdx = min(
-                    Int(Double(manager.poseTimeRemaining) / pose.durationSeconds * Double(kinematics.setupSteps.count)),
+                    Int(max(0, 1 - manager.poseTimeRemaining / max(1, pose.durationSeconds)) * Double(kinematics.setupSteps.count)),
                     kinematics.setupSteps.count - 1
                 )
                 Text(kinematics.setupSteps[stepIdx].localized)
@@ -220,7 +242,7 @@ struct WatchSessionView: View {
             // SCI Focus Score
             let insight = manager.feedbackEngine.latestInsight(for: .heartRateVariability)
             VStack(spacing: 4) {
-                Text(LocalizedString(en: "Focus", fr: "Concentration").localized)
+                Text(LocalizedString(en: "Signal variation", fr: "Variation du signal").localized)
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.5))
 
@@ -291,21 +313,23 @@ struct WatchSessionView: View {
             Spacer()
 
             // Pause / Resume — use isPaused (isRecording stays true while paused).
-            if manager.isRecording && !manager.isPaused {
+            if manager.isRecording && !manager.isEnding && !manager.isPaused {
                 Button {
                     manager.pause()
                 } label: {
                     Image(systemName: "pause.fill")
+                        .accessibilityLabel(LocalizedString(en: "Pause", fr: "Pause").localized)
                         .font(.system(size: 24))
                         .frame(width: 60, height: 44)
                         .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-            } else if manager.isRecording && manager.isPaused {
+            } else if manager.isRecording && !manager.isEnding && manager.isPaused {
                 Button {
                     manager.resume()
                 } label: {
                     Image(systemName: "play.fill")
+                        .accessibilityLabel(LocalizedString(en: "Resume", fr: "Reprendre").localized)
                         .font(.system(size: 24))
                         .frame(width: 60, height: 44)
                         .background(.cyan.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
@@ -315,9 +339,12 @@ struct WatchSessionView: View {
 
             // End workout
             Button {
-                Task { try? await manager.end() }
+                if manager.phase == .complete { dismiss() }
+                else { Task { try? await manager.end() } }
             } label: {
-                Text(LocalizedString(en: "End", fr: "Fin").localized)
+                Text(manager.phase == .complete
+                     ? LocalizedString(en: "Done", fr: "Terminé").localized
+                     : LocalizedString(en: "End", fr: "Fin").localized)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
@@ -325,6 +352,7 @@ struct WatchSessionView: View {
                     .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
+            .disabled(manager.isStarting || manager.isEnding || manager.phase == .idle)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 8)
@@ -333,23 +361,43 @@ struct WatchSessionView: View {
     // MARK: - Lifecycle
 
     private func startWorkout() {
-        Task {
+        guard !manager.isStarting, !manager.isEnding, manager.phase != .complete else { return }
+        if manager.isRecording {
+            if !manager.isPaused { breathHaptics.start() }
+            startBiofeedbackRelay()
+            return
+        }
+        startupTask?.cancel()
+        startError = nil
+        startupTask = Task {
             await PharmaControlSessionManager.shared.start(
                 nominalBPM: plan.style.nominalBPM,
                 groundingBPM: plan.style.groundingBPM
             )
-            try? await manager.start(plan: plan)
-            breathHaptics.start()
-            startBiofeedbackRelay()
+            do {
+                try await manager.start(plan: plan)
+                guard !Task.isCancelled else {
+                    try? await manager.end()
+                    return
+                }
+                breathHaptics.start()
+                startBiofeedbackRelay()
+            } catch {
+                await PharmaControlSessionManager.shared.stop()
+                guard !Task.isCancelled else { return }
+                startError = LocalizedString(en: "Check Health permissions on your Watch, then try again. You can also use guided sessions on your iPhone.", fr: "Vérifiez les autorisations Santé sur votre Watch, puis réessayez. Les séances guidées restent disponibles sur votre iPhone.").localized
+            }
         }
     }
 
     /// WCSession biofeedback relay + Crooks control tick (σ_irr, β, beat).
     private func startBiofeedbackRelay() {
+        relayTask?.cancel()
         relayTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled, manager.isRecording else { continue }
+                guard !Task.isCancelled, manager.isRecording else { return }
+                guard !manager.isPaused, !manager.isEnding else { continue }
 
                 let snapshot = manager.buildBiofeedbackSnapshot()
                 connectivity.sendBiofeedback(snapshot)
@@ -383,6 +431,7 @@ struct WatchSessionView: View {
 
     private func handleWorkoutComplete() {
         relayTask?.cancel()
+        crownTickTask?.cancel()
         breathHaptics.stop()
         Task { await PharmaControlSessionManager.shared.stop() }
         if let result = manager.buildResult() {

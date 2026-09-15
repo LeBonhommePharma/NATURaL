@@ -52,6 +52,49 @@ final class MusicService: ObservableObject {
     private var fadeTask: Task<Void, Never>?
     private var beatBound = false
     private var routeObserver: NSObjectProtocol?
+    // MusicKit has one shared player. A late result from an older session must
+    // neither restart playback nor pause a newer session that now owns it.
+    private static var activePlaybackOwner: UUID?
+    private let playbackOwner = UUID()
+    private var playbackGeneration = UUID()
+    private var wantsPlayback = false
+    private var playbackWasStopped = false
+
+    @discardableResult
+    private func beginPlaybackOperation() -> UUID {
+        fadeTask?.cancel()
+        playbackGeneration = UUID()
+        wantsPlayback = true
+        playbackWasStopped = false
+        Self.activePlaybackOwner = playbackOwner
+        isCrossfading = false
+        return playbackGeneration
+    }
+
+    /// Checks after every suspension, and reasserts Pause/Stop if an in-flight
+    /// MusicKit command completed after those controls were pressed.
+    private func canContinuePlayback(_ generation: UUID) -> Bool {
+        let ownsPlayer = Self.activePlaybackOwner == playbackOwner
+        guard !Task.isCancelled, generation == playbackGeneration,
+              wantsPlayback, ownsPlayer else {
+            if ownsPlayer && (!wantsPlayback || generation == playbackGeneration) {
+                if playbackWasStopped { ApplicationMusicPlayer.shared.stop() }
+                else { ApplicationMusicPlayer.shared.pause() }
+                isPlaying = false
+            }
+            return false
+        }
+        return true
+    }
+
+    private func invalidatePlayback(stopped: Bool) {
+        playbackGeneration = UUID()
+        wantsPlayback = false
+        playbackWasStopped = stopped
+        fadeTask?.cancel()
+        fadeTask = nil
+        isCrossfading = false
+    }
 
     /// Playlist cache keyed by (mood rawValue, style rawValue or "default").
     private var playlistCache: [String: Playlist] = [:]
@@ -94,11 +137,11 @@ final class MusicService: ObservableObject {
         Task { [weak self] in
             // Session-scoped: replace so we never stack listeners across rebinds.
             await UniversalBeatSync.shared.replaceListeners([
-                { snap in await self?.applyBeatSync(snap) }
+                { [weak self] snap in await self?.applyBeatSync(snap) }
             ])
             // Warm low-latency session from current fleet quality profile.
             // `apply` also starts continuous buffer → fleet publish while running.
-            try? await LowLatencyAudioRouter.shared.applyFromFleet()
+            _ = try? await LowLatencyAudioRouter.shared.applyFromFleet()
             // Ensure iCloud presence / Watch membership loops are live for the session.
             ClusterFleetPresenceCoordinator.shared.start()
         }
@@ -117,7 +160,7 @@ final class MusicService: ObservableObject {
             yawDegrees: fleetSnap.listenerYawDegrees,
             depth: fleetSnap.spatialDepth
         )
-        guard isPlaying, !isCrossfading else { return }
+        guard isPlaying, !isCrossfading, wantsPlayback, Self.activePlaybackOwner == playbackOwner else { return }
         guard backend == .musicKit else { return }
         let player = ApplicationMusicPlayer.shared
         let rate = max(0.75, min(1.25, snap.bpm / assumedTrackBPM))
@@ -183,7 +226,7 @@ final class MusicService: ObservableObject {
         }
         await ClusterFleet.shared.refreshAudioRoutes(ports)
         // Re-apply quality profile when route changes (AirPods ↔ speaker).
-        try? await LowLatencyAudioRouter.shared.applyFromFleet()
+        _ = try? await LowLatencyAudioRouter.shared.applyFromFleet()
         if let first = ports.first {
             await LowLatencyAudioRouter.shared.publishLocalLatency(
                 to: .shared,
@@ -196,8 +239,10 @@ final class MusicService: ObservableObject {
 
     /// Prefetch playlists for all moods × style so adaptive switches avoid network on the hot path.
     func prefetchPlaylists(style: YogaStyle?) async {
-        guard isAuthorized else { return }
+        guard isAuthorized, !Task.isCancelled else { return }
+        let generation = playbackGeneration
         for mood in WorkoutMood.allCases {
+            guard !Task.isCancelled, generation == playbackGeneration else { return }
             if playlistCache[cacheKey(mood: mood, style: style)] != nil { continue }
             if let playlist = await searchPlaylist(mood: mood, style: style) {
                 playlistCache[cacheKey(mood: mood, style: style)] = playlist
@@ -207,7 +252,8 @@ final class MusicService: ObservableObject {
 
     /// Searches Apple Music for yoga-related playlists and plays the first match.
     func playWorkoutMusic(mood: WorkoutMood, style: YogaStyle? = nil) async {
-        guard isAuthorized else { return }
+        guard isAuthorized, !Task.isCancelled else { return }
+        let generation = beginPlaybackOperation()
 
         // Leave any local dual session before MusicKit play.
         tearDownLocalEngine()
@@ -218,10 +264,12 @@ final class MusicService: ObservableObject {
 
         do {
             let playlist = try await resolvePlaylist(mood: mood, style: style)
+            guard canContinuePlayback(generation) else { return }
             let player = ApplicationMusicPlayer.shared
             enableMusicKitNativeCrossfadeIfAvailable(on: player)
             player.queue = [playlist]
             try await player.play()
+            guard canContinuePlayback(generation) else { return }
             isPlaying = true
             adaptiveMood = mood
             // Re-apply beat rate after play starts.
@@ -229,6 +277,7 @@ final class MusicService: ObservableObject {
                 await applyBeatSync(beat)
             }
         } catch {
+            guard canContinuePlayback(generation) else { return }
             isPlaying = false
         }
     }
@@ -236,6 +285,8 @@ final class MusicService: ObservableObject {
     /// Play a local audio file with the dual-engine path (true volume crossfade on later switches).
     /// Use for non-MusicKit assets only. Stops MusicKit if it was active.
     func playLocalAsset(url: URL, mood: WorkoutMood = .calm) async {
+        guard !Task.isCancelled else { return }
+        beginPlaybackOperation()
         fadeTask?.cancel()
         isCrossfading = false
         ApplicationMusicPlayer.shared.stop()
@@ -253,21 +304,24 @@ final class MusicService: ObservableObject {
 
     /// Crossfade to another local file (dual `AVAudioPlayerNode` volume ramps).
     func crossfadeToLocalAsset(url: URL, mood: WorkoutMood) async {
+        guard !Task.isCancelled else { return }
         guard backend == .localDual, let engine = localEngine, engine.isRunning else {
             await playLocalAsset(url: url, mood: mood)
             return
         }
-        fadeTask?.cancel()
+        let generation = beginPlaybackOperation()
         fadeTask = Task {
+            guard canContinuePlayback(generation) else { return }
             isCrossfading = true
-            defer { isCrossfading = false }
+            defer { if generation == playbackGeneration { isCrossfading = false } }
             do {
                 try await engine.crossfade(to: url, duration: Self.crossfadeDuration)
-                guard !Task.isCancelled else { return }
+                guard canContinuePlayback(generation) else { return }
                 isPlaying = true
                 adaptiveMood = mood
             } catch {
                 // Leave prior local stream if still audible.
+                guard canContinuePlayback(generation) else { return }
                 isPlaying = engine.isRunning
             }
         }
@@ -275,9 +329,10 @@ final class MusicService: ObservableObject {
     }
 
     func pause() {
+        invalidatePlayback(stopped: false)
         switch backend {
         case .musicKit:
-            ApplicationMusicPlayer.shared.pause()
+            if Self.activePlaybackOwner == playbackOwner { ApplicationMusicPlayer.shared.pause() }
         case .localDual:
             localEngine?.pause()
         }
@@ -285,6 +340,7 @@ final class MusicService: ObservableObject {
     }
 
     func stop() {
+        invalidatePlayback(stopped: true)
         fadeTask?.cancel()
         isCrossfading = false
         stopAudioRouteObserver()
@@ -294,7 +350,7 @@ final class MusicService: ObservableObject {
         Task {
             await UniversalBeatSync.shared.removeAllListeners()
         }
-        ApplicationMusicPlayer.shared.stop()
+        if Self.activePlaybackOwner == playbackOwner { ApplicationMusicPlayer.shared.stop() }
         tearDownLocalEngine()
         backend = .musicKit
         isPlaying = false
@@ -306,7 +362,8 @@ final class MusicService: ObservableObject {
     /// Crossfade with style awareness during adaptive SCI transitions.
     /// Debounce lives here only — callers should not gate again.
     func adaptToSCI(score: Double?, trend: InsightTrend, style: YogaStyle?) async {
-        guard isPlaying, isAuthorized else { return }
+        guard isPlaying, isAuthorized, !Task.isCancelled, wantsPlayback,
+              Self.activePlaybackOwner == playbackOwner else { return }
         // Adaptive SCI mood switches only apply to MusicKit playlists.
         guard backend == .musicKit else { return }
 
@@ -336,13 +393,15 @@ final class MusicService: ObservableObject {
     /// Best-available mood transition for MusicKit (see type-level docs).
     /// Does **not** use `playbackRate` as a volume fader.
     private func crossfadeToMood(_ newMood: WorkoutMood, style: YogaStyle?) async {
-        fadeTask?.cancel()
+        guard !Task.isCancelled else { return }
+        let generation = beginPlaybackOperation()
 
         fadeTask = Task {
+            guard canContinuePlayback(generation) else { return }
             isCrossfading = true
             defer {
                 // Always release the gate (cancel / early return / success).
-                isCrossfading = false
+                if generation == playbackGeneration { isCrossfading = false }
             }
 
             // Resolve while crossfading so cache hits stay off the audio gap.
@@ -352,17 +411,18 @@ final class MusicService: ObservableObject {
             } catch {
                 return
             }
-            guard !Task.isCancelled else { return }
+            guard canContinuePlayback(generation) else { return }
 
             let player = ApplicationMusicPlayer.shared
             enableMusicKitNativeCrossfadeIfAvailable(on: player)
 
-            let usedNative = await musicKitNativeCrossfadeIfPossible(player: player, playlist: playlist)
+            let usedNative = await musicKitNativeCrossfadeIfPossible(player: player, playlist: playlist, generation: generation)
+            guard canContinuePlayback(generation) else { return }
             if !usedNative {
-                await musicKitPrefetchBackedSwap(player: player, playlist: playlist)
+                guard await musicKitPrefetchBackedSwap(player: player, playlist: playlist, generation: generation) else { return }
             }
 
-            guard !Task.isCancelled else { return }
+            guard canContinuePlayback(generation) else { return }
             isPlaying = true
             adaptiveMood = newMood
 
@@ -380,8 +440,10 @@ final class MusicService: ObservableObject {
     /// Returns `false` when the API is unavailable or the operation fails (caller falls back).
     private func musicKitNativeCrossfadeIfPossible(
         player: ApplicationMusicPlayer,
-        playlist: Playlist
+        playlist: Playlist,
+        generation: UUID
     ) async -> Bool {
+        guard canContinuePlayback(generation) else { return true }
         if #available(iOS 18.0, *) {
             // Need an active current entry for insert-after + skip to crossfade from.
             guard player.queue.currentEntry != nil,
@@ -394,8 +456,9 @@ final class MusicService: ObservableObject {
             do {
                 player.transition = .crossfade(duration: Self.crossfadeDuration)
                 try await player.queue.insert(playlist, position: .afterCurrentEntry)
-                guard !Task.isCancelled else { return true }
+                guard canContinuePlayback(generation) else { return true }
                 try await player.skipToNextEntry()
+                guard canContinuePlayback(generation) else { return true }
                 // Hold isCrossfading for the full audio fade so beat rate cannot fight it.
                 try await Task.sleep(for: .seconds(Self.crossfadeDuration))
                 return true
@@ -416,20 +479,26 @@ final class MusicService: ObservableObject {
     /// Prefetch + limit=1 keeps this path short.
     private func musicKitPrefetchBackedSwap(
         player: ApplicationMusicPlayer,
-        playlist: Playlist
-    ) async {
+        playlist: Playlist,
+        generation: UUID
+    ) async -> Bool {
+        guard canContinuePlayback(generation) else { return false }
         player.pause()
         // Tiny settle so pause is audible as a soft cut rather than a glitch.
         try? await Task.sleep(for: .milliseconds(80))
-        guard !Task.isCancelled else { return }
+        guard canContinuePlayback(generation) else { return false }
 
         do {
             player.queue = [playlist]
             try await player.prepareToPlay()
-            guard !Task.isCancelled else { return }
+            guard canContinuePlayback(generation) else { return false }
             try await player.play()
+            return canContinuePlayback(generation)
         } catch {
-            try? await player.play()
+            // A canceled/failed preparation must never restart audio as recovery.
+            guard canContinuePlayback(generation) else { return false }
+            isPlaying = false
+            return false
         }
     }
 

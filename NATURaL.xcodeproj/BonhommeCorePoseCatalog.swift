@@ -438,7 +438,6 @@ public enum PoseCatalog {
             childsPose,
             corpse
         ],
-        isFree: true
     )
     
     public static let morningEnergizer = WorkoutPlan(
@@ -477,7 +476,6 @@ public enum PoseCatalog {
             mountainPose,
             childsPose
         ],
-        isFree: true
     )
     
     public static let relaxationFlow = WorkoutPlan(
@@ -514,7 +512,6 @@ public enum PoseCatalog {
             bridgePose,
             corpse
         ],
-        isFree: true
     )
     
     public static let balanceFocus = WorkoutPlan(
@@ -553,7 +550,6 @@ public enum PoseCatalog {
             treePose,
             childsPose
         ],
-        isFree: false
     )
     
     public static let strengthBuilder = WorkoutPlan(
@@ -594,7 +590,6 @@ public enum PoseCatalog {
             childsPose,
             corpse
         ],
-        isFree: false
     )
     
     public static let chairYogaSession = WorkoutPlan(
@@ -630,7 +625,6 @@ public enum PoseCatalog {
             seatedForwardBend,
             seatedCatCow
         ],
-        isFree: true
     )
     
     public static let pranayamaSession = WorkoutPlan(
@@ -666,7 +660,6 @@ public enum PoseCatalog {
             seatedCatCow,
             deepBreathing
         ],
-        isFree: true
     )
     
     public static let yinSession = WorkoutPlan(
@@ -703,7 +696,6 @@ public enum PoseCatalog {
             bridgePose,
             corpse
         ],
-        isFree: false
     )
     
     // MARK: - Catalog Helpers

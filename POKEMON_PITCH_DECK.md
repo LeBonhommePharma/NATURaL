@@ -78,7 +78,7 @@
                                        SCI > 80%.
 ```
 
-**Key design principle:** Evolution is earned through real wellness activity, not grinding or in-app purchases. This aligns with TPC's brand values around positive play experiences.
+**Key design principle:** Evolution is earned through real wellness activity, not grind rewards, and stays independent of monetization.
 
 ---
 
@@ -136,14 +136,13 @@ NATURaL already runs natively on every Apple platform:
 
 ---
 
-### Slide 7 — Revenue Model
+### Slide 7 — Distribution Model
 
 | Stream | Description |
 |---|---|
-| **Free tier** | 10 beginner poses, base Bonhomme, basic SCI tracking |
-| **Premium subscription** | All 26 poses, evolution to Boncoeur/Bonmaître, advanced analytics, adaptive MusicKit |
-| **Pokemon licensing** | Revenue share per subscription or flat licensing fee |
-| **Clinical tier** | CareKit integration for rehab facilities (separate B2B pricing) |
+| **Consumer distribution** | Open release to users: all sessions and plans are free at launch |
+| **Partner licensing** | Optional co-branding and distribution agreements with licensing partners |
+| **Clinical partnerships** | CareKit workflows for rehab facilities under separate B2B arrangements |
 
 **No loot boxes. No gacha. No pay-to-evolve.** Evolution is purely effort-based — consistent with TPC's family-friendly brand positioning.
 
@@ -197,7 +196,7 @@ NATURaL already runs natively on every Apple platform:
 | **Scope** | Apple platforms (iOS, watchOS, tvOS, visionOS) |
 | **Territory** | Worldwide (bilingual EN/FR launch, expandable) |
 | **Timeline** | 3-6 months to integrate assets and launch |
-| **Revenue** | Negotiable — subscription revenue share or flat fee |
+| **Revenue** | Negotiable — licensing agreement revenue share or flat fee |
 
 **Next steps:**
 1. NDA and mutual evaluation

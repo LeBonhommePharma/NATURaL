@@ -83,15 +83,14 @@ final class IntentBridge {
         return id
     }
 
-    /// Best plan for a target duration (minutes). Prefers free plans closest in length.
+    /// Best plan for a target duration (minutes) from the full catalog.
     func planMatching(durationMinutes: Int?) -> WorkoutPlan {
         guard let minutes = durationMinutes, minutes > 0 else {
             return PoseCatalog.beginnerFlow
         }
         let target = TimeInterval(minutes * 60)
         let candidates = PoseCatalog.allPlans
-        let free = candidates.filter(\.isFree)
-        let pool = free.isEmpty ? candidates : free
+        let pool = candidates
         return pool.min(by: {
             abs($0.totalDuration - target) < abs($1.totalDuration - target)
         }) ?? PoseCatalog.beginnerFlow

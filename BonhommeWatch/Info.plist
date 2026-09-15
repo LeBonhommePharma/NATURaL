@@ -25,11 +25,28 @@
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>NATURaL saves your chair yoga workout sessions to Apple Health.</string>
 	<key>WKApplication</key>
-	<dict>
-		<key>WKBackgroundModes</key>
-		<array>
-			<string>workout-processing</string>
-		</array>
-	</dict>
+	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.natural.Bonhomme</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>fr</string>
+		<string>es</string>
+		<string>ja</string>
+		<string>zh</string>
+		<string>ko</string>
+		<string>ru</string>
+		<string>de</string>
+		<string>ar</string>
+		<string>it</string>
+		<string>pt</string>
+	</array>
 </dict>
 </plist>
