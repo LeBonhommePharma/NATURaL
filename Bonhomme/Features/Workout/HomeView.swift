@@ -7,16 +7,36 @@ import BonhommeCore
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("natural.motionCoachHeroDismissed") private var motionCoachHeroDismissed = false
-    @State private var showingHealthKitAuth = false
     @State private var selectedPlan: WorkoutPlan?
     @State private var selectedStyle: YogaStyle?
 
     var body: some View {
-        if sizeClass == .regular {
-            iPadLayout
-        } else {
-            phoneLayout
+        Group {
+            if sizeClass == .regular {
+                iPadLayout
+            } else {
+                phoneLayout
+            }
+        }
+        .fullScreenCover(item: $selectedPlan) { plan in
+            NavigationStack {
+                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
+            }
+            .interactiveDismissDisabled()
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                NavigationLink { HistoryView() } label: {
+                    Label(LocalizedString(en: "History", fr: "Historique").localized, systemImage: "clock.arrow.circlepath")
+                }
+                .accessibilityIdentifier("home.history")
+                NavigationLink { AppInformationView() } label: {
+                    Label(LocalizedString(en: "About & Privacy", fr: "À propos et confidentialité").localized, systemImage: "info.circle")
+                }
+                .accessibilityIdentifier("home.about")
+            }
         }
     }
 
@@ -53,6 +73,7 @@ struct HomeView: View {
             .navigationTitle("NATURaL")
             .listStyle(.sidebar)
         } detail: {
+            NavigationStack {
             if let style = selectedStyle {
                 StyleDetailView(style: style)
             } else {
@@ -63,7 +84,7 @@ struct HomeView: View {
                             .padding(.top, 24)
 
                         if appState.persistenceSync.needsAttention {
-                            cloudKitSyncStatusCard
+                            storageStatusCard
                         }
 
                         VStack(spacing: 16) {
@@ -81,8 +102,9 @@ struct HomeView: View {
                     }
                 }
             }
+            }
+            .id(selectedStyle)
         }
-        .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
     }
 
@@ -95,7 +117,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("NATURaL")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text(LocalizedString(en: "Yoga & Wellness", fr: "Yoga et bien-être").localized)
+                    Text(LocalizedString(en: "A little movement. A little more you.", fr: "Un peu de mouvement. Du temps pour vous.").localized)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -135,15 +157,16 @@ struct HomeView: View {
                     .padding(.horizontal)
                 }
 
-                // Style card grid
+                Text(LocalizedString(en: "Move in your own way", fr: "Bougez à votre façon").localized)
+                    .font(.title2.bold())
+                    .padding(.horizontal)
                 styleCardGrid
 
                 // Prescriptions / clinical medication consent entry
                 prescriptionsEntryCard
 
-                // iCloud / CloudKit sync status (local-only or ephemeral fallback)
                 if appState.persistenceSync.needsAttention {
-                    cloudKitSyncStatusCard
+                    storageStatusCard
                 }
 
                 // TV connection status
@@ -151,16 +174,14 @@ struct HomeView: View {
             }
             .padding(.vertical)
         }
-        .onAppear { requestHealthKitIfNeeded() }
         .task { await loadCareKitPrescriptions() }
     }
 
-    // MARK: - CloudKit / persistence status
+    // MARK: - On-device storage status
 
-    /// Settings-style card when storage is local-only or ephemeral.
-    /// Mirrors banner messaging; keeps Retry available after the banner is dismissed.
+    /// Shown only when durable local storage is unavailable.
     @ViewBuilder
-    private var cloudKitSyncStatusCard: some View {
+    private var storageStatusCard: some View {
         @Bindable var sync = appState.persistenceSync
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
@@ -171,8 +192,8 @@ struct HomeView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedString(
-                        en: "Data & iCloud Sync",
-                        fr: "Données et sync iCloud"
+                        en: "Data & Storage",
+                        fr: "Données et stockage"
                     ).localized)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.primary)
@@ -194,13 +215,13 @@ struct HomeView: View {
             }
 
             Button {
-                Task { await sync.retryCloudKitConnection() }
+                Task { await sync.retryLocalStorage() }
             } label: {
                 if sync.isRetrying {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text(LocalizedString(en: "Retry iCloud Sync", fr: "Réessayer la sync iCloud").localized)
+                    Text(LocalizedString(en: "Retry storage", fr: "Réessayer le stockage").localized)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -213,8 +234,8 @@ struct HomeView: View {
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(LocalizedString(
-            en: "Data and iCloud sync status",
-            fr: "État des données et de la sync iCloud"
+            en: "On-device storage status",
+            fr: "État du stockage sur cet appareil"
         ).localized)
     }
 
@@ -272,124 +293,63 @@ struct HomeView: View {
     // MARK: - Coach Hero
 
     private func coachHeroCard(compact: Bool, dismissible: Bool) -> some View {
-        let previewPose = PoseCatalog.seatedCatCow
-        let previewPlan = PoseCatalog.beginnerFlow
-        let accent = Color(hue: previewPose.category.accentHue, saturation: 0.62, brightness: 0.88)
-
-        return VStack(alignment: .leading, spacing: 16) {
+        let plan = PoseCatalog.beginnerFlow
+        return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "video.slash")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(accent)
-                        Text(LocalizedString(en: "Clean-room visual coach", fr: "Coach visuel clean-room").localized)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(accent)
-                    }
-
-                    Text(LocalizedString(
-                        en: "Guided motion without trainer footage",
-                        fr: "Guidage animé sans vidéo de coach"
-                    ).localized)
-                    .font(.system(size: compact ? 22 : 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-
-                    Text(LocalizedString(
-                        en: "Procedural symbol animation, breathing cues, and pose pacing inspired by the pattern class — not by copied code, assets, or video.",
-                        fr: "Animation symbolique procédurale, repères respiratoires et rythme des postures inspirés de la classe de produit — sans code, actifs ni vidéo copiés."
-                    ).localized)
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 12)
-
+                Label(LocalizedString(en: "YOUR DAILY EXHALE", fr: "VOTRE PAUSE RESPIRATION").localized, systemImage: "sun.max")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color(red: 1, green: 0.81, blue: 0.48))
+                Spacer()
                 if dismissible {
-                    Button {
-                        motionCoachHeroDismissed = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(.secondary)
+                    Button { motionCoachHeroDismissed = true } label: {
+                        Image(systemName: "xmark").frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.plain)
+                    .accessibilityLabel(LocalizedString(en: "Hide featured session", fr: "Masquer la séance en vedette").localized)
+                    .foregroundStyle(.white.opacity(0.8))
                 }
             }
-
-            MotionCoachView(pose: previewPose, phase: .preview, cornerRadius: 24)
-                .frame(height: compact ? 250 : 220)
-
-            VStack(alignment: .leading, spacing: 10) {
-                coachPoint(
-                    systemName: "sparkles.rectangle.stack",
-                    text: LocalizedString(en: "Symbolic motion instead of trainer video", fr: "Mouvement symbolique au lieu d'une vidéo de coach").localized,
-                    color: accent
-                )
-                coachPoint(
-                    systemName: "wind",
-                    text: LocalizedString(en: "Breathing and pacing cues embedded in the animation", fr: "Repères respiratoires et de rythme intégrés à l'animation").localized,
-                    color: accent
-                )
-                coachPoint(
-                    systemName: "figure.walk.motion",
-                    text: LocalizedString(en: "Ready to wire into every guided workout phase", fr: "Prêt à être branché dans chaque phase guidée").localized,
-                    color: accent
-                )
-            }
-
-            NavigationLink {
-                WorkoutFlowView(plan: previewPlan, feedbackEngine: appState.feedbackEngine)
-            } label: {
+            Image("Bloom")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .frame(height: compact ? 190 : 155)
+                .accessibilityHidden(true)
+            Text(LocalizedString(en: "Come back to yourself.", fr: "Revenez à vous.").localized)
+                .font(.largeTitle.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            Text(LocalizedString(
+                en: "A chair. A breath. A moment to move. Follow a gentle seated practice, at your own pace.",
+                fr: "Une chaise. Un souffle. Un moment pour bouger. Suivez une pratique douce, à votre rythme."
+            ).localized)
+            .font(.body)
+            .foregroundStyle(.white.opacity(0.85))
+            .fixedSize(horizontal: false, vertical: true)
+            Label(formattedDuration(plan.totalDuration), systemImage: "clock")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.8))
+            Button { selectedPlan = plan } label: {
                 HStack {
-                    Text(LocalizedString(en: "Try guided preview", fr: "Essayer l'aperçu guidé").localized)
-                        .font(.system(size: 16, weight: .semibold))
-                    Spacer()
+                    Text(LocalizedString(en: "Begin a gentle session", fr: "Commencer en douceur").localized)
+                        .font(.headline)
+                    Spacer(minLength: 8)
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 14, weight: .bold))
                 }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(accent, in: RoundedRectangle(cornerRadius: 14))
+                .foregroundStyle(Color(red: 0.12, green: 0.04, blue: 0.17))
+                .padding(18)
+                .background(Color(red: 0.52, green: 0.95, blue: 0.79), in: RoundedRectangle(cornerRadius: 18))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("home.start")
         }
-        .padding(compact ? 24 : 20)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(hue: previewPose.category.accentHue, saturation: 0.10, brightness: 0.97))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(accent.opacity(0.28), lineWidth: 1)
-        )
-    }
-
-    private func coachPoint(systemName: String, text: String, color: Color) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 18, height: 18)
-                .padding(.top, 1)
-
-            Text(text)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        .foregroundStyle(.white)
+        .padding(compact ? 28 : 24)
+        .background(Color(red: 0.11, green: 0.01, blue: 0.15), in: RoundedRectangle(cornerRadius: 28))
     }
 
     // MARK: - Style Card Grid
 
     private var styleCardGrid: some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 12),
-            GridItem(.flexible(), spacing: 12)
-        ]
+        let columns = [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 155), spacing: 12)]
 
         return LazyVGrid(columns: columns, spacing: 12) {
             ForEach(YogaStyle.allCases, id: \.self) { style in
@@ -442,7 +402,7 @@ struct HomeView: View {
         Section {
             ForEach(appState.careKitBridge.yogaPrescribedTasks, id: \.id) { task in
                 if let plan = appState.careKitBridge.resolveWorkoutPlan(for: task) {
-                    planRow(plan: plan, isPremium: false)
+                    planRow(plan: plan)
                         .badge(Text(LocalizedString(
                             en: "Prescribed",
                             fr: "Prescrit"
@@ -483,9 +443,7 @@ struct HomeView: View {
 
             ForEach(appState.careKitBridge.yogaPrescribedTasks, id: \.id) { task in
                 if let plan = appState.careKitBridge.resolveWorkoutPlan(for: task) {
-                    NavigationLink {
-                        WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
-                    } label: {
+                    Button { selectedPlan = plan } label: {
                         prescribedTaskCard(
                             title: plan.name.localized,
                             subtitle: task.instructions,
@@ -633,13 +591,7 @@ struct HomeView: View {
                 }
 
                 // Start button
-                NavigationLink {
-                    if !appState.isPremium || plan.isFree {
-                        WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
-                    } else {
-                        PaywallView()
-                    }
-                } label: {
+                Button { selectedPlan = plan } label: {
                     Text(LocalizedString(en: "Start Workout", fr: "Commencer").localized)
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.black)
@@ -658,8 +610,8 @@ struct HomeView: View {
 
     // MARK: - Sidebar Plan Row
 
-    private func planRow(plan: WorkoutPlan, isPremium: Bool) -> some View {
-        NavigationLink(value: plan) {
+    private func planRow(plan: WorkoutPlan) -> some View {
+        Button { selectedPlan = plan } label: {
             HStack {
                 Image(systemName: plan.poses.first?.category.symbolName ?? "figure.yoga")
                     .font(.system(size: 20))
@@ -676,65 +628,8 @@ struct HomeView: View {
 
                 Spacer()
 
-                if isPremium {
-                    Image(systemName: "lock.fill")
-                        .foregroundStyle(.orange)
-                        .font(.system(size: 13))
-                }
             }
         }
-    }
-
-    // MARK: - Phone Workout Card
-
-    private func workoutCard(plan: WorkoutPlan, isPremium: Bool) -> some View {
-        NavigationLink {
-            if isPremium {
-                PaywallView()
-            } else {
-                WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "figure.yoga")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.cyan)
-
-                    VStack(alignment: .leading) {
-                        Text(plan.name.localized)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.primary)
-
-                        Text(plan.description.localized)
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    Spacer()
-
-                    if isPremium {
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(.orange)
-                    } else {
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                HStack(spacing: 16) {
-                    Label("\(plan.poseCount) poses", systemImage: "list.number")
-                    Label(formattedDuration(plan.totalDuration), systemImage: "clock")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-            }
-            .padding()
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal)
     }
 
     private var tvStatusSection: some View {
@@ -759,16 +654,6 @@ struct HomeView: View {
     }
 
     // MARK: - Helpers
-
-    private func requestHealthKitIfNeeded() {
-        if HealthKitManager.isAvailable && !appState.healthKitAuthorized {
-            showingHealthKitAuth = true
-            Task {
-                try? await appState.healthKitManager.requestAuthorization()
-                appState.healthKitAuthorized = true
-            }
-        }
-    }
 
     private func loadCareKitPrescriptions() async {
         await appState.careKitBridge.refreshPrescribedTasks()

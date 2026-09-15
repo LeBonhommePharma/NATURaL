@@ -47,7 +47,7 @@ struct DebugDashboardView: View {
                         // AppState Status
                         sectionHeader("AppState")
                         diagnosticRow("Workout Active", value: appState.isWorkoutActive ? "✅ Yes" : "❌ No")
-                        diagnosticRow("Premium Status", value: appState.isPremium ? "✅ Premium" : "❌ Free")
+                        diagnosticRow("Access Model", value: "✅ Free")
                         diagnosticRow("HealthKit Auth", value: appState.healthKitAuthorized ? "✅ Authorized" : "⚠️ Not Authorized")
                         diagnosticRow("Resumable Workout", value: appState.pendingRestoredWorkout != nil ? "✅ Yes" : "❌ No")
 
@@ -56,7 +56,6 @@ struct DebugDashboardView: View {
                         // Managers Status
                         sectionHeader("Managers")
                         diagnosticRow("HealthKitManager", value: "✅ Initialized")
-                        diagnosticRow("SubscriptionManager", value: "✅ Initialized")
                         diagnosticRow("TVDisplayCoordinator", value: "✅ Initialized")
                         diagnosticRow("CareKitBridge", value: "✅ Initialized")
                         diagnosticRow("PhoneConnectivityBridge", value: "✅ Initialized")
@@ -75,7 +74,7 @@ struct DebugDashboardView: View {
                             value: appState.persistenceSync.mode.rawValue
                         )
                         diagnosticRow(
-                            "CloudKit Attention",
+                            "Storage Attention",
                             value: appState.persistenceSync.needsAttention ? "⚠️ Yes" : "✅ No"
                         )
                         if let err = appState.persistenceSync.underlyingErrorDescription {
@@ -295,7 +294,7 @@ struct DebugDashboardView: View {
         print("")
         print("AppState:")
         print("  - Workout Active: \(appState.isWorkoutActive)")
-        print("  - Premium: \(appState.isPremium)")
+        print("  - Access Model: Free")
         print("  - HealthKit Authorized: \(appState.healthKitAuthorized)")
         print("  - Resumable Workout: \(appState.pendingRestoredWorkout != nil)")
         print("")

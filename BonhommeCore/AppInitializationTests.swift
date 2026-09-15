@@ -18,7 +18,6 @@ struct AppInitializationTests {
         
         // Verify all managers are initialized
         #expect(appState.healthKitManager != nil, "HealthKitManager should be initialized")
-        #expect(appState.subscriptionManager != nil, "SubscriptionManager should be initialized")
         #expect(appState.tvDisplayCoordinator != nil, "TVDisplayCoordinator should be initialized")
         #expect(appState.careKitBridge != nil, "CareKitBridge should be initialized")
         #expect(appState.phoneConnectivityBridge != nil, "PhoneConnectivityBridge should be initialized")
@@ -28,7 +27,6 @@ struct AppInitializationTests {
         
         // Verify default state
         #expect(appState.isWorkoutActive == false, "Workout should not be active on init")
-        #expect(appState.isPremium == true, "Should default to premium")
         #expect(appState.healthKitAuthorized == false, "HealthKit should not be authorized by default")
         
         print("✅ AppState initialization test passed")
@@ -84,9 +82,9 @@ struct AppInitializationTests {
         do {
             let container = try PersistenceConfiguration.makeContainer()
             #expect(container != nil, "Container should be created")
-            print("✅ PersistenceConfiguration test passed (CloudKit container)")
+            print("✅ PersistenceConfiguration test passed (on-device container)")
         } catch {
-            print("⚠️ CloudKit container failed (expected on simulator): \(error.localizedDescription)")
+            print("⚠️ Local container failed: \(error.localizedDescription)")
             print("✅ Test passed - error handled gracefully")
         }
     }

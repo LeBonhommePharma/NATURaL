@@ -16,7 +16,6 @@
 		0EAB617165018E30C1D403AE /* WorkoutFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */; };
 		11997E1AAA6EBDA3D50C5F77 /* WatchConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */; };
 		20AF62F3EDCB32D6985E1742 /* FitnessPlusReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A68B1F8F551D3F2AE2D1AFD /* FitnessPlusReader.swift */; };
-		238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FA0E59182AE9EE86FCD708 /* PaywallView.swift */; };
 		23F1A4F57862025BECEDAE9F /* YogaTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */; };
 		28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE126FCF2D708572DCC3D185 /* PhoneConnectivityBridge.swift */; };
 		312211F5C4DD313CA7ECAA1B /* WatchSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52CB67AD0E3152C69497A0C /* WatchSessionView.swift */; };
@@ -62,9 +61,7 @@
 		CAA745CD22BEA5EE166A990C /* WatchWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2AD88A7A8CA619E175EFD11 /* WatchWorkoutManager.swift */; };
 		D4D8E9B7EB4A2E04AC6F61A0 /* ImmersivePoseSpace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15B34065BB43F0D98D384DF /* ImmersivePoseSpace.swift */; };
 		D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4324640DCAEA8E0B08DAC833 /* WorkoutLiveActivity.swift */; };
-		D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D6723693F5CD2FDC781A166 /* Entitlement.swift */; };
 		DACE9EED9C8EAD27FC976982 /* SpatialPoseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */; };
-		DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */; };
 		DBEE9FF686FCCA1B46D89F3F /* AirPlaySecondScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */; };
 		E07D5C8CEE61F81FA41E28BB /* PersistentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77F1417FDEA535CCFB59899 /* PersistentModels.swift */; };
 		E3A9130BFEED01CCE906DCA3 /* ActivityRingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */; };
@@ -85,6 +82,13 @@
 		A7C1E2B40D91F5A2C3B4D501 /* MedicationPrescriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D502 /* MedicationPrescriptionService.swift */; };
 		A7C1E2B40D91F5A2C3B4D503 /* PrescriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D504 /* PrescriptionsView.swift */; };
 		A7C1E2B40D91F5A2C3B4D506 /* PokeDrugSubstanceInsightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C1E2B40D91F5A2C3B4D507 /* PokeDrugSubstanceInsightView.swift */; };
+		AC2026091200000000000000 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000000 /* Assets.xcassets */; };
+		AC2026091200000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000001 /* PrivacyInfo.xcprivacy */; };
+		AC2026091200000000000100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000100 /* Assets.xcassets */; };
+		AC2026091200000000000101 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000101 /* PrivacyInfo.xcprivacy */; };
+		AC2026091200000000000200 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000200 /* PrivacyInfo.xcprivacy */; };
+		AC2026091200000000000300 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000300 /* PrivacyInfo.xcprivacy */; };
+		AD2026091200000000000001 /* Watch in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3B20A0CBCF41B50E61CA0C8A; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -116,6 +120,7 @@
 			remoteGlobalIDString = CBDE573061803B5CE517CE72;
 			remoteInfo = NATURaLLiveActivity;
 		};
+		AD2026091200000000000003 = {isa = PBXContainerItemProxy; containerPortal = 7EA6D9377E56C32636195598; proxyType = 1; remoteGlobalIDString = 3CBBBFC801363D2E6D9E6893; remoteInfo = BonhommeWatch; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -129,6 +134,7 @@
 			);
 			name = "Embed Extensions";
 		};
+		AD2026091200000000000002 /* Embed Watch Content */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16; files = (AD2026091200000000000001, ); name = "Embed Watch Content"; runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -176,12 +182,10 @@
 		576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayCoordinatorTests.swift; sourceTree = "<group>"; };
 		5787737B2C9B32BD9AC33949 /* BonhommeVision.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeVision.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		57AA50F104A8F756A65C0651 /* BonhommeTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		5D6723693F5CD2FDC781A166 /* Entitlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entitlement.swift; sourceTree = "<group>"; };
 		63A01ECD3FE70C476577EECB /* MetricsOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsOverlayView.swift; sourceTree = "<group>"; };
 		64AFE2D3D12ACF817073A5C8 /* CareKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitBridge.swift; sourceTree = "<group>"; };
 		6A18B62ECE19ED25527FD00B /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		7C51ECB1891FFEA624CCEB6A /* NATURaLLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NATURaLLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		80FA0E59182AE9EE86FCD708 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		82DEBB157CEFEC4307116E45 /* TVDisplayCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayCoordinator.swift; sourceTree = "<group>"; };
 		8686D21C057BC30AB06189B5 /* NativeCompanionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCompanionClient.swift; sourceTree = "<group>"; };
 		8A4C18D50A61DA5766A933A3 /* WatchConnectivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityBridge.swift; sourceTree = "<group>"; };
@@ -189,7 +193,6 @@
 		929BF4BCFE193F18484615E0 /* AirPlaySecondScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlaySecondScreen.swift; sourceTree = "<group>"; };
 		96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NATURaLWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		985A02F6EE01452874C2D655 /* HeartRateMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateMonitor.swift; sourceTree = "<group>"; };
-		9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		9A6B2F908F0917D19A145A0C /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		9B23F8A7D5EF64D66A594E8D /* ExternalDisplaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplaySceneDelegate.swift; sourceTree = "<group>"; };
 		9F6F7CD1DED33F23495EC2A1 /* Bonhomme.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bonhomme.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -223,6 +226,12 @@
 		FA5001EDCCDD4DB8CD204525 /* SpatialPoseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialPoseView.swift; sourceTree = "<group>"; };
 		FE2AAFE554DF1D96F774F9EE /* BonhommeTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonhommeTVApp.swift; sourceTree = "<group>"; };
 		FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakWidget.swift; sourceTree = "<group>"; };
+		AB2026091200000000000000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AB2026091200000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AB2026091200000000000100 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AB2026091200000000000101 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AB2026091200000000000200 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AB2026091200000000000300 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -289,17 +298,10 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		0E49E56A4A748A3A4C69EFC8 /* Paywall */ = {
-			isa = PBXGroup;
-			children = (
-				80FA0E59182AE9EE86FCD708 /* PaywallView.swift */,
-			);
-			path = Paywall;
-			sourceTree = "<group>";
-		};
 		130AD70FD95A4806574C6E3A /* NATURaLWidgets */ = {
 			isa = PBXGroup;
 			children = (
+				AB2026091200000000000200 /* PrivacyInfo.xcprivacy */,
 				53F1C4187BEB28F5B75F49CA /* ActivityRingsWidget.swift */,
 				033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */,
 				BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */,
@@ -321,15 +323,6 @@
 			children = (
 			);
 			name = Packages;
-			sourceTree = "<group>";
-		};
-		209AFF137B15F38B84BA7AF5 /* Subscription */ = {
-			isa = PBXGroup;
-			children = (
-				5D6723693F5CD2FDC781A166 /* Entitlement.swift */,
-				9A5DBA4E63F2205B25690B01 /* SubscriptionManager.swift */,
-			);
-			path = Subscription;
 			sourceTree = "<group>";
 		};
 		2241B5DB692077C6A3C353CF /* Tests */ = {
@@ -369,6 +362,7 @@
 		46E4583986DBE0438D7C23D6 /* NATURaLLiveActivity */ = {
 			isa = PBXGroup;
 			children = (
+				AB2026091200000000000300 /* PrivacyInfo.xcprivacy */,
 				49413D9326C03F255A9050CC /* Info.plist */,
 				4324640DCAEA8E0B08DAC833 /* WorkoutLiveActivity.swift */,
 			);
@@ -378,6 +372,8 @@
 		4C9B3C81464508E6A8F3D306 /* Bonhomme */ = {
 			isa = PBXGroup;
 			children = (
+				AB2026091200000000000000 /* Assets.xcassets */,
+				AB2026091200000000000001 /* PrivacyInfo.xcprivacy */,
 				E748EC556CACF57F5DA64FA6 /* App */,
 				871D995BCC5C0F397B87E1C3 /* Features */,
 				B68118C5D7CD33B61FA1156D /* Services */,
@@ -506,15 +502,14 @@
 			path = Music;
 			sourceTree = "<group>";
 		};
-		871D995BCC5C0F397B87E1C3 /* Features */ = {
-			isa = PBXGroup;
-			children = (
-				5046310E6BDB98A70926195D /* History */,
-				0E49E56A4A748A3A4C69EFC8 /* Paywall */,
-				A7C1E2B40D91F5A2C3B4D505 /* Prescriptions */,
-				9DBEDABBF844160E3256A1D0 /* Summary */,
-				703B6E2D72B9A3F1184DD037 /* Workout */,
-			);
+			871D995BCC5C0F397B87E1C3 /* Features */ = {
+				isa = PBXGroup;
+				children = (
+					5046310E6BDB98A70926195D /* History */,
+					A7C1E2B40D91F5A2C3B4D505 /* Prescriptions */,
+					9DBEDABBF844160E3256A1D0 /* Summary */,
+					703B6E2D72B9A3F1184DD037 /* Workout */,
+				);
 			path = Features;
 			sourceTree = "<group>";
 		};
@@ -562,21 +557,20 @@
 			path = Summary;
 			sourceTree = "<group>";
 		};
-		B68118C5D7CD33B61FA1156D /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				2ACC9ECBEBB487CBABE92389 /* CareKit */,
-				9CF01F0F472008BA63685FD6 /* HealthKit */,
+				B68118C5D7CD33B61FA1156D /* Services */ = {
+				isa = PBXGroup;
+				children = (
+					2ACC9ECBEBB487CBABE92389 /* CareKit */,
+					9CF01F0F472008BA63685FD6 /* HealthKit */,
 				869CEDD7ABE929A5415359CE /* Music */,
 				8154D986313A83174D4B20A4 /* Persistence */,
-				53B67D7396B237BB9805387B /* SharePlay */,
-				B98FCC200A649E73AA5510D2 /* Siri */,
-				209AFF137B15F38B84BA7AF5 /* Subscription */,
-				77F1D93B9FC472D342AC4CBC /* WatchConnectivity */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
+					53B67D7396B237BB9805387B /* SharePlay */,
+					B98FCC200A649E73AA5510D2 /* Siri */,
+					77F1D93B9FC472D342AC4CBC /* WatchConnectivity */,
+				);
+				path = Services;
+				sourceTree = "<group>";
+			};
 		B98FCC200A649E73AA5510D2 /* Siri */ = {
 			isa = PBXGroup;
 			children = (
@@ -622,6 +616,8 @@
 		DC23BE0794C05E7FA04CF314 /* BonhommeWatch */ = {
 			isa = PBXGroup;
 			children = (
+				AB2026091200000000000100 /* Assets.xcassets */,
+				AB2026091200000000000101 /* PrivacyInfo.xcprivacy */,
 				73431774202DA336377341EB /* App */,
 				A52AF504CFE0BEDF4D47B83E /* Info.plist */,
 			);
@@ -674,6 +670,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7045E2E8379D46BFFA767FDE /* Build configuration list for PBXNativeTarget "BonhommeWatch" */;
 			buildPhases = (
+				AA2026091200000000000001 /* Resources */,
 				251FBA5035B3A36B86D68809 /* Sources */,
 				4CFF797DB6C64CBCB700A3DE /* Frameworks */,
 			);
@@ -725,6 +722,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F98DE11A1125C91904B9DE5A /* Build configuration list for PBXNativeTarget "NATURaLWidgets" */;
 			buildPhases = (
+				AA2026091200000000000002 /* Resources */,
 				0E2C3DDD8F819138FFB68E0F /* Sources */,
 				B93A1141443322ACBD774BE4 /* Frameworks */,
 			);
@@ -756,6 +754,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8309BC7E1A0B7274B64F0F4A /* Build configuration list for PBXNativeTarget "NATURaLLiveActivity" */;
 			buildPhases = (
+				AA2026091200000000000300 /* Resources */,
 				F0852BD9CBE9F80EB030D0A8 /* Sources */,
 				F8AF7353264A63268E534ABF /* Frameworks */,
 			);
@@ -770,14 +769,17 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BF1E96EAFD7A37E437EEC062 /* Build configuration list for PBXNativeTarget "Bonhomme" */;
 			buildPhases = (
+				AA2026091200000000000000 /* Resources */,
 				75D36BED9165EA876343B76C /* Sources */,
 				97EFB573CCBC7A8C5EF5807F /* Frameworks */,
 				1AAB605232D382A12169D41C /* Embed Extensions */,
+				AD2026091200000000000002 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				0669C55D86949C21B1E89871 /* PBXTargetDependency */,
+				AD2026091200000000000004 /* Watch dependency */,
 				A08EB289D4A6F49014354537 /* PBXTargetDependency */,
 			);
 			name = Bonhomme;
@@ -872,6 +874,13 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		AA2026091200000000000000 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000000, AC2026091200000000000001, ); runOnlyForDeploymentPostprocessing = 0; };
+		AA2026091200000000000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000100, AC2026091200000000000101, ); runOnlyForDeploymentPostprocessing = 0; };
+		AA2026091200000000000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000200, ); runOnlyForDeploymentPostprocessing = 0; };
+		AA2026091200000000000300 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000300, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		0E2C3DDD8F819138FFB68E0F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -917,7 +926,6 @@
 				ECA094B581739F661B6FADB1 /* BonhommeApp.swift in Sources */,
 				4FEF09430A85431393D8E1FF /* DebugDashboardView.swift in Sources */,
 				8D0E4ACCC2765CFA20347728 /* HistoryView.swift in Sources */,
-				238BCEA39FF4AD36C857045E /* PaywallView.swift in Sources */,
 				B2A4F46F38A97347A6802603 /* SummaryView.swift in Sources */,
 				EBD6400DD749D6F607C87EB7 /* CountdownView.swift in Sources */,
 				534933C72F8892F600628680 /* WorkoutLiveActivity.swift in Sources */,
@@ -949,8 +957,6 @@
 				00000A792B5E2D3E20A00DD9 /* WorkoutIntents.swift in Sources */,
 				ECD6C4E772A9451EA1DB43B3 /* IntentBridge.swift in Sources */,
 				534933C22F88928400628680 /* YogaStyle+HealthKit.swift in Sources */,
-				D95E25FE6B51A3234313A654 /* Entitlement.swift in Sources */,
-				DB44A4EC754338206E4E88DE /* SubscriptionManager.swift in Sources */,
 				28542F168E771A3D8C03D04E /* PhoneConnectivityBridge.swift in Sources */,
 				534933C92F88934C00628680 /* WorkoutShareCard.swift in Sources */,
 				E3A9130BFEED01CCE906DCA3 /* ActivityRingsView.swift in Sources */,
@@ -1007,6 +1013,7 @@
 			target = CE2F95449EA116BB80C95669 /* Bonhomme */;
 			targetProxy = 79FC3CBBBDB59F4516824DC4 /* PBXContainerItemProxy */;
 		};
+		AD2026091200000000000004 = {isa = PBXTargetDependency; target = 3CBBBFC801363D2E6D9E6893; targetProxy = AD2026091200000000000003; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -1059,9 +1066,10 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1139,6 +1147,9 @@
 		5C9C5FB500F94AF8DE406AB6 /* Release configuration for PBXNativeTarget "BonhommeWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				TARGETED_DEVICE_FAMILY = 4;
+				SKIP_INSTALL = YES;
 				CODE_SIGN_ENTITLEMENTS = BonhommeWatch/BonhommeWatch.entitlements;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1146,7 +1157,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeWatch/Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeWatch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1218,10 +1229,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
 				COPY_PHASE_STRIP = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1286,7 +1298,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bonhomme/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1309,7 +1321,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Bonhomme/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1401,13 +1413,16 @@
 		D39233ED5CAC8277B9363841 /* Debug configuration for PBXNativeTarget "BonhommeWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				TARGETED_DEVICE_FAMILY = 4;
+				SKIP_INSTALL = YES;
 				CODE_SIGN_ENTITLEMENTS = BonhommeWatch/BonhommeWatch.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeWatch/Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.natural.BonhommeWatch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
