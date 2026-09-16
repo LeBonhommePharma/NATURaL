@@ -8,6 +8,11 @@ extension Notification.Name {
     /// Posted when an App Intent requests starting a workout plan.
     /// `userInfo["planId"]` is a `String`.
     static let intentStartWorkoutPlan = Notification.Name("natural.intentStartWorkoutPlan")
+    static let intentPauseWorkout = Notification.Name("natural.intentPauseWorkout")
+    static let intentResumeWorkout = Notification.Name("natural.intentResumeWorkout")
+    static let intentEndWorkout = Notification.Name("natural.intentEndWorkout")
+    static let intentLogPose = Notification.Name("natural.intentLogPose")
+    static let intentExplainSCI = Notification.Name("natural.intentExplainSCI")
 }
 
 // MARK: - Intent Bridge
@@ -76,8 +81,42 @@ final class IntentBridge {
         )
     }
 
+    func requestPause() {
+        NotificationCenter.default.post(name: .intentPauseWorkout, object: nil)
+    }
+
+    func requestResume() {
+        NotificationCenter.default.post(name: .intentResumeWorkout, object: nil)
+    }
+
+    func requestEnd() {
+        NotificationCenter.default.post(name: .intentEndWorkout, object: nil)
+    }
+
+    func requestLogPose() {
+        NotificationCenter.default.post(name: .intentLogPose, object: nil)
+    }
+
+    func requestExplainSCI() {
+        NotificationCenter.default.post(name: .intentExplainSCI, object: nil)
+    }
+
+    func sciExplanationDialog(plainLanguage: Bool = true) -> String {
+        let snap = currentFocusSnapshot()
+        let trend = snap.trend.asSCITrend
+        return (plainLanguage
+            ? SCIExplanationCopy.plainLanguage(score: snap.score, trend: trend)
+            : SCIExplanationCopy.technical(score: snap.score, trend: trend)
+        ).localized
+    }
+
     /// Consume and clear a pending plan id (call from UI after navigation).
+    /// Re-reads the App Group suite so a Control Widget write is visible even if
+    /// this process was already running when `intent.pendingPlanId` was set.
     func consumePendingPlanId() -> String? {
+        if let stored = defaults.string(forKey: Keys.pendingPlanId) {
+            pendingPlanId = stored
+        }
         let id = pendingPlanId
         pendingPlanId = nil
         return id

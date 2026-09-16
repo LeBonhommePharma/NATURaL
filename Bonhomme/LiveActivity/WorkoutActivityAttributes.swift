@@ -25,5 +25,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         let sciScore: Double?
         /// Guided / effective breath rate (breaths per minute).
         let breathsPerMinute: Double?
+        /// Session paused — Live Activity uses strawberry pause chrome.
+        var isPaused: Bool = false
     }
 }

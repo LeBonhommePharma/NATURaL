@@ -125,6 +125,12 @@ public struct TVDisplayPayload: Codable, Sendable {
     public let sequenceIndex: Int
     /// Total number of poses in the sequence.
     public let sequenceTotal: Int
+    /// Universal beat target BPM when the phone session has one.
+    public var tempoBPM: Double?
+    /// Grounding policy from Crooks control (nil on older payloads).
+    public var isGrounding: Bool?
+    /// Whether adaptive music is playing on the companion.
+    public var isMusicPlaying: Bool?
 
     public init(
         currentPose: Pose,
@@ -134,7 +140,10 @@ public struct TVDisplayPayload: Codable, Sendable {
         sessionElapsed: TimeInterval,
         isPaused: Bool,
         sequenceIndex: Int,
-        sequenceTotal: Int
+        sequenceTotal: Int,
+        tempoBPM: Double? = nil,
+        isGrounding: Bool? = nil,
+        isMusicPlaying: Bool? = nil
     ) {
         self.currentPose = currentPose
         self.poseTimeRemaining = poseTimeRemaining
@@ -145,5 +154,20 @@ public struct TVDisplayPayload: Codable, Sendable {
         self.isPaused = isPaused
         self.sequenceIndex = sequenceIndex
         self.sequenceTotal = sequenceTotal
+        self.tempoBPM = tempoBPM
+        self.isGrounding = isGrounding
+        self.isMusicPlaying = isMusicPlaying
+    }
+
+    public var hudMetrics: SessionHUDMetrics {
+        biofeedback.hudMetrics(
+            elapsed: sessionElapsed,
+            poseIndex: sequenceIndex,
+            poseCount: sequenceTotal,
+            tempoBPM: tempoBPM,
+            isGrounding: isGrounding ?? false,
+            isPaused: isPaused,
+            isMusicPlaying: isMusicPlaying ?? false
+        )
     }
 }

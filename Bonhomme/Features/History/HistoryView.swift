@@ -26,7 +26,7 @@ struct HistoryView: View {
                         Text(item.planName).font(.headline)
                         Text(item.startDate, style: .date).foregroundStyle(.secondary)
                         Label("\(Int(item.totalDuration) / 60) min", systemImage: "clock")
-                            .font(.subheadline).foregroundStyle(.teal)
+                            .font(.subheadline).foregroundStyle(BrandColor.aqua)
                     }
                     .padding(.vertical, 6)
                     .accessibilityElement(children: .combine)
@@ -56,6 +56,7 @@ struct HistoryView: View {
             }
         }
         .navigationTitle(LocalizedString(en: "History", fr: "Historique").localized)
+        .listStyle(.insetGrouped)
         .task { await loadHistory() }
         .refreshable { await loadHistory() }
     }

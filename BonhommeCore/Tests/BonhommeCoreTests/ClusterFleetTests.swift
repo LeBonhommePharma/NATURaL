@@ -100,10 +100,20 @@ final class ClusterFleetTests: XCTestCase {
     func testClusterFleetSpatialModulation() async {
         let fleet = ClusterFleet()
         await fleet.applySpatialModulation(depth: 0.5, beta: -0.8)
-        let snap = await fleet.snapshot()
+        var snap = await fleet.snapshot()
         XCTAssertEqual(snap.spatialDepth, 0.5, accuracy: 1e-9)
         XCTAssertEqual(snap.listenerYawDegrees, -180, accuracy: 1e-9)
         XCTAssertEqual(snap.crownBeta, -0.8, accuracy: 1e-9)
+        XCTAssertEqual(snap.headphoneYawDegrees, 0, accuracy: 1e-9)
+
+        await fleet.applyHeadphoneAttitude(yawDegrees: 30)
+        snap = await fleet.snapshot()
+        XCTAssertEqual(snap.headphoneYawDegrees, 30, accuracy: 1e-9)
+        XCTAssertEqual(snap.listenerYawDegrees, -150, accuracy: 1e-9)
+
+        await fleet.applyHeadphoneAttitude(yawDegrees: 0)
+        snap = await fleet.snapshot()
+        XCTAssertEqual(snap.listenerYawDegrees, -180, accuracy: 1e-9)
     }
 
     func testClusterFleetPreservesWatchCompanion() async {

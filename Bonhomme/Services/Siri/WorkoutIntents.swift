@@ -231,6 +231,68 @@ struct GetLastDrugResponseIntent: AppIntent {
     }
 }
 
+struct PauseWorkoutIntent: AppIntent {
+    static let title: LocalizedStringResource = "Pause Session"
+    static let description: IntentDescription = "Pause the chair yoga session in progress"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        await MainActor.run { IntentBridge.shared.requestPause() }
+        let dialog = LocalizedString(en: "Pausing your session.", fr: "Mise en pause de la séance.").localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
+struct ResumeWorkoutIntent: AppIntent {
+    static let title: LocalizedStringResource = "Resume Session"
+    static let description: IntentDescription = "Resume a paused chair yoga session"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        await MainActor.run { IntentBridge.shared.requestResume() }
+        let dialog = LocalizedString(en: "Resuming your session.", fr: "Reprise de la séance.").localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
+struct EndWorkoutIntent: AppIntent {
+    static let title: LocalizedStringResource = "End Session"
+    static let description: IntentDescription = "End the chair yoga session in progress"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        await MainActor.run { IntentBridge.shared.requestEnd() }
+        let dialog = LocalizedString(en: "Ending your session.", fr: "Fin de la séance.").localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
+struct LogPoseIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log Pose"
+    static let description: IntentDescription = "Mark the current chair yoga pose as held"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        await MainActor.run { IntentBridge.shared.requestLogPose() }
+        let dialog = LocalizedString(en: "Logged the current pose.", fr: "Posture actuelle enregistrée.").localized
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
+struct ExplainSCIIntent: AppIntent {
+    static let title: LocalizedStringResource = "Explain SCI"
+    static let description: IntentDescription = "Explain your Shannon Collapse Index in plain language"
+    static let openAppWhenRun = false
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let dialog = await MainActor.run { () -> String in
+            IntentBridge.shared.requestExplainSCI()
+            return IntentBridge.shared.sciExplanationDialog(plainLanguage: true)
+        }
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
+    }
+}
+
 // MARK: - App Shortcuts
 
 struct AppShortcuts: AppShortcutsProvider {
@@ -286,6 +348,57 @@ struct AppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Drug Response",
             systemImageName: "waveform.path.ecg"
+        )
+
+        AppShortcut(
+            intent: PauseWorkoutIntent(),
+            phrases: [
+                "Pause my \(.applicationName) session",
+                "Pause \(.applicationName)",
+            ],
+            shortTitle: "Pause",
+            systemImageName: "pause.fill"
+        )
+
+        AppShortcut(
+            intent: ResumeWorkoutIntent(),
+            phrases: [
+                "Resume my \(.applicationName) session",
+                "Continue \(.applicationName)",
+            ],
+            shortTitle: "Resume",
+            systemImageName: "play.fill"
+        )
+
+        AppShortcut(
+            intent: EndWorkoutIntent(),
+            phrases: [
+                "End my \(.applicationName) session",
+                "Stop \(.applicationName)",
+            ],
+            shortTitle: "End",
+            systemImageName: "stop.fill"
+        )
+
+        AppShortcut(
+            intent: LogPoseIntent(),
+            phrases: [
+                "Log this pose in \(.applicationName)",
+                "Mark this pose in \(.applicationName)",
+            ],
+            shortTitle: "Log Pose",
+            systemImageName: "checkmark.circle"
+        )
+
+        AppShortcut(
+            intent: ExplainSCIIntent(),
+            phrases: [
+                "Explain SCI in \(.applicationName)",
+                "What does SCI mean in \(.applicationName)",
+                "Explain my focus score in \(.applicationName)",
+            ],
+            shortTitle: "Explain SCI",
+            systemImageName: "text.book.closed"
         )
     }
 }

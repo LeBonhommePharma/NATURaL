@@ -12,7 +12,7 @@ struct StreakWidget: Widget {
         }
         .configurationDisplayName("Yoga Streak")
         .description("Track consecutive practice days, SCI, and last session vitals.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }
 
@@ -71,6 +71,10 @@ struct StreakWidgetView: View {
         switch family {
         case .systemMedium:
             mediumBody
+        case .accessoryCircular:
+            accessoryCircular
+        case .accessoryRectangular:
+            accessoryRectangular
         default:
             smallBody
         }
@@ -80,7 +84,7 @@ struct StreakWidgetView: View {
         VStack(spacing: 6) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 24))
-                .foregroundStyle(.orange)
+                .foregroundStyle(BrandTokens.tangerine)
 
             Text("\(entry.streakDays)")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -93,7 +97,7 @@ struct StreakWidgetView: View {
             if let sci = entry.sciScore {
                 Text("SCI \(Int((sci * 100).rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BrandTokens.violet)
             }
         }
     }
@@ -103,7 +107,7 @@ struct StreakWidgetView: View {
             VStack(spacing: 4) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 22))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(BrandTokens.tangerine)
                 Text("\(entry.streakDays)")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -121,7 +125,7 @@ struct StreakWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 metricRow(
                     icon: "waveform.path.ecg",
-                    tint: .cyan,
+                    tint: BrandTokens.violet,
                     title: "SCI",
                     value: entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
                 )
@@ -133,13 +137,53 @@ struct StreakWidgetView: View {
                 )
                 metricRow(
                     icon: "wind",
-                    tint: .mint,
+                    tint: BrandTokens.mint,
                     title: "Breath",
                     value: entry.breathRate.map { String(format: "%.0f/min", $0) } ?? "—"
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var accessoryCircular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 1) {
+                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))" } ?? "—")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(BrandTokens.violet)
+                Text("SCI")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(BrandTokens.magnesium)
+            }
+        }
+        .widgetAccentable()
+    }
+
+    private var accessoryRectangular: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("SCI")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(BrandTokens.violet)
+                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—")
+                    .font(.headline.monospacedDigit())
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(entry.streakDays)d")
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(BrandTokens.tangerine)
+                if let hr = entry.heartRate {
+                    Text("\(hr) BPM")
+                        .font(.caption2)
+                        .foregroundStyle(BrandTokens.magnesium)
+                }
+            }
+        }
+        .widgetAccentable()
     }
 
     private func metricRow(icon: String, tint: Color, title: String, value: String) -> some View {

@@ -84,6 +84,7 @@ struct RingsWidgetView: View {
                     Text("\(Int((sci * 100).rounded()))")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(BrandTokens.violet)
                 } else {
                     Image(systemName: "figure.yoga")
                         .font(.system(size: 12))
@@ -102,12 +103,12 @@ struct RingsWidgetView: View {
                     if entry.streakDays > 0 {
                         Label("\(entry.streakDays)", systemImage: "flame.fill")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(BrandTokens.tangerine)
                     }
                     if let sci = entry.sciScore {
                         Text("SCI \(Int((sci * 100).rounded()))%")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.cyan)
+                            .foregroundStyle(BrandTokens.violet)
                     }
                     if let hr = entry.heartRate {
                         Label("\(hr)", systemImage: "heart.fill")
@@ -117,7 +118,7 @@ struct RingsWidgetView: View {
                     if let breath = entry.breathRate {
                         Label(String(format: "%.0f", breath), systemImage: "wind")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.mint)
+                            .foregroundStyle(BrandTokens.mint)
                     }
                 }
                 .lineLimit(1)
