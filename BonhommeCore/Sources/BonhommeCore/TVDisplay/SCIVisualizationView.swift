@@ -11,12 +11,17 @@ public struct SCIVisualizationView: View {
         self.trend = trend
     }
 
-    public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: score == nil)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            let breath = (sin(t * .pi * 2.0 / 3.5) + 1.0) * 0.5
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-            VStack(spacing: 8) {
+    public var body: some View {
+        TimelineView(.animation(
+            minimumInterval: SessionMotion.timelineInterval(reduceMotion),
+            paused: score == nil || reduceMotion
+        )) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let breath = reduceMotion ? 0.5 : (sin(t * .pi * 2.0 / 3.5) + 1.0) * 0.5
+
+            VStack(spacing: SessionSpacing.xs) {
                 ZStack {
                     // Ambient radial glow
                     Circle()
@@ -46,7 +51,7 @@ public struct SCIVisualizationView: View {
 
                     // Background track
                     Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 6)
+                        .stroke(BrandColor.hairline, lineWidth: 6)
 
                     // Main ring
                     Circle()
@@ -54,28 +59,28 @@ public struct SCIVisualizationView: View {
                         .stroke(glowColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .shadow(color: glowColor.opacity(0.7), radius: 2)
-                        .shadow(color: glowColor.opacity(0.4), radius: 10)
+                        .sessionGlow(glowColor, radius: 10, paused: reduceMotion)
                         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
 
                     // Inner highlight
                     Circle()
                         .trim(from: 0, to: score ?? 0)
-                        .stroke(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                        .stroke(BrandColor.magnesium.opacity(0.30), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
 
                     VStack(spacing: 2) {
                         if let score {
                             Text(String(format: "%.0f", score * 100))
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .font(SessionType.metric(size: 28))
                                 .monospacedDigit()
-                                .foregroundStyle(.white)
-                                .shadow(color: glowColor.opacity(0.5), radius: 6)
+                                .foregroundStyle(BrandColor.fg)
+                                .sessionGlow(glowColor, radius: 6, paused: reduceMotion)
                                 .contentTransition(.numericText())
                         } else {
                             Text("--")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.3))
+                                .font(SessionType.metric(size: 28))
+                                .foregroundStyle(BrandColor.magnesium)
                         }
 
                         Image(systemName: trendIcon)
@@ -88,36 +93,19 @@ public struct SCIVisualizationView: View {
                 }
                 .frame(width: 100, height: 100)
 
-                Text(LocalizedString(en: "Focus Index", fr: "Indice de concentration", es: "Índice de concentración", ja: "集中力指数", zh: "专注力指数", ko: "집중력 지수", ru: "Индекс концентрации", de: "Fokus-Index", ar: "مؤشر التركيز").localized)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
+                Text(SessionHUDCopy.focusIndex.localized)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(BrandColor.fgMuted)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(SessionHUDCopy.focusIndex.localized))
+        .accessibilityValue(Text(score.map { "\(Int(($0 * 100).rounded())) percent" } ?? "unavailable"))
     }
 
-    private var glowColor: Color {
-        guard let score else { return .gray }
-        switch score {
-        case ..<0.3: return .red
-        case 0.3..<0.6: return .orange
-        case 0.6..<0.8: return .cyan
-        default: return .green
-        }
-    }
+    private var glowColor: Color { SessionPalette.sci(score) }
 
-    private var trendIcon: String {
-        switch trend {
-        case .improving: return "arrow.up.right"
-        case .stable: return "arrow.right"
-        case .declining: return "arrow.down.right"
-        }
-    }
+    private var trendIcon: String { trend.symbolName }
 
-    private var trendColor: Color {
-        switch trend {
-        case .improving: return .green
-        case .stable: return .white.opacity(0.5)
-        case .declining: return .orange
-        }
-    }
+    private var trendColor: Color { SessionPalette.trend(trend) }
 }

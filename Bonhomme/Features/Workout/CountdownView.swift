@@ -5,67 +5,53 @@ import BonhommeCore
 struct CountdownView: View {
     let secondsRemaining: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rippleTrigger: Int = 0
-    @State private var readyOpacity: Double = 0.4
 
     var body: some View {
         ZStack {
-            // Depth gradient background
             RadialGradient(
-                colors: [Color.black.opacity(0.6), Color.black.opacity(0.95)],
+                colors: [BrandColor.bg.opacity(0.6), BrandColor.bg],
                 center: .center, startRadius: 50, endRadius: 400
             )
             .ignoresSafeArea()
 
-            // Shockwave ripple rings
-            ForEach(0..<2, id: \.self) { i in
+            if !reduceMotion {
+                ForEach(0..<2, id: \.self) { i in
+                    Circle()
+                        .stroke(BrandColor.magnesium.opacity(0.22), lineWidth: 2)
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(rippleScale(index: i))
+                        .opacity(rippleOpacity(index: i))
+                        .animation(
+                            .easeOut(duration: 0.8).delay(Double(i) * 0.15),
+                            value: rippleTrigger
+                        )
+                }
+
                 Circle()
-                    .stroke(Color.white.opacity(0.2), lineWidth: 2)
-                    .frame(width: 100, height: 100)
-                    .scaleEffect(rippleScale(index: i))
-                    .opacity(rippleOpacity(index: i))
-                    .animation(
-                        .easeOut(duration: 0.8).delay(Double(i) * 0.15),
-                        value: rippleTrigger
+                    .fill(
+                        RadialGradient(
+                            colors: [BrandColor.mint.opacity(0.12), .clear],
+                            center: .center, startRadius: 10, endRadius: 120
+                        )
                     )
+                    .frame(width: 240, height: 240)
+                    .scaleEffect(rippleTrigger % 2 == 0 ? 0.9 : 1.1)
+                    .animation(.easeOut(duration: 0.4), value: rippleTrigger)
             }
 
-            // Radial light burst
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.white.opacity(0.12), .clear],
-                        center: .center, startRadius: 10, endRadius: 120
-                    )
-                )
-                .frame(width: 240, height: 240)
-                .scaleEffect(rippleTrigger % 2 == 0 ? 0.9 : 1.1)
-                .animation(.easeOut(duration: 0.4), value: rippleTrigger)
-
-            VStack(spacing: 16) {
-                Text("\(secondsRemaining)")
-                    .font(.system(size: 120, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .shadow(color: .white.opacity(0.3), radius: 2)
-                    .shadow(color: .cyan.opacity(0.2), radius: 8)
-                    .shadow(color: .cyan.opacity(0.1), radius: 20)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.35, dampingFraction: 0.6, blendDuration: 0.1), value: secondsRemaining)
-                    .scaleEffect(rippleTrigger % 2 == 0 ? 1.0 : 1.03)
-
-                Text(LocalizedString(en: "Get Ready", fr: "Préparez-vous").localized)
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(readyOpacity))
+            VStack(spacing: SessionSpacing.md) {
+                SessionCountdownNumeral(remaining: TimeInterval(secondsRemaining), tint: BrandColor.fg)
+                Text(SessionHUDCopy.getReady.localized)
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(BrandColor.fgMuted)
             }
         }
         .ignoresSafeArea()
         .onChange(of: secondsRemaining) { _, _ in
+            guard !reduceMotion else { return }
             rippleTrigger += 1
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                readyOpacity = 0.7
-            }
         }
     }
 

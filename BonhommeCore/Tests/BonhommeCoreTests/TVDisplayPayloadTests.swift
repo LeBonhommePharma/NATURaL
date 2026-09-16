@@ -82,6 +82,53 @@ final class TVDisplayPayloadTests: XCTestCase {
         XCTAssertEqual(snapshot.activeCalories, 0)
     }
 
+    func testPayloadWithOptionalHUDFieldsRoundTrip() throws {
+        let payload = TVDisplayPayload(
+            currentPose: PoseCatalog.seatedMountain,
+            poseTimeRemaining: 10,
+            totalPoseTime: 30,
+            biofeedback: BiofeedbackSnapshot(heartRate: 70, sciScore: 0.4),
+            sessionElapsed: 40,
+            isPaused: false,
+            sequenceIndex: 1,
+            sequenceTotal: 8,
+            tempoBPM: 92,
+            isGrounding: true,
+            isMusicPlaying: true
+        )
+        let data = try JSONEncoder().encode(payload)
+        let decoded = try JSONDecoder().decode(TVDisplayPayload.self, from: data)
+        XCTAssertEqual(decoded.tempoBPM, 92)
+        XCTAssertEqual(decoded.isGrounding, true)
+        XCTAssertEqual(decoded.isMusicPlaying, true)
+        XCTAssertEqual(decoded.hudMetrics.entropyState, .grounding)
+        XCTAssertEqual(decoded.hudMetrics.tempoText, "92")
+    }
+
+    func testLegacyPayloadWithoutHUDFieldsStillDecodes() throws {
+        let pose = PoseCatalog.seatedMountain
+        let snapshot = BiofeedbackSnapshot(heartRate: 72, sciScore: 0.85, sciTrend: .improving)
+        let payload = TVDisplayPayload(
+            currentPose: pose,
+            poseTimeRemaining: 15,
+            totalPoseTime: 30,
+            biofeedback: snapshot,
+            sessionElapsed: 120,
+            isPaused: false,
+            sequenceIndex: 2,
+            sequenceTotal: 10
+        )
+        var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(payload)) as! [String: Any]
+        object.removeValue(forKey: "tempoBPM")
+        object.removeValue(forKey: "isGrounding")
+        object.removeValue(forKey: "isMusicPlaying")
+        let data = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try JSONDecoder().decode(TVDisplayPayload.self, from: data)
+        XCTAssertNil(decoded.tempoBPM)
+        XCTAssertNil(decoded.isGrounding)
+        XCTAssertEqual(decoded.hudMetrics.entropyState, .coherent)
+    }
+
     func testSCITrendCodable() throws {
         for trend in [SCITrend.improving, .stable, .declining] {
             let data = try JSONEncoder().encode(trend)

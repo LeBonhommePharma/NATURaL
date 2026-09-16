@@ -47,6 +47,8 @@ final class WorkoutFlowViewModel {
     private(set) var breathsPerMinute: Double = BreathingGuideActuatorChannel.defaultBreathsPerMinute
     /// Sticky grounding flag for breath UI prominence.
     private(set) var isGrounding: Bool = false
+    /// Universal beat target (music / haptics). Falls back to plan nominal BPM.
+    private(set) var beatBPM: Double = 0
 
     /// Tracks whether this session was restored from a killed app.
     private(set) var isRestoredSession = false
@@ -76,6 +78,27 @@ final class WorkoutFlowViewModel {
         case .transition(let nextIdx, _): return max(0, nextIdx - 1)
         default: return 0
         }
+    }
+
+    /// Live HUD snapshot shared by phone, iPad, and TV relay.
+    var sessionHUDMetrics: SessionHUDMetrics {
+        let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
+        let tempo = beatBPM > 0 ? beatBPM : plan.style.nominalBPM
+        return SessionHUDMetrics(
+            sciScore: insight?.score,
+            sciTrend: insight?.trend.asSCITrend ?? .stable,
+            heartRate: recorder.currentHeartRate,
+            tempoBPM: tempo,
+            isGrounding: isGrounding,
+            isPaused: isPaused,
+            isMusicPlaying: musicService.isPlaying,
+            isHeadphonesConnected: musicService.isHeadphonesConnected,
+            calories: recorder.activeCalories,
+            elapsed: elapsedTime,
+            poseIndex: currentPoseIndex,
+            poseCount: plan.poseCount,
+            breathsPerMinute: breathsPerMinute
+        )
     }
 
     // MARK: - Private
@@ -257,6 +280,7 @@ final class WorkoutFlowViewModel {
         persistenceCounter = 0
         posesCompletedCount = 0
         sessionStartDate = Date()
+        beatBPM = plan.style.nominalBPM
         phase = .countdown(secondsRemaining: 3)
         musicService.bindUniversalBeatSync()
         controlStartupTask = Task {
@@ -278,6 +302,7 @@ final class WorkoutFlowViewModel {
         musicService.pause()
         timerTask?.cancel()
         persistState()
+        updateLiveActivity()
     }
 
     func resume() {
@@ -285,6 +310,7 @@ final class WorkoutFlowViewModel {
         elapsedAnchor = Date()
         isPaused = false
         recorder.resume()
+        updateLiveActivity()
         musicStartupTask = Task { [weak self] in
             guard let self, !Task.isCancelled, self.phase != .complete else { return }
             await self.musicService.playWorkoutMusic(mood: self.musicService.adaptiveMood, style: self.plan.style)
@@ -388,7 +414,10 @@ final class WorkoutFlowViewModel {
             sessionElapsed: elapsedTime,
             isPaused: isPaused,
             sequenceIndex: currentPoseIndex,
-            sequenceTotal: plan.poseCount
+            sequenceTotal: plan.poseCount,
+            tempoBPM: beatBPM > 0 ? beatBPM : plan.style.nominalBPM,
+            isGrounding: isGrounding,
+            isMusicPlaying: musicService.isPlaying
         )
     }
 
@@ -459,7 +488,8 @@ final class WorkoutFlowViewModel {
             heartRate: nil,
             calories: 0,
             sciScore: feedbackEngine.latestInsight(for: .heartRateVariability)?.score,
-            breathsPerMinute: breathsPerMinute
+            breathsPerMinute: breathsPerMinute,
+            isPaused: isPaused
         )
 
         do {
@@ -485,7 +515,8 @@ final class WorkoutFlowViewModel {
             heartRate: hr,
             calories: Int(recorder.activeCalories),
             sciScore: sci,
-            breathsPerMinute: breathsPerMinute
+            breathsPerMinute: breathsPerMinute,
+            isPaused: isPaused
         )
 
         // Mirror into App Group so home-screen widgets can show latest vitals.
@@ -513,7 +544,8 @@ final class WorkoutFlowViewModel {
             heartRate: hr,
             calories: Int(recorder.activeCalories),
             sciScore: sci,
-            breathsPerMinute: breathsPerMinute
+            breathsPerMinute: breathsPerMinute,
+            isPaused: isPaused
         )
 
         AppGroupStore.writeSessionMetricsAndReload(
@@ -729,6 +761,9 @@ final class WorkoutFlowViewModel {
         // Breath UI / Watch consumers read these; never block on UI work here.
         breathsPerMinute = snap.effectiveBreathsPerMinute
         isGrounding = snap.isGrounding
+        if let bpm = snap.beat?.bpm, bpm.isFinite, bpm > 0 {
+            beatBPM = bpm
+        }
         // Tempo (issue #11): listener-only — UniversalBeatSync → MusicService.bindUniversalBeatSync
         // → private applyBeatSync. Never call music rate APIs here (was double-writing playbackRate).
 

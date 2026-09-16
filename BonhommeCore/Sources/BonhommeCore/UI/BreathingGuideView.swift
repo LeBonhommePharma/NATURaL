@@ -95,7 +95,7 @@ public struct BreathingGuideView: View {
         breathsPerMinute: Double,
         isGrounding: Bool = false,
         prominence: Prominence? = nil,
-        accent: Color = .cyan,
+        accent: Color = BrandColor.aqua,
         phaseOrigin: Date = Date(timeIntervalSinceReferenceDate: 0)
     ) {
         self.breathsPerMinute = breathsPerMinute

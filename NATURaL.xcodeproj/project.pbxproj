@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		43C739ACA93142DCFC9CB6DB /* BrandTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = E657E7917A1F80C71862F542 /* BrandTokens.swift */; };
+
+		1CA794DAE50868927F1CE203 /* BonhommeMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FD5EBE95776F502776D487 /* BonhommeMacApp.swift */; };
+		E45190E8F71E1915FB3A5096 /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638A5D49E1E953246982D360 /* MacRootView.swift */; };
+		D2A7FD00037C53AAC739DA26 /* BonhommeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5181CDD42CD9D0F73898DF42 /* BonhommeCore */; };
 		A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */; };
 		A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */; };
 		A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534933C42F8892F600628680 /* WorkoutActivityAttributes.swift */; };
@@ -138,6 +143,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E657E7917A1F80C71862F542 /* BrandTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandTokens.swift; sourceTree = "<group>"; };
+
+		D8D68778DF32A776C15043C6 /* BonhommeMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		41FD5EBE95776F502776D487 /* BonhommeMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonhommeMacApp.swift; sourceTree = "<group>"; };
+		638A5D49E1E953246982D360 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
+		405D230810B3C12B99387B03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EABF9CB9E1599CACD227B701 /* BonhommeMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BonhommeMac.entitlements; sourceTree = "<group>"; };
 		A7B1C2D30E4F5061728394A1 /* AppGroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
 		006F6FA2BCEEA68E98F883AA /* ActivityRingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRingsView.swift; sourceTree = "<group>"; };
 		033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NATURaLWidgetsBundle.swift; sourceTree = "<group>"; };
@@ -280,9 +292,36 @@
 			files = (
 			);
 		};
+
+		A2A312F3D40B04A03AF61002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				D2A7FD00037C53AAC739DA26 /* BonhommeCore in Frameworks */,
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+
+		343878FDEED435E9889E4F3D /* BonhommeMac */ = {
+			isa = PBXGroup;
+			children = (
+				D63535DC8969E7F75F6A0099 /* App */,
+				405D230810B3C12B99387B03 /* Info.plist */,
+				EABF9CB9E1599CACD227B701 /* BonhommeMac.entitlements */,
+			);
+			path = BonhommeMac;
+			sourceTree = "<group>";
+		};
+		D63535DC8969E7F75F6A0099 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				41FD5EBE95776F502776D487 /* BonhommeMacApp.swift */,
+				638A5D49E1E953246982D360 /* MacRootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		0A2C978E52A76F0AA9F68BB5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -294,6 +333,7 @@
 				96E8B2FA17B7BBC82AFA71BB /* NATURaLWidgets.appex */,
 				3AC78F2F5E1A8EC8A83A20D0 /* BonhommeTests.xctest */,
 				2EE08A39FAC0453AF19734D2 /* BonhommeUITests.xctest */,
+				D8D68778DF32A776C15043C6 /* BonhommeMac.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -306,6 +346,7 @@
 				033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */,
 				BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */,
 				FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */,
+				E657E7917A1F80C71862F542 /* BrandTokens.swift */,
 			);
 			path = NATURaLWidgets;
 			sourceTree = "<group>";
@@ -356,6 +397,7 @@
 				2241B5DB692077C6A3C353CF /* Tests */,
 				0A2C978E52A76F0AA9F68BB5 /* Products */,
 				154669CC2236551E32F273A3 /* Packages */,
+				343878FDEED435E9889E4F3D /* BonhommeMac */,
 			);
 			sourceTree = "<group>";
 		};
@@ -808,6 +850,26 @@
 			productReference = 57AA50F104A8F756A65C0651 /* BonhommeTV.app */;
 			productType = "com.apple.product-type.application";
 		};
+
+		FA697EE577EAEF5D0BF89212 /* BonhommeMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A50D36294FE72E676CE2C627 /* Build configuration list for PBXNativeTarget "BonhommeMac" */;
+			buildPhases = (
+				8E0C0129EA48299E04954C85 /* Sources */,
+				A2A312F3D40B04A03AF61002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BonhommeMac;
+			packageProductDependencies = (
+				5181CDD42CD9D0F73898DF42 /* BonhommeCore */,
+			);
+			productName = BonhommeMac;
+			productReference = D8D68778DF32A776C15043C6 /* BonhommeMac.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -864,6 +926,7 @@
 			targets = (
 				CE2F95449EA116BB80C95669 /* Bonhomme */,
 				F87083C4BE51F1CCA10B40AC /* BonhommeTV */,
+				FA697EE577EAEF5D0BF89212 /* BonhommeMac */,
 				3CBBBFC801363D2E6D9E6893 /* BonhommeWatch */,
 				4E22AE3417C5850EA6DA0D1A /* BonhommeVision */,
 				CBDE573061803B5CE517CE72 /* NATURaLLiveActivity */,
@@ -889,8 +952,9 @@
 				99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */,
 				918341A08086F652869D118B /* StreakWidget.swift in Sources */,
 				E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */,
-			
-				A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */,);
+				43C739ACA93142DCFC9CB6DB /* BrandTokens.swift in Sources */,
+				A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */,
+			);
 		};
 		251FBA5035B3A36B86D68809 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -989,6 +1053,14 @@
 				D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */,
 			
 				A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */,);
+		};
+
+		8E0C0129EA48299E04954C85 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				1CA794DAE50868927F1CE203 /* BonhommeMacApp.swift in Sources */,
+				E45190E8F71E1915FB3A5096 /* MacRootView.swift in Sources */,
+			);
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -1432,6 +1504,53 @@
 			};
 			name = Debug;
 		};
+
+		A53B6A3BC27B446A15A6DE34 /* Debug configuration for PBXNativeTarget "BonhommeMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BonhommeMac/BonhommeMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BonhommeMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A1CCE46142E2C3849414B25E /* Release configuration for PBXNativeTarget "BonhommeMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BonhommeMac/BonhommeMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BonhommeMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1507,6 +1626,15 @@
 			);
 			defaultConfigurationName = Release;
 		};
+
+		A50D36294FE72E676CE2C627 /* Build configuration list for PBXNativeTarget "BonhommeMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A53B6A3BC27B446A15A6DE34 /* Debug configuration for PBXNativeTarget "BonhommeMac" */,
+				A1CCE46142E2C3849414B25E /* Release configuration for PBXNativeTarget "BonhommeMac" */,
+			);
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -1549,6 +1677,12 @@
 			productName = BonhommeCore;
 		};
 		D2066727444F421784F230ED /* BonhommeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
+			productName = BonhommeCore;
+		};
+
+		5181CDD42CD9D0F73898DF42 /* BonhommeCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6B1B48011FD2DF61F369AFC4 /* XCLocalSwiftPackageReference "BonhommeCore" */;
 			productName = BonhommeCore;

@@ -8,8 +8,13 @@ public struct HeartRateGaugeView: View {
         self.bpm = bpm
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: bpm == nil)) { context in
+        TimelineView(.animation(
+            minimumInterval: reduceMotion ? 1.0 : (1.0 / 60.0),
+            paused: bpm == nil || reduceMotion
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let scale = heartbeatScale(t)
             let ringPhase = bpm != nil ? fmod(t, beatDuration) / beatDuration : 0.0
@@ -34,38 +39,40 @@ public struct HeartRateGaugeView: View {
                         .font(.system(size: 32))
                         .foregroundStyle(zoneColor)
                         .scaleEffect(scale)
-                        .shadow(color: zoneColor.opacity(0.5), radius: 3)
-                        .shadow(color: zoneColor.opacity(0.2), radius: 12)
+                        .sessionGlow(zoneColor, radius: 8, paused: reduceMotion)
                 }
                 .frame(width: 80, height: 80)
 
                 if let bpm {
                     Text("\(Int(bpm))")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(SessionType.metric(size: 48))
                         .monospacedDigit()
-                        .foregroundStyle(.white)
-                        .shadow(color: zoneColor.opacity(0.4), radius: 5)
+                        .foregroundStyle(BrandColor.fg)
+                        .sessionGlow(zoneColor, radius: 6)
                         .contentTransition(.numericText())
 
-                    Text("BPM")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
+                    Text(SessionHUDCopy.bpm.localized)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(BrandColor.fgMuted)
                 } else {
                     Text("--")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.3))
+                        .font(SessionType.metric(size: 48))
+                        .foregroundStyle(BrandColor.magnesium)
 
-                    Text("BPM")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.3))
+                    Text(SessionHUDCopy.bpm.localized)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(BrandColor.fgMuted)
                 }
 
                 Text(zoneName)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(zoneColor)
-                    .animation(.easeInOut(duration: 0.5), value: zoneName)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: zoneName)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(SessionHUDCopy.heartRate.localized))
+        .accessibilityValue(Text(bpm.map { "\(Int($0.rounded())) BPM, \(zoneName)" } ?? zoneName))
     }
 
     /// Multi-phase heartbeat: systolic spike -> diastolic rebound -> settle
@@ -93,15 +100,7 @@ public struct HeartRateGaugeView: View {
         return 60.0 / bpm
     }
 
-    private var zoneColor: Color {
-        guard let bpm else { return .gray }
-        switch bpm {
-        case ..<100: return .green
-        case 100..<130: return .yellow
-        case 130..<160: return .orange
-        default: return .red
-        }
-    }
+    private var zoneColor: Color { SessionPalette.heartRate(bpm) }
 
     private var zoneName: String {
         guard let bpm else {

@@ -41,7 +41,7 @@ public struct PoseCountdownView: View {
                 if !kinematics.setupSteps.isEmpty {
                     Text(kinematics.setupSteps.first?.localized ?? "")
                         .font(.system(size: 18, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(BrandColor.fgMuted)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
@@ -49,7 +49,7 @@ public struct PoseCountdownView: View {
 
                 Text(pose.name.localized)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(BrandColor.fg)
                     .shadow(color: catColor.opacity(0.3), radius: 8)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -73,7 +73,7 @@ public struct PoseCountdownView: View {
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
 
                     Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 8)
+                        .stroke(BrandColor.hairline, lineWidth: 8)
 
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
@@ -85,14 +85,14 @@ public struct PoseCountdownView: View {
 
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .stroke(BrandColor.magnesium.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
 
                     Text(timeString)
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(.white)
+                        .foregroundStyle(BrandColor.fg)
                         .shadow(color: catColor.opacity(0.3), radius: 6)
                         .contentTransition(.numericText())
                 }

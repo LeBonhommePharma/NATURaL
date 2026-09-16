@@ -53,25 +53,25 @@ struct HomeView: View {
                 // Style sections
                 ForEach(YogaStyle.allCases, id: \.self) { style in
                     NavigationLink(value: style) {
-                        HStack {
-                            Image(systemName: style.symbolName)
-                                .font(.system(size: 20))
-                                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.6, brightness: 0.8))
-                                .frame(width: 32)
-
-                            VStack(alignment: .leading) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text(style.localizedName.localized)
-                                    .font(.system(size: 16, weight: .medium))
+                                    .font(.body.weight(.medium))
                                 Text("\(PoseCatalog.planCount(for: style)) \(LocalizedString(en: "plans", fr: "programmes").localized)")
-                                    .font(.system(size: 13))
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                        } icon: {
+                            Image(systemName: style.symbolName)
+                                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.55, brightness: 0.8))
+                                .symbolRenderingMode(.hierarchical)
                         }
                     }
                 }
             }
             .navigationTitle("NATURaL")
             .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
         } detail: {
             NavigationStack {
             if let style = selectedStyle {
@@ -87,15 +87,16 @@ struct HomeView: View {
                             storageStatusCard
                         }
 
-                        VStack(spacing: 16) {
+                        VStack(spacing: SessionSpacing.md) {
                             Image(systemName: "figure.yoga")
-                                .font(.system(size: 52))
-                                .foregroundStyle(.cyan.opacity(0.55))
+                                .font(.largeTitle)
+                                .foregroundStyle(SessionPalette.accent.opacity(0.55))
+                                .symbolRenderingMode(.hierarchical)
                             Text(LocalizedString(
                                 en: "Select a yoga style",
                                 fr: "Sélectionnez un style de yoga"
                             ).localized)
-                                .font(.system(size: 20, weight: .medium))
+                                .font(.title2.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.bottom, 32)
@@ -105,6 +106,7 @@ struct HomeView: View {
             }
             .id(selectedStyle)
         }
+        .navigationSplitViewStyle(.balanced)
         .task { await loadCareKitPrescriptions() }
     }
 
@@ -114,14 +116,14 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 // Header
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: SessionSpacing.xxs) {
                     Text("NATURaL")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .font(.largeTitle.weight(.bold))
                     Text(LocalizedString(en: "A little movement. A little more you.", fr: "Un peu de mouvement. Du temps pour vous.").localized)
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, SessionSpacing.md)
 
                 if !motionCoachHeroDismissed {
                     coachHeroCard(compact: false, dismissible: true)
@@ -248,7 +250,7 @@ struct HomeView: View {
             HStack(spacing: 14) {
                 Image(systemName: "pills.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(BrandColor.aqua)
                     .frame(width: 40)
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -280,7 +282,7 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
-            .background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+            .background(BrandColor.aqua.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
@@ -349,9 +351,9 @@ struct HomeView: View {
     // MARK: - Style Card Grid
 
     private var styleCardGrid: some View {
-        let columns = [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 155), spacing: 12)]
+        let columns = [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 280 : 155), spacing: SessionSpacing.sm)]
 
-        return LazyVGrid(columns: columns, spacing: 12) {
+        return LazyVGrid(columns: columns, spacing: SessionSpacing.sm) {
             ForEach(YogaStyle.allCases, id: \.self) { style in
                 NavigationLink {
                     StyleDetailView(style: style)
@@ -361,39 +363,40 @@ struct HomeView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal)
+        .padding(.horizontal, SessionSpacing.md)
     }
 
     private func styleCard(style: YogaStyle) -> some View {
         let planCount = PoseCatalog.planCount(for: style)
-        let accentColor = Color(hue: style.accentHue, saturation: 0.6, brightness: 0.85)
+        let accentColor = Color(hue: style.accentHue, saturation: 0.55, brightness: 0.85)
 
-        return VStack(spacing: 12) {
+        return VStack(spacing: SessionSpacing.sm) {
             Image(systemName: style.symbolName)
-                .font(.system(size: 32))
+                .font(.title)
                 .foregroundStyle(accentColor)
+                .symbolRenderingMode(.hierarchical)
+                .frame(minHeight: 36)
 
             Text(style.localizedName.localized)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.headline)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
 
             Text("\(planCount) \(LocalizedString(en: "plans", fr: "programmes").localized)")
-                .font(.system(size: 13))
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(
-            Color(hue: style.accentHue, saturation: 0.1, brightness: 0.95),
-            in: RoundedRectangle(cornerRadius: 16)
-        )
+        .padding(.vertical, SessionSpacing.md)
+        .padding(.horizontal, SessionSpacing.xs)
+        .background(.thinMaterial, in: SessionRadius.cardShape())
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(accentColor.opacity(0.3), lineWidth: 1)
+            SessionRadius.cardShape()
+                .strokeBorder(accentColor.opacity(0.28), lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - CareKit Prescribed Section
@@ -516,7 +519,7 @@ struct HomeView: View {
         HStack {
             Image(systemName: "arrow.clockwise.circle.fill")
                 .font(.system(size: 28))
-                .foregroundStyle(.orange)
+                .foregroundStyle(BrandColor.tangerine)
 
             VStack(alignment: .leading) {
                 Text(LocalizedString(en: "Continuing session", fr: "Séance en cours").localized)
@@ -533,79 +536,7 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    // MARK: - iPad Plan Detail
-
-    private func planDetailView(plan: WorkoutPlan) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Plan header
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(plan.name.localized)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-
-                    Text(plan.description.localized)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 16) {
-                        Label("\(plan.poseCount) poses", systemImage: "list.number")
-                        Label(formattedDuration(plan.totalDuration), systemImage: "clock")
-                    }
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal)
-
-                // Pose list
-                ForEach(Array(plan.poses.enumerated()), id: \.element.id) { index, pose in
-                    HStack(spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(.cyan, in: Circle())
-
-                        VStack(alignment: .leading) {
-                            Text(pose.name.localized)
-                                .font(.system(size: 16, weight: .medium))
-                            Text("\(Int(pose.durationSeconds))s · \(pose.category.localizedName.localized)")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        // Difficulty dots
-                        HStack(spacing: 3) {
-                            ForEach(0..<pose.difficulty.dotCount, id: \.self) { _ in
-                                Circle()
-                                    .fill(.cyan)
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-
-                // Start button
-                Button { selectedPlan = plan } label: {
-                    Text(LocalizedString(en: "Start Workout", fr: "Commencer").localized)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(.cyan, in: RoundedRectangle(cornerRadius: 14))
-                }
-                .padding(.horizontal, 40)
-
-                // TV status
-                tvStatusSection
-            }
-            .padding(.vertical)
-        }
+        .background(BrandColor.tangerine.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Sidebar Plan Row
@@ -615,7 +546,7 @@ struct HomeView: View {
             HStack {
                 Image(systemName: plan.poses.first?.category.symbolName ?? "figure.yoga")
                     .font(.system(size: 20))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(SessionPalette.accent)
                     .frame(width: 32)
 
                 VStack(alignment: .leading) {
@@ -639,7 +570,7 @@ struct HomeView: View {
 
             HStack {
                 Image(systemName: "tv")
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BrandColor.aqua)
                 Text(LocalizedString(
                     en: "Connect during a workout to display poses on your TV",
                     fr: "Connectez-vous pendant un entraînement pour afficher les postures sur votre télé"

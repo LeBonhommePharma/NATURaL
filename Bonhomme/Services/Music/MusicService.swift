@@ -36,6 +36,7 @@ import BonhommeCore
 final class MusicService: ObservableObject {
     @Published var isAuthorized = false
     @Published var isPlaying = false
+    @Published private(set) var isHeadphonesConnected = false
     @Published private(set) var adaptiveMood: WorkoutMood = .calm
     /// Last snapshot from universal beat sync.
     @Published private(set) var lastBeat: BeatSyncSnapshot?
@@ -214,6 +215,7 @@ final class MusicService: ObservableObject {
                 return name.contains("airpods") || name.contains("headphone")
             }
         }
+        isHeadphonesConnected = headphonesActive
         await setAirPodsRouteActive(headphonesActive)
 
         // ClusterFleet: real route ports → fleet devices (single shared session).
@@ -350,6 +352,7 @@ final class MusicService: ObservableObject {
         Task {
             await UniversalBeatSync.shared.removeAllListeners()
         }
+        isHeadphonesConnected = false
         if Self.activePlaybackOwner == playbackOwner { ApplicationMusicPlayer.shared.stop() }
         tearDownLocalEngine()
         backend = .musicKit

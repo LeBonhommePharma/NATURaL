@@ -39,7 +39,7 @@ struct SummaryView: View {
                             catch { saveError = true }
                         }
                     }
-                    .padding().background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+                    .padding().background(BrandColor.tangerine.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal)
                 }
                 if healthSaveFailed {
@@ -47,11 +47,14 @@ struct SummaryView: View {
                         .font(.callout)
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+                        .background(BrandColor.strawberry.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal)
                 }
                 activityRingsCard
                 statGrid
+                if let sciScore {
+                    sciCard(sciScore)
+                }
                 if !result.heartRateSamples.isEmpty {
                     hrChartView
                         .padding(.horizontal)
@@ -145,13 +148,13 @@ struct SummaryView: View {
                 icon: "clock",
                 value: formattedDuration(result.totalDuration),
                 label: LocalizedString(en: "Duration", fr: "Durée").localized,
-                color: .cyan
+                color: BrandColor.aqua
             )
             statCard(
                 icon: "flame.fill",
                 value: "\(Int(result.activeCalories))",
                 label: LocalizedString(en: "Calories", fr: "Calories").localized,
-                color: .orange
+                color: BrandColor.tangerine
             )
             statCard(
                 icon: "heart.fill",
@@ -167,6 +170,24 @@ struct SummaryView: View {
             )
         }
         .padding(.horizontal)
+    }
+
+    private func sciCard(_ score: Double) -> some View {
+        HStack(spacing: SessionSpacing.md) {
+            CompactSCIMeter(score: score, trend: .stable, size: 56)
+            VStack(alignment: .leading, spacing: SessionSpacing.xxs) {
+                Text(SessionHUDCopy.focusIndex.localized)
+                    .font(.headline)
+                Text(SessionEntropyState.resolve(sciScore: score, isGrounding: false).label.localized)
+                    .font(.subheadline)
+                    .foregroundStyle(SessionPalette.sci(score))
+            }
+            Spacer()
+        }
+        .padding(SessionSpacing.md)
+        .background(.ultraThinMaterial, in: SessionRadius.cardShape())
+        .padding(.horizontal, SessionSpacing.md)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Heart Rate Chart
@@ -278,13 +299,12 @@ struct SummaryView: View {
             Text(isFinishing
                  ? LocalizedString(en: "Finishing session…", fr: "Fin de la séance…").localized
                  : LocalizedString(en: "Done", fr: "Terminé").localized)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(accentColor, in: RoundedRectangle(cornerRadius: 14))
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
         }
-        .padding(.horizontal, 40)
+        .sessionProminentButtonStyle()
+        .tint(accentColor)
+        .padding(.horizontal, SessionSpacing.xl)
         .disabled(isFinishing)
         .accessibilityIdentifier("summary.done")
     }
@@ -381,7 +401,7 @@ struct SummaryView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "pill.fill")
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BrandColor.violet)
                 Text(LocalizedString(en: "Signal changes near a dose", fr: "Variations du signal près d’une prise").localized)
                     .font(.system(size: 16, weight: .semibold))
             }

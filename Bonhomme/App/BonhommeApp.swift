@@ -310,26 +310,26 @@ private struct WelcomeView: View {
                     Label(LocalizedString(en: "Choose a stable chair and enough space to move.", fr: "Choisissez une chaise stable et assez d’espace pour bouger.").localized, systemImage: "chair.fill")
                     Label(LocalizedString(en: "Adapt each movement to your comfort. Pause whenever you need.", fr: "Adaptez chaque mouvement à votre confort. Faites une pause au besoin.").localized, systemImage: "pause.circle")
                     Text(LocalizedString(en: "Your records stay on this device. Analysis runs locally. NATURaL does not collect or receive your data.", fr: "Vos dossiers restent sur cet appareil. L’analyse s’exécute localement. NATURaL ne collecte pas et ne reçoit pas vos données.").localized)
-                        .font(.footnote).foregroundStyle(.white.opacity(0.8))
+                        .font(.footnote).foregroundStyle(BrandColor.fgMuted)
                     Text(LocalizedString(en: "Biofeedback is optional. NATURaL is a wellness app; its entropy indicators do not diagnose conditions or measure drug binding.", fr: "La rétroaction physiologique est facultative. NATURaL est une app de bien-être; ses indicateurs d’entropie ne diagnostiquent pas de maladies et ne mesurent pas la liaison des médicaments.").localized)
-                        .font(.footnote).foregroundStyle(.white.opacity(0.8))
+                        .font(.footnote).foregroundStyle(BrandColor.fgMuted)
                     NavigationLink { AppInformationView() } label: {
                         Label(LocalizedString(en: "Your data & privacy", fr: "Vos données et votre confidentialité").localized, systemImage: "hand.raised")
                     }
-                    .tint(.mint)
+                    .tint(SessionPalette.accent)
                     Button(action: continueToApp) {
                         Text(LocalizedString(en: "Find my first session", fr: "Trouver ma première séance").localized)
-                            .font(.headline).frame(maxWidth: .infinity).padding(18)
-                            .foregroundStyle(Color(red: 0.11, green: 0.01, blue: 0.15))
-                            .background(.mint, in: RoundedRectangle(cornerRadius: 18))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
                     }
-                    .buttonStyle(.plain)
+                    .sessionProminentButtonStyle()
+                    .tint(SessionPalette.accent)
                     .accessibilityIdentifier("welcome.continue")
                 }
                 .padding(28).frame(maxWidth: 620).frame(maxWidth: .infinity)
             }
-            .foregroundStyle(.white)
-            .background(Color(red: 0.11, green: 0.01, blue: 0.15))
+            .foregroundStyle(BrandColor.fg)
+            .background(BrandColor.bg)
         }
     }
 }

@@ -80,7 +80,7 @@ struct StreakWidgetView: View {
         VStack(spacing: 6) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 24))
-                .foregroundStyle(.orange)
+                .foregroundStyle(BrandTokens.tangerine)
 
             Text("\(entry.streakDays)")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -93,7 +93,7 @@ struct StreakWidgetView: View {
             if let sci = entry.sciScore {
                 Text("SCI \(Int((sci * 100).rounded()))%")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BrandTokens.violet)
             }
         }
     }
@@ -103,7 +103,7 @@ struct StreakWidgetView: View {
             VStack(spacing: 4) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 22))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(BrandTokens.tangerine)
                 Text("\(entry.streakDays)")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -121,7 +121,7 @@ struct StreakWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 metricRow(
                     icon: "waveform.path.ecg",
-                    tint: .cyan,
+                    tint: BrandTokens.violet,
                     title: "SCI",
                     value: entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
                 )
@@ -133,7 +133,7 @@ struct StreakWidgetView: View {
                 )
                 metricRow(
                     icon: "wind",
-                    tint: .mint,
+                    tint: BrandTokens.mint,
                     title: "Breath",
                     value: entry.breathRate.map { String(format: "%.0f/min", $0) } ?? "—"
                 )

@@ -2,8 +2,10 @@ import SwiftUI
 import BonhommeCore
 
 /// Drill-in view showing all workout plans for a specific yoga style.
+/// Regular width uses a two-column card grid; compact stays a single readable column.
 struct StyleDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let style: YogaStyle
     @State private var selectedPlan: WorkoutPlan?
 
@@ -11,22 +13,28 @@ struct StyleDetailView: View {
         PoseCatalog.plans(for: style)
     }
 
+    private var isRegular: Bool { sizeClass == .regular }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Style header
+            VStack(alignment: .leading, spacing: SessionSpacing.lg) {
                 styleHeader
+                    .frame(maxWidth: isRegular ? 720 : .infinity)
 
-                sectionHeader(
-                    title: LocalizedString(en: "Find your rhythm", fr: "Trouvez votre rythme"),
-                    systemImage: "sparkles"
-                )
-                ForEach(plans) { plan in
-                    planCard(plan: plan)
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: isRegular ? 320 : 280), spacing: SessionSpacing.md)],
+                    spacing: SessionSpacing.md
+                ) {
+                    ForEach(plans) { plan in
+                        planCard(plan: plan)
+                    }
                 }
             }
-            .padding(.vertical)
+            .padding(SessionSpacing.md)
+            .frame(maxWidth: 1100)
+            .frame(maxWidth: .infinity)
         }
+        .background(Color(.systemGroupedBackground))
         .fullScreenCover(item: $selectedPlan) { plan in
             NavigationStack {
                 WorkoutFlowView(plan: plan, feedbackEngine: appState.feedbackEngine)
@@ -37,105 +45,68 @@ struct StyleDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Style Header
-
     private var styleHeader: some View {
-        VStack(spacing: 16) {
-            Image(systemName: style.symbolName)
-                .font(.system(size: 48))
-                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.6, brightness: 0.9))
-
-            Text(style.localizedName.localized)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-
+        VStack(alignment: .leading, spacing: SessionSpacing.sm) {
+            Label(style.localizedName.localized, systemImage: style.symbolName)
+                .font(.title.weight(.bold))
+                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.55, brightness: 0.7))
+                .symbolRenderingMode(.hierarchical)
             Text(style.localizedDescription.localized)
-                .font(.system(size: 15))
+                .font(.body)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            HStack(spacing: 20) {
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: SessionSpacing.md) {
                 Label(
                     "\(plans.count) \(LocalizedString(en: "plans", fr: "programmes").localized)",
                     systemImage: "list.bullet"
                 )
                 Label(
-                    "\(PoseCatalog.plans(for: style).flatMap(\.poses).count) \(LocalizedString(en: "poses", fr: "postures").localized)",
+                    "\(plans.flatMap(\.poses).count) \(LocalizedString(en: "poses", fr: "postures").localized)",
                     systemImage: "figure.yoga"
                 )
             }
-            .font(.system(size: 14))
+            .font(.subheadline)
             .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(
-            Color(hue: style.accentHue, saturation: 0.15, brightness: 0.95)
-                .opacity(0.5),
-            in: RoundedRectangle(cornerRadius: 20)
-        )
-        .padding(.horizontal)
+        .padding(SessionSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: SessionRadius.cardShape())
     }
-
-    // MARK: - Section Header
-
-    private func sectionHeader(title: LocalizedString, systemImage: String) -> some View {
-        HStack {
-            Image(systemName: systemImage)
-                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.6, brightness: 0.8))
-            Text(title.localized)
-                .font(.system(size: 18, weight: .semibold))
-        }
-        .padding(.horizontal)
-    }
-
-    // MARK: - Plan Card
 
     private func planCard(plan: WorkoutPlan) -> some View {
-        Button { selectedPlan = plan } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(plan.name.localized)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.primary)
-
-                        Text(plan.description.localized)
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack(spacing: 16) {
-                    Label("\(plan.poseCount) poses", systemImage: "list.number")
-                    Label(formattedDuration(plan.totalDuration), systemImage: "clock")
-
-                    Group {
-                        Text(LocalizedString(en: "FREE", fr: "GRATUIT").localized)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.green)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.green.opacity(0.15), in: Capsule())
-                    }
-                }
-                .font(.system(size: 13))
+        VStack(alignment: .leading, spacing: SessionSpacing.sm) {
+            Text(plan.name.localized)
+                .font(.headline)
+                .foregroundStyle(.primary)
+            Text(plan.description.localized)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-            }
-            .padding()
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal)
-    }
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
 
-    // MARK: - Helpers
+            HStack(spacing: SessionSpacing.md) {
+                Label("\(plan.poseCount)", systemImage: "list.number")
+                Label(formattedDuration(plan.totalDuration), systemImage: "clock")
+                Spacer(minLength: 0)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Button {
+                selectedPlan = plan
+            } label: {
+                Text(LocalizedString(en: "Start", fr: "Commencer").localized)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: SessionSpacing.minTapTarget)
+            }
+            .sessionProminentButtonStyle()
+            .tint(Color(hue: style.accentHue, saturation: 0.55, brightness: 0.75))
+            .accessibilityLabel(Text("\(SessionHUDCopy.beginSession.localized), \(plan.name.localized)"))
+        }
+        .padding(SessionSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: SessionRadius.cardShape())
+    }
 
     private func formattedDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60

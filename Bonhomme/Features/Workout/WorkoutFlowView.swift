@@ -53,21 +53,29 @@ private struct WorkoutSessionView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            BrandColor.bg.ignoresSafeArea()
 
             switch viewModel.phase {
             case .ready:
-                scrollableSessionContent { readyView }
+                if usesRegularSessionLayout {
+                    scrollableSessionContent { iPadReadyView }
+                } else {
+                    scrollableSessionContent { readyView }
+                }
             case .countdown(let seconds):
                 CountdownView(secondsRemaining: seconds)
             case .active(let poseIndex):
-                if sizeClass == .regular && !dynamicTypeSize.isAccessibilitySize {
+                if usesRegularSessionLayout {
                     scrollableSessionContent { iPadActivePoseView(poseIndex: poseIndex) }
                 } else {
                     scrollableSessionContent { activePoseView(poseIndex: poseIndex) }
                 }
             case .transition(let nextIndex, let seconds):
-                scrollableSessionContent { transitionView(nextIndex: nextIndex, seconds: seconds) }
+                if usesRegularSessionLayout {
+                    scrollableSessionContent { iPadTransitionView(nextIndex: nextIndex, seconds: seconds) }
+                } else {
+                    scrollableSessionContent { transitionView(nextIndex: nextIndex, seconds: seconds) }
+                }
             case .cooldown:
                 cooldownView
             case .complete:
@@ -98,11 +106,16 @@ private struct WorkoutSessionView: View {
                         )
                     }
                 }
+                .padding(.bottom, showsSessionControls ? 8 : 0)
                 .allowsHitTesting(false)
+            }
+
+            if viewModel.isPaused && showsSessionControls {
+                SessionPausedOverlay()
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if showsSessionControls { sessionControls }
+            phoneSessionChrome
         }
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
@@ -136,6 +149,39 @@ private struct WorkoutSessionView: View {
         }
     }
 
+    private var usesRegularSessionLayout: Bool {
+        sizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
+
+    /// Phone HUD sits in the thumb zone: metrics (active only) then pause/end.
+    /// iPad regular width keeps metrics in the inspector panel instead.
+    @ViewBuilder
+    private var phoneSessionChrome: some View {
+        if showsSessionControls {
+            VStack(spacing: SessionSpacing.xs) {
+                if showsLiveHUD {
+                    SessionHUDBar(metrics: viewModel.sessionHUDMetrics)
+                        .padding(.horizontal, SessionSpacing.md)
+                }
+                SessionControlBar(
+                    isPaused: viewModel.isPaused,
+                    onPauseResume: {
+                        if viewModel.isPaused { viewModel.resume() } else { viewModel.pause() }
+                    },
+                    onEnd: { viewModel.stop() },
+                    prominence: usesRegularSessionLayout ? .pad : .phone
+                )
+                .padding(.bottom, SessionSpacing.xxs)
+                .background(.ultraThinMaterial)
+            }
+        }
+    }
+
+    private var showsLiveHUD: Bool {
+        guard case .active = viewModel.phase else { return false }
+        return !usesRegularSessionLayout
+    }
+
     /// Breath ring during active / transition / countdown (not ready or summary).
     private var showsBreathingGuide: Bool {
         switch viewModel.phase {
@@ -153,6 +199,7 @@ private struct WorkoutSessionView: View {
                 content()
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -163,194 +210,153 @@ private struct WorkoutSessionView: View {
         }
     }
 
-    private var sessionControls: some View {
-        HStack(spacing: 24) {
-            Button {
-                if viewModel.isPaused { viewModel.resume() } else { viewModel.pause() }
-            } label: {
-                Label(viewModel.isPaused
-                      ? LocalizedString(en: "Resume", fr: "Reprendre").localized
-                      : LocalizedString(en: "Pause", fr: "Pause").localized,
-                      systemImage: viewModel.isPaused ? "play.fill" : "pause.fill")
-                    .frame(maxWidth: .infinity, minHeight: 48)
-            }
-            .accessibilityIdentifier("session.pauseResume")
-            .tint(.cyan)
-            Button(role: .destructive) { viewModel.stop() } label: {
-                Label(LocalizedString(en: "End", fr: "Terminer").localized, systemImage: "stop.fill")
-                    .frame(maxWidth: .infinity, minHeight: 48)
-            }
-            .accessibilityIdentifier("session.end")
-        }
-        .font(.headline)
-        .buttonStyle(.bordered)
-        .padding(.horizontal, 24).padding(.vertical, 8)
-        .background(.ultraThinMaterial)
-    }
+    // MARK: - iPad Active Pose (stage + inspector)
 
-    // MARK: - iPad Active Pose (60/40 Split)
+    private var iPadReadyView: some View {
+        HStack(alignment: .center, spacing: SessionSpacing.xxl) {
+            if let firstPose = viewModel.plan.poses.first {
+                MotionCoachView(pose: firstPose, phase: .preview)
+                    .frame(maxWidth: 480, maxHeight: 420)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: SessionSpacing.md) {
+                Text(viewModel.plan.name.localized)
+                    .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(BrandColor.fg)
+                Text("\(viewModel.plan.poseCount) \(LocalizedString(en: "poses", fr: "postures").localized) · \(formattedDuration(viewModel.plan.totalDuration))")
+                    .font(.title3)
+                    .foregroundStyle(BrandColor.fg.opacity(0.6))
+                if !viewModel.plan.description.localized.isEmpty {
+                    Text(viewModel.plan.description.localized)
+                        .font(.body)
+                        .foregroundStyle(BrandColor.fg.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                SessionBeginButton { viewModel.start() }
+                    .frame(maxWidth: 360)
+                Button(SessionHUDCopy.cancel.localized) { dismiss() }
+                    .font(.body)
+                    .foregroundStyle(BrandColor.fg.opacity(0.55))
+                    .frame(minHeight: SessionSpacing.minTapTarget)
+            }
+            .frame(maxWidth: 420, alignment: .leading)
+        }
+        .padding(.horizontal, SessionSpacing.xxl)
+        .padding(.vertical, SessionSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private func iPadActivePoseView(poseIndex: Int) -> some View {
         let pose = viewModel.plan.poses[poseIndex]
-        let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
-
         return HStack(spacing: 0) {
-            // Left 60%: Pose visual + countdown
-            VStack(spacing: 0) {
-                Spacer()
-
+            VStack(spacing: SessionSpacing.md) {
+                Spacer(minLength: SessionSpacing.md)
                 MotionCoachView(pose: pose, phase: .active,
                                 poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
-                    .frame(maxWidth: 520, minHeight: 360, maxHeight: 420)
-                    .padding(.horizontal, 56)
+                    .frame(maxWidth: 560, minHeight: 320, maxHeight: 440)
+                    .padding(.horizontal, SessionSpacing.xl)
 
-                Text(pose.name.localized)
-                    .accessibilityIdentifier("session.pose.name")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.top, 20)
+                SessionPoseHeader(pose: pose, prominence: .large)
 
-                HStack(spacing: 12) {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { i in
-                            Circle()
-                                .fill(i < pose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-                    Text(pose.category.localizedName.localized)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
-                .padding(.top, 6)
-
-                Text(pose.description.localized)
-                    .font(.system(size: 17))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 48)
-                    .padding(.top, 10)
-
-                Text("\(Int(viewModel.poseTimeRemaining))")
-                    .font(.system(size: 80, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-                    .padding(.top, 24)
+                SessionCountdownNumeral(remaining: viewModel.poseTimeRemaining)
 
                 if !pose.breathingPattern.localized.isEmpty {
-                    HStack(spacing: 5) {
-                        Image(systemName: "wind")
-                            .font(.system(size: 14))
-                            .foregroundStyle(catColor.opacity(0.6))
-                        Text(pose.breathingPattern.localized)
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                    .padding(.top, 8)
+                    Label(pose.breathingPattern.localized, systemImage: "wind")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(BrandColor.fg.opacity(0.5))
                 }
 
                 if !viewModel.currentVoiceCue.isEmpty {
                     Text(viewModel.currentVoiceCue)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.75))
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(BrandColor.fg.opacity(0.8))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                        .padding(.top, 12)
+                        .padding(.horizontal, SessionSpacing.xl)
                         .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
                 }
-
-                Spacer()
-
+                Spacer(minLength: SessionSpacing.md)
             }
             .frame(maxWidth: .infinity)
 
-            // Right 40%: Biofeedback panel (mirrors TV display layout)
-            VStack(spacing: 24) {
-                Spacer()
-
-                // Heart rate gauge (reuse BonhommeCore view)
-                HeartRateGaugeView(bpm: viewModel.recorder.currentHeartRate)
-                    .frame(width: 160, height: 160)
-
-                // SCI visualization
-                let insight = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)
-                SCIVisualizationView(
-                    score: insight?.score,
-                    trend: insight?.trend.asSCITrend ?? .stable
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, BrandColor.hairlineStrong, .clear],
+                        startPoint: .top, endPoint: .bottom
+                    )
                 )
-                .frame(width: 120, height: 120)
+                .frame(width: 1)
 
-                // Session progress
-                SessionProgressView(
-                    index: poseIndex,
-                    total: viewModel.plan.poseCount,
-                    elapsed: viewModel.elapsedTime
+            SessionHUDPanel(metrics: viewModel.sessionHUDMetrics, showsGauges: true)
+                .frame(width: 340)
+                .frame(maxHeight: .infinity)
+                .background(BrandColor.bgCard)
+        }
+    }
+
+    private func iPadTransitionView(nextIndex: Int, seconds: Int) -> some View {
+        HStack(spacing: 0) {
+            transitionView(nextIndex: nextIndex, seconds: seconds)
+                .frame(maxWidth: .infinity)
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, BrandColor.hairlineStrong, .clear],
+                        startPoint: .top, endPoint: .bottom
+                    )
                 )
+                .frame(width: 1)
 
-                // Calories
-                HStack {
-                    Image(systemName: "flame.fill")
-                        .foregroundStyle(.orange)
-                    Text("\(Int(viewModel.recorder.activeCalories))")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text("cal")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .background(Color.white.opacity(0.03))
+            SessionHUDPanel(metrics: viewModel.sessionHUDMetrics, showsGauges: true)
+                .frame(width: 340)
+                .frame(maxHeight: .infinity)
+                .background(BrandColor.bgCard)
         }
     }
 
     // MARK: - Phone Phase Views
 
     private var readyView: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        VStack(spacing: SessionSpacing.lg) {
+            Spacer(minLength: SessionSpacing.md)
 
             if let firstPose = viewModel.plan.poses.first {
                 MotionCoachView(pose: firstPose, phase: .preview)
-                    .frame(height: 280)
-                    .padding(.horizontal, 28)
+                    .frame(maxHeight: 280)
+                    .padding(.horizontal, SessionSpacing.lg)
+                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "figure.yoga")
-                    .font(.system(size: 80))
-                    .foregroundStyle(.cyan)
+                    .font(.system(size: 64, weight: .medium))
+                    .foregroundStyle(SessionPalette.accent)
+                    .symbolRenderingMode(.hierarchical)
+                    .accessibilityHidden(true)
             }
 
             Text(viewModel.plan.name.localized)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.title.weight(.bold))
+                .foregroundStyle(BrandColor.fg)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, SessionSpacing.md)
 
-            Text("\(viewModel.plan.poseCount) poses · \(formattedDuration(viewModel.plan.totalDuration))")
-                .font(.system(size: 18))
-                .foregroundStyle(.white.opacity(0.6))
+            Text("\(viewModel.plan.poseCount) \(LocalizedString(en: "poses", fr: "postures").localized) · \(formattedDuration(viewModel.plan.totalDuration))")
+                .font(.body)
+                .foregroundStyle(BrandColor.fg.opacity(0.6))
 
-            Spacer()
+            Spacer(minLength: SessionSpacing.md)
 
-            Button {
-                viewModel.start()
-            } label: {
-                Text(LocalizedString(en: "Begin Session", fr: "Commencer la séance").localized)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(.cyan, in: RoundedRectangle(cornerRadius: 16))
-            }
-            .padding(.horizontal, 40)
+            SessionBeginButton { viewModel.start() }
+                .padding(.horizontal, SessionSpacing.xl)
 
-            Button(LocalizedString(en: "Cancel", fr: "Annuler").localized) { dismiss() }
-                .foregroundStyle(.white.opacity(0.5))
-                .padding(.bottom, 32)
+            Button(SessionHUDCopy.cancel.localized) { dismiss() }
+                .font(.body)
+                .foregroundStyle(BrandColor.fg.opacity(0.55))
+                .frame(minHeight: SessionSpacing.minTapTarget)
+                .padding(.bottom, SessionSpacing.lg)
         }
+        .padding(.horizontal, SessionSpacing.sm)
     }
 
     private func activePoseView(poseIndex: Int) -> some View {
@@ -358,149 +364,87 @@ private struct WorkoutSessionView: View {
         let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
 
         return VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: SessionSpacing.sm)
 
             MotionCoachView(pose: pose, phase: .active,
                             poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
-                .frame(height: 300)
-                .padding(.horizontal, 28)
+                .frame(height: dynamicTypeSize.isAccessibilitySize ? 220 : 280)
+                .padding(.horizontal, SessionSpacing.lg)
 
-            Text(pose.name.localized)
-                    .accessibilityIdentifier("session.pose.name")
-                .font(.title.bold())
-                .foregroundStyle(.white)
-                .padding(.top, 16)
+            SessionPoseHeader(pose: pose, prominence: dynamicTypeSize.isAccessibilitySize ? .compact : .regular)
+                .padding(.top, SessionSpacing.md)
+                .padding(.horizontal, SessionSpacing.md)
 
-            HStack(spacing: 12) {
-                HStack(spacing: 4) {
-                    ForEach(0..<3, id: \.self) { i in
-                        Circle()
-                            .fill(i < pose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
-                            .frame(width: 6, height: 6)
-                    }
-                }
-                Text(pose.category.localizedName.localized)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(.top, 6)
-
-            Text(pose.description.localized)
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .padding(.top, 10)
-
-            Text("\(Int(viewModel.poseTimeRemaining))")
-                .font(.system(size: 64, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .contentTransition(.numericText())
-                .padding(.top, 20)
+            SessionCountdownNumeral(remaining: viewModel.poseTimeRemaining, tint: BrandColor.fg)
+                .padding(.top, SessionSpacing.md)
 
             if !pose.breathingPattern.localized.isEmpty {
-                HStack(spacing: 5) {
-                    Image(systemName: "wind")
-                        .font(.system(size: 12))
-                        .foregroundStyle(catColor.opacity(0.6))
-                    Text(pose.breathingPattern.localized)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 40)
-                .padding(.top, 6)
+                Label(pose.breathingPattern.localized, systemImage: "wind")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(BrandColor.fg.opacity(0.5))
+                    .symbolRenderingMode(.hierarchical)
+                    .labelStyle(.titleAndIcon)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, SessionSpacing.xl)
+                    .padding(.top, SessionSpacing.xs)
             }
 
             if !viewModel.currentVoiceCue.isEmpty {
                 Text(viewModel.currentVoiceCue)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(BrandColor.fg.opacity(0.78))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 10)
+                    .padding(.horizontal, SessionSpacing.lg)
+                    .padding(.top, SessionSpacing.sm)
                     .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
             }
 
-            Spacer()
-
-            MetricsOverlayView(
-                heartRate: viewModel.recorder.currentHeartRate,
-                calories: viewModel.recorder.activeCalories,
-                elapsed: viewModel.elapsedTime,
-                poseIndex: poseIndex,
-                totalPoses: viewModel.plan.poseCount
-            )
-
-
+            Spacer(minLength: SessionSpacing.xl)
         }
+        .tint(catColor)
     }
 
     private func transitionView(nextIndex: Int, seconds: Int) -> some View {
         let nextPose = nextIndex < viewModel.plan.poses.count ? viewModel.plan.poses[nextIndex] : nil
-        let catColor = nextPose.map { Color(hue: $0.category.accentHue, saturation: 0.7, brightness: 0.9) } ?? .cyan
+        let catColor = nextPose.map { Color(hue: $0.category.accentHue, saturation: 0.7, brightness: 0.9) } ?? SessionPalette.accent
 
-        return VStack(spacing: 20) {
-            Spacer()
+        return VStack(spacing: SessionSpacing.md) {
+            Spacer(minLength: SessionSpacing.md)
 
-            Text(LocalizedString(en: "Next Up", fr: "Prochaine posture").localized)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
+            Text(SessionHUDCopy.nextUp.localized)
+                .font(.headline)
+                .foregroundStyle(BrandColor.fg.opacity(0.5))
 
             if let nextPose {
                 MotionCoachView(pose: nextPose, phase: .transition)
-                    .frame(height: 250)
-                    .padding(.horizontal, 32)
-
-                Text(nextPose.name.localized)
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-
-                HStack(spacing: 10) {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { i in
-                            Circle()
-                                .fill(i < nextPose.difficulty.dotCount ? catColor : Color.white.opacity(0.15))
-                                .frame(width: 6, height: 6)
-                        }
-                    }
-                    Text(nextPose.category.localizedName.localized)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
+                    .frame(height: 240)
+                    .padding(.horizontal, SessionSpacing.lg)
+                SessionPoseHeader(pose: nextPose, prominence: .regular)
+                    .padding(.horizontal, SessionSpacing.md)
             }
 
-            Text("\(seconds)")
-                .font(.system(size: 72, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(catColor)
-                .contentTransition(.numericText())
+            SessionCountdownNumeral(remaining: TimeInterval(seconds), tint: catColor)
 
-            Spacer()
+            Spacer(minLength: SessionSpacing.md)
         }
     }
 
     private var cooldownView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: SessionSpacing.md) {
             Spacer()
-
             Image(systemName: "sparkles")
-                .font(.system(size: 64))
-                .foregroundStyle(.cyan)
-
+                .font(.system(size: 56, weight: .medium))
+                .foregroundStyle(SessionPalette.accent)
+                .symbolRenderingMode(.hierarchical)
             Text(LocalizedString(en: "Great work!", fr: "Excellent travail!").localized)
-                .font(.title.bold())
-                .foregroundStyle(.white)
-
+                .font(.title.weight(.bold))
+                .foregroundStyle(BrandColor.fg)
             Text(LocalizedString(en: "Wrapping up your session...", fr: "Fin de votre séance...").localized)
-                .font(.system(size: 18))
-                .foregroundStyle(.white.opacity(0.6))
-
+                .font(.body)
+                .foregroundStyle(BrandColor.fg.opacity(0.6))
             ProgressView()
-                .tint(.cyan)
-
+                .tint(SessionPalette.accent)
             Spacer()
         }
     }
