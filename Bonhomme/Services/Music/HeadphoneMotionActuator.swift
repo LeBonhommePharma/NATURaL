@@ -20,7 +20,7 @@ final class HeadphoneMotionActuator {
     func start() {
         guard !isRunning else { return }
         guard manager.isDeviceMotionAvailable else { return }
-        if CMHeadphoneMotionManager.authorizationStatus == .denied { return }
+        if CMHeadphoneMotionManager.authorizationStatus() == .denied { return }
 
         isRunning = true
         manager.startDeviceMotionUpdates(to: .main) { motion, _ in
