@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5663391684C57E1C7F46CA5B /* StartChairYogaControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4818FB72AAB7C5656529C5B3 /* StartChairYogaControl.swift */; };
+		BC8A75DCCB651D8A52668AAD /* SessionTips.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D0BF7FA1CCF752DAE7DBF2 /* SessionTips.swift */; };
+		DA4B8E429A534EF26989536B /* PoseCoachStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886401132009068BF0D50580 /* PoseCoachStage.swift */; };
+		60B909B897A28EA36128811C /* ARPoseCoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80570F4E9355B63EF909BD48 /* ARPoseCoachView.swift */; };
 		1C6CF33C3DBE06B81C74021C /* HeadphoneMotionActuator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD0A500D082E3F17AC0D65F /* HeadphoneMotionActuator.swift */; };
 		43C739ACA93142DCFC9CB6DB /* BrandTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = E657E7917A1F80C71862F542 /* BrandTokens.swift */; };
 
@@ -144,6 +148,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4818FB72AAB7C5656529C5B3 /* StartChairYogaControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartChairYogaControl.swift; sourceTree = "<group>"; };
+		B5D0BF7FA1CCF752DAE7DBF2 /* SessionTips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTips.swift; sourceTree = "<group>"; };
+		886401132009068BF0D50580 /* PoseCoachStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseCoachStage.swift; sourceTree = "<group>"; };
+		80570F4E9355B63EF909BD48 /* ARPoseCoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARPoseCoachView.swift; sourceTree = "<group>"; };
 		FAD0A500D082E3F17AC0D65F /* HeadphoneMotionActuator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadphoneMotionActuator.swift; sourceTree = "<group>"; };
 		E657E7917A1F80C71862F542 /* BrandTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandTokens.swift; sourceTree = "<group>"; };
 
@@ -349,6 +357,7 @@
 				BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */,
 				FFC3EE81DF19D881B7154CEC /* StreakWidget.swift */,
 				E657E7917A1F80C71862F542 /* BrandTokens.swift */,
+				4818FB72AAB7C5656529C5B3 /* StartChairYogaControl.swift */,
 			);
 			path = NATURaLWidgets;
 			sourceTree = "<group>";
@@ -492,6 +501,8 @@
 				B91D1BAD98216928F6EB03AC /* WorkoutFlowView.swift */,
 				CD322B3DC03C2ABDF826CC01 /* WorkoutFlowViewModel.swift */,
 				534933CA2F88936700628680 /* StyleDetailView.swift */,
+				80570F4E9355B63EF909BD48 /* ARPoseCoachView.swift */,
+				886401132009068BF0D50580 /* PoseCoachStage.swift */,
 			);
 			path = Workout;
 			sourceTree = "<group>";
@@ -621,6 +632,7 @@
 			children = (
 				D2859EA906FD499FADEA4960 /* IntentBridge.swift */,
 				B8DEB7CE56DE05FB0A6214D9 /* WorkoutIntents.swift */,
+				B5D0BF7FA1CCF752DAE7DBF2 /* SessionTips.swift */,
 			);
 			path = Siri;
 			sourceTree = "<group>";
@@ -957,6 +969,7 @@
 				E6CE1531D07BF94FAF38069B /* ActivityRingsView.swift in Sources */,
 				43C739ACA93142DCFC9CB6DB /* BrandTokens.swift in Sources */,
 				A7B1C2D30E4F5061728394A3 /* AppGroupStore.swift in Sources */,
+				5663391684C57E1C7F46CA5B /* StartChairYogaControl.swift in Sources */,
 			);
 		};
 		251FBA5035B3A36B86D68809 /* Sources */ = {
@@ -1035,6 +1048,9 @@
 			
 				A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */,
 				1C6CF33C3DBE06B81C74021C /* HeadphoneMotionActuator.swift in Sources */,
+				60B909B897A28EA36128811C /* ARPoseCoachView.swift in Sources */,
+				DA4B8E429A534EF26989536B /* PoseCoachStage.swift in Sources */,
+				BC8A75DCCB651D8A52668AAD /* SessionTips.swift in Sources */,
 			);
 		};
 		9E932D6F72419A52379B9947 /* Sources */ = {
@@ -1455,7 +1471,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = NATURaLWidgets/NATURaLWidgets.entitlements;
 				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1477,7 +1493,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = NATURaLWidgets/NATURaLWidgets.entitlements;
 				INFOPLIST_FILE = NATURaLWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";

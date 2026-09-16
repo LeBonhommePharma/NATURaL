@@ -6,5 +6,6 @@ struct NATURaLWidgetsBundle: WidgetBundle {
     var body: some Widget {
         StreakWidget()
         ActivityRingsWidget()
+        StartChairYogaControl()
     }
 }

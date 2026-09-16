@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import TipKit
 import BonhommeCore
 
 @main
@@ -26,6 +27,16 @@ struct BonhommeApp: App {
                 .onAppear {
                     appState.persistenceSync.apply(Self.persistenceBootstrap)
                     appState.checkForResumableWorkout()
+                }
+                .task {
+                    do {
+                        try Tips.configure([
+                            .displayFrequency(.daily),
+                            .datastoreLocation(.applicationDefault)
+                        ])
+                    } catch {
+                        // TipKit is optional chrome — sessions still run if configure fails.
+                    }
                 }
         }
         .modelContainer(persistentContainer)
@@ -76,6 +87,7 @@ struct ContentView: View {
     @State private var showDebugDashboard = false
     @AppStorage("natural.didFinishWelcome") private var didFinishWelcome = false
     @State private var showingWelcome = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -127,6 +139,12 @@ struct ContentView: View {
                 let planId = note.userInfo?["planId"] as? String
                     ?? IntentBridge.shared.consumePendingPlanId()
                 presentIntentPlan(id: planId)
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active, !appState.isWorkoutActive,
+                   let pendingId = IntentBridge.shared.consumePendingPlanId() {
+                    presentIntentPlan(id: pendingId)
+                }
             }
             .onAppear {
                 // Surface durable or temporary storage status from launch bootstrap.

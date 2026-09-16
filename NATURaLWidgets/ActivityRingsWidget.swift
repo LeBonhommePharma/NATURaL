@@ -84,6 +84,7 @@ struct RingsWidgetView: View {
                     Text("\(Int((sci * 100).rounded()))")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(BrandTokens.violet)
                 } else {
                     Image(systemName: "figure.yoga")
                         .font(.system(size: 12))

@@ -347,6 +347,22 @@ final class WorkoutFlowViewModel {
         }
     }
 
+    /// Siri / App Intent: count the current pose as held and advance.
+    func logCurrentPoseFromIntent() {
+        guard !isPaused, case .active(let index) = phase else { return }
+        timerTask?.cancel()
+        posesCompletedCount += 1
+        persistState()
+        updateLiveActivity()
+        let nextIndex = index + 1
+        if nextIndex < plan.poses.count {
+            startTransition(to: nextIndex)
+        } else {
+            phase = .cooldown
+            startCooldown()
+        }
+    }
+
     func stop() {
         guard phase != .complete else { return }
         updateElapsedTime()

@@ -9,6 +9,8 @@ import BonhommeCore
 struct SummaryView: View {
     let result: WorkoutResult
     var sciScore: Double? = nil
+    var sciTrend: SCITrend = .stable
+    var insightEngine: InsightEngine? = nil
     var healthSaveFailed = false
     var isFinishing = false
     var drugResponse: DrugResponseResult? = nil
@@ -20,6 +22,8 @@ struct SummaryView: View {
     @State private var saveError = false
     @State private var ringData: ActivityRingService.RingData?
     @State private var shareCardImage: Data?
+    @State private var sciExplanation: String = ""
+    @State private var sciPlainLanguage = true
 
     private let ringService = ActivityRingService()
 
@@ -54,6 +58,7 @@ struct SummaryView: View {
                 statGrid
                 if let sciScore {
                     sciCard(sciScore)
+                    sciExplanationCard
                 }
                 if !result.heartRateSamples.isEmpty {
                     hrChartView
@@ -87,6 +92,7 @@ struct SummaryView: View {
                     stand: rings.standProgress
                 )
             }
+            await refreshSCIExplanation()
         }
     }
 
@@ -174,7 +180,7 @@ struct SummaryView: View {
 
     private func sciCard(_ score: Double) -> some View {
         HStack(spacing: SessionSpacing.md) {
-            CompactSCIMeter(score: score, trend: .stable, size: 56)
+            CompactSCIMeter(score: score, trend: sciTrend, size: 56)
             VStack(alignment: .leading, spacing: SessionSpacing.xxs) {
                 Text(SessionHUDCopy.focusIndex.localized)
                     .font(.headline)
@@ -188,6 +194,52 @@ struct SummaryView: View {
         .background(.ultraThinMaterial, in: SessionRadius.cardShape())
         .padding(.horizontal, SessionSpacing.md)
         .accessibilityElement(children: .combine)
+    }
+
+    private var sciExplanationCard: some View {
+        VStack(alignment: .leading, spacing: SessionSpacing.sm) {
+            HStack {
+                Text(sciPlainLanguage ? SessionHUDCopy.plainLanguage.localized : SessionHUDCopy.explainSCI.localized)
+                    .font(.headline)
+                Spacer()
+                Button {
+                    sciPlainLanguage.toggle()
+                    Task { await refreshSCIExplanation() }
+                } label: {
+                    Text(sciPlainLanguage ? SessionHUDCopy.explainSCI.localized : SessionHUDCopy.plainLanguage.localized)
+                        .font(.caption.weight(.semibold))
+                }
+                .tint(SessionPalette.accent)
+            }
+            Text(sciExplanation.isEmpty
+                 ? (sciPlainLanguage
+                    ? SCIExplanationCopy.plainLanguage(score: sciScore, trend: sciTrend).localized
+                    : SCIExplanationCopy.technical(score: sciScore, trend: sciTrend).localized)
+                 : sciExplanation)
+            .font(.subheadline)
+            .foregroundStyle(BrandColor.fgMuted)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(SessionSpacing.md)
+        .background(.ultraThinMaterial, in: SessionRadius.cardShape())
+        .padding(.horizontal, SessionSpacing.md)
+        .accessibilityElement(children: .combine)
+    }
+
+    @MainActor
+    private func refreshSCIExplanation() async {
+        let fallback = (sciPlainLanguage
+            ? SCIExplanationCopy.plainLanguage(score: sciScore, trend: sciTrend)
+            : SCIExplanationCopy.technical(score: sciScore, trend: sciTrend)
+        ).localized
+        sciExplanation = fallback
+        if let insightEngine {
+            sciExplanation = await insightEngine.explainSCI(
+                score: sciScore,
+                trend: sciTrend,
+                plainLanguage: sciPlainLanguage
+            )
+        }
     }
 
     // MARK: - Heart Rate Chart

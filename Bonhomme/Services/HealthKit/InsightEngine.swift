@@ -27,6 +27,10 @@ final class InsightEngine: ObservableObject {
     @Published var isProcessing: Bool = false
     /// Latest resolved pose cue (model or static). Safe to bind in the pose UI.
     @Published private(set) var latestPoseCue: String = ""
+    /// On-device or template SCI explanation (technical).
+    @Published private(set) var latestSCIExplanation: String = ""
+    /// On-device or template SCI explanation (plain language).
+    @Published private(set) var latestPlainLanguageExplanation: String = ""
     /// Pose id for `latestPoseCue` (used to ignore stale async completions).
     @Published private(set) var latestPoseCuePoseId: String?
     /// True when on-device Foundation Models reported available at last check.
@@ -219,6 +223,37 @@ final class InsightEngine: ObservableObject {
         return generateSummaryWithTemplates(result: result, insights: insights)
     }
 
+    /// Explain SCI for Summary / Siri. Uses on-device Foundation Models when ready; otherwise deterministic copy.
+    func explainSCI(
+        score: Double?,
+        trend: SCITrend,
+        plainLanguage: Bool
+    ) async -> String {
+        let fallback = (plainLanguage
+            ? SCIExplanationCopy.plainLanguage(score: score, trend: trend)
+            : SCIExplanationCopy.technical(score: score, trend: trend)
+        ).localized
+
+        let text: String
+        if #available(iOS 26.0, *), Self.checkOnDeviceModelAvailable() {
+            text = await generateSCIExplanationWithModel(
+                score: score,
+                trend: trend,
+                plainLanguage: plainLanguage,
+                fallback: fallback
+            )
+        } else {
+            text = fallback
+        }
+
+        if plainLanguage {
+            latestPlainLanguageExplanation = text
+        } else {
+            latestSCIExplanation = text
+        }
+        return text
+    }
+
     /// Drop per-pose cue cache (call at session end).
     func clearPoseCueCache() {
         poseCueTask?.cancel()
@@ -315,6 +350,41 @@ final class InsightEngine: ObservableObject {
         #endif
     }
 
+    @available(iOS 26.0, *)
+    private func generateSCIExplanationWithModel(
+        score: Double?,
+        trend: SCITrend,
+        plainLanguage: Bool,
+        fallback: String
+    ) async -> String {
+        #if canImport(FoundationModels)
+        do {
+            let session = makeSession(instructions: Self.sciExplainInstructions)
+            let pct = score.map { "\(Int((min(1, max(0, $0)) * 100).rounded()))%" } ?? "unavailable"
+            let mode = plainLanguage ? "plain language for a first-time user" : "concise technical language"
+            let prompt = """
+                Explain the Shannon Collapse Index (SCI) in \(mode).
+                Current SCI: \(pct). Trend: \(trend.rawValue).
+                SCI is Shannon entropy of RR intervals scaled 0–100. Not a diagnosis.
+                Stay within 2 sentences. Do not invent numbers. Offline / on-device only.
+                Template to respect: \(fallback)
+                """
+            let options = GenerationOptions(
+                sampling: nil,
+                temperature: 0.3,
+                maximumResponseTokens: 80
+            )
+            let response = try await session.respond(to: prompt, options: options)
+            let text = Self.sanitizeCue(response.content)
+            return text.isEmpty ? fallback : text
+        } catch {
+            return fallback
+        }
+        #else
+        return fallback
+        #endif
+    }
+
     #if canImport(FoundationModels)
     @available(iOS 26.0, *)
     private func makeSession(instructions: String) -> LanguageModelSession {
@@ -349,6 +419,13 @@ final class InsightEngine: ObservableObject {
         Be warm, specific, and actionable. No medical advice or diagnoses.
         Prefer the language indicated in the prompt (English or French).
         Do not use markdown, bullet lists, or quotation marks around the whole cue.
+        """
+
+    private static let sciExplainInstructions = """
+        You explain the Shannon Collapse Index (SCI) for NATURaL chair yoga.
+        SCI is Shannon entropy of heart-rate variability on this device. Not medical advice.
+        Two short sentences maximum. Never invent numbers. Never mention cloud or servers.
+        If a template is provided, stay consistent with its facts.
         """
 
     // MARK: - Prompt Construction

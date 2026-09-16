@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 import BonhommeCore
 
 /// Create services only when a destination appears. Eager NavigationLink construction
@@ -46,6 +47,7 @@ private struct WorkoutSessionView: View {
     /// Shared app state — used to mark any live workout as presenting so scene-active
     /// auto-load cannot re-enter and spawn a second session from 5s persist state.
     @Environment(AppState.self) private var appState
+    @State private var sciExplainText: String?
 
     init(viewModel: WorkoutFlowViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -79,10 +81,12 @@ private struct WorkoutSessionView: View {
             case .cooldown:
                 cooldownView
             case .complete:
-                let sciScore = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)?.score
+                let hrv = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)
                 SummaryView(
                     result: viewModel.buildResult(),
-                    sciScore: sciScore,
+                    sciScore: hrv?.score,
+                    sciTrend: hrv?.trend.asSCITrend ?? .stable,
+                    insightEngine: viewModel.insightEngine,
                     healthSaveFailed: viewModel.healthSaveFailed,
                     isFinishing: viewModel.isFinishing,
                     drugResponse: appState.medicationTracker.latestDrugResponse
@@ -147,6 +151,44 @@ private struct WorkoutSessionView: View {
         .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
             viewModel.persistState()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .intentPauseWorkout)) { _ in
+            viewModel.pause()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentResumeWorkout)) { _ in
+            viewModel.resume()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentEndWorkout)) { _ in
+            viewModel.stop()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentLogPose)) { _ in
+            viewModel.logCurrentPoseFromIntent()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentExplainSCI)) { _ in
+            Task { await presentSCIExplanation() }
+        }
+        .alert(
+            SessionHUDCopy.explainSCI.localized,
+            isPresented: Binding(
+                get: { sciExplainText != nil },
+                set: { if !$0 { sciExplainText = nil } }
+            )
+        ) {
+            Button(LocalizedString(en: "OK", fr: "OK").localized, role: .cancel) {
+                sciExplainText = nil
+            }
+        } message: {
+            Text(sciExplainText ?? "")
+        }
+    }
+
+    @MainActor
+    private func presentSCIExplanation() async {
+        let insight = viewModel.feedbackEngine.latestInsight(for: .heartRateVariability)
+        sciExplainText = await viewModel.insightEngine.explainSCI(
+            score: insight?.score,
+            trend: insight?.trend.asSCITrend ?? .stable,
+            plainLanguage: true
+        )
     }
 
     private var usesRegularSessionLayout: Bool {
@@ -162,6 +204,8 @@ private struct WorkoutSessionView: View {
                 if showsLiveHUD {
                     SessionHUDBar(metrics: viewModel.sessionHUDMetrics)
                         .padding(.horizontal, SessionSpacing.md)
+                        .popoverTip(SessionTips.sci)
+                        .popoverTip(SessionTips.airPods)
                 }
                 SessionControlBar(
                     isPaused: viewModel.isPaused,
@@ -215,8 +259,9 @@ private struct WorkoutSessionView: View {
     private var iPadReadyView: some View {
         HStack(alignment: .center, spacing: SessionSpacing.xxl) {
             if let firstPose = viewModel.plan.poses.first {
-                MotionCoachView(pose: firstPose, phase: .preview)
+                PoseCoachStage(pose: firstPose, phase: .preview)
                     .frame(maxWidth: 480, maxHeight: 420)
+                    .popoverTip(SessionTips.arCoach)
                     .accessibilityHidden(true)
             }
 
@@ -252,7 +297,7 @@ private struct WorkoutSessionView: View {
         return HStack(spacing: 0) {
             VStack(spacing: SessionSpacing.md) {
                 Spacer(minLength: SessionSpacing.md)
-                MotionCoachView(pose: pose, phase: .active,
+                PoseCoachStage(pose: pose, phase: .active,
                                 poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
                     .frame(maxWidth: 560, minHeight: 320, maxHeight: 440)
                     .padding(.horizontal, SessionSpacing.xl)
@@ -292,6 +337,8 @@ private struct WorkoutSessionView: View {
                 .frame(width: 340)
                 .frame(maxHeight: .infinity)
                 .background(BrandColor.bgCard)
+                .popoverTip(SessionTips.sci)
+                .popoverTip(SessionTips.airPods)
         }
     }
 
@@ -313,6 +360,8 @@ private struct WorkoutSessionView: View {
                 .frame(width: 340)
                 .frame(maxHeight: .infinity)
                 .background(BrandColor.bgCard)
+                .popoverTip(SessionTips.sci)
+                .popoverTip(SessionTips.airPods)
         }
     }
 
@@ -323,9 +372,10 @@ private struct WorkoutSessionView: View {
             Spacer(minLength: SessionSpacing.md)
 
             if let firstPose = viewModel.plan.poses.first {
-                MotionCoachView(pose: firstPose, phase: .preview)
+                PoseCoachStage(pose: firstPose, phase: .preview)
                     .frame(maxHeight: 280)
                     .padding(.horizontal, SessionSpacing.lg)
+                    .popoverTip(SessionTips.arCoach)
                     .accessibilityHidden(true)
             } else {
                 Image(systemName: "figure.yoga")
@@ -366,7 +416,7 @@ private struct WorkoutSessionView: View {
         return VStack(spacing: 0) {
             Spacer(minLength: SessionSpacing.sm)
 
-            MotionCoachView(pose: pose, phase: .active,
+            PoseCoachStage(pose: pose, phase: .active,
                             poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
                 .frame(height: dynamicTypeSize.isAccessibilitySize ? 220 : 280)
                 .padding(.horizontal, SessionSpacing.lg)
@@ -417,7 +467,7 @@ private struct WorkoutSessionView: View {
                 .foregroundStyle(BrandColor.fg.opacity(0.5))
 
             if let nextPose {
-                MotionCoachView(pose: nextPose, phase: .transition)
+                PoseCoachStage(pose: nextPose, phase: .transition)
                     .frame(height: 240)
                     .padding(.horizontal, SessionSpacing.lg)
                 SessionPoseHeader(pose: nextPose, prominence: .regular)
