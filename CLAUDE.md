@@ -188,3 +188,23 @@ xcodebuild test -scheme Bonhomme -destination 'platform=iOS Simulator,name=iPhon
 - No SwiftLint or formatter configured — follow Apple Framework Design Guidelines
 - No CI/CD configured
 - Branch naming from PRs: `claude/feature-name-ID`
+
+## Cursor Cloud specific instructions
+
+Cloud Agents run on **Linux (x86_64)**, so the Apple toolchain is unavailable. Only
+**Path B (BonhommeAccel, C++20/CMake)** builds and runs there — it has zero Apple
+dependencies. Path A (`swift test`) and the Xcode app targets require macOS/Xcode and
+cannot build on Linux (the `BonhommeCore` target imports SwiftUI/HealthKit unguarded).
+
+The committed `.cursor/environment.json` `install` step provisions the toolchain and
+builds Accel from a clean checkout. On Linux, clang selects the GCC 14 toolchain dir, so
+`libstdc++-14-dev` must be present (alongside `libomp-dev` for the OpenMP backend).
+
+```bash
+# Verify the environment on a Cloud Agent (Path B only):
+cmake -B BonhommeAccel/build -S BonhommeAccel -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON -DBA_ENABLE_OPENMP=ON
+cmake --build BonhommeAccel/build -j "$(nproc)"
+ctest --test-dir BonhommeAccel/build --output-on-failure   # 88 Catch2 cases
+```
+
+On x86_64 the active backend is AVX-512/AVX2 + OpenMP (NEON/Metal are arm64/Apple only).

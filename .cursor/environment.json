@@ -1,0 +1,4 @@
+{
+  "name": "NATURaL — BonhommeAccel (C++/CMake)",
+  "install": "sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake clang git libomp-dev libstdc++-14-dev && cmake -B BonhommeAccel/build -S BonhommeAccel -DCMAKE_BUILD_TYPE=Release -DBA_BUILD_TESTS=ON -DBA_ENABLE_OPENMP=ON && cmake --build BonhommeAccel/build -j \"$(nproc)\""
+}
