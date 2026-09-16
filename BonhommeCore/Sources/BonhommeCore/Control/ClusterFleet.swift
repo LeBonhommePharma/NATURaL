@@ -144,6 +144,8 @@ public struct ClusterFleetSnapshot: Sendable, Equatable {
     public var lastPlan: LatencyCompensationPlan
     public var qualityProfile: AirFoilQualityProfile
     public var updatedAt: Date
+    /// Head-tracked yaw from AirPods motion, added to spatial yaw.
+    public var headphoneYawDegrees: Double
 
     public var activeDevices: [FleetDevice] { devices.filter(\.isActive) }
 
@@ -174,7 +176,8 @@ public struct ClusterFleetSnapshot: Sendable, Equatable {
         targetLatencyMs: Double = 10,
         lastPlan: LatencyCompensationPlan = LatencyCompensationPlan(),
         qualityProfile: AirFoilQualityProfile = .standard,
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        headphoneYawDegrees: Double = 0
     ) {
         self.devices = devices
         self.spatialDepth = spatialDepth
@@ -186,6 +189,7 @@ public struct ClusterFleetSnapshot: Sendable, Equatable {
         self.lastPlan = lastPlan
         self.qualityProfile = qualityProfile
         self.updatedAt = updatedAt
+        self.headphoneYawDegrees = headphoneYawDegrees
     }
 }
 
@@ -257,6 +261,7 @@ public actor ClusterFleet {
     private var lastPlan = LatencyCompensationPlan()
     private var qualityProfile: AirFoilQualityProfile = .standard
     private var lastSigmaIrr: Double = 0
+    private var headphoneYawDegrees: Double = 0
 
     public init() {}
 
@@ -266,14 +271,15 @@ public actor ClusterFleet {
         ClusterFleetSnapshot(
             devices: devices.values.sorted { $0.id < $1.id },
             spatialDepth: spatialDepth,
-            listenerYawDegrees: listenerYawDegrees,
+            listenerYawDegrees: listenerYawDegrees + headphoneYawDegrees,
             tempoBPM: tempoBPM,
             crownBeta: crownBeta,
             isGrounding: isGrounding,
             targetLatencyMs: targetLatencyMs,
             lastPlan: lastPlan,
             qualityProfile: qualityProfile,
-            updatedAt: Date()
+            updatedAt: Date(),
+            headphoneYawDegrees: headphoneYawDegrees
         )
     }
 
@@ -480,6 +486,11 @@ public actor ClusterFleet {
         crownBeta = b
         let sign: Double = b >= 0 ? 1 : -1
         listenerYawDegrees = d * 360.0 * sign
+    }
+
+    /// Additive AirPods head-tracking yaw (degrees). Finite values only; 0 on stop/disconnect.
+    public func applyHeadphoneAttitude(yawDegrees: Double) {
+        headphoneYawDegrees = yawDegrees.isFinite ? yawDegrees : 0
     }
 
     /// Adopt beat snapshot from UniversalBeatSync listener path (not a second broadcast).

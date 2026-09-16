@@ -12,7 +12,7 @@ struct StreakWidget: Widget {
         }
         .configurationDisplayName("Yoga Streak")
         .description("Track consecutive practice days, SCI, and last session vitals.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }
 
@@ -71,6 +71,10 @@ struct StreakWidgetView: View {
         switch family {
         case .systemMedium:
             mediumBody
+        case .accessoryCircular:
+            accessoryCircular
+        case .accessoryRectangular:
+            accessoryRectangular
         default:
             smallBody
         }
@@ -140,6 +144,46 @@ struct StreakWidgetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var accessoryCircular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 1) {
+                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))" } ?? "—")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(BrandTokens.violet)
+                Text("SCI")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(BrandTokens.magnesium)
+            }
+        }
+        .widgetAccentable()
+    }
+
+    private var accessoryRectangular: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("SCI")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(BrandTokens.violet)
+                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—")
+                    .font(.headline.monospacedDigit())
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(entry.streakDays)d")
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(BrandTokens.tangerine)
+                if let hr = entry.heartRate {
+                    Text("\(hr) BPM")
+                        .font(.caption2)
+                        .foregroundStyle(BrandTokens.magnesium)
+                }
+            }
+        }
+        .widgetAccentable()
     }
 
     private func metricRow(icon: String, tint: Color, title: String, value: String) -> some View {

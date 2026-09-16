@@ -24,6 +24,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMotionUsageDescription</key>
+	<string>NATURaL uses AirPods motion to keep spatial audio aligned with your head during chair yoga. Motion stays on this device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>NATURaL uses the camera for an optional on-device AR pose coach. Video is processed on this device and is never uploaded.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.</string>
 	<key>NSHealthShareUsageDescription</key>

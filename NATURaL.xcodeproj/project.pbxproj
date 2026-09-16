@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1C6CF33C3DBE06B81C74021C /* HeadphoneMotionActuator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD0A500D082E3F17AC0D65F /* HeadphoneMotionActuator.swift */; };
 		43C739ACA93142DCFC9CB6DB /* BrandTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = E657E7917A1F80C71862F542 /* BrandTokens.swift */; };
 
 		1CA794DAE50868927F1CE203 /* BonhommeMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FD5EBE95776F502776D487 /* BonhommeMacApp.swift */; };
@@ -143,6 +144,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FAD0A500D082E3F17AC0D65F /* HeadphoneMotionActuator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadphoneMotionActuator.swift; sourceTree = "<group>"; };
 		E657E7917A1F80C71862F542 /* BrandTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandTokens.swift; sourceTree = "<group>"; };
 
 		D8D68778DF32A776C15043C6 /* BonhommeMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BonhommeMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -540,6 +542,7 @@
 				0E476F8E5973738F1E1B3844 /* MusicService.swift */,
 				D68CA5F4748A43899AE001B9 /* LowLatencyAudioRouter.swift */,
 				23FB1F35D2EA424AA7F2F207 /* ClusterFleetPresenceCoordinator.swift */,
+				FAD0A500D082E3F17AC0D65F /* HeadphoneMotionActuator.swift */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -1030,7 +1033,9 @@
 				B1549B8CB4C993CF9F332C5F /* NativeCompanionClient.swift in Sources */,
 				5E5FAE10B797CEEB05D1F365 /* TVDisplayCoordinator.swift in Sources */,
 			
-				A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */,);
+				A7B1C2D30E4F5061728394A2 /* AppGroupStore.swift in Sources */,
+				1C6CF33C3DBE06B81C74021C /* HeadphoneMotionActuator.swift in Sources */,
+			);
 		};
 		9E932D6F72419A52379B9947 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -1052,7 +1057,8 @@
 			files = (
 				D6F58A4BCA1BF89C52850CFC /* WorkoutLiveActivity.swift in Sources */,
 			
-				A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */,);
+				A7B1C2D30E4F5061728394A4 /* WorkoutActivityAttributes.swift in Sources */,
+			);
 		};
 
 		8E0C0129EA48299E04954C85 /* Sources */ = {

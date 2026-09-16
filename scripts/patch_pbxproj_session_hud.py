@@ -77,11 +77,6 @@ def add_file_to_group_and_sources(
     comment_name: str,
 ) -> str:
     filename = pathlib.Path(rel_path).name
-    if f"/* {filename} */" in text and f"path = {filename};" in text:
-        # Might already exist; skip if filename already referenced as fileRef with same path.
-        if f"path = {filename};" in text:
-            # Allow same names in different folders; check full comment uniqueness via seed.
-            pass
     file_ref = hid(f"ref:{rel_path}")
     build_ref = hid(f"build:{rel_path}")
     if file_ref in text:
@@ -96,35 +91,37 @@ def add_file_to_group_and_sources(
         f"\t\t{build_ref} /* {filename} in Sources */ = "
         f"{{isa = PBXBuildFile; fileRef = {file_ref} /* {filename} */; }};\n"
     )
-
     text = insert_after(text, "/* Begin PBXBuildFile section */\n", build_line)
     text = insert_after(text, "/* Begin PBXFileReference section */\n", file_ref_line)
 
-    group_pat = re.compile(
-        rf"(\t\t{group_id} /\* [^*]+ \*/ = \{{[^\n]*\n\t\t\tisa = PBXGroup;\n\t\t\tchildren = \(\n)([\s\S]*?)(\t\t\t\);)",
-        re.M,
-    )
-    match = group_pat.search(text)
-    if not match:
+    child_line = f"\t\t\t\t{file_ref} /* {filename} */,\n"
+    group_anchor = f"\t\t{group_id} /* "
+    gidx = text.find(group_anchor)
+    if gidx < 0:
         raise SystemExit(f"group {group_id} not found for {rel_path}")
-    children = match.group(2)
-    if file_ref not in children:
-        children = children + f"\t\t\t\t{file_ref} /* {filename} */,\n"
-        text = text[: match.start()] + match.group(1) + children + match.group(3) + text[match.end() :]
+    children_open = text.find("children = (", gidx)
+    children_close = text.find("\t\t\t);", children_open)
+    if file_ref not in text[children_open:children_close]:
+        text = text[:children_close] + child_line + text[children_close:]
 
-    phase_pat = re.compile(
-        rf"(\t\t{sources_phase_id} /\* Sources \*/ = \{{[^\n]*\n\t\t\tisa = PBXSourcesBuildPhase;\n\t\t\tfiles = \(\n)"
-        rf"([\s\S]*?)"
-        rf"(\t\t\t\);|\t\t\t.*in Sources \*/,);\n)",
-        re.M,
+    # Normalize compact "in Sources */,);" closings so inserts stay in-phase.
+    compact = re.compile(
+        rf"(\t\t{sources_phase_id} /\* Sources \*/ = \{{[\s\S]*?)(in Sources \*/,)\);"
     )
-    pmatch = phase_pat.search(text)
-    if not pmatch:
+    text, n = compact.subn(r"\1\2\n\t\t\t);", text, count=1)
+    _ = n
+
+    source_line = f"\t\t\t\t{build_ref} /* {filename} in Sources */,\n"
+    pidx = text.find(f"\t\t{sources_phase_id} /* Sources */ = {{")
+    if pidx < 0:
         raise SystemExit(f"sources phase {sources_phase_id} not found for {rel_path}")
-    files = pmatch.group(2)
-    if build_ref not in files:
-        files = files + f"\t\t\t\t{build_ref} /* {filename} in Sources */,\n"
-        text = text[: pmatch.start()] + pmatch.group(1) + files + pmatch.group(3) + text[pmatch.end() :]
+    files_open = text.find("files = (", pidx)
+    files_close = text.find("\t\t\t);", files_open)
+    phase_end = text.find("\t\t};", files_open)
+    if files_close < 0 or (phase_end >= 0 and files_close > phase_end):
+        raise SystemExit(f"could not find files closing for phase {sources_phase_id}")
+    if build_ref not in text[files_open:files_close]:
+        text = text[:files_close] + source_line + text[files_close:]
     return text
 
 

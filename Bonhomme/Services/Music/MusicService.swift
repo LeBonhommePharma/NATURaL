@@ -53,6 +53,9 @@ final class MusicService: ObservableObject {
     private var fadeTask: Task<Void, Never>?
     private var beatBound = false
     private var routeObserver: NSObjectProtocol?
+    /// AirPods volume rocker → crown-β. Never writes system volume.
+    private var volumeObservation: NSKeyValueObservation?
+    private var lastOutputVolume: Float?
     // MusicKit has one shared player. A late result from an older session must
     // neither restart playback nor pause a newer session that now owns it.
     private static var activePlaybackOwner: UUID?
@@ -200,6 +203,34 @@ final class MusicService: ObservableObject {
             NotificationCenter.default.removeObserver(routeObserver)
             self.routeObserver = nil
         }
+        stopHeadphoneActuators()
+    }
+
+    /// Observe `AVAudioSession.outputVolume` and AirPods IMU only while headphones are the route.
+    /// Does **not** write system volume — the rocker remains the user's control (crown-β mapping).
+    private func startHeadphoneActuators() {
+        HeadphoneMotionActuator.shared.start()
+        guard volumeObservation == nil else { return }
+        let session = AVAudioSession.sharedInstance()
+        lastOutputVolume = session.outputVolume
+        volumeObservation = session.observe(\.outputVolume, options: [.new]) { [weak self] session, change in
+            let newValue = change.newValue ?? session.outputVolume
+            Task { @MainActor in
+                guard let self, self.isHeadphonesConnected else { return }
+                let previous = self.lastOutputVolume ?? newValue
+                self.lastOutputVolume = newValue
+                let delta = Double(newValue - previous)
+                guard delta.isFinite, abs(delta) > 0.002 else { return }
+                _ = await PharmaControlSessionManager.shared.applyAirPodsVolumeDelta(delta)
+            }
+        }
+    }
+
+    private func stopHeadphoneActuators() {
+        volumeObservation?.invalidate()
+        volumeObservation = nil
+        lastOutputVolume = nil
+        HeadphoneMotionActuator.shared.stop()
     }
 
     private func publishCurrentAudioRoute() async {
@@ -217,6 +248,11 @@ final class MusicService: ObservableObject {
         }
         isHeadphonesConnected = headphonesActive
         await setAirPodsRouteActive(headphonesActive)
+        if headphonesActive {
+            startHeadphoneActuators()
+        } else {
+            stopHeadphoneActuators()
+        }
 
         // ClusterFleet: real route ports → fleet devices (single shared session).
         let ports = outputs.map { port in
