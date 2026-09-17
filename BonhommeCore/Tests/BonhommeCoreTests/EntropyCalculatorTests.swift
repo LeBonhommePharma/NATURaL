@@ -28,6 +28,13 @@ final class EntropyCalculatorTests: XCTestCase {
             "Circular entropy should be positive for non-degenerate distribution")
     }
 
+    /// Product cut: +180° and −180° are the same angle and must share bin 0 (H = 0).
+    func testCircularPlusMinus180FoldToZero() {
+        let folded = Array(repeating: 180.0, count: 80) + Array(repeating: -180.0, count: 80)
+        XCTAssertEqual(calc.circularShannonEntropy(folded), 0,
+            "+180 and -180 must land in the same circular bin")
+    }
+
     /// Uniformly distributed angles across [-180, 180) should produce near-maximum entropy.
     func testCircularEntropyUniform() {
         let uniformAngles = (0..<1000).map { i in

@@ -1,5 +1,35 @@
 import SwiftUI
 
+/// FlexAIDΔS palette v2 hex — [thebonhomme.com/tokens.css](https://thebonhomme.com/tokens.css)
+/// Locked so design-system/natural/MASTER.md and Swift HUD stay in lockstep.
+public enum BrandPalette: Sendable {
+    public static let bg: UInt32 = 0x08091A
+    public static let fg: UInt32 = 0xE4E3F5
+    public static let fgMuted: UInt32 = 0x8D8CB0
+    public static let mint: UInt32 = 0x45E0A8
+    public static let violet: UInt32 = 0x8B5CF6
+    public static let tangerine: UInt32 = 0xFF9300
+    public static let firetruck: UInt32 = 0xF5232B
+    public static let aqua: UInt32 = 0x00A2FF
+    public static let strawberry: UInt32 = 0xFF2F92
+    public static let magnesium: UInt32 = 0xDCDCE4
+    /// Thermodynamic gold chrome — optional, never a SCI/CTA substitute.
+    public static let gold: UInt32 = 0xC4A359
+}
+
+public extension Color {
+    /// sRGB from a locked FlexAIDΔS hex (`BrandPalette`). HUD colors must not drift from MASTER.md.
+    init(brandHex: UInt32, opacity: Double = 1) {
+        self.init(
+            .sRGB,
+            red: Double((brandHex >> 16) & 0xFF) / 255,
+            green: Double((brandHex >> 8) & 0xFF) / 255,
+            blue: Double(brandHex & 0xFF) / 255,
+            opacity: opacity
+        )
+    }
+}
+
 /// FlexAIDΔS palette v2 — [thebonhomme.com/tokens.css](https://thebonhomme.com/tokens.css)
 ///
 /// Semantic bindings are the system: a key color is never reassigned to a
@@ -10,32 +40,32 @@ public enum BrandColor: Sendable {
     // MARK: Surfaces
 
     /// Page ink `#08091A`.
-    public static let bg = Color(red: 8 / 255, green: 9 / 255, blue: 26 / 255)
+    public static let bg = Color(brandHex: BrandPalette.bg)
     /// Nav / inspector `#111226` @ 92%.
     public static let bgPanel = Color(red: 17 / 255, green: 18 / 255, blue: 38 / 255).opacity(0.92)
     /// Cards `#111226` @ 82%.
     public static let bgCard = Color(red: 17 / 255, green: 18 / 255, blue: 38 / 255).opacity(0.82)
     /// Body text `#E4E3F5` (15.60:1 on ink).
-    public static let fg = Color(red: 228 / 255, green: 227 / 255, blue: 245 / 255)
+    public static let fg = Color(brandHex: BrandPalette.fg)
     /// Secondary `#8D8CB0` (6.12:1 on ink).
-    public static let fgMuted = Color(red: 141 / 255, green: 140 / 255, blue: 176 / 255)
+    public static let fgMuted = Color(brandHex: BrandPalette.fgMuted)
 
     // MARK: Key colors (quantity-bound)
 
     /// ΔH · enthalpy · brand primary · pass · CTA `#45E0A8`.
-    public static let mint = Color(red: 69 / 255, green: 224 / 255, blue: 168 / 255)
+    public static let mint = Color(brandHex: BrandPalette.mint)
     /// ΔS · configurational entropy · SCI signal `#8B5CF6`.
-    public static let violet = Color(red: 139 / 255, green: 92 / 255, blue: 246 / 255)
+    public static let violet = Color(brandHex: BrandPalette.violet)
     /// ΔG · free energy · stats `#FF9300`.
-    public static let tangerine = Color(red: 1, green: 147 / 255, blue: 0)
+    public static let tangerine = Color(brandHex: BrandPalette.tangerine)
     /// T · temperature · hard fail `#F5232B`.
-    public static let firetruck = Color(red: 245 / 255, green: 35 / 255, blue: 43 / 255)
+    public static let firetruck = Color(brandHex: BrandPalette.firetruck)
     /// ΔS_vib · vibrational `#00A2FF`.
-    public static let aqua = Color(red: 0, green: 162 / 255, blue: 1)
+    public static let aqua = Color(brandHex: BrandPalette.aqua)
     /// Receptor · pocket · warn `#FF2F92`.
-    public static let strawberry = Color(red: 1, green: 47 / 255, blue: 146 / 255)
+    public static let strawberry = Color(brandHex: BrandPalette.strawberry)
     /// Apo baseline · reference `#DCDCE4`.
-    public static let magnesium = Color(red: 220 / 255, green: 220 / 255, blue: 228 / 255)
+    public static let magnesium = Color(brandHex: BrandPalette.magnesium)
 
     // MARK: States / ramps
 

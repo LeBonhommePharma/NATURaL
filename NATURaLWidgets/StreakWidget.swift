@@ -127,11 +127,11 @@ struct StreakWidgetView: View {
                     icon: "waveform.path.ecg",
                     tint: BrandTokens.violet,
                     title: "SCI",
-                    value: entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
+                    value: BrandTokens.sciPercentLabel(entry.sciScore)
                 )
                 metricRow(
                     icon: "heart.fill",
-                    tint: .red,
+                    tint: BrandTokens.strawberry,
                     title: "HR",
                     value: entry.heartRate.map { "\($0)" } ?? "—"
                 )
@@ -150,7 +150,7 @@ struct StreakWidgetView: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: 1) {
-                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))" } ?? "—")
+                Text(BrandTokens.sciPercent(entry.sciScore))
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(BrandTokens.violet)
@@ -168,7 +168,7 @@ struct StreakWidgetView: View {
                 Text("SCI")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(BrandTokens.violet)
-                Text(entry.sciScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "—")
+                Text(BrandTokens.sciPercentLabel(entry.sciScore))
                     .font(.headline.monospacedDigit())
             }
             Spacer(minLength: 4)

@@ -33,6 +33,16 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
     }
 
+    private func startSessionFromReady() {
+        let begin = app.buttons["Begin Session"]
+        XCTAssertTrue(begin.waitForExistence(timeout: 5), "Ready screen must offer Begin Session")
+        for _ in 0..<8 where !begin.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(begin.isHittable, "Begin Session must be tappable without a camera/paywall overlay")
+        begin.tap()
+    }
+
     func testWelcomeLeadsToFreeSession() {
         finishWelcome()
         let start = app.buttons["home.start"]
@@ -68,7 +78,7 @@ final class WorkoutFlowUITests: XCTestCase {
     func testSessionCanPauseResumeAndEnd() {
         finishWelcome()
         app.buttons["home.start"].tap()
-        app.buttons["Begin Session"].tap()
+        startSessionFromReady()
         let control = app.buttons["session.pauseResume"]
         XCTAssertTrue(control.waitForExistence(timeout: 8))
         control.tap()
@@ -90,9 +100,7 @@ final class WorkoutFlowUITests: XCTestCase {
     func testActivePoseCanPauseAndFinish() {
         finishWelcome()
         app.buttons["home.start"].tap()
-        let begin = app.buttons["Begin Session"]
-        XCTAssertTrue(begin.waitForExistence(timeout: 5))
-        begin.tap()
+        startSessionFromReady()
         XCTAssertTrue(app.staticTexts["session.pose.name"].waitForExistence(timeout: 15))
         app.tap() // Dispatch an optional system permission interruption to its monitor.
         let pause = app.buttons["session.pauseResume"]

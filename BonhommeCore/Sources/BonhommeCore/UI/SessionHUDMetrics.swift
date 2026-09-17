@@ -157,8 +157,8 @@ public struct SessionHUDMetrics: Sendable, Equatable {
     }
 
     public var accessibilitySummary: String {
-        let sci = sciScore.map { "\(Int(($0 * 100).rounded())) percent" } ?? "unavailable"
-        let hr = heartRate.map { "\(Int($0.rounded())) BPM" } ?? "unavailable"
+        let sci = sciPercentText == "—" ? "unavailable" : "\(sciPercentText) percent"
+        let hr = heartRateText == "—" ? "unavailable" : "\(heartRateText) BPM"
         let state = isPaused ? "paused" : entropyState.label.en
         let audio = isHeadphonesConnected ? "AirPods connected" : (isMusicPlaying ? "music playing" : "speaker")
         return "SCI \(sci), heart rate \(hr), \(state), \(audio), pose \(poseProgressText), \(elapsedText) elapsed"

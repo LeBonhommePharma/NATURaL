@@ -92,5 +92,31 @@ for extra in (
     extra_manifest = plistlib.loads(extra.read_bytes())
     require(extra_manifest.get('NSPrivacyTracking') is False, str(extra) + ' must declare no tracking')
     require(extra_manifest.get('NSPrivacyCollectedDataTypes') == [], str(extra) + ' must declare no collected data types')
+
+# TV / visionOS: resource phases, catalogs, privacy. Flattened RGB until layered Design files land.
+for name, iconset, size in (
+    ('BonhommeTV', ROOT / 'BonhommeTV/Assets.xcassets/AppIcon.appiconset', (1280, 768)),
+    ('BonhommeVision', ROOT / 'BonhommeVision/Assets.xcassets/AppIcon.appiconset', (1024, 1024)),
+):
+    target = targets[name]
+    resources = [objects[p] for p in target['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase']
+    require(resources, name + ' missing Resources build phase')
+    filenames = [objects[objects[b]['fileRef']]['path'] for p in resources for b in p['files']]
+    require('Assets.xcassets' in filenames and 'PrivacyInfo.xcprivacy' in filenames, name + ' resources not bundled')
+    for config_id in objects[target['buildConfigurationList']]['buildConfigurations']:
+        settings = objects[config_id]['buildSettings']
+        require(settings.get('ASSETCATALOG_COMPILER_APPICON_NAME') == 'AppIcon', name + ' icon selection')
+    data = (iconset / 'AppIcon.png').read_bytes()
+    require(data[:8] == b'\x89PNG\r\n\x1a\n', name + ' icon must be PNG')
+    width, height, depth, color = struct.unpack('>IIBB', data[16:26])
+    require((width, height) == size, name + ' icon pixel size')
+    require(depth == 8 and color == 2 and b'tRNS' not in data, name + ' icon must be opaque RGB')
+    extra = ROOT / name / 'PrivacyInfo.xcprivacy'
+    extra_manifest = plistlib.loads(extra.read_bytes())
+    require(extra_manifest.get('NSPrivacyTracking') is False, str(extra) + ' must declare no tracking')
+    require(extra_manifest.get('NSPrivacyCollectedDataTypes') == [], str(extra) + ' must declare no collected data types')
+    info = plistlib.loads((ROOT / name / 'Info.plist').read_bytes())
+    require(info.get('ITSAppUsesNonExemptEncryption') is False, name + ' export compliance missing')
+    require(info.get('CFBundleDisplayName') == 'NATURaL', name + ' display name')
 print('PASS: icon format and wiring, API manifests, Watch embedding, free access, on-device privacy.')
 print('Still required: signed archive validation, device testing, App Store Connect metadata.')

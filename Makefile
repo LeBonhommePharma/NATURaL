@@ -1,4 +1,4 @@
-.PHONY: all build test lint lint-fix clean coverage xcode-build xcode-test \
+.PHONY: all build test contracts lint lint-fix clean coverage xcode-build xcode-test \
 	accel-configure accel-build accel-test accel accel-clean \
 	accel-ios accel-apple-ship accel-apple-clean help
 
@@ -13,6 +13,9 @@ build: ## Build BonhommeCore package
 
 test: ## Run BonhommeCore tests (Swift-only; no Accel CMake)
 	swift test --package-path BonhommeCore
+
+contracts: ## Linux-runnable product contracts (Shannon, privacy, icons, HUD)
+	python3 scripts/test_contracts.py
 
 coverage: ## Run tests with code coverage
 	swift test --package-path BonhommeCore --enable-code-coverage

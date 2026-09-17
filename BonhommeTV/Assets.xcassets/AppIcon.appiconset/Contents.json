@@ -1,0 +1,26 @@
+{
+  "images" : [
+    {
+      "filename" : "AppIcon-400.png",
+      "idiom" : "tv",
+      "scale" : "1x",
+      "size" : "400x240"
+    },
+    {
+      "filename" : "AppIcon-800.png",
+      "idiom" : "tv",
+      "scale" : "2x",
+      "size" : "400x240"
+    },
+    {
+      "filename" : "AppIcon.png",
+      "idiom" : "tv",
+      "scale" : "1x",
+      "size" : "1280x768"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -11,4 +11,15 @@ enum BrandTokens {
     static let strawberry = Color(red: 1, green: 47 / 255, blue: 146 / 255)
     static let magnesium = Color(red: 220 / 255, green: 220 / 255, blue: 228 / 255)
     static let aqua = Color(red: 0, green: 162 / 255, blue: 1)
+
+    /// Match `SessionHUDMetrics.sciPercentText` — clamp [0, 1], non-finite → —.
+    static func sciPercent(_ score: Double?) -> String {
+        guard let score, score.isFinite else { return "—" }
+        return "\(Int((min(1, max(0, score)) * 100).rounded()))"
+    }
+
+    static func sciPercentLabel(_ score: Double?) -> String {
+        let body = sciPercent(score)
+        return body == "—" ? "—" : "\(body)%"
+    }
 }

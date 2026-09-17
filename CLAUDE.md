@@ -154,6 +154,7 @@ Bonhomme (iOS), BonhommeWatch, BonhommeTV, BonhommeVision, NATURaLWidgets, NATUR
 | Path | Scope | Default | Commands |
 |------|--------|---------|----------|
 | **A — Swift-only** | `BonhommeCore` XCTest | Yes (`make test`) | `cd BonhommeCore && swift test` |
+| **L — Linux contracts** | Shannon / SCI / Crooks / privacy / HUD / icons (no Xcode) | Yes (CI `ubuntu-latest`) | `make contracts` or `python3 scripts/test_contracts.py` |
 | **B — Accel C++** | Catch2 via CMake/CTest | Opt-in | `make accel` or cmake/build/ctest under `BonhommeAccel/` |
 
 Default SPM `swift test` must remain Swift-only: do not wire Accel into the `BonhommeCore` test target. Accel is opt-in via `BONHOMME_ACCEL=1` (Package.swift) or explicit Xcode Path C wiring — never the default package test graph. See `BonhommeAccel/TESTING.md`.
@@ -168,6 +169,9 @@ cd BonhommeCore && swift test
 cd BonhommeCore && swift test --filter EntropyCalculatorTests
 cd BonhommeCore && swift test --filter FlexAIDdSAnalyzerTests
 make test
+
+# Path L — Linux product contracts (no Swift required)
+make contracts
 
 # Path B — Accel CMake + ctest (opt-in; ~85 Catch2 cases)
 cd BonhommeAccel

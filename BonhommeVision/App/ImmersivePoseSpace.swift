@@ -1,5 +1,6 @@
 import SwiftUI
 import RealityKit
+import UIKit
 import BonhommeCore
 
 /// Mixed-immersion space that displays a 3D figure demonstrating the current
@@ -67,7 +68,7 @@ struct ImmersivePoseSpace: View {
                         Text(pose.breathingPattern.localized)
                             .font(.system(size: 13))
                     }
-                    .foregroundStyle(.cyan.opacity(0.8))
+                    .foregroundStyle(BrandColor.mint.opacity(0.85))
                 }
             } else {
                 Text("NATURaL")
@@ -90,7 +91,7 @@ struct ImmersivePoseSpace: View {
         // Torso (vertical capsule)
         let torsoMesh = MeshResource.generateCapsule(height: 0.5, radius: 0.08)
         var torsoMaterial = SimpleMaterial()
-        torsoMaterial.color = .init(tint: .cyan.withAlphaComponent(0.7))
+        torsoMaterial.color = .init(tint: brandUIColor(BrandPalette.mint, alpha: 0.7))
         let torso = ModelEntity(mesh: torsoMesh, materials: [torsoMaterial])
         torso.position = SIMD3<Float>(0, 0.5, 0)
         figure.addChild(torso)
@@ -98,7 +99,7 @@ struct ImmersivePoseSpace: View {
         // Head (sphere)
         let headMesh = MeshResource.generateSphere(radius: 0.1)
         var headMaterial = SimpleMaterial()
-        headMaterial.color = .init(tint: .cyan.withAlphaComponent(0.8))
+        headMaterial.color = .init(tint: brandUIColor(BrandPalette.mint, alpha: 0.8))
         let head = ModelEntity(mesh: headMesh, materials: [headMaterial])
         head.position = SIMD3<Float>(0, 0.85, 0)
         figure.addChild(head)
@@ -106,7 +107,7 @@ struct ImmersivePoseSpace: View {
         // Left arm (capsule)
         let armMesh = MeshResource.generateCapsule(height: 0.4, radius: 0.04)
         var armMaterial = SimpleMaterial()
-        armMaterial.color = .init(tint: .cyan.withAlphaComponent(0.6))
+        armMaterial.color = .init(tint: brandUIColor(BrandPalette.mint, alpha: 0.6))
 
         let leftArm = ModelEntity(mesh: armMesh, materials: [armMaterial])
         leftArm.position = SIMD3<Float>(-0.2, 0.55, 0)
@@ -138,7 +139,7 @@ struct ImmersivePoseSpace: View {
         // Legs (capsules)
         let legMesh = MeshResource.generateCapsule(height: 0.35, radius: 0.05)
         var legMaterial = SimpleMaterial()
-        legMaterial.color = .init(tint: .cyan.withAlphaComponent(0.5))
+        legMaterial.color = .init(tint: brandUIColor(BrandPalette.mint, alpha: 0.5))
 
         let leftLeg = ModelEntity(mesh: legMesh, materials: [legMaterial])
         leftLeg.position = SIMD3<Float>(-0.1, 0.02, 0.1)
@@ -161,7 +162,7 @@ struct ImmersivePoseSpace: View {
         // Torus-like ring using a thin cylinder
         let ringMesh = MeshResource.generateCylinder(height: 0.01, radius: 0.6)
         var ringMaterial = SimpleMaterial()
-        ringMaterial.color = .init(tint: .cyan.withAlphaComponent(0.3))
+        ringMaterial.color = .init(tint: brandUIColor(BrandPalette.violet, alpha: 0.35))
         let ringEntity = ModelEntity(mesh: ringMesh, materials: [ringMaterial])
         ringEntity.position = SIMD3<Float>(0, 0.5, 0)
         ring.addChild(ringEntity)
@@ -180,7 +181,6 @@ struct ImmersivePoseSpace: View {
         guard let pose = plan.poses.first else { return }
 
         let kinematics = pose.kinematics
-        let hue = CGFloat(pose.category.accentHue)
 
         let leftArmRotation = Float(kinematics.leftUpperArmAngle - .pi / 2.0)
         let rightArmRotation = Float(-(kinematics.rightUpperArmAngle - .pi / 2.0))
@@ -214,9 +214,19 @@ struct ImmersivePoseSpace: View {
 
         if let ring = biofeedbackRingEntity?.children.first as? ModelEntity {
             var material = SimpleMaterial()
-            material.color = .init(tint: UIColor(hue: hue, saturation: 0.7, brightness: 0.9, alpha: 0.4))
+            material.color = .init(tint: brandUIColor(BrandPalette.violet, alpha: 0.4))
             ring.model?.materials = [material]
         }
+    }
+
+    /// RealityKit tints from locked FlexAIDΔS hex (same tokens as the 2D HUD).
+    private func brandUIColor(_ hex: UInt32, alpha: CGFloat) -> UIColor {
+        UIColor(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: alpha
+        )
     }
 }
 
