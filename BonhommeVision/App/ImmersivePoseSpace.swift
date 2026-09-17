@@ -11,6 +11,7 @@ import BonhommeCore
 struct ImmersivePoseSpace: View {
     let selectedPlan: WorkoutPlan?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var currentPoseEntity: Entity?
     @State private var biofeedbackRingEntity: Entity?
     @State private var lastPoseIndex: Int = -1
@@ -187,27 +188,28 @@ struct ImmersivePoseSpace: View {
         let torsoRotation = Float(kinematics.forwardLean) * 0.5
         let leftLegSpread = Float(kinematics.leftKneeSpread)
         let rightLegSpread = Float(kinematics.rightKneeSpread)
+        let duration = SessionMotion.moveDuration(reduceMotion)
 
         for child in figure.children {
             if child.position.x < -0.1 && child.position.y > 0.3 {
                 var transform = child.transform
                 transform.rotation = simd_quatf(angle: leftArmRotation, axis: SIMD3<Float>(0, 0, 1))
-                child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                child.move(to: transform, relativeTo: child.parent, duration: duration)
             } else if child.position.x > 0.1, child.position.y > 0.4 {
                 var transform = child.transform
                 transform.rotation = simd_quatf(angle: rightArmRotation, axis: SIMD3<Float>(0, 0, 1))
-                child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                child.move(to: transform, relativeTo: child.parent, duration: duration)
             }
 
             if child.position.y < 0.1 {
                 if child.position.x < 0 {
                     var transform = child.transform
                     transform.rotation = simd_quatf(angle: .pi / 2 - leftLegSpread, axis: SIMD3<Float>(1, 0, 0))
-                    child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                    child.move(to: transform, relativeTo: child.parent, duration: duration)
                 } else {
                     var transform = child.transform
                     transform.rotation = simd_quatf(angle: .pi / 2 + rightLegSpread, axis: SIMD3<Float>(1, 0, 0))
-                    child.move(to: transform, relativeTo: child.parent, duration: 1.0)
+                    child.move(to: transform, relativeTo: child.parent, duration: duration)
                 }
             }
         }

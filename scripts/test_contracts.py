@@ -220,6 +220,15 @@ def test_hud_honesty() -> None:
         fail("immersive figure/SCI ring must not use system cyan")
     if "BrandPalette.violet" not in vision_space:
         fail("immersive SCI ring must use BrandPalette.violet, not pose-category hue")
+    if "duration: 1.0" in vision_space:
+        fail("immersive pose transitions must honor Reduce Motion, not always animate 1s")
+    if "accessibilityReduceMotion" not in vision_space:
+        fail("ImmersivePoseSpace must read accessibilityReduceMotion")
+    if "SessionMotion.moveDuration(reduceMotion)" not in vision_space:
+        fail("immersive RealityKit moves must use SessionMotion.moveDuration")
+    chrome = read("BonhommeCore/Sources/BonhommeCore/UI/SessionChrome.swift")
+    if "func moveDuration" not in chrome:
+        fail("SessionMotion must expose RealityKit moveDuration for Reduce Motion")
     compact = read("BonhommeCore/Sources/BonhommeCore/UI/SessionHUDViews.swift")
     if "ProgressView(value: metrics.poseProgressFraction)" in compact:
         fail("session HUD must not bind a 0% pose bar when count is unknown")
