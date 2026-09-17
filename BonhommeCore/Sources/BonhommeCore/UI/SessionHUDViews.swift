@@ -66,7 +66,11 @@ public struct CompactSCIMeter: View {
 
     public var body: some View {
         let tint = banded ? SessionPalette.sci(score) : (score == nil ? BrandColor.magnesium : BrandColor.violet)
-        let progress = CGFloat(min(1, max(0, score ?? 0)))
+        let percentText = SessionHUDMetrics(sciScore: score).sciPercentText
+        let progress: CGFloat = {
+            guard let score, score.isFinite else { return 0 }
+            return CGFloat(min(1, max(0, score)))
+        }()
 
         VStack(spacing: SessionSpacing.xxs) {
             ZStack {
@@ -77,10 +81,10 @@ public struct CompactSCIMeter: View {
                     .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .sessionGlow(tint, radius: 6, paused: reduceMotion)
-                    .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.8), value: score)
+                    .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
 
                 VStack(spacing: 0) {
-                    Text(score.map { String(format: "%.0f", min(1, max(0, $0)) * 100) } ?? "—")
+                    Text(percentText)
                         .font(SessionType.metric(size < 50 ? .body : .title3))
                         .monospacedDigit()
                         .foregroundStyle(BrandColor.fg)
@@ -100,7 +104,7 @@ public struct CompactSCIMeter: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(SessionHUDCopy.focusIndex.localized))
-        .accessibilityValue(Text(score.map { "\(Int(($0 * 100).rounded())) percent" } ?? "unavailable"))
+        .accessibilityValue(Text(percentText == "—" ? "unavailable" : "\(percentText) percent"))
     }
 }
 
@@ -468,6 +472,7 @@ public struct SessionBeginButton: View {
         }
         .sessionProminentButtonStyle()
         .tint(SessionPalette.accent)
+        .accessibilityIdentifier("session.begin")
         .accessibilityLabel(Text(SessionHUDCopy.beginSession.localized))
     }
 }

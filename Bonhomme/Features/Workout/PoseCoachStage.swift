@@ -33,7 +33,10 @@ struct PoseCoachStage: View {
     }
 
     private var usesAR: Bool {
-        ARWorldTrackingConfiguration.isSupported
+        // Preview/transition stay 2D so the ready screen never requests the camera
+        // (that overlay made Begin Session unhittable in UI tests and is a privacy footgun).
+        phase == .active
+            && ARWorldTrackingConfiguration.isSupported
             && !arFailed
             && AVCaptureDevice.authorizationStatus(for: .video) != .denied
     }

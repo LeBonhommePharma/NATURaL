@@ -519,8 +519,8 @@ final class IntentBridge {
     }
 
     private func pct(_ score: Double?) -> String {
-        guard let score else { return "—" }
-        return String(format: "%.0f%%", score * 100)
+        let body = SessionHUDMetrics(sciScore: score).sciPercentText
+        return body == "—" ? "—" : "\(body)%"
     }
 
     private func trendPhrase(_ trend: InsightTrend) -> String {

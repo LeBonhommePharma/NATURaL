@@ -6,6 +6,8 @@ The Watch composition is more compact for the circular system mask. Both exporte
 
 Generated with the built-in image-generation tool; exported to exact asset-catalog dimensions with macOS `sips`. Original generated images remain in the Codex output directory.
 
+Layered tvOS / visionOS iconography (parallax layers, 1280×768 App Store, glass-safe Vision) is a Claude Design job: [claude-design-icon-workorder.md](claude-design-icon-workorder.md). This repo already contains opaque RGB masters for every shipping OS.
+
 ## iOS generation prompt
 
 Create a finished iOS and watchOS app icon master for NATURaL, a joyful chair yoga, breath and biofeedback app. Single square image 1024x1024, no mockup, no text, no letters, no border, no pre-rounded corners; edge-to-edge fully opaque deep midnight plum background. A beautiful bold sculptural luminous unfurling bloom with five broad smooth petal/ribbon forms, evoking a person opening their arms to breathe and a sunrise within a flower. The center is an amber golden rising orb above a flowing coral pink cupped petal; turquoise and jade outer petals and violet magenta inner petals. high-saturation translucent glass with subtle warm inner illumination, exceptionally clean precise curved edges, rich saturated jewel colours, dimensional yet graphic and simple, inspiring and evocative and alive rather than clinical. Icon occupies central 72 percent of square and all important content fits a centered circular watch crop. Strong recognizable silhouette at 40 pixels. Balanced front-facing symmetric composition, generous dark negative space. No tiny details, no sparkle particles, no stock lotus clip art, no outlines, no drop shadow outside icon. Deliver one finished square icon only, not a contact sheet.

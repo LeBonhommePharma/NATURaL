@@ -44,7 +44,7 @@ public struct TVDisplayView: View {
                         .frame(width: 1)
 
                     // Right 40%: biofeedback inspector (shared HUD language)
-                    SessionHUDPanel(metrics: payload.hudMetrics, showsGauges: true)
+                    SessionHUDPanel(metrics: payload.hudMetrics, showsGauges: true, spaciousChips: true)
                         .frame(width: geo.size.width * 0.4 - 1)
                         .frame(maxHeight: .infinity)
                         .focusable(true)
@@ -83,10 +83,15 @@ public struct TVDisplayView: View {
 /// Idle view shown when waiting for a workout to start on TV.
 /// Breathing animation + title shimmer + ambient glow.
 public struct TVIdleView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init() {}
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { context in
+        TimelineView(.animation(
+            minimumInterval: SessionMotion.timelineInterval(reduceMotion),
+            paused: SessionMotion.timelinePaused(reduceMotion)
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let breath = (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5 // 4s cycle
 

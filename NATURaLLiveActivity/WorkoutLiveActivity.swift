@@ -55,7 +55,7 @@ struct WorkoutLiveActivity: Widget {
                         if let hr = context.state.heartRate {
                             Label("\(hr)", systemImage: "heart.fill")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.red)
+                                .foregroundStyle(BrandTokens.strawberry)
                         }
                         if let sci = context.state.sciScore {
                             Label(formatSCI(sci), systemImage: "waveform.path.ecg")
@@ -138,7 +138,7 @@ struct WorkoutLiveActivity: Widget {
                 if let hr = context.state.heartRate {
                     Label("\(hr) bpm", systemImage: "heart.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandTokens.strawberry)
                 }
                 if let sci = context.state.sciScore {
                     Label("SCI \(formatSCI(sci))", systemImage: "waveform.path.ecg")
@@ -173,7 +173,8 @@ struct WorkoutLiveActivity: Widget {
     }
 
     private func formatSCI(_ score: Double) -> String {
-        "\(Int((score * 100).rounded()))%"
+        guard score.isFinite else { return "—" }
+        return "\(Int((min(1, max(0, score)) * 100).rounded()))%"
     }
 
     private func formatBreath(_ bpm: Double) -> String {
