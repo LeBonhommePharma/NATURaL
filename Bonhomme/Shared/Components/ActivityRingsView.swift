@@ -105,7 +105,7 @@ struct ActivityRingsView: View {
         ZStack {
             Circle()
                 .stroke(color.opacity(0.2), lineWidth: 10)
-            if let progress, progress.isFinite {
+            if let progress, progress.isFinite, progress > 0 {
                 Circle()
                     .trim(from: 0, to: min(max(progress, 0), 1.0))
                     .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))

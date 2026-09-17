@@ -77,7 +77,7 @@ struct RingsWidgetView: View {
         case .accessoryCircular:
             ZStack {
                 Circle().stroke(.tertiary, lineWidth: 3)
-                if let move = entry.moveProgress, move.isFinite {
+                if let move = entry.moveProgress, move.isFinite, move > 0 {
                     Circle().trim(from: 0, to: min(max(move, 0), 1))
                         .stroke(BrandTokens.firetruck, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                         .rotationEffect(.degrees(-90))

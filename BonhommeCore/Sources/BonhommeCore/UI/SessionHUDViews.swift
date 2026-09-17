@@ -80,7 +80,7 @@ public struct CompactSCIMeter: View {
                         BrandColor.hairline,
                         style: StrokeStyle(lineWidth: 5, dash: known ? [] : [4, 3])
                     )
-                if known {
+                if known, progress > 0 {
                     Circle()
                         .trim(from: 0, to: progress)
                         .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
