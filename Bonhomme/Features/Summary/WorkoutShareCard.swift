@@ -43,7 +43,7 @@ struct WorkoutShareCard: View {
                 )
                 Spacer()
                 statColumn(
-                    value: result.averageHeartRate.map { "\(Int($0))" } ?? "--",
+                    value: result.averageHeartRate.map { "\(Int($0))" } ?? "—",
                     unit: "avg bpm",
                     icon: "heart.fill"
                 )

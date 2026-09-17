@@ -13,6 +13,24 @@ final class AnalyzerTests: XCTestCase {
         XCTAssertEqual(result.trend, .stable)
         XCTAssertEqual(result.status, .normal)
         XCTAssertEqual(result.signalType, .heartRateVariability)
+        XCTAssertEqual(result.summary.en, "No HRV data available yet.")
+    }
+
+    func testHRVAnalyzerUnknownSCIUsesEmDash() {
+        let analyzer = HRVAnalyzer()
+        let signals: [any HealthSignal] = [
+            HRVSignal(
+                timestamp: Date(),
+                sdnn: 40,
+                rmssd: 35,
+                rrIntervals: [800]
+            )
+        ]
+        let result = analyzer.analyze(signals: signals, context: AnalysisContext())
+        XCTAssertNil(result.score)
+        XCTAssertTrue(result.summary.en.contains("—"))
+        XCTAssertFalse(result.summary.en.contains("%"))
+        XCTAssertFalse(result.summary.en.contains("--"))
     }
 
     func testHRVAnalyzerShannonEntropy() {
