@@ -982,6 +982,12 @@ Full Accel dual-path notes, GPU size thresholds, and NEON coverage: [`BonhommeAc
 │                    across molecular and physiological         │
 │                    domains.                                   │
 │                                                              │
+│  ⚡ Exergy      — Remaining useful work. Native Mac / iPhone │
+│                    / iPad / Watch usage tracker for Claude,  │
+│                    Codex, Cursor, Grok. OAuth. Private iCloud.│
+│                    Tokens stay in the Keychain. Sibling of   │
+│                    Shannon: collapse vs remaining capacity.  │
+│                                                              │
 │  ═══════════════════════════════════════════════════════════  │
 │                                                              │
 │  The shared entropy kernel: H = −Σ pᵢ log₂(pᵢ)              │
@@ -1003,6 +1009,7 @@ Full Accel dual-path notes, GPU size thresholds, and NEON coverage: [`BonhommeAc
 | 🔴 [FlexAID∆S](https://github.com/LeBonhommePharma/FlexAIDdS) | Molecular docking | Conformational entropy collapse on binding | ΔS_config < 0 → stable complex | dG = E_CF − T·S_conf |
 | 🔵 [Shannon](https://github.com/LeBonhommePharma/Shannon) | LLM safety | Token distribution entropy collapse on evaluation awareness | ΔH < −3.2 bits → deceptive alignment | H = −Σ pᵢ log₂(pᵢ) |
 | 💊 NATURaL | Biofeedback | HRV entropy collapse/expansion on drug response | ΔH_hrv ↔ 0 → autonomic shift | SCI = entropy → score(0–100) |
+| ⚡ [Exergy](https://thebonhomme.com/Exergy/) | Quota remaining | Plan windows across AI accounts | used % sourced, never invented | Remaining work (exergy) |
 
 <p align="center">
 🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣🔴🟠🟡🟢🔵🟣
