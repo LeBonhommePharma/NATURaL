@@ -363,7 +363,7 @@ public struct SessionHUDPanel: View {
 
             SessionProgressView(
                 index: metrics.poseIndex,
-                total: max(metrics.poseCount, 1),
+                total: metrics.poseCount,
                 elapsed: metrics.elapsed
             )
         }

@@ -236,7 +236,9 @@ struct WatchSessionView: View {
 
     private var controlsTab: some View {
         VStack(spacing: SessionSpacing.sm) {
-            Text("\(manager.posesCompletedCount)/\(plan.poseCount)")
+            Text(plan.poseCount > 0
+                 ? "\(manager.posesCompletedCount)/\(plan.poseCount)"
+                 : "—")
                 .font(.title3.weight(.bold).monospacedDigit())
                 .foregroundStyle(.white)
             Text(SessionHUDMetrics.formatElapsed(manager.elapsedTime))
