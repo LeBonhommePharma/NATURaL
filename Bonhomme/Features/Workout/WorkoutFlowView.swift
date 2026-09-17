@@ -47,6 +47,7 @@ private struct WorkoutSessionView: View {
     /// Shared app state — used to mark any live workout as presenting so scene-active
     /// auto-load cannot re-enter and spawn a second session from 5s persist state.
     @Environment(AppState.self) private var appState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sciExplainText: String?
 
     init(viewModel: WorkoutFlowViewModel) {
@@ -318,7 +319,7 @@ private struct WorkoutSessionView: View {
                         .foregroundStyle(BrandColor.fg.opacity(0.8))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, SessionSpacing.xl)
-                        .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
+                        .animation(SessionMotion.animation(reduceMotion: reduceMotion, duration: 0.35), value: viewModel.currentVoiceCue)
                 }
                 Spacer(minLength: SessionSpacing.md)
             }
@@ -447,7 +448,7 @@ private struct WorkoutSessionView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, SessionSpacing.lg)
                     .padding(.top, SessionSpacing.sm)
-                    .animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)
+                    .animation(SessionMotion.animation(reduceMotion: reduceMotion, duration: 0.35), value: viewModel.currentVoiceCue)
             }
 
             Spacer(minLength: SessionSpacing.xl)

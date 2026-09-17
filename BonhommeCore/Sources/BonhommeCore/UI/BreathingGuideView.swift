@@ -167,6 +167,7 @@ public struct BreathingGuideOverlay: View {
     public var isGrounding: Bool
     /// When false, only show during grounding; when true, always show (subtle).
     public var alwaysVisible: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         breathsPerMinute: Double,
@@ -190,7 +191,7 @@ public struct BreathingGuideOverlay: View {
             .padding(.trailing, 16)
             .padding(.bottom, 8)
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
-            .animation(.easeInOut(duration: 0.35), value: isGrounding)
+            .animation(SessionMotion.animation(reduceMotion: reduceMotion, duration: 0.35), value: isGrounding)
         }
     }
 }
