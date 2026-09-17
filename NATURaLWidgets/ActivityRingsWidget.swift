@@ -18,9 +18,9 @@ struct ActivityRingsWidget: Widget {
 
 struct RingsEntry: TimelineEntry {
     let date: Date
-    let moveProgress: Double
-    let exerciseProgress: Double
-    let standProgress: Double
+    let moveProgress: Double?
+    let exerciseProgress: Double?
+    let standProgress: Double?
     let sciScore: Double?
     let heartRate: Int?
     let breathRate: Double?
@@ -42,7 +42,8 @@ struct RingsTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (RingsEntry) -> Void) {
-        // Never stick on gallery placeholders when the App Group already has data.
+        // Gallery sample stays in placeholder(in:). Live snapshot must not
+        // invent 0% closed rings on App Group cache miss.
         completion(loadEntry(date: .now))
     }
 
@@ -76,22 +77,24 @@ struct RingsWidgetView: View {
         case .accessoryCircular:
             ZStack {
                 Circle().stroke(.tertiary, lineWidth: 3)
-                Circle().trim(from: 0, to: min(max(entry.moveProgress, 0), 1))
-                    .stroke(BrandTokens.firetruck, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+                if let move = entry.moveProgress, move.isFinite {
+                    Circle().trim(from: 0, to: min(max(move, 0), 1))
+                        .stroke(BrandTokens.firetruck, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
 
                 if entry.sciScore != nil {
                     Text(BrandTokens.sciPercent(entry.sciScore))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(BrandTokens.violet)
-                        .accessibilityLabel("SCI \(BrandTokens.sciPercentLabel(entry.sciScore))")
                 } else {
                     Image(systemName: "figure.yoga")
                         .font(.system(size: 12))
-                        .accessibilityLabel("SCI —")
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(circularSummary)
         default:
             VStack(spacing: 6) {
                 ActivityRingsView(
@@ -126,5 +129,15 @@ struct RingsWidgetView: View {
                 .minimumScaleFactor(0.7)
             }
         }
+    }
+
+    private var circularSummary: String {
+        let move: String
+        if let value = entry.moveProgress, value.isFinite {
+            move = "\(Int((min(max(value, 0), 1) * 100).rounded())) percent"
+        } else {
+            move = "—"
+        }
+        return "Move \(move), SCI \(BrandTokens.sciPercentLabel(entry.sciScore))"
     }
 }

@@ -304,6 +304,26 @@ def test_hud_honesty() -> None:
         fail("widget circular ring must use BrandTokens.firetruck, not system red")
     if "Int((sci * 100).rounded())" in widget_rings:
         fail("widget SCI percent must use BrandTokens.sciPercent, not raw *100")
+    if "min(max(entry.moveProgress, 0), 1)" in widget_rings:
+        fail("circular widget must not trim a non-optional 0% ring on cache miss")
+    if "if let move = entry.moveProgress" not in widget_rings:
+        fail("circular widget must omit ring fill when move progress is unknown")
+    if "moveProgress: Double?" not in widget_rings:
+        fail("widget rings entry must treat cache-miss progress as optional")
+    store = read("Bonhomme/Shared/AppGroupStore.swift")
+    if "defaults?.double(forKey: Key.moveProgress) ?? 0" in store:
+        fail("App Group moveProgress must not coerce cache miss to 0")
+    if "object(forKey: key)" not in store:
+        fail("App Group ring reads must distinguish missing keys via object(forKey:)")
+    if "func moveProgress() -> Double?" not in store:
+        fail("App Group moveProgress must be optional")
+    if "func ringView(progress: Double?" not in shared_rings:
+        fail("shared ActivityRingsView must omit fill when progress is unknown")
+    if "percentLabel(moveProgress)" not in shared_rings:
+        fail("shared rings VoiceOver must say — when progress is unknown, not 0 percent")
+    streak = read("NATURaLWidgets/StreakWidget.swift")
+    if "Int((sci * 100).rounded())" in streak:
+        fail("streak widget SCI must use BrandTokens.sciPercentLabel, not raw *100")
     summary = read("Bonhomme/Features/Summary/SummaryView.swift")
     if ".foregroundStyle(.red)" in summary or "color: .red" in summary:
         fail("summary HR must use BrandColor.firetruck, not system red")

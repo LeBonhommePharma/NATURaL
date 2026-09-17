@@ -19,14 +19,14 @@ private enum RingChrome {
 }
 
 struct ActivityRingsView: View {
-    let moveProgress: Double
-    let exerciseProgress: Double
-    let standProgress: Double
+    let moveProgress: Double?
+    let exerciseProgress: Double?
+    let standProgress: Double?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var animatedMove: Double = 0
-    @State private var animatedExercise: Double = 0
-    @State private var animatedStand: Double = 0
+    @State private var animatedMove: Double?
+    @State private var animatedExercise: Double?
+    @State private var animatedStand: Double?
 
     var body: some View {
         ZStack {
@@ -56,10 +56,12 @@ struct ActivityRingsView: View {
     }
 
     private var ringSummary: String {
-        let move = Int((min(max(moveProgress, 0), 2) * 100).rounded())
-        let exercise = Int((min(max(exerciseProgress, 0), 2) * 100).rounded())
-        let stand = Int((min(max(standProgress, 0), 2) * 100).rounded())
-        return "Move \(move) percent, Exercise \(exercise) percent, Stand \(stand) percent"
+        "Move \(percentLabel(moveProgress)), Exercise \(percentLabel(exerciseProgress)), Stand \(percentLabel(standProgress))"
+    }
+
+    private func percentLabel(_ value: Double?) -> String {
+        guard let value, value.isFinite else { return "—" }
+        return "\(Int((min(max(value, 0), 2) * 100).rounded())) percent"
     }
 
     private func snap() {
@@ -84,34 +86,36 @@ struct ActivityRingsView: View {
         }
     }
 
-    private func setMove(_ value: Double) {
+    private func setMove(_ value: Double?) {
         guard !reduceMotion else { animatedMove = value; return }
         withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) { animatedMove = value }
     }
 
-    private func setExercise(_ value: Double) {
+    private func setExercise(_ value: Double?) {
         guard !reduceMotion else { animatedExercise = value; return }
         withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) { animatedExercise = value }
     }
 
-    private func setStand(_ value: Double) {
+    private func setStand(_ value: Double?) {
         guard !reduceMotion else { animatedStand = value; return }
         withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) { animatedStand = value }
     }
 
-    private func ringView(progress: Double, color: Color, size: CGFloat) -> some View {
+    private func ringView(progress: Double?, color: Color, size: CGFloat) -> some View {
         ZStack {
             Circle()
                 .stroke(color.opacity(0.2), lineWidth: 10)
-            Circle()
-                .trim(from: 0, to: min(progress, 1.0))
-                .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if progress > 1.0 {
+            if let progress, progress.isFinite {
                 Circle()
-                    .trim(from: 0, to: min(progress - 1.0, 1.0))
-                    .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .trim(from: 0, to: min(max(progress, 0), 1.0))
+                    .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .rotationEffect(.degrees(-90))
+                if progress > 1.0 {
+                    Circle()
+                        .trim(from: 0, to: min(progress - 1.0, 1.0))
+                        .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
             }
         }
         .frame(width: size, height: size)

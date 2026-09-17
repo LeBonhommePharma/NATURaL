@@ -42,16 +42,17 @@ enum AppGroupStore {
         defaults?.object(forKey: Key.lastWorkoutDate) as? Date
     }
 
-    static func moveProgress() -> Double {
-        defaults?.double(forKey: Key.moveProgress) ?? 0
+    /// `UserDefaults.double` is 0 when the key is missing, which paints closed 0% rings.
+    static func moveProgress() -> Double? {
+        optionalDouble(for: Key.moveProgress)
     }
 
-    static func exerciseProgress() -> Double {
-        defaults?.double(forKey: Key.exerciseProgress) ?? 0
+    static func exerciseProgress() -> Double? {
+        optionalDouble(for: Key.exerciseProgress)
     }
 
-    static func standProgress() -> Double {
-        defaults?.double(forKey: Key.standProgress) ?? 0
+    static func standProgress() -> Double? {
+        optionalDouble(for: Key.standProgress)
     }
 
     /// Latest SCI (0…1) if the app has written one.
@@ -70,6 +71,12 @@ enum AppGroupStore {
         guard let defaults, defaults.object(forKey: Key.latestBreathRate) != nil else { return nil }
         let v = defaults.double(forKey: Key.latestBreathRate)
         return v > 0 ? v : nil
+    }
+
+    private static func optionalDouble(for key: String) -> Double? {
+        guard let defaults, defaults.object(forKey: key) != nil else { return nil }
+        let value = defaults.double(forKey: key)
+        return value.isFinite ? value : nil
     }
 
     // MARK: - Write
