@@ -239,6 +239,8 @@ def test_hud_honesty() -> None:
     home = read("Bonhomme/Features/Workout/HomeView.swift")
     if "NavigationSplitView" not in home:
         fail("iPad home must keep NavigationSplitView")
+    if "phase == .active" not in read("Bonhomme/Features/Workout/PoseCoachStage.swift"):
+        fail("AR coach must not request the camera on the ready/preview screen")
     watch = read("BonhommeWatch/App/WatchHomeView.swift")
     if any(ch in watch for ch in ("🎨", "🔥", "✨", "⚙️")):
         fail("Watch home uses emoji chrome")

@@ -472,6 +472,7 @@ public struct SessionBeginButton: View {
         }
         .sessionProminentButtonStyle()
         .tint(SessionPalette.accent)
+        .accessibilityIdentifier("session.begin")
         .accessibilityLabel(Text(SessionHUDCopy.beginSession.localized))
     }
 }
