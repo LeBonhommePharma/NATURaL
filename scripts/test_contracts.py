@@ -254,10 +254,20 @@ def test_hud_honesty() -> None:
         fail("Watch complete state must use SessionPalette, not system green")
     if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
         fail("activity rings must use BrandColor, not system cyan")
-    if "Color.cyan" in read("Bonhomme/Shared/Components/ActivityRingsView.swift"):
+    shared_rings = read("Bonhomme/Shared/Components/ActivityRingsView.swift")
+    if "Color.cyan" in shared_rings:
         fail("shared activity rings must use BrandColor, not system cyan")
-    if ".foregroundStyle(.red)" in read("NATURaLWidgets/ActivityRingsWidget.swift"):
+    if "import BonhommeCore" in shared_rings and "#if canImport(BonhommeCore)" not in shared_rings:
+        fail("shared ActivityRingsView is compiled into widgets; BonhommeCore must be canImport-gated")
+    if "RingChrome" not in shared_rings:
+        fail("shared activity rings must map BrandColor/BrandTokens via RingChrome")
+    widget_rings = read("NATURaLWidgets/ActivityRingsWidget.swift")
+    if ".foregroundStyle(.red)" in widget_rings:
         fail("widget heart rate must use BrandTokens, not system red")
+    if ".stroke(.red" in widget_rings:
+        fail("widget circular ring must use BrandTokens.firetruck, not system red")
+    if "Int((sci * 100).rounded())" in widget_rings:
+        fail("widget SCI percent must use BrandTokens.sciPercent, not raw *100")
     if ".foregroundStyle(.red)" in read("Bonhomme/Features/Summary/SummaryView.swift"):
         fail("summary HR chart must use BrandColor.firetruck, not system red")
     if "BrandColor.firetruck" not in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):

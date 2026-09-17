@@ -1,8 +1,23 @@
 import SwiftUI
+#if canImport(BonhommeCore)
 import BonhommeCore
+#endif
 
 /// Concentric Move / Exercise / Stand rings. Family tokens (firetruck / mint / aqua)
 /// plus VoiceOver percents — color is never the only cue.
+/// Compiled into Bonhomme (BrandColor) and NATURaLWidgets (BrandTokens).
+private enum RingChrome {
+    #if canImport(BonhommeCore)
+    static let aqua = BrandColor.aqua
+    static let mint = BrandColor.mint
+    static let firetruck = BrandColor.firetruck
+    #else
+    static let aqua = BrandTokens.aqua
+    static let mint = BrandTokens.mint
+    static let firetruck = BrandTokens.firetruck
+    #endif
+}
+
 struct ActivityRingsView: View {
     let moveProgress: Double
     let exerciseProgress: Double
@@ -24,9 +39,9 @@ struct ActivityRingsView: View {
                 )
                 .frame(width: 110, height: 110)
 
-            ringView(progress: animatedStand, color: BrandColor.aqua, size: 100)
-            ringView(progress: animatedExercise, color: BrandColor.mint, size: 76)
-            ringView(progress: animatedMove, color: BrandColor.firetruck, size: 52)
+            ringView(progress: animatedStand, color: RingChrome.aqua, size: 100)
+            ringView(progress: animatedExercise, color: RingChrome.mint, size: 76)
+            ringView(progress: animatedMove, color: RingChrome.firetruck, size: 52)
         }
         .frame(width: 110, height: 110)
         .accessibilityElement(children: .ignore)
