@@ -94,8 +94,8 @@ struct StreakWidgetView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            if let sci = entry.sciScore {
-                Text("SCI \(Int((sci * 100).rounded()))%")
+            if entry.sciScore != nil {
+                Text("SCI \(BrandTokens.sciPercentLabel(entry.sciScore))")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(BrandTokens.violet)
             }
