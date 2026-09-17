@@ -164,9 +164,9 @@ struct SummaryView: View {
             )
             statCard(
                 icon: "heart.fill",
-                value: result.averageHeartRate.map { "\(Int($0))" } ?? "--",
+                value: result.averageHeartRate.map { "\(Int($0))" } ?? "—",
                 label: LocalizedString(en: "Avg HR", fr: "FC moy.").localized,
-                color: .red
+                color: BrandColor.firetruck
             )
             statCard(
                 icon: "figure.yoga",

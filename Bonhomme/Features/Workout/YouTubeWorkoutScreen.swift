@@ -62,9 +62,9 @@ struct YouTubeWorkoutScreen: View {
 
             VStack(alignment: .trailing, spacing: 6) {
                 if let hr = viewModel.heartRate {
-                    MetricBadge(icon: "heart.fill",  value: "\(Int(hr))", unit: "bpm",  tint: .red)
+                    MetricBadge(icon: "heart.fill",  value: "\(Int(hr))", unit: "bpm",  tint: BrandColor.firetruck)
                 }
-                MetricBadge(icon: "bolt.fill", value: String(format: "%.0f", viewModel.activeCalories), unit: "kcal", tint: .orange)
+                MetricBadge(icon: "bolt.fill", value: String(format: "%.0f", viewModel.activeCalories), unit: "kcal", tint: BrandColor.tangerine)
                 SCIGaugeBadge(sci: viewModel.entropyIndex, inRange: viewModel.isInTargetSCIRange)
             }
             .padding(10)
@@ -92,7 +92,7 @@ struct YouTubeWorkoutScreen: View {
             Divider().frame(height: 28).background(.white.opacity(0.3))
             MetricsCell(label: "PHASE",   value: viewModel.currentPhase?.name ?? "\u{2014}")
             Divider().frame(height: 28).background(.white.opacity(0.3))
-            MetricsCell(label: "SCI",     value: String(format: "%.2f", viewModel.entropyIndex))
+            MetricsCell(label: "SCI",     value: SessionHUDMetrics(sciScore: viewModel.entropyIndex).sciPercentLabel)
         }
         .padding(.vertical, 10)
         .background(.black)
@@ -116,14 +116,18 @@ private struct MetricBadge: View {
 }
 
 private struct SCIGaugeBadge: View {
-    let sci: Double; let inRange: Bool
+    let sci: Double?; let inRange: Bool
     var body: some View {
+        let metrics = SessionHUDMetrics(sciScore: sci)
         HStack(spacing: 4) {
-            Image(systemName: "waveform.path.ecg").foregroundStyle(inRange ? BrandColor.mint : BrandColor.tangerine).font(.caption2.weight(.semibold))
-            Text(SessionHUDMetrics(sciScore: sci).sciPercentLabel).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(sci == nil ? BrandColor.magnesium : (inRange ? BrandColor.mint : BrandColor.tangerine))
+                .font(.caption2.weight(.semibold))
+            Text(metrics.sciPercentLabel).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
         }
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(.black.opacity(0.65)).clipShape(Capsule())
+        .accessibilityLabel("Shannon collapse index \(metrics.sciPercentText == "—" ? "unavailable" : metrics.sciPercentLabel)")
     }
 }
 

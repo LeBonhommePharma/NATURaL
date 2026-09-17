@@ -254,12 +254,51 @@ def test_hud_honesty() -> None:
         fail("Watch complete state must use SessionPalette, not system green")
     if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
         fail("activity rings must use BrandColor, not system cyan")
-    if ".foregroundStyle(.red)" in read("NATURaLWidgets/ActivityRingsWidget.swift"):
+    shared_rings = read("Bonhomme/Shared/Components/ActivityRingsView.swift")
+    if "Color.cyan" in shared_rings:
+        fail("shared activity rings must use BrandColor, not system cyan")
+    if "import BonhommeCore" in shared_rings and "#if canImport(BonhommeCore)" not in shared_rings:
+        fail("shared ActivityRingsView is compiled into widgets; BonhommeCore must be canImport-gated")
+    if "RingChrome" not in shared_rings:
+        fail("shared activity rings must map BrandColor/BrandTokens via RingChrome")
+    widget_rings = read("NATURaLWidgets/ActivityRingsWidget.swift")
+    if ".foregroundStyle(.red)" in widget_rings:
         fail("widget heart rate must use BrandTokens, not system red")
-    if ".foregroundStyle(.red)" in read("Bonhomme/Features/Summary/SummaryView.swift"):
-        fail("summary HR chart must use BrandColor.firetruck, not system red")
+    if ".stroke(.red" in widget_rings:
+        fail("widget circular ring must use BrandTokens.firetruck, not system red")
+    if "Int((sci * 100).rounded())" in widget_rings:
+        fail("widget SCI percent must use BrandTokens.sciPercent, not raw *100")
+    summary = read("Bonhomme/Features/Summary/SummaryView.swift")
+    if ".foregroundStyle(.red)" in summary or "color: .red" in summary:
+        fail("summary HR must use BrandColor.firetruck, not system red")
+    if '?? "--"' in summary:
+        fail("summary unknown HR must use an em dash, not --")
+    if "BrandColor.firetruck" not in summary:
+        fail("summary HR must use BrandColor.firetruck")
     if "BrandColor.firetruck" not in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):
         fail("prescription sync errors must use BrandColor.firetruck")
+    if ".tint(.cyan)" in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):
+        fail("medication consent toggle must use BrandColor, not system cyan")
+    if "return .orange" in read("Bonhomme/Features/Prescriptions/PokeDrugSubstanceInsightView.swift"):
+        fail("PokeDrug effectiveness must use BrandColor, not system orange")
+    if "tint: .orange" in read("Bonhomme/Features/Workout/YouTubeWorkoutScreen.swift"):
+        fail("YouTube kcal badge must use BrandColor.tangerine")
+    if 'String(format: "%.2f", viewModel.entropyIndex)' in read(
+        "Bonhomme/Features/Workout/YouTubeWorkoutScreen.swift"
+    ):
+        fail("YouTube SCI bar must use SessionHUDMetrics, not raw %.2f")
+    if "entropyIndex: Double? = nil" not in read(
+        "Bonhomme/Features/Workout/YouTubeWorkoutViewModel.swift"
+    ):
+        fail("YouTube SCI must start unknown, not 0")
+    live_inapp = read("Bonhomme/LiveActivity/WorkoutLiveActivity.swift")
+    if ".foregroundStyle(.orange)" in live_inapp or "Color(hue:" in live_inapp:
+        fail("in-app Live Activity must use BrandTokens, not hue/orange")
+    if "min(1, max(0, score))" not in live_inapp:
+        fail("in-app Live Activity SCI percent must clamp")
+    debug = read("Bonhomme/App/DebugDashboardView.swift")
+    if ".foregroundStyle(.orange)" in debug or ".foregroundStyle(.cyan)" in debug:
+        fail("debug dashboard must use BrandColor, not system orange/cyan")
     if "star.fill" not in read("Bonhomme/Features/Prescriptions/PokeDrugSubstanceInsightView.swift"):
         fail("PokeDrug stats must use SF Symbols, not star emoji")
     if "firetruck" not in read("NATURaLWidgets/BrandTokens.swift"):

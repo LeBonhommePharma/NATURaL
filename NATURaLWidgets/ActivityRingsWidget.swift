@@ -77,17 +77,19 @@ struct RingsWidgetView: View {
             ZStack {
                 Circle().stroke(.tertiary, lineWidth: 3)
                 Circle().trim(from: 0, to: min(max(entry.moveProgress, 0), 1))
-                    .stroke(.red, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .stroke(BrandTokens.firetruck, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-90))
 
-                if let sci = entry.sciScore {
-                    Text("\(Int((sci * 100).rounded()))")
+                if entry.sciScore != nil {
+                    Text(BrandTokens.sciPercent(entry.sciScore))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(BrandTokens.violet)
+                        .accessibilityLabel("SCI \(BrandTokens.sciPercentLabel(entry.sciScore))")
                 } else {
                     Image(systemName: "figure.yoga")
                         .font(.system(size: 12))
+                        .accessibilityLabel("SCI —")
                 }
             }
         default:
@@ -105,11 +107,10 @@ struct RingsWidgetView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(BrandTokens.tangerine)
                     }
-                    if let sci = entry.sciScore {
-                        Text("SCI \(Int((sci * 100).rounded()))%")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(BrandTokens.violet)
-                    }
+                    Text("SCI \(BrandTokens.sciPercentLabel(entry.sciScore))")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(BrandTokens.violet)
+                        .accessibilityLabel("SCI \(BrandTokens.sciPercentLabel(entry.sciScore))")
                     if let hr = entry.heartRate {
                         Label("\(hr)", systemImage: "heart.fill")
                             .font(.system(size: 10, weight: .semibold))

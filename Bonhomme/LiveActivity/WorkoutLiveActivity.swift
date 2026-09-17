@@ -2,16 +2,24 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-/// Live Activity widget for Dynamic Island and Lock Screen during active workouts.
-/// Shows current pose, time remaining, heart rate, and calories.
+/// FlexAIDΔS v2 tokens for the in-app Live Activity widget (no BonhommeCore).
+/// Keep in lockstep with `LiveActivity 2/` and `NATURaLLiveActivity/`.
+private enum BrandTokens {
+    static let mint = Color(red: 69 / 255, green: 224 / 255, blue: 168 / 255)
+    static let violet = Color(red: 139 / 255, green: 92 / 255, blue: 246 / 255)
+    static let tangerine = Color(red: 1, green: 147 / 255, blue: 0)
+    static let strawberry = Color(red: 1, green: 47 / 255, blue: 146 / 255)
+    static let bg = Color(red: 8 / 255, green: 9 / 255, blue: 26 / 255)
+}
+
+/// Live Activity widget compiled into the Bonhomme iOS target.
+/// Violet SCI, mint progress, strawberry pause — no cyan/orange SCI.
 struct WorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
-            // Lock Screen banner
             lockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded region
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Image(systemName: context.attributes.styleSymbol)
@@ -26,47 +34,67 @@ struct WorkoutLiveActivity: Widget {
                     Text(formatTime(context.state.poseTimeRemaining))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
+                        .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    // Progress bar
                     ProgressView(
                         value: Double(context.state.poseIndex + 1),
-                        total: Double(context.attributes.totalPoses)
+                        total: Double(max(1, context.attributes.totalPoses))
                     )
-                    .tint(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
+                    .tint(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
+                    HStack(spacing: 10) {
+                        if context.state.isPaused {
+                            Label("Paused", systemImage: "pause.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(BrandTokens.strawberry)
+                        }
                         if let hr = context.state.heartRate {
                             Label("\(hr)", systemImage: "heart.fill")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.red)
+                                .font(.system(size: 12))
+                                .foregroundStyle(BrandTokens.strawberry)
                         }
-                        Spacer()
+                        if let sci = context.state.sciScore {
+                            Label(formatSCI(sci), systemImage: "waveform.path.ecg")
+                                .font(.system(size: 12))
+                                .foregroundStyle(BrandTokens.violet)
+                        }
+                        if let breath = context.state.breathsPerMinute {
+                            Label(formatBreath(breath), systemImage: "wind")
+                                .font(.system(size: 12))
+                                .foregroundStyle(BrandTokens.mint)
+                        }
+                        Spacer(minLength: 0)
                         Label("\(context.state.calories)", systemImage: "flame.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.orange)
-                        Spacer()
+                            .font(.system(size: 12))
+                            .foregroundStyle(BrandTokens.tangerine)
                         Text("\(context.state.poseIndex + 1)/\(context.attributes.totalPoses)")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
             } compactLeading: {
-                Image(systemName: context.attributes.styleSymbol)
+                Image(systemName: context.state.isPaused ? "pause.fill" : context.attributes.styleSymbol)
                     .font(.system(size: 12))
-                    .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
+                    .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
             } compactTrailing: {
-                Text(formatTime(context.state.poseTimeRemaining))
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+                if let sci = context.state.sciScore {
+                    Text(formatSCI(sci))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.violet)
+                } else {
+                    Text(formatTime(context.state.poseTimeRemaining))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
             } minimal: {
-                Image(systemName: context.attributes.styleSymbol)
+                Image(systemName: context.state.isPaused ? "pause.fill" : context.attributes.styleSymbol)
                     .font(.system(size: 12))
-                    .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.9))
+                    .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
             }
         }
     }
@@ -78,12 +106,16 @@ struct WorkoutLiveActivity: Widget {
                 Text(context.attributes.planName)
                     .font(.system(size: 15, weight: .semibold))
                 Spacer()
+                if context.state.isPaused {
+                    Label("Paused", systemImage: "pause.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(BrandTokens.strawberry)
+                }
                 Text(formatElapsed(context.state.elapsedTime))
                     .font(.system(size: 13, design: .rounded))
                     .foregroundStyle(.secondary)
             }
 
-            // Current pose with time
             HStack {
                 Text(context.state.currentPoseName)
                     .font(.system(size: 17, weight: .bold))
@@ -92,34 +124,39 @@ struct WorkoutLiveActivity: Widget {
                 Text(formatTime(context.state.poseTimeRemaining))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.7))
+                    .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
             }
 
-            // Progress
             ProgressView(
                 value: Double(context.state.poseIndex + 1),
-                total: Double(context.attributes.totalPoses)
+                total: Double(max(1, context.attributes.totalPoses))
             )
-            .tint(Color(hue: context.attributes.accentHue, saturation: 0.6, brightness: 0.7))
+            .tint(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
 
-            // Stats
-            HStack {
+            HStack(spacing: 12) {
                 if let hr = context.state.heartRate {
                     Label("\(hr) bpm", systemImage: "heart.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandTokens.strawberry)
                 }
-                Spacer()
+                if let sci = context.state.sciScore {
+                    Label("SCI \(formatSCI(sci))", systemImage: "waveform.path.ecg")
+                        .font(.system(size: 12))
+                        .foregroundStyle(BrandTokens.violet)
+                }
+                if let breath = context.state.breathsPerMinute {
+                    Label("\(formatBreath(breath))/min", systemImage: "wind")
+                        .font(.system(size: 12))
+                        .foregroundStyle(BrandTokens.mint)
+                }
+                Spacer(minLength: 0)
                 Label("\(context.state.calories) cal", systemImage: "flame.fill")
                     .font(.system(size: 12))
-                    .foregroundStyle(.orange)
-                Spacer()
-                Text("Pose \(context.state.poseIndex + 1) of \(context.attributes.totalPoses)")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BrandTokens.tangerine)
             }
         }
         .padding()
+        .activityBackgroundTint(BrandTokens.bg.opacity(0.92))
     }
 
     private func formatTime(_ seconds: Int) -> String {
@@ -132,5 +169,14 @@ struct WorkoutLiveActivity: Widget {
         let m = Int(interval) / 60
         let s = Int(interval) % 60
         return String(format: "%d:%02d", m, s)
+    }
+
+    private func formatSCI(_ score: Double) -> String {
+        guard score.isFinite else { return "—" }
+        return "\(Int((min(1, max(0, score)) * 100).rounded()))%"
+    }
+
+    private func formatBreath(_ bpm: Double) -> String {
+        String(format: "%.0f", bpm)
     }
 }

@@ -238,10 +238,10 @@ struct PokeDrugSubstanceInsightView: View {
 
     private func effectivenessColor(_ e: TypeEffectiveness) -> Color {
         switch e {
-        case .superEffective: return .green
-        case .effective: return .mint
-        case .weaklyEffective: return .orange
-        case .notEffective, .immune: return .secondary
+        case .superEffective: return BrandColor.mint
+        case .effective: return BrandColor.aqua
+        case .weaklyEffective: return BrandColor.tangerine
+        case .notEffective, .immune: return BrandColor.magnesium
         }
     }
 

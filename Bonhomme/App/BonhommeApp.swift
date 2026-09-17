@@ -110,8 +110,11 @@ struct ContentView: View {
                                 showDebugDashboard.toggle()
                             } label: {
                                 Image(systemName: "ladybug.fill")
-                                    .foregroundStyle(showDebugDashboard ? .orange : .secondary)
+                                    .foregroundStyle(showDebugDashboard ? BrandColor.strawberry : .secondary)
+                                    .frame(minWidth: 44, minHeight: 44)
                             }
+                            .accessibilityLabel("Debug dashboard")
+                            .accessibilityValue(showDebugDashboard ? "Visible" : "Hidden")
                         }
                         #endif
                     }
