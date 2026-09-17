@@ -16,12 +16,13 @@ public struct PoseCountdownView: View {
     public var body: some View {
         TimelineView(.animation(
             minimumInterval: SessionMotion.timelineInterval(reduceMotion),
-            paused: SessionMotion.timelinePaused(reduceMotion)
+            paused: !known || SessionMotion.timelinePaused(reduceMotion)
         )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
-            let pulse = reduceMotion ? 0.5 : (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
+            let pulse = reduceMotion || !known ? 0.5 : (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
             let kinematics = pose.kinematics
             let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
+            let fraction = remainingFraction
 
             VStack(spacing: 24) {
                 Spacer()
@@ -70,36 +71,43 @@ public struct PoseCountdownView: View {
                         )
                         .frame(width: 180, height: 180)
 
-                    Circle()
-                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .blur(radius: 6)
-                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
+                    if let fraction, fraction > 0 {
+                        Circle()
+                            .trim(from: 0, to: fraction)
+                            .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .blur(radius: 6)
+                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
+                    }
 
                     Circle()
-                        .stroke(BrandColor.hairline, lineWidth: 8)
+                        .stroke(
+                            BrandColor.hairline,
+                            style: StrokeStyle(lineWidth: 8, dash: known ? [] : [4, 3])
+                        )
 
-                    Circle()
-                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(catColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: catColor.opacity(0.6), radius: 10)
-                        .shadow(color: catColor.opacity(0.3), radius: 3)
-                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
+                    if let fraction, fraction > 0 {
+                        Circle()
+                            .trim(from: 0, to: fraction)
+                            .stroke(catColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .shadow(color: catColor.opacity(0.6), radius: 10)
+                            .shadow(color: catColor.opacity(0.3), radius: 3)
+                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
 
-                    Circle()
-                        .trim(from: 0, to: total > 0 ? remaining / total : 0)
-                        .stroke(BrandColor.magnesium.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
+                        Circle()
+                            .trim(from: 0, to: fraction)
+                            .stroke(BrandColor.magnesium.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
+                    }
 
                     Text(timeString)
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(BrandColor.fg)
-                        .shadow(color: catColor.opacity(0.3), radius: 6)
-                        .contentTransition(.numericText())
+                        .foregroundStyle(known ? BrandColor.fg : BrandColor.magnesium)
+                        .shadow(color: catColor.opacity(known ? 0.3 : 0), radius: 6)
+                        .contentTransition(reduceMotion || !known ? .identity : .numericText())
                 }
                 .frame(width: 140, height: 140)
 
@@ -108,7 +116,17 @@ public struct PoseCountdownView: View {
         }
     }
 
+    private var known: Bool {
+        total.isFinite && total > 0 && remaining.isFinite
+    }
+
+    private var remainingFraction: CGFloat? {
+        guard known else { return nil }
+        return CGFloat(min(1, max(0, remaining / total)))
+    }
+
     private var timeString: String {
+        guard known else { return "—" }
         let seconds = Int(remaining)
         if seconds >= 60 {
             return String(format: "%d:%02d", seconds / 60, seconds % 60)
