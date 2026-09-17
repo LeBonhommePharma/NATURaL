@@ -58,6 +58,8 @@ final class SessionPaletteTests: XCTestCase {
         XCTAssertFalse(SessionMotion.timelinePaused(false))
         XCTAssertEqual(SessionMotion.timelineInterval(true), 1.0)
         XCTAssertLessThan(SessionMotion.timelineInterval(false), 0.05)
+        XCTAssertEqual(SessionMotion.moveDuration(true), 0)
+        XCTAssertEqual(SessionMotion.moveDuration(false), 1.0)
         XCTAssertEqual(SessionSpacing.minTapTarget, 44)
     }
 }

@@ -316,4 +316,9 @@ public enum SessionMotion {
     public static func spring(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.8)
     }
+
+    /// RealityKit `Entity.move` duration. Instant when Reduce Motion is on.
+    public static func moveDuration(_ reduceMotion: Bool, animated: Double = 1.0) -> TimeInterval {
+        reduceMotion ? 0 : animated
+    }
 }
