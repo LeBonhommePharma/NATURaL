@@ -44,7 +44,8 @@ struct SpatialPoseView: View {
             VStack(spacing: 20) {
                 Image(systemName: "figure.yoga")
                     .font(.system(size: 64))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(SessionPalette.accent)
+                    .symbolRenderingMode(.hierarchical)
                     .padding(.top, 32)
 
                 Text(LocalizedString(en: "Chair Yoga", fr: "Yoga sur chaise").localized)
@@ -58,7 +59,8 @@ struct SpatialPoseView: View {
                         HStack(spacing: 16) {
                             Image(systemName: plan.poses.first?.category.symbolName ?? "figure.yoga")
                                 .font(.system(size: 32))
-                                .foregroundStyle(.cyan)
+                                .foregroundStyle(SessionPalette.accent)
+                                .symbolRenderingMode(.hierarchical)
                                 .frame(width: 48)
 
                             VStack(alignment: .leading, spacing: 4) {
@@ -101,49 +103,26 @@ struct SpatialPoseView: View {
             Spacer()
 
             if let pose = vm.currentPose {
-                let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
-
                 Image(systemName: pose.category.symbolName)
                     .font(.system(size: 72))
-                    .foregroundStyle(catColor.opacity(0.4))
+                    .foregroundStyle(Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9).opacity(0.4))
+                    .symbolRenderingMode(.hierarchical)
+                    .accessibilityHidden(true)
 
-                Text(pose.name.localized)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-
-                HStack(spacing: 12) {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { i in
-                            Circle()
-                                .fill(i < pose.difficulty.dotCount ? catColor : .secondary.opacity(0.3))
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-                    Text(pose.category.localizedName.localized)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                }
+                SessionPoseHeader(pose: pose, prominence: .large)
 
                 Text(pose.description.localized)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
+                    .font(.body)
+                    .foregroundStyle(BrandColor.fgMuted)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 48)
 
-                // Countdown
-                Text("\(Int(vm.poseTimeRemaining))")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
+                SessionCountdownNumeral(remaining: vm.poseTimeRemaining)
 
-                // Breathing pattern
                 if !pose.breathingPattern.localized.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "wind")
-                            .foregroundStyle(catColor.opacity(0.5))
-                        Text(pose.breathingPattern.localized)
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.system(size: 14))
+                    Label(pose.breathingPattern.localized, systemImage: "wind")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(BrandColor.fgMuted)
                 }
             }
 
@@ -185,7 +164,7 @@ struct SpatialPoseView: View {
                         LocalizedString(en: "End", fr: "Fin").localized,
                         systemImage: "xmark.circle"
                     )
-                    .foregroundStyle(.red)
+                    .foregroundStyle(BrandColor.firetruck)
                 }
             }
             .padding(.bottom, 24)
@@ -200,7 +179,8 @@ struct SpatialPoseView: View {
 
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 72))
-                .foregroundStyle(.green)
+                .foregroundStyle(BrandColor.mint)
+                .symbolRenderingMode(.hierarchical)
 
             Text(LocalizedString(en: "Session Complete!", fr: "Séance terminée!").localized)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -226,7 +206,7 @@ struct SpatialPoseView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .padding(.horizontal, 48)
                     .padding(.vertical, 12)
-                    .background(.cyan, in: RoundedRectangle(cornerRadius: 14))
+                    .background(SessionPalette.accent, in: RoundedRectangle(cornerRadius: SessionRadius.control, style: .continuous))
             }
             .buttonStyle(.plain)
             .padding(.bottom, 40)
@@ -263,6 +243,17 @@ final class SpatialWorkoutViewModel {
 
     var currentPose: Pose? {
         plan.poses[safe: currentPoseIndex]
+    }
+
+    var hudMetrics: SessionHUDMetrics {
+        let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
+        return SessionHUDMetrics(
+            sciScore: insight?.score,
+            sciTrend: insight?.trend.asSCITrend ?? .stable,
+            elapsed: elapsedTime,
+            poseIndex: currentPoseIndex,
+            poseCount: plan.poseCount
+        )
     }
 
     private var timerTask: Task<Void, Never>?

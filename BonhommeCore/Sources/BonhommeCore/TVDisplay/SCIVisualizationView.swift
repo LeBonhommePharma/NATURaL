@@ -35,19 +35,19 @@ public struct SCIVisualizationView: View {
 
                     // Outer volumetric glow (blurred wide)
                     Circle()
-                        .trim(from: 0, to: score ?? 0)
+                        .trim(from: 0, to: clampedScore)
                         .stroke(glowColor.opacity(0.25), style: StrokeStyle(lineWidth: 12, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .blur(radius: 8)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
+                        .blur(radius: reduceMotion ? 0 : 8)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
 
                     // Mid glow layer
                     Circle()
-                        .trim(from: 0, to: score ?? 0)
+                        .trim(from: 0, to: clampedScore)
                         .stroke(glowColor.opacity(0.4), style: StrokeStyle(lineWidth: 8, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .blur(radius: 3)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
+                        .blur(radius: reduceMotion ? 0 : 3)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
 
                     // Background track
                     Circle()
@@ -55,40 +55,34 @@ public struct SCIVisualizationView: View {
 
                     // Main ring
                     Circle()
-                        .trim(from: 0, to: score ?? 0)
+                        .trim(from: 0, to: clampedScore)
                         .stroke(glowColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .shadow(color: glowColor.opacity(0.7), radius: 2)
+                        .shadow(color: glowColor.opacity(0.7), radius: reduceMotion ? 0 : 2)
                         .sessionGlow(glowColor, radius: 10, paused: reduceMotion)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
 
                     // Inner highlight
                     Circle()
-                        .trim(from: 0, to: score ?? 0)
+                        .trim(from: 0, to: clampedScore)
                         .stroke(BrandColor.magnesium.opacity(0.30), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: score)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
 
                     VStack(spacing: 2) {
-                        if let score {
-                            Text(String(format: "%.0f", score * 100))
-                                .font(SessionType.metric(size: 28))
-                                .monospacedDigit()
-                                .foregroundStyle(BrandColor.fg)
-                                .sessionGlow(glowColor, radius: 6, paused: reduceMotion)
-                                .contentTransition(.numericText())
-                        } else {
-                            Text("--")
-                                .font(SessionType.metric(size: 28))
-                                .foregroundStyle(BrandColor.magnesium)
-                        }
+                        Text(percentText)
+                            .font(SessionType.metric(size: 28))
+                            .monospacedDigit()
+                            .foregroundStyle(score == nil ? BrandColor.magnesium : BrandColor.fg)
+                            .sessionGlow(glowColor, radius: 6, paused: reduceMotion)
+                            .contentTransition(reduceMotion ? .identity : .numericText())
 
                         Image(systemName: trendIcon)
                             .font(.system(size: 12))
                             .foregroundStyle(trendColor)
-                            .shadow(color: trendColor.opacity(0.4), radius: 4)
-                            .contentTransition(.symbolEffect(.replace))
-                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: trend)
+                            .shadow(color: trendColor.opacity(reduceMotion ? 0 : 0.4), radius: reduceMotion ? 0 : 4)
+                            .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: trend)
                     }
                 }
                 .frame(width: 100, height: 100)
@@ -100,7 +94,16 @@ public struct SCIVisualizationView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(SessionHUDCopy.focusIndex.localized))
-        .accessibilityValue(Text(score.map { "\(Int(($0 * 100).rounded())) percent" } ?? "unavailable"))
+        .accessibilityValue(Text(percentText == "—" ? "unavailable" : "\(percentText) percent"))
+    }
+
+    private var clampedScore: CGFloat {
+        guard let score, score.isFinite else { return 0 }
+        return CGFloat(min(1, max(0, score)))
+    }
+
+    private var percentText: String {
+        SessionHUDMetrics(sciScore: score).sciPercentText
     }
 
     private var glowColor: Color { SessionPalette.sci(score) }

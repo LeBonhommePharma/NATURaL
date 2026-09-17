@@ -64,4 +64,26 @@ final class SessionHUDMetricsTests: XCTestCase {
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .nan, isGrounding: false), .unknown)
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .infinity, isGrounding: false), .unknown)
     }
+
+    func testAccessibilityUsesClampedFormatters() {
+        let overflow = SessionHUDMetrics(sciScore: 1.4, heartRate: 68, poseIndex: 0, poseCount: 7)
+        XCTAssertEqual(overflow.sciPercentText, "100")
+        XCTAssertTrue(overflow.accessibilitySummary.contains("100 percent"))
+        XCTAssertFalse(overflow.accessibilitySummary.contains("140"))
+        XCTAssertTrue(overflow.accessibilitySummary.contains("1/7"))
+        XCTAssertFalse(overflow.accessibilitySummary.contains("0/7"))
+
+        let missing = SessionHUDMetrics()
+        XCTAssertTrue(missing.accessibilitySummary.contains("unavailable"))
+        XCTAssertTrue(missing.accessibilitySummary.contains("pose —"))
+    }
+
+    func testPoseProgressNeverShowsZeroOfN() {
+        let first = SessionHUDMetrics(poseIndex: 0, poseCount: 5)
+        XCTAssertEqual(first.poseProgressText, "1/5")
+        XCTAssertEqual(first.poseProgressFraction, 0.2, accuracy: 0.0001)
+        let last = SessionHUDMetrics(poseIndex: 4, poseCount: 5)
+        XCTAssertEqual(last.poseProgressText, "5/5")
+        XCTAssertEqual(last.poseProgressFraction, 1, accuracy: 0.0001)
+    }
 }

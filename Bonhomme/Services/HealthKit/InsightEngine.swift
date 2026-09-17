@@ -778,8 +778,8 @@ final class InsightEngine: ObservableObject {
             ).localized)
         }
 
-        if let hrvInsight = insights[.heartRateVariability], let score = hrvInsight.score {
-            let pct = Int(score * 100)
+        if let hrvInsight = insights[.heartRateVariability], let score = hrvInsight.score, score.isFinite {
+            let pct = SessionHUDMetrics(sciScore: score).sciPercentText
             parts.append(LocalizedString(
                 en: "Focus coherence reached \(pct)% — \(hrvInsight.trend == .improving ? "an improving trend" : "keep practicing deep breathing").",
                 fr: "La cohérence de concentration a atteint \(pct) % — \(hrvInsight.trend == .improving ? "une tendance à la hausse" : "continuez à pratiquer la respiration profonde")."

@@ -33,7 +33,7 @@ struct TVRootView: View {
     private var connectionStatus: some View {
         HStack(spacing: SessionSpacing.xs) {
             Circle()
-                .fill(listener.isAdvertising ? Color.green : Color.gray)
+                .fill(listener.isAdvertising ? BrandColor.mint : BrandColor.magnesium)
                 .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
 

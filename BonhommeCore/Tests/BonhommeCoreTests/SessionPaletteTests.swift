@@ -48,4 +48,16 @@ final class SessionPaletteTests: XCTestCase {
         XCTAssertEqual(SessionPalette.trend(.stable), BrandColor.magnesium)
         XCTAssertEqual(SessionPalette.trend(.declining), BrandColor.strawberry)
     }
+
+    func testReduceMotionDisablesDecorativeSessionMotion() {
+        XCTAssertNil(SessionMotion.animation(reduceMotion: true))
+        XCTAssertNotNil(SessionMotion.animation(reduceMotion: false))
+        XCTAssertNil(SessionMotion.spring(reduceMotion: true))
+        XCTAssertNotNil(SessionMotion.spring(reduceMotion: false))
+        XCTAssertTrue(SessionMotion.timelinePaused(true))
+        XCTAssertFalse(SessionMotion.timelinePaused(false))
+        XCTAssertEqual(SessionMotion.timelineInterval(true), 1.0)
+        XCTAssertLessThan(SessionMotion.timelineInterval(false), 0.05)
+        XCTAssertEqual(SessionSpacing.minTapTarget, 44)
+    }
 }

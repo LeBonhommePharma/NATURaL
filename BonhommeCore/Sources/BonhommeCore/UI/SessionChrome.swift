@@ -299,10 +299,21 @@ public extension View {
 // MARK: - Motion
 
 public enum SessionMotion {
+    public static let short: Double = 0.18
+    public static let standard: Double = 0.22
+
     /// Pause decorative TimelineView loops when Reduce Motion is on.
     public static func timelinePaused(_ reduceMotion: Bool) -> Bool { reduceMotion }
 
     public static func timelineInterval(_ reduceMotion: Bool) -> Double {
         reduceMotion ? 1.0 : (1.0 / 30.0)
+    }
+
+    public static func animation(reduceMotion: Bool, duration: Double = standard) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: duration)
+    }
+
+    public static func spring(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.8)
     }
 }

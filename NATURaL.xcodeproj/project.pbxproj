@@ -98,6 +98,10 @@
 		AC2026091200000000000101 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000101 /* PrivacyInfo.xcprivacy */; };
 		AC2026091200000000000200 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000200 /* PrivacyInfo.xcprivacy */; };
 		AC2026091200000000000300 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB2026091200000000000300 /* PrivacyInfo.xcprivacy */; };
+		A170917E3F61000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000001 /* Assets.xcassets */; };
+		A170917E3F61000000000012 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000002 /* PrivacyInfo.xcprivacy */; };
+		A170917E3F61000000000111 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000101 /* Assets.xcassets */; };
+		A170917E3F61000000000112 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000102 /* PrivacyInfo.xcprivacy */; };
 		AD2026091200000000000001 /* Watch in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3B20A0CBCF41B50E61CA0C8A; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -254,6 +258,10 @@
 		AB2026091200000000000101 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AB2026091200000000000200 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AB2026091200000000000300 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A170917E3F61000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A170917E3F61000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A170917E3F61000000000101 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A170917E3F61000000000102 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -445,6 +453,8 @@
 				6FDBEC71B2C2159541237617 /* App */,
 				13ABD2C5A9F71273FD18B004 /* Networking */,
 				6C38762A1916540B3096AE06 /* Views */,
+				A170917E3F61000000000001 /* Assets.xcassets */,
+				A170917E3F61000000000002 /* PrivacyInfo.xcprivacy */,
 				2FDC5BA711EF5694CD2DCA5D /* Info.plist */,
 			);
 			path = BonhommeTV;
@@ -707,6 +717,8 @@
 			isa = PBXGroup;
 			children = (
 				C56BE0DC240D5136E49D892B /* App */,
+				A170917E3F61000000000101 /* Assets.xcassets */,
+				A170917E3F61000000000102 /* PrivacyInfo.xcprivacy */,
 				A2712A1AB52F16BD44CDA921 /* Info.plist */,
 			);
 			path = BonhommeVision;
@@ -745,6 +757,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = DA6E99C7ADCB2DC6146295E6 /* Build configuration list for PBXNativeTarget "BonhommeVision" */;
 			buildPhases = (
+				A170917E3F61000000000120 /* Resources */,
 				73DA79884C2D753985A58A57 /* Sources */,
 				F66FAD689BBECDE064C5873A /* Frameworks */,
 			);
@@ -852,6 +865,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = FA4E675B01ABDC74FC10A91C /* Build configuration list for PBXNativeTarget "BonhommeTV" */;
 			buildPhases = (
+				A170917E3F61000000000020 /* Resources */,
 				D7031E39CAC89C4685B1962D /* Sources */,
 				C932E7622F9BB156D6C24BB8 /* Frameworks */,
 			);
@@ -957,6 +971,8 @@
 		AA2026091200000000000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000100, AC2026091200000000000101, ); runOnlyForDeploymentPostprocessing = 0; };
 		AA2026091200000000000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000200, ); runOnlyForDeploymentPostprocessing = 0; };
 		AA2026091200000000000300 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000300, ); runOnlyForDeploymentPostprocessing = 0; };
+		A170917E3F61000000000020 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A170917E3F61000000000011, A170917E3F61000000000012, ); runOnlyForDeploymentPostprocessing = 0; };
+		A170917E3F61000000000120 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A170917E3F61000000000111, A170917E3F61000000000112, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -1223,9 +1239,11 @@
 		3BC3CCC0C9AF8127274C4759 /* Release configuration for PBXNativeTarget "BonhommeTV" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeTV/Info.plist;
 				MARKETING_VERSION = 1.0;
@@ -1234,6 +1252,7 @@
 				SDKROOT = appletvos;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 17.0;
 			};
 			name = Release;
@@ -1279,8 +1298,10 @@
 		6C1CE64DF3591527B554FAA4 /* Debug configuration for PBXNativeTarget "BonhommeVision" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeVision/Info.plist;
 				MARKETING_VERSION = 1.0;
@@ -1290,6 +1311,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
 				XROS_DEPLOYMENT_TARGET = 1.0;
 			};
 			name = Debug;
@@ -1365,8 +1387,10 @@
 		A0E7E8EBCEEAE1E35815A476 /* Debug configuration for PBXNativeTarget "BonhommeTV" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeTV/Info.plist;
 				MARKETING_VERSION = 1.0;
@@ -1376,6 +1400,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 17.0;
 			};
 			name = Debug;
@@ -1431,9 +1456,11 @@
 		BE7DD89400F4CA1482037F80 /* Release configuration for PBXNativeTarget "BonhommeVision" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ZJLX84G8QV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BonhommeVision/Info.plist;
 				MARKETING_VERSION = 1.0;
@@ -1442,6 +1469,7 @@
 				SDKROOT = xros;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
 				XROS_DEPLOYMENT_TARGET = 1.0;
 			};
 			name = Release;
