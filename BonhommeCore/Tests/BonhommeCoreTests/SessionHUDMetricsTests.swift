@@ -62,7 +62,7 @@ final class SessionHUDMetricsTests: XCTestCase {
         XCTAssertEqual(hud.calories, 12)
     }
 
-    def testNonFiniteSCITreatedAsUnknown() {
+    func testNonFiniteSCITreatedAsUnknown() {
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .nan, isGrounding: false), .unknown)
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .infinity, isGrounding: false), .unknown)
         XCTAssertEqual(SessionHUDMetrics(sciScore: .nan).sciPercentLabel, "—")
