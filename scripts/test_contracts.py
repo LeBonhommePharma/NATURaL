@@ -236,6 +236,14 @@ def test_hud_honesty() -> None:
     tv_ring = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/SCIVisualizationView.swift")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in tv_ring:
         fail("TV SCI ring must use HUD percent formatter")
+    if "dash: known ? [] : [4, 3]" not in tv_ring:
+        fail("SCIVisualizationView must dash the track when SCI is unknown")
+    if "paused: !known || reduceMotion" not in tv_ring:
+        fail("SCIVisualizationView must pause breath on non-finite SCI, not only nil")
+    if "paused: score == nil || reduceMotion" in tv_ring:
+        fail("SCIVisualizationView must not treat NaN SCI as a live 0% ring")
+    if "if known {" not in tv_ring:
+        fail("SCIVisualizationView must omit trim fill when SCI is unknown")
     widgets = read("NATURaLWidgets/BrandTokens.swift")
     if "min(1, max(0, score))" not in widgets:
         fail("widget BrandTokens.sciPercent must clamp SCI to [0, 1]")
