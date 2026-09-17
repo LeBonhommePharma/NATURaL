@@ -6,6 +6,7 @@ import BonhommeCore
 /// Only compiled in DEBUG builds.
 struct DebugDashboardView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isExpanded = false
     @State private var diagnostics: [DiagnosticItem] = []
 
@@ -13,13 +14,13 @@ struct DebugDashboardView: View {
         VStack(spacing: 0) {
             // Collapsed header
             Button {
-                withAnimation(.spring(response: 0.3)) {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
                     isExpanded.toggle()
                 }
             } label: {
                 HStack {
                     Image(systemName: "ladybug.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(BrandColor.strawberry)
                     Text("Debug Dashboard")
                         .font(.system(size: 12, weight: .semibold))
                     Spacer()
@@ -27,10 +28,12 @@ struct DebugDashboardView: View {
                         .font(.system(size: 10, weight: .bold))
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .frame(minHeight: 44)
                 .background(.black.opacity(0.8))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Debug dashboard")
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
 
             if isExpanded {
                 ScrollView {
@@ -38,7 +41,7 @@ struct DebugDashboardView: View {
                         // System Info
                         sectionHeader("System Information")
                         diagnosticRow("Platform", value: platformName)
-                        diagnosticRow("HealthKit", value: HealthKitManager.isAvailable ? "✅ Available" : "⚠️ Unavailable")
+                        diagnosticRow("HealthKit", value: HealthKitManager.isAvailable ? "Available" : "Unavailable")
                         diagnosticRow("Locale", value: "\(Locale.current.identifier)")
                         diagnosticRow("Language", value: "\(Locale.current.language.languageCode?.identifier ?? "unknown")")
 
@@ -46,36 +49,36 @@ struct DebugDashboardView: View {
 
                         // AppState Status
                         sectionHeader("AppState")
-                        diagnosticRow("Workout Active", value: appState.isWorkoutActive ? "✅ Yes" : "❌ No")
-                        diagnosticRow("Access Model", value: "✅ Free")
-                        diagnosticRow("HealthKit Auth", value: appState.healthKitAuthorized ? "✅ Authorized" : "⚠️ Not Authorized")
-                        diagnosticRow("Resumable Workout", value: appState.pendingRestoredWorkout != nil ? "✅ Yes" : "❌ No")
+                        diagnosticRow("Workout Active", value: appState.isWorkoutActive ? "Yes" : "No")
+                        diagnosticRow("Access Model", value: "Free")
+                        diagnosticRow("HealthKit Auth", value: appState.healthKitAuthorized ? "Authorized" : "Not authorized")
+                        diagnosticRow("Resumable Workout", value: appState.pendingRestoredWorkout != nil ? "Yes" : "No")
 
                         Divider()
 
                         // Managers Status
                         sectionHeader("Managers")
-                        diagnosticRow("HealthKitManager", value: "✅ Initialized")
-                        diagnosticRow("TVDisplayCoordinator", value: "✅ Initialized")
-                        diagnosticRow("CareKitBridge", value: "✅ Initialized")
-                        diagnosticRow("PhoneConnectivityBridge", value: "✅ Initialized")
-                        diagnosticRow("FeedbackEngine", value: "✅ Initialized")
-                        diagnosticRow("MedicationTracker", value: "✅ Initialized")
-                        diagnosticRow("PrescriptionService", value: "✅ Initialized")
+                        diagnosticRow("HealthKitManager", value: "Initialized")
+                        diagnosticRow("TVDisplayCoordinator", value: "Initialized")
+                        diagnosticRow("CareKitBridge", value: "Initialized")
+                        diagnosticRow("PhoneConnectivityBridge", value: "Initialized")
+                        diagnosticRow("FeedbackEngine", value: "Initialized")
+                        diagnosticRow("MedicationTracker", value: "Initialized")
+                        diagnosticRow("PrescriptionService", value: "Initialized")
                         diagnosticRow(
                             "Clinical Consent",
                             value: appState.prescriptionService.consent.isValidForCurrentPolicy
-                                ? "✅ Granted v\(appState.prescriptionService.consent.policyVersion ?? "?")"
-                                : "⚠️ Not granted"
+                                ? "Granted v\(appState.prescriptionService.consent.policyVersion ?? "?")"
+                                : "Not granted"
                         )
-                        diagnosticRow("WorkoutStateStore", value: "✅ Initialized")
+                        diagnosticRow("WorkoutStateStore", value: "Initialized")
                         diagnosticRow(
                             "Persistence Mode",
                             value: appState.persistenceSync.mode.rawValue
                         )
                         diagnosticRow(
                             "Storage Attention",
-                            value: appState.persistenceSync.needsAttention ? "⚠️ Yes" : "✅ No"
+                            value: appState.persistenceSync.needsAttention ? "Yes" : "No"
                         )
                         if let err = appState.persistenceSync.underlyingErrorDescription {
                             diagnosticRow("Persistence Error", value: err)
@@ -88,7 +91,7 @@ struct DebugDashboardView: View {
                         diagnosticRow("Prescriptions", value: "\(appState.careKitBridge.prescribedTasks.count)")
                         diagnosticRow("Yoga Tasks", value: "\(appState.careKitBridge.yogaPrescribedTasks.count)")
                         diagnosticRow("Med Tasks", value: "\(appState.careKitBridge.medicationPrescribedTasks.count)")
-                        diagnosticRow("Has Prescriptions", value: appState.careKitBridge.hasPrescriptions ? "✅ Yes" : "❌ No")
+                        diagnosticRow("Has Prescriptions", value: appState.careKitBridge.hasPrescriptions ? "Yes" : "No")
 
                         Divider()
 
@@ -110,9 +113,9 @@ struct DebugDashboardView: View {
                             }
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .padding(.vertical, 8)
-                            .background(.blue, in: RoundedRectangle(cornerRadius: 8))
+                            .background(BrandColor.violet, in: RoundedRectangle(cornerRadius: 8))
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 12)
@@ -126,9 +129,9 @@ struct DebugDashboardView: View {
                             }
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .padding(.vertical, 8)
-                            .background(.green, in: RoundedRectangle(cornerRadius: 8))
+                            .background(BrandColor.mint, in: RoundedRectangle(cornerRadius: 8))
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 12)
@@ -142,9 +145,9 @@ struct DebugDashboardView: View {
                             }
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .padding(.vertical, 8)
-                            .background(.red, in: RoundedRectangle(cornerRadius: 8))
+                            .background(BrandColor.firetruck, in: RoundedRectangle(cornerRadius: 8))
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 12)
@@ -203,7 +206,7 @@ struct DebugDashboardView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(.cyan)
+            .foregroundStyle(BrandColor.mint)
             .padding(.horizontal, 12)
             .padding(.top, 4)
     }
@@ -230,14 +233,14 @@ struct DebugDashboardView: View {
                 icon: "heart.fill",
                 title: "HealthKit Available",
                 message: "HealthKit is available on this device",
-                color: .green
+                color: BrandColor.mint
             ))
         } else {
             diagnostics.append(DiagnosticItem(
                 icon: "heart.slash",
                 title: "HealthKit Unavailable",
                 message: "HealthKit is not available on this device",
-                color: .orange
+                color: BrandColor.strawberry
             ))
         }
 
@@ -246,14 +249,14 @@ struct DebugDashboardView: View {
                 icon: "arrow.clockwise.circle.fill",
                 title: "Resumable Workout Found",
                 message: "There is a workout that can be resumed",
-                color: .blue
+                color: BrandColor.violet
             ))
         } else {
             diagnostics.append(DiagnosticItem(
                 icon: "checkmark.circle",
                 title: "No Resumable Workout",
                 message: "No pending workouts to resume",
-                color: .green
+                color: BrandColor.mint
             ))
         }
 
@@ -262,14 +265,14 @@ struct DebugDashboardView: View {
                 icon: "stethoscope",
                 title: "CareKit Prescriptions Found",
                 message: "\(appState.careKitBridge.prescribedTasks.count) prescribed task(s)",
-                color: .green
+                color: BrandColor.mint
             ))
         } else {
             diagnostics.append(DiagnosticItem(
                 icon: "stethoscope",
                 title: "No CareKit Prescriptions",
                 message: "No prescribed tasks configured",
-                color: .gray
+                color: BrandColor.magnesium
             ))
         }
 
@@ -277,7 +280,7 @@ struct DebugDashboardView: View {
             icon: "memorychip",
             title: "AppState Initialized",
             message: "All managers successfully initialized",
-            color: .green
+            color: BrandColor.mint
         ))
 
         print("🔍 Ran \(diagnostics.count) diagnostic checks")
@@ -307,7 +310,7 @@ struct DebugDashboardView: View {
             icon: "terminal",
             title: "Status Printed",
             message: "Check Xcode console for full output",
-            color: .green
+            color: BrandColor.mint
         ))
     }
 
@@ -319,7 +322,7 @@ struct DebugDashboardView: View {
             icon: "trash.fill",
             title: "Workout State Cleared",
             message: "Resumable workout state has been cleared",
-            color: .orange
+            color: BrandColor.strawberry
         ))
     }
 }

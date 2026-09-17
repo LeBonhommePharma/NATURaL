@@ -278,7 +278,7 @@ struct PrescriptionsView: View {
                     .foregroundStyle(.secondary)
                 }
             }
-            .tint(.cyan)
+            .tint(BrandColor.mint)
 
             if let grantedAt = service.consent.grantedAt, service.consent.isGranted {
                 LabeledContent(
