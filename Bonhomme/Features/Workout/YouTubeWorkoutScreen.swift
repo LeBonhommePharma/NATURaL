@@ -32,10 +32,12 @@ struct YouTubeWorkoutScreen: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
+                    .frame(width: SessionSpacing.minTapTarget, height: SessionSpacing.minTapTarget)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
+                    .contentShape(Circle())
             }
+            .accessibilityLabel("Close")
             Spacer()
             Text(viewModel.program.title)
                 .font(.subheadline.weight(.semibold))
@@ -117,8 +119,8 @@ private struct SCIGaugeBadge: View {
     let sci: Double; let inRange: Bool
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "waveform.path.ecg").foregroundStyle(inRange ? .green : .yellow).font(.caption2.weight(.semibold))
-            Text(String(format: "SCI %.2f", sci)).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
+            Image(systemName: "waveform.path.ecg").foregroundStyle(inRange ? BrandColor.mint : BrandColor.tangerine).font(.caption2.weight(.semibold))
+            Text(SessionHUDMetrics(sciScore: sci).sciPercentLabel).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
         }
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(.black.opacity(0.65)).clipShape(Capsule())
@@ -137,7 +139,7 @@ private struct PhasePill: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(.white.opacity(0.2))
-                    Capsule().fill(isActive ? Color.green : Color.white.opacity(0.4))
+                    Capsule().fill(isActive ? BrandColor.mint : Color.white.opacity(0.4))
                         .frame(width: geo.size.width * (isActive ? progress : (currentTime >= phase.endTime ? 1 : 0)))
                 }
             }

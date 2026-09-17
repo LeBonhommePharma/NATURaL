@@ -212,7 +212,7 @@ struct HomeView: View {
             if let feedback = sync.retryFeedback {
                 Text(feedback)
                     .font(.system(size: 12))
-                    .foregroundStyle(sync.restartRecommended ? Color.green.opacity(0.9) : .secondary)
+                    .foregroundStyle(sync.restartRecommended ? BrandColor.mint.opacity(0.9) : .secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -431,16 +431,16 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "stethoscope")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(BrandColor.aqua)
                 Text(LocalizedString(en: "Prescribed Workouts", fr: "Entraînements prescrits").localized)
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
                 Text("\(appState.careKitBridge.yogaPrescribedTasks.count)")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(BrandColor.aqua)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(.blue.opacity(0.12), in: Capsule())
+                    .background(BrandColor.aqua.opacity(0.12), in: Capsule())
             }
             .padding(.horizontal)
 
@@ -480,7 +480,7 @@ struct HomeView: View {
         HStack {
             Image(systemName: "figure.yoga")
                 .font(.system(size: 24))
-                .foregroundStyle(.blue)
+                .foregroundStyle(BrandColor.aqua)
 
             VStack(alignment: .leading) {
                 HStack(spacing: 6) {
@@ -491,8 +491,8 @@ struct HomeView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.blue.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.blue)
+                        .background(BrandColor.aqua.opacity(0.15), in: Capsule())
+                        .foregroundStyle(BrandColor.aqua)
                 }
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
@@ -510,7 +510,7 @@ struct HomeView: View {
             }
         }
         .padding()
-        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .background(BrandColor.aqua.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Resume Banner

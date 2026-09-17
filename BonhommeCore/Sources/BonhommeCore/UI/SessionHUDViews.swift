@@ -32,7 +32,7 @@ public struct SessionStatusChip: View {
                 .minimumScaleFactor(0.7)
         }
         .padding(.horizontal, spacious ? SessionSpacing.md : (compact ? SessionSpacing.xs : SessionSpacing.sm))
-        .padding(.vertical, spacious ? SessionSpacing.xs : (compact ? 3 : SessionSpacing.xxs + 1))
+        .padding(.vertical, spacious ? SessionSpacing.xs : (compact ? SessionSpacing.xxs : SessionSpacing.xxs + 1))
         .background(tint.opacity(0.16), in: Capsule(style: .continuous))
         .overlay(Capsule(style: .continuous).strokeBorder(tint.opacity(0.35), lineWidth: spacious ? 1 : 0.5))
         .accessibilityElement(children: .combine)
@@ -221,39 +221,12 @@ public struct SessionHUDBar: View {
 
                 Spacer(minLength: SessionSpacing.xs)
 
-                VStack(alignment: .trailing, spacing: SessionSpacing.xs) {
-                    if metrics.isPaused {
-                        SessionStatusChip(
-                            title: SessionHUDCopy.paused.localized,
-                            systemImage: "pause.circle.fill",
-                            tint: BrandColor.strawberry
-                        )
-                    } else {
-                        SessionStatusChip(
-                            title: metrics.entropyState.label.localized,
-                            systemImage: metrics.entropyState.symbolName,
-                            tint: SessionPalette.entropy(metrics.entropyState)
-                        )
+                ViewThatFits(in: .horizontal) {
+                    VStack(alignment: .trailing, spacing: SessionSpacing.xs) {
+                        statusChips
                     }
-                    if metrics.tempoBPM != nil {
-                        SessionStatusChip(
-                            title: "\(metrics.tempoText) \(SessionHUDCopy.bpm.localized)",
-                            systemImage: metrics.isGrounding ? "metronome.fill" : "metronome",
-                            tint: metrics.isGrounding ? BrandColor.strawberry : BrandColor.tangerine
-                        )
-                    }
-                    if metrics.isHeadphonesConnected {
-                        SessionStatusChip(
-                            title: SessionHUDCopy.airPods.localized,
-                            systemImage: "airpodspro",
-                            tint: BrandColor.aqua
-                        )
-                    } else if metrics.isMusicPlaying {
-                        SessionStatusChip(
-                            title: SessionHUDCopy.music.localized,
-                            systemImage: "speaker.wave.2.fill",
-                            tint: BrandColor.aqua
-                        )
+                    HStack(spacing: SessionSpacing.xs) {
+                        statusChips
                     }
                 }
             }
@@ -264,10 +237,10 @@ public struct SessionHUDBar: View {
                     .accessibilityLabel(Text("Pose \(metrics.poseProgressText)"))
                 Text(metrics.poseProgressText)
                     .font(.caption.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BrandColor.fgMuted)
                 Text(metrics.elapsedText)
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(BrandColor.fgMuted.opacity(0.85))
                     .frame(minWidth: 36, alignment: .trailing)
             }
         }
@@ -276,6 +249,43 @@ public struct SessionHUDBar: View {
         .sessionGlassFill(in: SessionRadius.cardShape())
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(metrics.accessibilitySummary))
+    }
+
+    @ViewBuilder
+    private var statusChips: some View {
+        if metrics.isPaused {
+            SessionStatusChip(
+                title: SessionHUDCopy.paused.localized,
+                systemImage: "pause.circle.fill",
+                tint: BrandColor.strawberry
+            )
+        } else {
+            SessionStatusChip(
+                title: metrics.entropyState.label.localized,
+                systemImage: metrics.entropyState.symbolName,
+                tint: SessionPalette.entropy(metrics.entropyState)
+            )
+        }
+        if metrics.tempoBPM != nil {
+            SessionStatusChip(
+                title: "\(metrics.tempoText) \(SessionHUDCopy.bpm.localized)",
+                systemImage: metrics.isGrounding ? "metronome.fill" : "metronome",
+                tint: metrics.isGrounding ? BrandColor.strawberry : BrandColor.tangerine
+            )
+        }
+        if metrics.isHeadphonesConnected {
+            SessionStatusChip(
+                title: SessionHUDCopy.airPods.localized,
+                systemImage: "airpodspro",
+                tint: BrandColor.aqua
+            )
+        } else if metrics.isMusicPlaying {
+            SessionStatusChip(
+                title: SessionHUDCopy.music.localized,
+                systemImage: "speaker.wave.2.fill",
+                tint: BrandColor.aqua
+            )
+        }
     }
 }
 
@@ -362,7 +372,7 @@ public struct SessionGlanceStrip: View {
     public var body: some View {
         VStack(spacing: SessionSpacing.xs) {
             HStack(spacing: SessionSpacing.sm) {
-                Text("\(metrics.sciPercentText)%")
+                Text(metrics.sciPercentLabel)
                     .font(SessionType.metric(.title3))
                     .monospacedDigit()
                     .foregroundStyle(SessionPalette.sci(metrics.sciScore))
@@ -483,6 +493,8 @@ public struct SessionCountdownNumeral: View {
     public var remaining: TimeInterval
     public var tint: Color
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 64
 
     public init(remaining: TimeInterval, tint: Color = BrandColor.fg) {
@@ -495,7 +507,7 @@ public struct SessionCountdownNumeral: View {
             .font(SessionType.metric(size: min(size, 96)))
             .monospacedDigit()
             .foregroundStyle(tint)
-            .contentTransition(.numericText())
+            .contentTransition(reduceMotion ? .identity : .numericText())
             .accessibilityLabel(Text("\(Int(max(0, remaining.rounded()))) seconds remaining"))
     }
 }
@@ -504,6 +516,8 @@ public struct SessionCountdownNumeral: View {
 
 /// Dims the pose stage without covering pause/end controls.
 public struct SessionPausedOverlay: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init() {}
 
     public var body: some View {
@@ -516,7 +530,7 @@ public struct SessionPausedOverlay: View {
                     .font(.system(size: 56, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(BrandColor.fg.opacity(0.92))
-                    .sessionGlow(BrandColor.strawberry, radius: 12)
+                    .sessionGlow(BrandColor.strawberry, radius: 12, paused: reduceMotion)
                     .accessibilityHidden(true)
                 Text(SessionHUDCopy.paused.localized)
                     .font(.title.weight(.semibold))

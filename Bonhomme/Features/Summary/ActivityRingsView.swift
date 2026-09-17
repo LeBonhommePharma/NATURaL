@@ -1,74 +1,76 @@
 import SwiftUI
+import BonhommeCore
 
-/// Activity ring visualization mirroring Apple Fitness+ post-workout ring display.
-/// Shows Move (red), Exercise (green), and Stand (cyan) rings with progress.
+/// Activity ring visualization. Move / Exercise / Stand use family tokens
+/// (firetruck / mint / aqua) plus text — color is never the only cue.
 struct ActivityRingsView: View {
     let moveProgress: Double
     let exerciseProgress: Double
     let standProgress: Double
 
-    /// Optional delta labels (e.g., "+45 cal", "+12 min")
     var moveDelta: String?
     var exerciseDelta: String?
 
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: SessionSpacing.md) {
             ZStack {
-                // Stand ring (outermost)
                 RingShape(progress: standProgress)
-                    .stroke(Color.cyan, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                    .stroke(BrandColor.aqua, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .frame(width: 100, height: 100)
 
                 RingShape(progress: 1.0)
-                    .stroke(Color.cyan.opacity(0.2), lineWidth: 14)
+                    .stroke(BrandColor.aqua.opacity(0.2), lineWidth: 14)
                     .frame(width: 100, height: 100)
 
-                // Exercise ring (middle)
                 RingShape(progress: exerciseProgress)
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                    .stroke(BrandColor.mint, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .frame(width: 72, height: 72)
 
                 RingShape(progress: 1.0)
-                    .stroke(Color.green.opacity(0.2), lineWidth: 14)
+                    .stroke(BrandColor.mint.opacity(0.2), lineWidth: 14)
                     .frame(width: 72, height: 72)
 
-                // Move ring (innermost)
                 RingShape(progress: moveProgress)
-                    .stroke(Color.red, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                    .stroke(BrandColor.firetruck, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .frame(width: 44, height: 44)
 
                 RingShape(progress: 1.0)
-                    .stroke(Color.red.opacity(0.2), lineWidth: 14)
+                    .stroke(BrandColor.firetruck.opacity(0.2), lineWidth: 14)
                     .frame(width: 44, height: 44)
             }
             .frame(width: 100, height: 100)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(ringSummary)
 
             if moveDelta != nil || exerciseDelta != nil {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: SessionSpacing.xs) {
                     if let moveDelta {
-                        ringLabel(color: .red, text: moveDelta)
+                        ringLabel(systemImage: "flame.fill", color: BrandColor.firetruck, text: "Move \(moveDelta)")
                     }
                     if let exerciseDelta {
-                        ringLabel(color: .green, text: exerciseDelta)
+                        ringLabel(systemImage: "figure.walk", color: BrandColor.mint, text: "Exercise \(exerciseDelta)")
                     }
                 }
             }
         }
     }
 
-    private func ringLabel(color: Color, text: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
-            Text(text)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary)
-        }
+    private var ringSummary: String {
+        let move = Int((min(max(moveProgress, 0), 2) * 100).rounded())
+        let exercise = Int((min(max(exerciseProgress, 0), 2) * 100).rounded())
+        let stand = Int((min(max(standProgress, 0), 2) * 100).rounded())
+        return "Move \(move) percent, Exercise \(exercise) percent, Stand \(stand) percent"
+    }
+
+    private func ringLabel(systemImage: String, color: Color, text: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.system(size: 14, weight: .medium, design: .rounded))
+            .foregroundStyle(color)
+            .labelStyle(.titleAndIcon)
+            .symbolRenderingMode(.hierarchical)
     }
 }
 
-/// A circular arc shape used for activity ring rendering.
 struct RingShape: Shape {
     var progress: Double
 
@@ -79,7 +81,7 @@ struct RingShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        let clampedProgress = min(max(progress, 0), 2.0) // Allow up to 200%
+        let clampedProgress = min(max(progress, 0), 2.0)
         path.addArc(
             center: CGPoint(x: rect.midX, y: rect.midY),
             radius: rect.width / 2,

@@ -138,7 +138,7 @@ struct WatchSessionView: View {
                 }
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 36))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(SessionPalette.accent)
                 Text(LocalizedString(en: "Done!", fr: "Terminé!").localized)
                     .font(.headline)
             }

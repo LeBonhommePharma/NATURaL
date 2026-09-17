@@ -257,6 +257,8 @@ struct StorageStatusBanner: View {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 22))
                             .foregroundStyle(.secondary)
+                            .frame(width: SessionSpacing.minTapTarget, height: SessionSpacing.minTapTarget)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(LocalizedString(en: "Dismiss", fr: "Fermer").localized)
@@ -265,7 +267,7 @@ struct StorageStatusBanner: View {
                 if let feedback = status.retryFeedback {
                     Text(feedback)
                         .font(.system(size: 12))
-                        .foregroundStyle(status.restartRecommended ? Color.green.opacity(0.9) : .secondary)
+                        .foregroundStyle(status.restartRecommended ? BrandColor.mint.opacity(0.9) : .secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 

@@ -61,7 +61,7 @@ struct TVRootView: View {
                     ar: "غير معلن"
                  ).localized)
                 .font(.title3)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(BrandColor.fgMuted)
         }
         .padding(.horizontal, SessionSpacing.lg)
         .padding(.vertical, SessionSpacing.sm)
