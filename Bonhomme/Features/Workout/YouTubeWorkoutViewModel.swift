@@ -19,7 +19,7 @@ final class YouTubeWorkoutViewModel {
     private(set) var currentPhase: ProgramPhase?
     private(set) var heartRate: Double?
     private(set) var activeCalories: Double = 0
-    private(set) var entropyIndex: Double = 0
+    private(set) var entropyIndex: Double? = nil
     private(set) var elapsedWorkoutTime: TimeInterval = 0
 
     let program: YouTubeWorkoutProgram
@@ -93,7 +93,7 @@ final class YouTubeWorkoutViewModel {
     }
 
     var isInTargetSCIRange: Bool {
-        guard let range = currentPhase?.targetSCIRange else { return true }
+        guard let range = currentPhase?.targetSCIRange, let entropyIndex else { return true }
         return range.contains(entropyIndex)
     }
 }

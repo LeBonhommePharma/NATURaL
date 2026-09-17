@@ -272,6 +272,10 @@ def test_hud_honesty() -> None:
         "Bonhomme/Features/Workout/YouTubeWorkoutScreen.swift"
     ):
         fail("YouTube SCI bar must use SessionHUDMetrics, not raw %.2f")
+    if "entropyIndex: Double? = nil" not in read(
+        "Bonhomme/Features/Workout/YouTubeWorkoutViewModel.swift"
+    ):
+        fail("YouTube SCI must start unknown, not 0")
     live_inapp = read("Bonhomme/LiveActivity/WorkoutLiveActivity.swift")
     if ".foregroundStyle(.orange)" in live_inapp or "Color(hue:" in live_inapp:
         fail("in-app Live Activity must use BrandTokens, not hue/orange")

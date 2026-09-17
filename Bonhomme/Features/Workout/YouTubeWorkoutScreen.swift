@@ -116,14 +116,18 @@ private struct MetricBadge: View {
 }
 
 private struct SCIGaugeBadge: View {
-    let sci: Double; let inRange: Bool
+    let sci: Double?; let inRange: Bool
     var body: some View {
+        let metrics = SessionHUDMetrics(sciScore: sci)
         HStack(spacing: 4) {
-            Image(systemName: "waveform.path.ecg").foregroundStyle(inRange ? BrandColor.mint : BrandColor.tangerine).font(.caption2.weight(.semibold))
-            Text(SessionHUDMetrics(sciScore: sci).sciPercentLabel).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(sci == nil ? BrandColor.magnesium : (inRange ? BrandColor.mint : BrandColor.tangerine))
+                .font(.caption2.weight(.semibold))
+            Text(metrics.sciPercentLabel).font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.white)
         }
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(.black.opacity(0.65)).clipShape(Capsule())
+        .accessibilityLabel("Shannon collapse index \(metrics.sciPercentText == "—" ? "unavailable" : metrics.sciPercentLabel)")
     }
 }
 
