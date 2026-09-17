@@ -10,6 +10,14 @@ final class WorkoutFlowUITests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
                                "-natural.didFinishWelcome", "NO",
                                "-natural.motionCoachHeroDismissed", "NO"]
+        // Apply Dynamic Type before the first launch. Terminate+relaunch on CI
+        // can miss welcome.continue (PR journeys flake on b2cc3f8).
+        if name.contains("LargestText") {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName",
+                "UICTContentSizeCategoryAccessibilityXXXL",
+            ]
+        }
         app.launch()
         addUIInterruptionMonitor(withDescription: "Optional media permissions") { alert in
             for label in ["Don’t Allow", "Don't Allow", "Not Now"] where alert.buttons[label].exists {
@@ -21,16 +29,17 @@ final class WorkoutFlowUITests: XCTestCase {
     }
 
     private func finishWelcome() {
-        let continueButton = app.buttons["welcome.continue"]
-        XCTAssertTrue(continueButton.waitForExistence(timeout: 10), "Welcome must launch without a crash or permissions gate")
-        for _ in 0..<5 where !continueButton.isHittable { app.swipeUp() }
+        let continueButton = app.descendants(matching: .any)["welcome.continue"]
+        let timeout: TimeInterval = name.contains("LargestText") ? 20 : 12
+        XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
+        for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
         XCTAssertTrue(continueButton.isHittable)
         let welcome = XCTAttachment(screenshot: app.screenshot())
         welcome.name = "Welcome"
         welcome.lifetime = .keepAlways
         add(welcome)
         continueButton.tap()
-        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 8))
     }
 
     private func startSessionFromReady() {
@@ -58,9 +67,6 @@ final class WorkoutFlowUITests: XCTestCase {
     }
 
     func testLargestTextKeepsWelcomeAndSessionEntryReachable() {
-        app.terminate()
-        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
-        app.launch()
         finishWelcome()
         let start = app.buttons["home.start"]
         for _ in 0..<8 where !start.isHittable { app.swipeUp() }

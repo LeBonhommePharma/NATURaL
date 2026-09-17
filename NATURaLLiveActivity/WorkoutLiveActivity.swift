@@ -38,11 +38,11 @@ struct WorkoutLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    ProgressView(
-                        value: Double(context.state.poseIndex + 1),
-                        total: Double(max(1, context.attributes.totalPoses))
+                    poseProgressBar(
+                        index: context.state.poseIndex,
+                        total: context.attributes.totalPoses,
+                        paused: context.state.isPaused
                     )
-                    .tint(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
@@ -71,7 +71,7 @@ struct WorkoutLiveActivity: Widget {
                         Label("\(context.state.calories)", systemImage: "flame.fill")
                             .font(.system(size: 12))
                             .foregroundStyle(BrandTokens.tangerine)
-                        Text("\(context.state.poseIndex + 1)/\(context.attributes.totalPoses)")
+                        Text(poseCountLabel(index: context.state.poseIndex, total: context.attributes.totalPoses))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -128,11 +128,11 @@ struct WorkoutLiveActivity: Widget {
                     .foregroundStyle(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
             }
 
-            ProgressView(
-                value: Double(context.state.poseIndex + 1),
-                total: Double(max(1, context.attributes.totalPoses))
+            poseProgressBar(
+                index: context.state.poseIndex,
+                total: context.attributes.totalPoses,
+                paused: context.state.isPaused
             )
-            .tint(context.state.isPaused ? BrandTokens.strawberry : BrandTokens.mint)
 
             HStack(spacing: 12) {
                 if let hr = context.state.heartRate {
@@ -158,6 +158,25 @@ struct WorkoutLiveActivity: Widget {
         }
         .padding()
         .activityBackgroundTint(BrandTokens.bg.opacity(0.92))
+    }
+
+
+    @ViewBuilder
+    private func poseProgressBar(index: Int, total: Int, paused: Bool) -> some View {
+        if total > 0 {
+            ProgressView(value: Double(index + 1), total: Double(total))
+                .tint(paused ? BrandTokens.strawberry : BrandTokens.mint)
+        } else {
+            Capsule()
+                .fill(Color.secondary.opacity(0.28))
+                .frame(height: 4)
+                .accessibilityLabel(Text("Pose —"))
+        }
+    }
+
+    private func poseCountLabel(index: Int, total: Int) -> String {
+        guard total > 0 else { return "—" }
+        return "\(index + 1)/\(total)"
     }
 
     private func formatTime(_ seconds: Int) -> String {

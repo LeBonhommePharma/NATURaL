@@ -242,6 +242,17 @@ def test_hud_honesty() -> None:
     live = read("NATURaLLiveActivity/WorkoutLiveActivity.swift")
     if "min(1, max(0, score))" not in live:
         fail("Live Activity SCI percent must clamp")
+    if "max(1, context.attributes.totalPoses)" in live:
+        fail("Live Activity must not invent pose total 1 when count is 0")
+    if "poseProgressBar(" not in live:
+        fail("Live Activity must omit determinate pose bar when total is unknown")
+    journeys = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
+    if "app.terminate()" in journeys:
+        fail("largest-text journey must not terminate+relaunch (welcome.continue flake)")
+    if "UICTContentSizeCategoryAccessibilityXXXL" not in journeys:
+        fail("largest-text journey must request AccessibilityXXXL")
+    if 'if name.contains("LargestText")' not in journeys:
+        fail("Dynamic Type XXXL must be applied in setUp before the first launch")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in read(
         "Bonhomme/Services/Siri/IntentBridge.swift"
     ):
@@ -364,6 +375,18 @@ def test_hud_honesty() -> None:
         fail("in-app Live Activity must use BrandTokens, not hue/orange")
     if "min(1, max(0, score))" not in live_inapp:
         fail("in-app Live Activity SCI percent must clamp")
+    if "max(1, context.attributes.totalPoses)" in live_inapp:
+        fail("in-app Live Activity must not invent pose total 1 when count is 0")
+    if "poseProgressBar(" not in live_inapp:
+        fail("in-app Live Activity must omit determinate pose bar when total is unknown")
+    live_dup = read("Bonhomme/LiveActivity 2/WorkoutLiveActivity.swift")
+    if "max(1, context.attributes.totalPoses)" in live_dup:
+        fail("Live Activity duplicate must not invent pose total 1 when count is 0")
+    tv_progress = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/SessionProgressView.swift")
+    if 'Text("\\(index + 1) / \\(total)")' in tv_progress:
+        fail("TV session progress must show — when pose total is unknown")
+    if "let fraction: CGFloat? = total > 0" not in tv_progress:
+        fail("TV session progress must omit fill when pose total is unknown")
     debug = read("Bonhomme/App/DebugDashboardView.swift")
     if ".foregroundStyle(.orange)" in debug or ".foregroundStyle(.cyan)" in debug:
         fail("debug dashboard must use BrandColor, not system orange/cyan")
