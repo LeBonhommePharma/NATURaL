@@ -181,9 +181,15 @@ struct PokeDrugSubstanceInsightView: View {
             Text(label)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-            Text(String(repeating: "★", count: value) + String(repeating: "☆", count: max(0, 5 - value)))
-                .font(.system(size: 11))
-                .foregroundStyle(.orange)
+            HStack(spacing: 1) {
+                ForEach(0..<5, id: \.self) { index in
+                    Image(systemName: index < value ? "star.fill" : "star")
+                        .font(.caption2)
+                        .foregroundStyle(BrandColor.tangerine)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(label) \(value) of 5")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
@@ -358,7 +364,7 @@ struct PokeDrugSubstanceInsightView: View {
                     systemImage: "arrow.triangle.branch"
                 )
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.cyan)
+                .foregroundStyle(BrandColor.aqua)
 
                 Text(crossDomainHint(binding))
                     .font(.system(size: 13))

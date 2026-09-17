@@ -131,6 +131,11 @@ public struct SessionHUDMetrics: Sendable, Equatable {
         return "\(Int((min(1, max(0, sciScore)) * 100).rounded()))"
     }
 
+    /// Watch / glance label. Never suffixes `%` onto an em dash.
+    public var sciPercentLabel: String {
+        sciPercentText == "—" ? "—" : "\(sciPercentText)%"
+    }
+
     public var heartRateText: String {
         guard let heartRate, heartRate.isFinite, heartRate > 0 else { return "—" }
         return "\(Int(heartRate.rounded()))"

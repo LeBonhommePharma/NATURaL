@@ -126,7 +126,7 @@ struct PrescriptionsView: View {
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: "figure.yoga")
                 .font(.system(size: 22))
-                .foregroundStyle(.blue)
+                .foregroundStyle(BrandColor.aqua)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -137,8 +137,8 @@ struct PrescriptionsView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.blue.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.blue)
+                        .background(BrandColor.aqua.opacity(0.15), in: Capsule())
+                        .foregroundStyle(BrandColor.aqua)
                 }
                 if let instructions = task.instructions, !instructions.isEmpty {
                     Text(instructions)
@@ -152,7 +152,7 @@ struct PrescriptionsView: View {
                         fr: "Adhérence 30 j : \(Int(adherence * 100)) %"
                     ).localized)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(adherence >= 0.7 ? .green : .orange)
+                    .foregroundStyle(adherence >= 0.7 ? BrandColor.mint : BrandColor.tangerine)
                 }
             }
         }
@@ -165,7 +165,7 @@ struct PrescriptionsView: View {
         return HStack(alignment: .top, spacing: 12) {
             Image(systemName: "pills.fill")
                 .font(.system(size: 20))
-                .foregroundStyle(.teal)
+                .foregroundStyle(BrandColor.mint)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -176,8 +176,8 @@ struct PrescriptionsView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.teal.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.teal)
+                        .background(BrandColor.mint.opacity(0.15), in: Capsule())
+                        .foregroundStyle(BrandColor.mint)
                 }
                 if let instructions = task.instructions, !instructions.isEmpty {
                     Text(instructions)
@@ -194,14 +194,15 @@ struct PrescriptionsView: View {
             } label: {
                 if doseJustLoggedId == medId {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(BrandColor.mint)
                 } else {
                     Text(LocalizedString(en: "Taken", fr: "Pris").localized)
                         .font(.system(size: 13, weight: .semibold))
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(.teal)
+            .tint(BrandColor.mint)
+            .frame(minHeight: SessionSpacing.minTapTarget)
             .disabled(doseJustLoggedId == medId)
         }
         .padding(.vertical, 2)
@@ -387,9 +388,10 @@ struct PrescriptionsView: View {
             }
 
             if let err = service.lastSyncError {
-                Text(err)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
+                Label(err, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(BrandColor.firetruck)
+                    .symbolRenderingMode(.hierarchical)
             }
 
             LabeledContent(
@@ -466,7 +468,7 @@ struct PrescriptionsView: View {
                 if pokeMatch != nil {
                     Image(systemName: "atom")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(BrandColor.violet)
                         .accessibilityLabel(LocalizedString(
                             en: "PokeDrug insights available",
                             fr: "Aperçus PokeDrug disponibles"
@@ -485,11 +487,11 @@ struct PrescriptionsView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(
-                        (med.source == .clinicalRecord ? Color.blue : Color.green)
+                        (med.source == .clinicalRecord ? BrandColor.aqua : BrandColor.mint)
                             .opacity(0.15),
                         in: Capsule()
                     )
-                    .foregroundStyle(med.source == .clinicalRecord ? .blue : .green)
+                    .foregroundStyle(med.source == .clinicalRecord ? BrandColor.aqua : BrandColor.mint)
             }
             if let pokeMatch {
                 pokeDrugHintBar(pokeMatch)
@@ -515,13 +517,13 @@ struct PrescriptionsView: View {
     private func pokeDrugHintBar(_ match: PrescriptionPokeDrugMatch) -> some View {
         HStack(spacing: 6) {
             if let species = match.species {
-                Text(species.primaryType.rawValue.capitalized)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.purple)
+                    Text(species.primaryType.rawValue.capitalized)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(BrandColor.violet)
             } else if match.pharmacokineticProfile != nil {
                 Text(LocalizedString(en: "PK profile", fr: "Profil PK").localized)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(BrandColor.violet)
             }
             if let binding = match.bindingEntropyProfile {
                 Text("·")
@@ -533,7 +535,7 @@ struct PrescriptionsView: View {
             Spacer(minLength: 0)
             Text(LocalizedString(en: "Insights", fr: "Aperçus").localized)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.purple.opacity(0.9))
+                .foregroundStyle(BrandColor.violet.opacity(0.9))
         }
         .padding(.top, 2)
         .accessibilityElement(children: .combine)
@@ -585,7 +587,7 @@ struct PrescriptionsView: View {
                 if pokeMatch != nil {
                     Image(systemName: "atom")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(BrandColor.violet)
                 }
             }
             Text("\(schedule.formattedDose) · \(schedule.formattedSchedule.isEmpty ? "—" : schedule.formattedSchedule)")
@@ -625,14 +627,15 @@ struct PrescriptionsView: View {
             } label: {
                 if doseJustLoggedId == schedule.medicationId {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(BrandColor.mint)
                 } else {
                     Text(LocalizedString(en: "Taken", fr: "Pris").localized)
                         .font(.system(size: 13, weight: .semibold))
                 }
             }
             .buttonStyle(.bordered)
-            .tint(.teal)
+            .tint(BrandColor.mint)
+            .frame(minHeight: SessionSpacing.minTapTarget)
             .disabled(doseJustLoggedId == schedule.medicationId)
             .accessibilityHint(LocalizedString(
                 en: "Marks this dose taken and updates CareKit adherence",

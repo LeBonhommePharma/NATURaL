@@ -19,6 +19,7 @@ final class SessionHUDMetricsTests: XCTestCase {
     func testFormattingClampsAndPlaceholders() {
         let empty = SessionHUDMetrics()
         XCTAssertEqual(empty.sciPercentText, "—")
+        XCTAssertEqual(empty.sciPercentLabel, "—")
         XCTAssertEqual(empty.heartRateText, "—")
         XCTAssertEqual(empty.poseProgressText, "—")
         XCTAssertEqual(empty.elapsedText, "0:00")
@@ -31,6 +32,7 @@ final class SessionHUDMetricsTests: XCTestCase {
             poseCount: 7
         )
         XCTAssertEqual(live.sciPercentText, "72")
+        XCTAssertEqual(live.sciPercentLabel, "72%")
         XCTAssertEqual(live.heartRateText, "68")
         XCTAssertEqual(live.elapsedText, "2:05")
         XCTAssertEqual(live.poseProgressText, "3/7")
@@ -63,6 +65,8 @@ final class SessionHUDMetricsTests: XCTestCase {
     func testNonFiniteSCITreatedAsUnknown() {
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .nan, isGrounding: false), .unknown)
         XCTAssertEqual(SessionEntropyState.resolve(sciScore: .infinity, isGrounding: false), .unknown)
+        XCTAssertEqual(SessionHUDMetrics(sciScore: .nan).sciPercentLabel, "—")
+        XCTAssertEqual(SessionHUDMetrics(sciScore: .infinity).sciPercentLabel, "—")
     }
 
     func testAccessibilityUsesClampedFormatters() {

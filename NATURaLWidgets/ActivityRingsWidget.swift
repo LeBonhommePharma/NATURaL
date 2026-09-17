@@ -113,7 +113,7 @@ struct RingsWidgetView: View {
                     if let hr = entry.heartRate {
                         Label("\(hr)", systemImage: "heart.fill")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(BrandTokens.firetruck)
                     }
                     if let breath = entry.breathRate {
                         Label(String(format: "%.0f", breath), systemImage: "wind")

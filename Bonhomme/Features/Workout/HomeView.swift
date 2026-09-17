@@ -78,10 +78,10 @@ struct HomeView: View {
                 StyleDetailView(style: style)
             } else {
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: SessionSpacing.lg) {
                         coachHeroCard(compact: true, dismissible: false)
-                            .padding(.horizontal, 32)
-                            .padding(.top, 24)
+                            .padding(.horizontal, SessionSpacing.xl)
+                            .padding(.top, SessionSpacing.lg)
 
                         if appState.persistenceSync.needsAttention {
                             storageStatusCard
@@ -99,7 +99,7 @@ struct HomeView: View {
                                 .font(.title2.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.bottom, 32)
+                        .padding(.bottom, SessionSpacing.xl)
                     }
                 }
             }
@@ -114,7 +114,7 @@ struct HomeView: View {
 
     private var phoneLayout: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: SessionSpacing.lg) {
                 // Header
                 VStack(alignment: .leading, spacing: SessionSpacing.xxs) {
                     Text("NATURaL")
@@ -138,7 +138,7 @@ struct HomeView: View {
                 // Secondary re-entry / discard affordance when restored session is pending
                 // (primary path auto-loads on launch/active; banner is not the sole load gate).
                 if let restoredVM = appState.pendingRestoredWorkout {
-                    HStack(spacing: 12) {
+                    HStack(spacing: SessionSpacing.sm) {
                         NavigationLink {
                             WorkoutFlowView(restoredViewModel: restoredVM)
                         } label: {
@@ -149,14 +149,18 @@ struct HomeView: View {
                         Button {
                             appState.dismissRestoredWorkout()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundStyle(.secondary)
+                            Label(
+                                LocalizedString(en: "Discard", fr: "Annuler").localized,
+                                systemImage: "xmark.circle.fill"
+                            )
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption.weight(.semibold))
+                            .frame(minWidth: SessionSpacing.minTapTarget, minHeight: SessionSpacing.minTapTarget)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(LocalizedString(en: "Discard", fr: "Annuler").localized)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, SessionSpacing.md)
                 }
 
                 Text(LocalizedString(en: "Move in your own way", fr: "Bougez à votre façon").localized)
@@ -212,7 +216,7 @@ struct HomeView: View {
             if let feedback = sync.retryFeedback {
                 Text(feedback)
                     .font(.system(size: 12))
-                    .foregroundStyle(sync.restartRecommended ? Color.green.opacity(0.9) : .secondary)
+                    .foregroundStyle(sync.restartRecommended ? BrandColor.mint.opacity(0.9) : .secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -300,14 +304,14 @@ struct HomeView: View {
             HStack(alignment: .top) {
                 Label(LocalizedString(en: "YOUR DAILY EXHALE", fr: "VOTRE PAUSE RESPIRATION").localized, systemImage: "sun.max")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color(red: 1, green: 0.81, blue: 0.48))
+                    .foregroundStyle(BrandColor.tangerine)
                 Spacer()
                 if dismissible {
                     Button { motionCoachHeroDismissed = true } label: {
                         Image(systemName: "xmark").frame(width: 44, height: 44)
                     }
                     .accessibilityLabel(LocalizedString(en: "Hide featured session", fr: "Masquer la séance en vedette").localized)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(BrandColor.fg.opacity(0.8))
                 }
             }
             Image("Bloom")
@@ -324,11 +328,11 @@ struct HomeView: View {
                 fr: "Une chaise. Un souffle. Un moment pour bouger. Suivez une pratique douce, à votre rythme."
             ).localized)
             .font(.body)
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(BrandColor.fg.opacity(0.85))
             .fixedSize(horizontal: false, vertical: true)
             Label(formattedDuration(plan.totalDuration), systemImage: "clock")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(BrandColor.fg.opacity(0.8))
             Button { selectedPlan = plan } label: {
                 HStack {
                     Text(LocalizedString(en: "Begin a gentle session", fr: "Commencer en douceur").localized)
@@ -336,16 +340,17 @@ struct HomeView: View {
                     Spacer(minLength: 8)
                     Image(systemName: "arrow.right")
                 }
-                .foregroundStyle(Color(red: 0.12, green: 0.04, blue: 0.17))
+                .foregroundStyle(BrandColor.bg)
                 .padding(18)
-                .background(Color(red: 0.52, green: 0.95, blue: 0.79), in: RoundedRectangle(cornerRadius: 18))
+                .frame(minHeight: SessionSpacing.phoneControlHeight)
+                .background(BrandColor.mint, in: RoundedRectangle(cornerRadius: 18))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("home.start")
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(BrandColor.fg)
         .padding(compact ? 28 : 24)
-        .background(Color(red: 0.11, green: 0.01, blue: 0.15), in: RoundedRectangle(cornerRadius: 28))
+        .background(BrandColor.bg, in: RoundedRectangle(cornerRadius: 28))
     }
 
     // MARK: - Style Card Grid
@@ -431,16 +436,16 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "stethoscope")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(BrandColor.aqua)
                 Text(LocalizedString(en: "Prescribed Workouts", fr: "Entraînements prescrits").localized)
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
                 Text("\(appState.careKitBridge.yogaPrescribedTasks.count)")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(BrandColor.aqua)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(.blue.opacity(0.12), in: Capsule())
+                    .background(BrandColor.aqua.opacity(0.12), in: Capsule())
             }
             .padding(.horizontal)
 
@@ -480,7 +485,7 @@ struct HomeView: View {
         HStack {
             Image(systemName: "figure.yoga")
                 .font(.system(size: 24))
-                .foregroundStyle(.blue)
+                .foregroundStyle(BrandColor.aqua)
 
             VStack(alignment: .leading) {
                 HStack(spacing: 6) {
@@ -491,8 +496,8 @@ struct HomeView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.blue.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.blue)
+                        .background(BrandColor.aqua.opacity(0.15), in: Capsule())
+                        .foregroundStyle(BrandColor.aqua)
                 }
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
@@ -510,7 +515,7 @@ struct HomeView: View {
             }
         }
         .padding()
-        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .background(BrandColor.aqua.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Resume Banner

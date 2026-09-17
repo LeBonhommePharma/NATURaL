@@ -263,14 +263,14 @@ struct SummaryView: View {
                     x: .value("Time", sample.timestamp),
                     y: .value("BPM", sample.bpm)
                 )
-                .foregroundStyle(.red.gradient)
+                .foregroundStyle(BrandColor.firetruck.gradient)
                 .interpolationMethod(.catmullRom)
 
                 AreaMark(
                     x: .value("Time", sample.timestamp),
                     y: .value("BPM", sample.bpm)
                 )
-                .foregroundStyle(.red.opacity(0.1).gradient)
+                .foregroundStyle(BrandColor.firetruck.opacity(0.1).gradient)
                 .interpolationMethod(.catmullRom)
             }
             .chartYAxis {
@@ -283,7 +283,7 @@ struct SummaryView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 10))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandColor.firetruck)
                     Text(LocalizedString(
                         en: "Avg \(Int(avg)) bpm",
                         fr: "Moy. \(Int(avg)) bpm"

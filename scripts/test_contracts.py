@@ -196,6 +196,8 @@ def test_hud_honesty() -> None:
     metrics = read("BonhommeCore/Sources/BonhommeCore/UI/SessionHUDMetrics.swift")
     if 'return "—"' not in metrics:
         fail("HUD must render em-dash for missing SCI/HR")
+    if "var sciPercentLabel: String" not in metrics:
+        fail("HUD must expose sciPercentLabel so glances never paint —%")
     if "sciPercentText" not in metrics.split("accessibilitySummary")[1]:
         fail("a11y summary must use clamped sciPercentText, not raw score*100")
     if "display = min(poseCount, max(1, poseIndex + 1))" not in metrics:
@@ -213,6 +215,10 @@ def test_hud_honesty() -> None:
     compact = read("BonhommeCore/Sources/BonhommeCore/UI/SessionHUDViews.swift")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in compact:
         fail("CompactSCIMeter must use HUD percent formatter (NaN → —, overflow → 100)")
+    if "metrics.sciPercentLabel" not in compact:
+        fail("Watch glance must use sciPercentLabel so unknown SCI is — not —%")
+    if '"\\(metrics.sciPercentText)%"' in compact:
+        fail("Watch glance must not suffix percent onto the em dash")
     if 'percentText == "—" ? "unavailable"' not in compact:
         fail("CompactSCIMeter VoiceOver must use clamped percentText")
     tv_ring = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/SCIVisualizationView.swift")
@@ -239,8 +245,35 @@ def test_hud_honesty() -> None:
     home = read("Bonhomme/Features/Workout/HomeView.swift")
     if "NavigationSplitView" not in home:
         fail("iPad home must keep NavigationSplitView")
+    if "BrandColor.aqua" not in home:
+        fail("prescribed CareKit chrome must use BrandColor, not system blue")
+    if "Color.green" in home:
+        fail("home storage status must use BrandColor.mint, not Color.green")
+    watch_session = read("BonhommeWatch/App/WatchSessionView.swift")
+    if ".foregroundStyle(.green)" in watch_session:
+        fail("Watch complete state must use SessionPalette, not system green")
+    if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
+        fail("activity rings must use BrandColor, not system cyan")
+    if ".foregroundStyle(.red)" in read("NATURaLWidgets/ActivityRingsWidget.swift"):
+        fail("widget heart rate must use BrandTokens, not system red")
+    if ".foregroundStyle(.red)" in read("Bonhomme/Features/Summary/SummaryView.swift"):
+        fail("summary HR chart must use BrandColor.firetruck, not system red")
+    if "BrandColor.firetruck" not in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):
+        fail("prescription sync errors must use BrandColor.firetruck")
+    if "star.fill" not in read("Bonhomme/Features/Prescriptions/PokeDrugSubstanceInsightView.swift"):
+        fail("PokeDrug stats must use SF Symbols, not star emoji")
+    if "firetruck" not in read("NATURaLWidgets/BrandTokens.swift"):
+        fail("widget BrandTokens must include firetruck")
     if "phase == .active" not in read("Bonhomme/Features/Workout/PoseCoachStage.swift"):
         fail("AR coach must not request the camera on the ready/preview screen")
+    if "dash: known ? [] : [4, 3]" not in compact:
+        fail("unknown SCI ring must be a dashed track, not a 0% fill")
+    if "Color(red:" in home:
+        fail("home coach chrome must use BrandColor tokens, not raw RGB")
+    if "BrandColor.mint" not in home:
+        fail("home Begin CTA must use BrandColor.mint")
+    if ".labelStyle(.titleAndIcon)" not in home:
+        fail("discard restored session must keep a visible Discard label")
     watch = read("BonhommeWatch/App/WatchHomeView.swift")
     if any(ch in watch for ch in ("🎨", "🔥", "✨", "⚙️")):
         fail("Watch home uses emoji chrome")
