@@ -239,6 +239,29 @@ def test_hud_honesty() -> None:
         fail("tvOS inspector chips must be spacious (10-foot)")
     if "timelinePaused" not in tv:
         fail("TV idle breath loop must honor Reduce Motion")
+    if "reduceMotion ? 0.5" not in tv:
+        fail("TV idle breath must freeze at mid-cycle when Reduce Motion is on")
+    countdown = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/PoseCountdownView.swift")
+    if "paused: false" in countdown:
+        fail("TV pose countdown must not hard-pause TimelineView off")
+    if "accessibilityReduceMotion" not in countdown:
+        fail("TV pose countdown must read accessibilityReduceMotion")
+    if "SessionMotion.timelineInterval" not in countdown:
+        fail("TV pose countdown must use SessionMotion.timelineInterval")
+    if "SessionMotion.timelinePaused" not in countdown:
+        fail("TV pose countdown must pause decorative pulse under Reduce Motion")
+    if "reduceMotion ? 0.5" not in countdown:
+        fail("TV pose countdown pulse must freeze at mid-cycle when Reduce Motion is on")
+    coach = read("BonhommeCore/Sources/BonhommeCore/UI/MotionCoachView.swift")
+    if "paused: false" in coach:
+        fail("MotionCoachView must pause TimelineView under Reduce Motion")
+    if "SessionMotion.timelinePaused" not in coach:
+        fail("MotionCoachView must use SessionMotion.timelinePaused")
+    breath = read("BonhommeCore/Sources/BonhommeCore/UI/BreathingGuideView.swift")
+    if "paused: false" in breath:
+        fail("BreathingGuideView must pause TimelineView under Reduce Motion")
+    if "SessionMotion.timelinePaused" not in breath:
+        fail("BreathingGuideView must use SessionMotion.timelinePaused")
     root = read("BonhommeTV/Views/TVRootView.swift")
     if "Color.green" in root:
         fail("TV connection status must use BrandColor, not Color.green")

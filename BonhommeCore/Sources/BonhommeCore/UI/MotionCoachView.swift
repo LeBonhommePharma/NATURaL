@@ -452,7 +452,10 @@ public struct MotionCoachView: View {
             }
         }()
 
-        TimelineView(.animation(minimumInterval: reduceMotion ? 1.0 : (1.0 / 60.0), paused: false)) { context in
+        TimelineView(.animation(
+            minimumInterval: reduceMotion ? SessionMotion.timelineInterval(true) : (1.0 / 60.0),
+            paused: SessionMotion.timelinePaused(reduceMotion)
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let breathAngle = t * (.pi * 2.0) / profile.breathPeriod
             let sinBreath = reduceMotion ? 0.0 : sin(breathAngle)
