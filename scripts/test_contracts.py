@@ -268,8 +268,13 @@ def test_hud_honesty() -> None:
         fail("widget circular ring must use BrandTokens.firetruck, not system red")
     if "Int((sci * 100).rounded())" in widget_rings:
         fail("widget SCI percent must use BrandTokens.sciPercent, not raw *100")
-    if ".foregroundStyle(.red)" in read("Bonhomme/Features/Summary/SummaryView.swift"):
-        fail("summary HR chart must use BrandColor.firetruck, not system red")
+    summary = read("Bonhomme/Features/Summary/SummaryView.swift")
+    if ".foregroundStyle(.red)" in summary or "color: .red" in summary:
+        fail("summary HR must use BrandColor.firetruck, not system red")
+    if '?? "--"' in summary:
+        fail("summary unknown HR must use an em dash, not --")
+    if "BrandColor.firetruck" not in summary:
+        fail("summary HR must use BrandColor.firetruck")
     if "BrandColor.firetruck" not in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):
         fail("prescription sync errors must use BrandColor.firetruck")
     if ".tint(.cyan)" in read("Bonhomme/Features/Prescriptions/PrescriptionsView.swift"):
