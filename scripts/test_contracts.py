@@ -266,6 +266,14 @@ def test_hud_honesty() -> None:
         fail("widget BrandTokens must include firetruck")
     if "phase == .active" not in read("Bonhomme/Features/Workout/PoseCoachStage.swift"):
         fail("AR coach must not request the camera on the ready/preview screen")
+    if "dash: known ? [] : [4, 3]" not in compact:
+        fail("unknown SCI ring must be a dashed track, not a 0% fill")
+    if "Color(red:" in home:
+        fail("home coach chrome must use BrandColor tokens, not raw RGB")
+    if "BrandColor.mint" not in home:
+        fail("home Begin CTA must use BrandColor.mint")
+    if ".labelStyle(.titleAndIcon)" not in home:
+        fail("discard restored session must keep a visible Discard label")
     watch = read("BonhommeWatch/App/WatchHomeView.swift")
     if any(ch in watch for ch in ("🎨", "🔥", "✨", "⚙️")):
         fail("Watch home uses emoji chrome")

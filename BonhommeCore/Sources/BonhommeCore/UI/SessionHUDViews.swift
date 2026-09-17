@@ -65,7 +65,8 @@ public struct CompactSCIMeter: View {
     }
 
     public var body: some View {
-        let tint = banded ? SessionPalette.sci(score) : (score == nil ? BrandColor.magnesium : BrandColor.violet)
+        let known = score.map(\.isFinite) ?? false
+        let tint = banded ? SessionPalette.sci(score) : (known ? BrandColor.violet : BrandColor.magnesium)
         let percentText = SessionHUDMetrics(sciScore: score).sciPercentText
         let progress: CGFloat = {
             guard let score, score.isFinite else { return 0 }
@@ -75,13 +76,18 @@ public struct CompactSCIMeter: View {
         VStack(spacing: SessionSpacing.xxs) {
             ZStack {
                 Circle()
-                    .stroke(BrandColor.hairline, lineWidth: 5)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .sessionGlow(tint, radius: 6, paused: reduceMotion)
-                    .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
+                    .stroke(
+                        BrandColor.hairline,
+                        style: StrokeStyle(lineWidth: 5, dash: known ? [] : [4, 3])
+                    )
+                if known {
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .sessionGlow(tint, radius: 6, paused: reduceMotion)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: score)
+                }
 
                 VStack(spacing: 0) {
                     Text(percentText)
