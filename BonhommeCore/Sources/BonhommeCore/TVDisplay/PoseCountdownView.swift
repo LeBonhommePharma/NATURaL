@@ -5,6 +5,8 @@ public struct PoseCountdownView: View {
     public let remaining: TimeInterval
     public let total: TimeInterval
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init(pose: Pose, remaining: TimeInterval, total: TimeInterval) {
         self.pose = pose
         self.remaining = remaining
@@ -12,9 +14,12 @@ public struct PoseCountdownView: View {
     }
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { context in
+        TimelineView(.animation(
+            minimumInterval: SessionMotion.timelineInterval(reduceMotion),
+            paused: SessionMotion.timelinePaused(reduceMotion)
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
-            let pulse = (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
+            let pulse = reduceMotion ? 0.5 : (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
             let kinematics = pose.kinematics
             let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
 
@@ -70,7 +75,7 @@ public struct PoseCountdownView: View {
                         .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .blur(radius: 6)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
 
                     Circle()
                         .stroke(BrandColor.hairline, lineWidth: 8)
@@ -81,13 +86,13 @@ public struct PoseCountdownView: View {
                         .rotationEffect(.degrees(-90))
                         .shadow(color: catColor.opacity(0.6), radius: 10)
                         .shadow(color: catColor.opacity(0.3), radius: 3)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
 
                     Circle()
                         .trim(from: 0, to: total > 0 ? remaining / total : 0)
                         .stroke(BrandColor.magnesium.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remaining)
+                        .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
 
                     Text(timeString)
                         .font(.system(size: 48, weight: .bold, design: .rounded))

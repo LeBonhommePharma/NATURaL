@@ -93,7 +93,7 @@ public struct TVIdleView: View {
             paused: SessionMotion.timelinePaused(reduceMotion)
         )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
-            let breath = (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5 // 4s cycle
+            let breath = reduceMotion ? 0.5 : (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5 // 4s cycle
 
             ZStack {
                 // Subtle gradient background
