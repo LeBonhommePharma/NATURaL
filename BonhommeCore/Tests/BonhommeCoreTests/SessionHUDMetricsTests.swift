@@ -22,6 +22,7 @@ final class SessionHUDMetricsTests: XCTestCase {
         XCTAssertEqual(empty.sciPercentLabel, "—")
         XCTAssertEqual(empty.heartRateText, "—")
         XCTAssertEqual(empty.poseProgressText, "—")
+        XCTAssertNil(empty.poseProgressFraction)
         XCTAssertEqual(empty.elapsedText, "0:00")
 
         let live = SessionHUDMetrics(
@@ -36,7 +37,7 @@ final class SessionHUDMetricsTests: XCTestCase {
         XCTAssertEqual(live.heartRateText, "68")
         XCTAssertEqual(live.elapsedText, "2:05")
         XCTAssertEqual(live.poseProgressText, "3/7")
-        XCTAssertEqual(live.poseProgressFraction, 3.0 / 7.0, accuracy: 0.0001)
+        XCTAssertEqual(live.poseProgressFraction ?? -1, 3.0 / 7.0, accuracy: 0.0001)
     }
 
     func testCountdownFormatting() {
@@ -80,14 +81,15 @@ final class SessionHUDMetricsTests: XCTestCase {
         let missing = SessionHUDMetrics()
         XCTAssertTrue(missing.accessibilitySummary.contains("unavailable"))
         XCTAssertTrue(missing.accessibilitySummary.contains("pose —"))
+        XCTAssertNil(missing.poseProgressFraction)
     }
 
     func testPoseProgressNeverShowsZeroOfN() {
         let first = SessionHUDMetrics(poseIndex: 0, poseCount: 5)
         XCTAssertEqual(first.poseProgressText, "1/5")
-        XCTAssertEqual(first.poseProgressFraction, 0.2, accuracy: 0.0001)
+        XCTAssertEqual(first.poseProgressFraction ?? -1, 0.2, accuracy: 0.0001)
         let last = SessionHUDMetrics(poseIndex: 4, poseCount: 5)
         XCTAssertEqual(last.poseProgressText, "5/5")
-        XCTAssertEqual(last.poseProgressFraction, 1, accuracy: 0.0001)
+        XCTAssertEqual(last.poseProgressFraction ?? -1, 1, accuracy: 0.0001)
     }
 }

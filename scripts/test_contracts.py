@@ -202,9 +202,17 @@ def test_hud_honesty() -> None:
         fail("a11y summary must use clamped sciPercentText, not raw score*100")
     if "display = min(poseCount, max(1, poseIndex + 1))" not in metrics:
         fail("pose progress must be 1-based n/N, never 0/N")
+    if "var poseProgressFraction: Double?" not in metrics:
+        fail("pose progress fraction must be optional so 0 poses is not a 0% bar")
+    if "guard poseCount > 0 else { return nil }" not in metrics:
+        fail("unknown pose count must return nil fraction, not 0")
     vision = read("BonhommeVision/App/SpatialBiofeedbackView.swift")
     if "Color.cyan" in vision or "CompactSCIMeter" not in vision:
         fail("visionOS ornament must use CompactSCIMeter, not cyan SCI")
+    if "ProgressView(value: metrics.poseProgressFraction)" in vision:
+        fail("visionOS progress must not bind a 0% bar when pose count is unknown")
+    if "if let fraction = metrics.poseProgressFraction" not in vision:
+        fail("visionOS must omit determinate pose ProgressView when fraction is nil")
     if "hudMetrics" not in read("BonhommeVision/App/SpatialPoseView.swift"):
         fail("visionOS session must expose SessionHUDMetrics")
     vision_space = read("BonhommeVision/App/ImmersivePoseSpace.swift")
@@ -213,6 +221,10 @@ def test_hud_honesty() -> None:
     if "BrandPalette.violet" not in vision_space:
         fail("immersive SCI ring must use BrandPalette.violet, not pose-category hue")
     compact = read("BonhommeCore/Sources/BonhommeCore/UI/SessionHUDViews.swift")
+    if "ProgressView(value: metrics.poseProgressFraction)" in compact:
+        fail("session HUD must not bind a 0% pose bar when count is unknown")
+    if "if let fraction = metrics.poseProgressFraction" not in compact:
+        fail("session HUD must omit determinate pose ProgressView when fraction is nil")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in compact:
         fail("CompactSCIMeter must use HUD percent formatter (NaN → —, overflow → 100)")
     if "metrics.sciPercentLabel" not in compact:

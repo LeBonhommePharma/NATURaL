@@ -238,9 +238,16 @@ public struct SessionHUDBar: View {
             }
 
             HStack(spacing: SessionSpacing.sm) {
-                ProgressView(value: metrics.poseProgressFraction)
-                    .tint(SessionPalette.accent)
-                    .accessibilityLabel(Text("Pose \(metrics.poseProgressText)"))
+                if let fraction = metrics.poseProgressFraction {
+                    ProgressView(value: fraction)
+                        .tint(SessionPalette.accent)
+                        .accessibilityLabel(Text("Pose \(metrics.poseProgressText)"))
+                } else {
+                    Capsule()
+                        .fill(BrandColor.magnesium.opacity(0.2))
+                        .frame(height: 4)
+                        .accessibilityLabel(Text("Pose —"))
+                }
                 Text(metrics.poseProgressText)
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(BrandColor.fgMuted)

@@ -28,9 +28,16 @@ struct SpatialBiofeedbackView: View {
                 Text(LocalizedString(en: "Progress", fr: "Progrès").localized)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(BrandColor.fgMuted)
-                ProgressView(value: metrics.poseProgressFraction)
-                    .tint(SessionPalette.accent)
-                    .accessibilityLabel(Text("Pose \(metrics.poseProgressText)"))
+                if let fraction = metrics.poseProgressFraction {
+                    ProgressView(value: fraction)
+                        .tint(SessionPalette.accent)
+                        .accessibilityLabel(Text("Pose \(metrics.poseProgressText)"))
+                } else {
+                    Capsule()
+                        .fill(BrandColor.magnesium.opacity(0.2))
+                        .frame(height: 4)
+                        .accessibilityLabel(Text("Pose —"))
+                }
                 Text(metrics.poseProgressText)
                     .font(SessionType.metric(.body))
                     .foregroundStyle(BrandColor.fg)

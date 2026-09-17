@@ -156,8 +156,8 @@ public struct SessionHUDMetrics: Sendable, Equatable {
         return "\(display)/\(poseCount)"
     }
 
-    public var poseProgressFraction: Double {
-        guard poseCount > 0 else { return 0 }
+    public var poseProgressFraction: Double? {
+        guard poseCount > 0 else { return nil }
         return min(1, max(0, Double(poseIndex + 1) / Double(poseCount)))
     }
 
