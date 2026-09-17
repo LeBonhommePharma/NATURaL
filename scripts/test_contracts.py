@@ -236,6 +236,14 @@ def test_hud_honesty() -> None:
     tv_ring = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/SCIVisualizationView.swift")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in tv_ring:
         fail("TV SCI ring must use HUD percent formatter")
+    if "dash: known ? [] : [4, 3]" not in tv_ring:
+        fail("SCIVisualizationView must dash the track when SCI is unknown")
+    if "paused: !known || reduceMotion" not in tv_ring:
+        fail("SCIVisualizationView must pause breath on non-finite SCI, not only nil")
+    if "paused: score == nil || reduceMotion" in tv_ring:
+        fail("SCIVisualizationView must not treat NaN SCI as a live 0% ring")
+    if "if known {" not in tv_ring:
+        fail("SCIVisualizationView must omit trim fill when SCI is unknown")
     widgets = read("NATURaLWidgets/BrandTokens.swift")
     if "min(1, max(0, score))" not in widgets:
         fail("widget BrandTokens.sciPercent must clamp SCI to [0, 1]")
@@ -273,8 +281,14 @@ def test_hud_honesty() -> None:
         fail("TV pose countdown must use SessionMotion.timelineInterval")
     if "SessionMotion.timelinePaused" not in countdown:
         fail("TV pose countdown must pause decorative pulse under Reduce Motion")
-    if "reduceMotion ? 0.5" not in countdown:
-        fail("TV pose countdown pulse must freeze at mid-cycle when Reduce Motion is on")
+    if "reduceMotion || !known ? 0.5" not in countdown:
+        fail("TV pose countdown pulse must freeze at mid-cycle when Reduce Motion or duration is unknown")
+    if "dash: known ? [] : [4, 3]" not in countdown:
+        fail("TV pose countdown must dash the track when duration is unknown")
+    if "total > 0 ? remaining / total : 0" in countdown:
+        fail("TV pose countdown must not trim to 0 when total is unknown")
+    if 'return "—"' not in countdown:
+        fail("TV pose countdown must show — when duration is unknown")
     coach = read("BonhommeCore/Sources/BonhommeCore/UI/MotionCoachView.swift")
     if "paused: false" in coach:
         fail("MotionCoachView must pause TimelineView under Reduce Motion")
