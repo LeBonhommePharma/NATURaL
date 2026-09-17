@@ -246,6 +246,13 @@ def test_hud_honesty() -> None:
         fail("Live Activity must not invent pose total 1 when count is 0")
     if "poseProgressBar(" not in live:
         fail("Live Activity must omit determinate pose bar when total is unknown")
+    journeys = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
+    if "app.terminate()" in journeys:
+        fail("largest-text journey must not terminate+relaunch (welcome.continue flake)")
+    if "UICTContentSizeCategoryAccessibilityXXXL" not in journeys:
+        fail("largest-text journey must request AccessibilityXXXL")
+    if 'if name.contains("LargestText")' not in journeys:
+        fail("Dynamic Type XXXL must be applied in setUp before the first launch")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in read(
         "Bonhomme/Services/Siri/IntentBridge.swift"
     ):
