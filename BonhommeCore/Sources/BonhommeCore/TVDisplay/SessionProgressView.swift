@@ -54,7 +54,7 @@ public struct SessionProgressView: View {
                                 )
                                 .frame(width: fillWidth, height: 6)
                                 .sessionGlow(BrandColor.mint, radius: 4, paused: reduceMotion)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.75), value: index)
+                                .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: index)
 
                             if fillWidth > 4 {
                                 Circle()
@@ -62,7 +62,7 @@ public struct SessionProgressView: View {
                                     .frame(width: 6, height: 6)
                                     .sessionGlow(BrandColor.mint, radius: 6, paused: reduceMotion)
                                     .offset(x: fillWidth - 3)
-                                    .animation(.spring(response: 0.5, dampingFraction: 0.75), value: index)
+                                    .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: index)
                             }
                         }
                     }

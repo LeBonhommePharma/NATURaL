@@ -420,6 +420,16 @@ def test_hud_honesty() -> None:
         fail("TV session progress must show — when pose total is unknown")
     if "let fraction: CGFloat? = total > 0" not in tv_progress:
         fail("TV session progress must omit fill when pose total is unknown")
+    if ".animation(.spring(response: 0.5, dampingFraction: 0.75), value: index)" in tv_progress:
+        fail("TV session progress fill must honor Reduce Motion")
+    if "SessionMotion.spring(reduceMotion: reduceMotion)" not in tv_progress:
+        fail("TV session progress must use SessionMotion.spring gated by Reduce Motion")
+    flow = read("Bonhomme/Features/Workout/WorkoutFlowView.swift")
+    if ".animation(.easeInOut(duration: 0.35), value: viewModel.currentVoiceCue)" in flow:
+        fail("session voice cue must honor Reduce Motion")
+    breath = read("BonhommeCore/Sources/BonhommeCore/UI/BreathingGuideView.swift")
+    if ".animation(.easeInOut(duration: 0.35), value: isGrounding)" in breath:
+        fail("breathing overlay must honor Reduce Motion")
     debug = read("Bonhomme/App/DebugDashboardView.swift")
     if ".foregroundStyle(.orange)" in debug or ".foregroundStyle(.cyan)" in debug:
         fail("debug dashboard must use BrandColor, not system orange/cyan")
