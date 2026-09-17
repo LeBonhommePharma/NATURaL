@@ -13,6 +13,8 @@ final class AnalyzerTests: XCTestCase {
         XCTAssertEqual(result.trend, .stable)
         XCTAssertEqual(result.status, .normal)
         XCTAssertEqual(result.signalType, .heartRateVariability)
+        XCTAssertTrue(result.summary.en.contains("—"))
+        XCTAssertFalse(result.summary.en.contains("--"))
     }
 
     func testHRVAnalyzerShannonEntropy() {

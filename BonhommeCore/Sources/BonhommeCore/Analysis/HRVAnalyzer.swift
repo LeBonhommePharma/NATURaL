@@ -99,22 +99,22 @@ public struct HRVAnalyzer: SignalAnalyzer, Sendable {
             status = .normal
         }
 
-        let scoreText = sciScore.map { String(format: "%.0f", $0 * 100) } ?? "--"
+        let scoreText = SessionHUDMetrics(sciScore: sciScore).sciPercentLabel
         return AnalysisInsight(
             signalType: .heartRateVariability,
             score: sciScore,
             trend: trend,
             status: status,
             summary: LocalizedString(
-                en: "Focus coherence: \(scoreText)%.\(medNote)",
-                fr: "Cohérence de concentration : \(scoreText) %.\(medNote)",
-                es: "Coherencia de concentración: \(scoreText) %.\(medNote)",
-                ja: "集中コヒーレンス：\(scoreText)%。\(medNote)",
-                zh: "专注一致性：\(scoreText)%。\(medNote)",
-                ko: "집중 코히어런스: \(scoreText)%.\(medNote)",
-                ru: "Когерентность концентрации: \(scoreText) %.\(medNote)",
-                de: "Fokus-Kohärenz: \(scoreText) %.\(medNote)",
-                ar: "تماسك التركيز: \(scoreText)٪.\(medNote)"
+                en: "Focus coherence: \(scoreText).\(medNote)",
+                fr: "Cohérence de concentration : \(scoreText).\(medNote)",
+                es: "Coherencia de concentración: \(scoreText).\(medNote)",
+                ja: "集中コヒーレンス：\(scoreText)。\(medNote)",
+                zh: "专注一致性：\(scoreText)。\(medNote)",
+                ko: "집중 코히어런스: \(scoreText).\(medNote)",
+                ru: "Когерентность концентрации: \(scoreText).\(medNote)",
+                de: "Fokus-Kohärenz: \(scoreText).\(medNote)",
+                ar: "تماسك التركيز: \(scoreText).\(medNote)"
             )
         )
     }

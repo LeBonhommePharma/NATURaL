@@ -242,6 +242,19 @@ def test_hud_honesty() -> None:
     root = read("BonhommeTV/Views/TVRootView.swift")
     if "Color.green" in root:
         fail("TV connection status must use BrandColor, not Color.green")
+    hr_gauge = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/HeartRateGaugeView.swift")
+    if 'Text("--")' in hr_gauge:
+        fail("TV heart rate must use an em dash when unknown, not --")
+    if "hasSignal" not in hr_gauge:
+        fail("TV heart rate must pause animation when BPM is missing or non-finite")
+    share = read("Bonhomme/Features/Summary/WorkoutShareCard.swift")
+    if '?? "--"' in share:
+        fail("workout share card unknown HR must use an em dash")
+    hrv = read("BonhommeCore/Sources/BonhommeCore/Analysis/HRVAnalyzer.swift")
+    if '?? "--"' in hrv or 'scoreText)%' in hrv:
+        fail("HRV insight must use SessionHUDMetrics.sciPercentLabel, not --%")
+    if "SessionHUDMetrics(sciScore: sciScore).sciPercentLabel" not in hrv:
+        fail("HRV insight percent must go through SessionHUDMetrics")
     home = read("Bonhomme/Features/Workout/HomeView.swift")
     if "NavigationSplitView" not in home:
         fail("iPad home must keep NavigationSplitView")

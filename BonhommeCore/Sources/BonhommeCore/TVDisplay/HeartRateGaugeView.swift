@@ -10,20 +10,25 @@ public struct HeartRateGaugeView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var hasSignal: Bool {
+        guard let bpm else { return false }
+        return bpm.isFinite && bpm > 0
+    }
+
     public var body: some View {
         TimelineView(.animation(
             minimumInterval: reduceMotion ? 1.0 : (1.0 / 60.0),
-            paused: bpm == nil || reduceMotion
+            paused: !hasSignal || reduceMotion
         )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let scale = heartbeatScale(t)
-            let ringPhase = bpm != nil ? fmod(t, beatDuration) / beatDuration : 0.0
-            let ring2Phase = bpm != nil ? fmod(t + beatDuration * 0.5, beatDuration) / beatDuration : 0.0
+            let ringPhase = hasSignal ? fmod(t, beatDuration) / beatDuration : 0.0
+            let ring2Phase = hasSignal ? fmod(t + beatDuration * 0.5, beatDuration) / beatDuration : 0.0
 
             VStack(spacing: 8) {
                 ZStack {
                     // Pulse ring 1
-                    if bpm != nil {
+                    if hasSignal {
                         Circle()
                             .stroke(zoneColor.opacity(max(0, 0.4 - ringPhase * 0.5)), lineWidth: 2)
                             .scaleEffect(1.0 + ringPhase * 1.5)
@@ -43,8 +48,8 @@ public struct HeartRateGaugeView: View {
                 }
                 .frame(width: 80, height: 80)
 
-                if let bpm {
-                    Text("\(Int(bpm))")
+                if let bpm, bpm.isFinite {
+                    Text("\(Int(bpm.rounded()))")
                         .font(SessionType.metric(size: 48))
                         .monospacedDigit()
                         .foregroundStyle(BrandColor.fg)
@@ -55,7 +60,7 @@ public struct HeartRateGaugeView: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(BrandColor.fgMuted)
                 } else {
-                    Text("--")
+                    Text("—")
                         .font(SessionType.metric(size: 48))
                         .foregroundStyle(BrandColor.magnesium)
 
@@ -72,12 +77,12 @@ public struct HeartRateGaugeView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(SessionHUDCopy.heartRate.localized))
-        .accessibilityValue(Text(bpm.map { "\(Int($0.rounded())) BPM, \(zoneName)" } ?? zoneName))
+        .accessibilityValue(Text(bpm.flatMap { $0.isFinite ? "\(Int($0.rounded())) BPM, \(zoneName)" : nil } ?? "unavailable, \(zoneName)"))
     }
 
     /// Multi-phase heartbeat: systolic spike -> diastolic rebound -> settle
     private func heartbeatScale(_ t: TimeInterval) -> CGFloat {
-        guard bpm != nil, beatDuration > 0 else { return 1.0 }
+        guard hasSignal, beatDuration > 0 else { return 1.0 }
         let phase = fmod(t, beatDuration) / beatDuration
         switch phase {
         case ..<0.08:
@@ -96,14 +101,14 @@ public struct HeartRateGaugeView: View {
     }
 
     private var beatDuration: TimeInterval {
-        guard let bpm, bpm > 0 else { return 1.0 }
+        guard let bpm, bpm.isFinite, bpm > 0 else { return 1.0 }
         return 60.0 / bpm
     }
 
     private var zoneColor: Color { SessionPalette.heartRate(bpm) }
 
     private var zoneName: String {
-        guard let bpm else {
+        guard hasSignal, let bpm else {
             return LocalizedString(en: "No Signal", fr: "Aucun signal", es: "Sin señal", ja: "信号なし", zh: "无信号", ko: "신호 없음", ru: "Нет сигнала", de: "Kein Signal", ar: "لا توجد إشارة").localized
         }
         switch bpm {
