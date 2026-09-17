@@ -33,7 +33,7 @@ public struct SCIVisualizationView: View {
                         )
                         .frame(width: 120, height: 120)
 
-                    if known {
+                    if known, clampedScore > 0 {
                         // Outer volumetric glow (blurred wide)
                         Circle()
                             .trim(from: 0, to: clampedScore)
@@ -58,7 +58,7 @@ public struct SCIVisualizationView: View {
                             style: StrokeStyle(lineWidth: 6, dash: known ? [] : [4, 3])
                         )
 
-                    if known {
+                    if known, clampedScore > 0 {
                         // Main ring
                         Circle()
                             .trim(from: 0, to: clampedScore)

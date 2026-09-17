@@ -14,25 +14,31 @@ struct ActivityRingsView: View {
     var body: some View {
         HStack(spacing: SessionSpacing.md) {
             ZStack {
-                RingShape(progress: standProgress)
-                    .stroke(BrandColor.aqua, style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .frame(width: 100, height: 100)
+                if standProgress > 0 {
+                    RingShape(progress: standProgress)
+                        .stroke(BrandColor.aqua, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                        .frame(width: 100, height: 100)
+                }
 
                 RingShape(progress: 1.0)
                     .stroke(BrandColor.aqua.opacity(0.2), lineWidth: 14)
                     .frame(width: 100, height: 100)
 
-                RingShape(progress: exerciseProgress)
-                    .stroke(BrandColor.mint, style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .frame(width: 72, height: 72)
+                if exerciseProgress > 0 {
+                    RingShape(progress: exerciseProgress)
+                        .stroke(BrandColor.mint, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                        .frame(width: 72, height: 72)
+                }
 
                 RingShape(progress: 1.0)
                     .stroke(BrandColor.mint.opacity(0.2), lineWidth: 14)
                     .frame(width: 72, height: 72)
 
-                RingShape(progress: moveProgress)
-                    .stroke(BrandColor.firetruck, style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .frame(width: 44, height: 44)
+                if moveProgress > 0 {
+                    RingShape(progress: moveProgress)
+                        .stroke(BrandColor.firetruck, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                        .frame(width: 44, height: 44)
+                }
 
                 RingShape(progress: 1.0)
                     .stroke(BrandColor.firetruck.opacity(0.2), lineWidth: 14)

@@ -233,6 +233,10 @@ def test_hud_honesty() -> None:
         fail("Watch glance must not suffix percent onto the em dash")
     if 'percentText == "—" ? "unavailable"' not in compact:
         fail("CompactSCIMeter VoiceOver must use clamped percentText")
+    if "if known, progress > 0" not in compact:
+        fail("CompactSCIMeter must omit fill at 0 SCI")
+    if "if known {" in compact:
+        fail("CompactSCIMeter must not stroke a 0 SCI round-cap stub")
     tv_ring = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/SCIVisualizationView.swift")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in tv_ring:
         fail("TV SCI ring must use HUD percent formatter")
@@ -242,8 +246,10 @@ def test_hud_honesty() -> None:
         fail("SCIVisualizationView must pause breath on non-finite SCI, not only nil")
     if "paused: score == nil || reduceMotion" in tv_ring:
         fail("SCIVisualizationView must not treat NaN SCI as a live 0% ring")
-    if "if known {" not in tv_ring:
-        fail("SCIVisualizationView must omit trim fill when SCI is unknown")
+    if "if known, clampedScore > 0" not in tv_ring:
+        fail("SCIVisualizationView must omit trim fill when SCI is unknown or 0")
+    if "if known {" in tv_ring:
+        fail("SCIVisualizationView must not stroke a 0 SCI round-cap stub")
     widgets = read("NATURaLWidgets/BrandTokens.swift")
     if "min(1, max(0, score))" not in widgets:
         fail("widget BrandTokens.sciPercent must clamp SCI to [0, 1]")
@@ -327,6 +333,13 @@ def test_hud_honesty() -> None:
         fail("Watch complete state must use SessionPalette, not system green")
     if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
         fail("activity rings must use BrandColor, not system cyan")
+    summary_rings = read("Bonhomme/Features/Summary/ActivityRingsView.swift")
+    if "if moveProgress > 0" not in summary_rings:
+        fail("summary activity rings must omit fill at 0% move")
+    if "if exerciseProgress > 0" not in summary_rings:
+        fail("summary activity rings must omit fill at 0% exercise")
+    if "if standProgress > 0" not in summary_rings:
+        fail("summary activity rings must omit fill at 0% stand")
     shared_rings = read("Bonhomme/Shared/Components/ActivityRingsView.swift")
     if "Color.cyan" in shared_rings:
         fail("shared activity rings must use BrandColor, not system cyan")
@@ -345,6 +358,8 @@ def test_hud_honesty() -> None:
         fail("circular widget must not trim a non-optional 0% ring on cache miss")
     if "if let move = entry.moveProgress" not in widget_rings:
         fail("circular widget must omit ring fill when move progress is unknown")
+    if "move.isFinite, move > 0" not in widget_rings:
+        fail("circular widget must omit fill at 0% move")
     if "moveProgress: Double?" not in widget_rings:
         fail("widget rings entry must treat cache-miss progress as optional")
     store = read("Bonhomme/Shared/AppGroupStore.swift")
@@ -356,6 +371,10 @@ def test_hud_honesty() -> None:
         fail("App Group moveProgress must be optional")
     if "func ringView(progress: Double?" not in shared_rings:
         fail("shared ActivityRingsView must omit fill when progress is unknown")
+    if "progress.isFinite, progress > 0" not in shared_rings:
+        fail("shared ActivityRingsView must omit fill at 0% progress")
+    if "if let progress, progress.isFinite {" in shared_rings:
+        fail("shared ActivityRingsView must not stroke a 0% round-cap stub")
     if "percentLabel(moveProgress)" not in shared_rings:
         fail("shared rings VoiceOver must say — when progress is unknown, not 0 percent")
     streak = read("NATURaLWidgets/StreakWidget.swift")
