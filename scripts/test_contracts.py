@@ -213,8 +213,13 @@ def test_hud_honesty() -> None:
         fail("visionOS progress must not bind a 0% bar when pose count is unknown")
     if "if let fraction = metrics.poseProgressFraction" not in vision:
         fail("visionOS must omit determinate pose ProgressView when fraction is nil")
-    if "hudMetrics" not in read("BonhommeVision/App/SpatialPoseView.swift"):
+    vision_pose = read("BonhommeVision/App/SpatialPoseView.swift")
+    if "hudMetrics" not in vision_pose:
         fail("visionOS session must expose SessionHUDMetrics")
+    if '"\\(completed)/\\(vm.plan.poseCount) poses' in vision_pose:
+        fail("visionOS completion must not interpolate 0/0 poses when count is unknown")
+    if "poseProgressText" not in vision_pose:
+        fail("visionOS completion must use poseProgressText so unknown totals dash")
     vision_space = read("BonhommeVision/App/ImmersivePoseSpace.swift")
     if ".cyan" in vision_space:
         fail("immersive figure/SCI ring must not use system cyan")
@@ -234,6 +239,10 @@ def test_hud_honesty() -> None:
         fail("session HUD must not bind a 0% pose bar when count is unknown")
     if "if let fraction = metrics.poseProgressFraction" not in compact:
         fail("session HUD must omit determinate pose ProgressView when fraction is nil")
+    if "max(metrics.poseCount, 1)" in compact:
+        fail("session HUD must not invent pose total 1 when count is 0")
+    if "total: metrics.poseCount," not in compact:
+        fail("session HUD progress must pass the real pose count so 0 stays unknown")
     if "SessionHUDMetrics(sciScore: score).sciPercentText" not in compact:
         fail("CompactSCIMeter must use HUD percent formatter (NaN → —, overflow → 100)")
     if "metrics.sciPercentLabel" not in compact:
@@ -340,6 +349,10 @@ def test_hud_honesty() -> None:
     watch_session = read("BonhommeWatch/App/WatchSessionView.swift")
     if ".foregroundStyle(.green)" in watch_session:
         fail("Watch complete state must use SessionPalette, not system green")
+    if 'Text("\\(manager.posesCompletedCount)/\\(plan.poseCount)")' in watch_session:
+        fail("Watch pose count must dash when the plan has zero poses, not interpolate 0/0")
+    if "plan.poseCount > 0" not in watch_session:
+        fail("Watch pose count must fail closed when poseCount is 0")
     if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
         fail("activity rings must use BrandColor, not system cyan")
     summary_rings = read("Bonhomme/Features/Summary/ActivityRingsView.swift")
