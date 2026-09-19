@@ -1,5 +1,13 @@
 # Current release verification — 19 September 2026
 
+## Latest completed integration evidence
+
+[PR #39](https://github.com/LeBonhommePharma/NATURaL/pull/39), commit `c216e666186be35bd446d512aba6bc17211dbb49`, passed all six jobs in [CI 35470772237](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470772237): Linux contracts, submission assets/Swift core, iOS with embedded Watch Release, native macOS Release, native tvOS Release (including layered icons/Top Shelf), and hosted iPhone simulator tests. The simulator ran **21 app tests and 9 UI tests with zero failures**. The Watch/tvOS API incompatibilities and SwiftUI type-check timeout from earlier attempts are fixed.
+
+This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. Current iPad runtime coverage is historical until the new two-device CI matrix completes.
+
+The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (8), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
+
 ## TV relay and tvOS preparation — integration `057b5aa`
 
 The native tvOS app is now explicitly in the requested submission scope, alongside iOS/iPadOS/watchOS and macOS. AirPlay/HDMI remains a separate system-managed output path. The evidence below predates the next full CI run and does not establish a shipping television binary.

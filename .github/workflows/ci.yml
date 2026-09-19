@@ -36,6 +36,9 @@ jobs:
           python3 scripts/test_archive_validation.py
           python3 scripts/test_submission_assets.py
           python3 scripts/test_permission_localizations.py
+          python3 scripts/test_cloud_signing.py
+          python3 scripts/test_localization_inventory.py
+          python3 scripts/localization_inventory.py --check-resources
       - name: Verify website language routing
         run: node scripts/test-site-language.cjs
       - name: Product contracts (also run on Linux)
@@ -70,20 +73,37 @@ jobs:
           path: build-release.log
 
   simulator-tests:
-    name: App behavior and accessible free-session journeys
+    name: App behavior and accessible journeys (${{ matrix.device }})
     runs-on: macos-26
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
     steps:
       - uses: actions/checkout@v4
-      - name: Select an available iPhone simulator
+      - name: Select a native screenshot simulator
+        env:
+          DEVICE_FAMILY: ${{ matrix.device }}
         run: |
           python3 - <<'PYTHON'
           import json, os, subprocess
           runtimes = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "--json"]))["devices"]
-          devices = [d for runtime, values in runtimes.items() if "iOS" in runtime for d in values if "iPhone" in d["name"]]
-          assert devices, "No iPhone simulator installed"
+          family = os.environ["DEVICE_FAMILY"]
+          devices = [(runtime, d) for runtime, values in runtimes.items() if "iOS" in runtime for d in values if family in d["name"]]
+          assert devices, f"No {family} simulator installed"
+          def preference(item):
+              runtime, device = item
+              version = tuple(int(v) for v in runtime.split("iOS-")[-1].split("-"))
+              large = "Pro Max" in device["name"] if family == "iPhone" else "13-inch" in device["name"]
+              return (large, version, device["name"])
+          runtime, device = max(devices, key=preference)
+          os.makedirs("build", exist_ok=True)
+          with open("build/simulator.json", "w") as receipt:
+              json.dump({"runtime": runtime, "device": device, "commit": os.environ["GITHUB_SHA"]}, receipt, indent=2)
           with open(os.environ["GITHUB_ENV"], "a") as env:
-              env.write("NATURAL_TEST_SIMULATOR=" + devices[-1]["udid"] + "\n")
+              env.write("NATURAL_TEST_SIMULATOR=" + device["udid"] + "\n")
+          print(f"Selected {device['name']} on {runtime}")
           PYTHON
       - name: Run app and UI regression tests
         run: |
@@ -92,10 +112,24 @@ jobs:
             -configuration Debug -destination "platform=iOS Simulator,id=$NATURAL_TEST_SIMULATOR" \
             -parallel-testing-enabled NO -resultBundlePath build/ui-tests.xcresult \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee simulator-tests.log
+      - name: Export actual XCTest screenshots
+        if: always()
+        run: |
+          if [[ -d build/ui-tests.xcresult ]]; then
+            xcrun xcresulttool export attachments --path build/ui-tests.xcresult --output-path build/ui-screenshots
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: simulator-test-results
+          name: native-screenshots-${{ matrix.device }}
+          path: |
+            build/ui-screenshots
+            build/simulator.json
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulator-test-results-${{ matrix.device }}
           path: |
             simulator-tests.log
             build/ui-tests.xcresult

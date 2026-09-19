@@ -16,6 +16,11 @@ if ! xcode_version="$(xcodebuild -version 2>&1)" || [[ "$xcode_version" != Xcode
   echo "$xcode_version" >&2
   exit 1
 fi
+signing_args=()
+if [[ -n "${SIGNING_XCCONFIG:-}" ]]; then
+  [[ -f "$SIGNING_XCCONFIG" ]] || { echo 'SIGNING_XCCONFIG file does not exist' >&2; exit 1; }
+  signing_args=(-xcconfig "$SIGNING_XCCONFIG")
+fi
 python3 scripts/validate-submission.py "${preflight[@]}"
 archive_name="NATURaL-$build_number"
 case "$platform" in
@@ -28,7 +33,7 @@ mkdir -p "$PWD/build/AppStore"
 receipt_dir="$(mktemp -d "$PWD/build/AppStore/$archive_name-attempt.XXXXXX")"
 printf '%s\n' "$xcode_version" > "$receipt_dir/xcode-version.txt"
 echo "Archive log and result bundle: $receipt_dir"
-xcodebuild archive \
+xcodebuild archive "${signing_args[@]}" \
   -project NATURaL.xcodeproj -scheme "$scheme" \
   -configuration Release -destination "$destination" \
   -archivePath "$archive_path" \

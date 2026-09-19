@@ -3,32 +3,30 @@ import Foundation
 import BonhommeAccelSwift
 #endif
 
-/// Validates the isomorphism between FlexAID∆S configurational entropy (in silico)
-/// and DrugResponseAnalyzer HRV entropy (in vivo).
+/// Exploratory association between molecular configurational-model entropy and
+/// HRV-distribution entropy. Sharing the Shannon formula does not establish that
+/// these quantities measure the same process or identify receptor binding.
 ///
-/// The hypothesis under test:
-///   A drug with large |ΔS_config| in molecular docking should produce
-///   large |ΔH_hrv| in cardiac RR-interval distributions, because both
-///   measure the entropy cost of a binding event using the same Shannon formula.
-///
-/// Cross-domain validation proceeds by:
-/// 1. Pairing substances that have both in-silico (FlexAIDdSResult or BindingEntropyProfile)
-///    and in-vivo (DrugResponseResult) entropy measurements
-/// 2. Computing Pearson correlation between |ΔS_config| and |ΔH_hrv|
-/// 3. Computing a proper p-value via the t-distribution
-/// 4. Reporting R², mean absolute error, and statistical significance
-///
-/// A significant positive correlation (p < 0.05, n ≥ 5) constitutes independent
-/// validation that the entropy-collapse framework generalizes from molecular torsional
-/// angles to physiological cardiac intervals.
+/// Pearson r and its nominal two-tailed p-value describe the supplied sample.
+/// They do not establish causality, independent validation, or generalization.
+/// MAE is an in-sample regression residual, not held-out prediction performance.
 public struct CrossDomainValidator: Sendable {
+
+    public enum MolecularInputSource: String, Sendable {
+        case dockingResult
+        case unverifiedCatalog
+        case unspecified
+    }
 
     /// A paired observation: one substance's in-silico and in-vivo entropy deltas.
     public struct PairedObservation: Sendable {
         /// Substance identifier.
         public let substanceId: String
 
-        /// ΔS_config from FlexAID∆S (bits, typically negative for binding).
+        /// Provenance of the molecular input; never inferred from its numeric value.
+        public let molecularSource: MolecularInputSource
+
+        /// Molecular configurational-model entropy (bits).
         public let deltaSConfig: Double
 
         /// ΔH_hrv from DrugResponseAnalyzer (bits).
@@ -45,8 +43,10 @@ public struct CrossDomainValidator: Sendable {
             deltaSConfig: Double,
             deltaHHRV: Double,
             entropyPenaltyKcal: Double,
-            inVivoEffectSize: Double
+            inVivoEffectSize: Double,
+            molecularSource: MolecularInputSource = .unspecified
         ) {
+            self.molecularSource = molecularSource
             self.substanceId = substanceId
             self.deltaSConfig = deltaSConfig
             self.deltaHHRV = deltaHHRV
@@ -68,7 +68,7 @@ public struct CrossDomainValidator: Sendable {
         public let pValue: Double
 
         /// R-squared (coefficient of determination).
-        /// Fraction of in-vivo variance explained by in-silico entropy.
+        /// In-sample linear association; not a causal or held-out validation metric.
         public var rSquared: Double { pearsonR * pearsonR }
 
         /// Number of substances in the analysis.
@@ -86,8 +86,7 @@ public struct CrossDomainValidator: Sendable {
             pValue < significanceLevel && n >= minPairs
         }
 
-        /// Mean absolute prediction error (bits).
-        /// How well |ΔS_config| predicts |ΔH_hrv| via linear regression.
+        /// Mean absolute in-sample regression residual (bits).
         public let meanAbsError: Double
 
         /// Linear regression slope: |ΔH_hrv| ≈ slope × |ΔS_config| + intercept.
@@ -97,7 +96,11 @@ public struct CrossDomainValidator: Sendable {
         /// Linear regression intercept.
         public let regressionIntercept: Double
 
-        /// Bilingual summary.
+        public var dockingPairCount: Int { observations.filter { $0.molecularSource == .dockingResult }.count }
+        public var catalogPairCount: Int { observations.filter { $0.molecularSource == .unverifiedCatalog }.count }
+        public var unspecifiedPairCount: Int { observations.filter { $0.molecularSource == .unspecified }.count }
+
+        /// Summary of nominal association and explicit molecular input provenance.
         public var summary: LocalizedString {
             let rText = String(format: "%.3f", pearsonR)
             let r2Text = String(format: "%.3f", rSquared)
@@ -115,15 +118,15 @@ public struct CrossDomainValidator: Sendable {
             let sigAr = isSignificant ? "ذات دلالة إحصائية" : "غير ذات دلالة إحصائية"
 
             return LocalizedString(
-                en: "Cross-domain validation (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Correlation is \(sigText).",
-                fr: "Validation interdomaines (n=\(n)) : r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Corrélation \(sigFr).",
-                es: "Validación interdominio (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) bits. Correlación \(sigEs).",
-                ja: "クロスドメイン検証（n=\(n)）：r = \(rText)、R² = \(r2Text)、p = \(pText)、MAE = \(maeText) ビット。相関は\(sigJa)。",
-                zh: "跨域验证（n=\(n)）：r = \(rText)，R² = \(r2Text)，p = \(pText)，MAE = \(maeText) 比特。相关性\(sigZh)。",
-                ko: "교차 도메인 검증 (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) 비트. 상관관계 \(sigKo).",
-                ru: "Кросс-доменная валидация (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) бит. Корреляция \(sigRu).",
-                de: "Domänenübergreifende Validierung (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE = \(maeText) Bits. Korrelation \(sigDe).",
-                ar: "التحقق عبر المجالات (n=\(n)): r = \(rText)، R² = \(r2Text)، p = \(pText)، MAE = \(maeText) بت. الارتباط \(sigAr)."
+                en: "Exploratory association (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE (in-sample) = \(maeText) bits. Correlation is \(sigText). Molecular inputs: \(dockingPairCount) docking, \(catalogPairCount) unverified catalog, \(unspecifiedPairCount) unspecified. Nominal p-value; no causal validation.",
+                fr: "Association exploratoire (n=\(n)) : r = \(rText), R² = \(r2Text), p = \(pText), MAE (dans l’échantillon) = \(maeText) bits. Corrélation \(sigFr). Entrées moléculaires : \(dockingPairCount) amarrage, \(catalogPairCount) catalogue non vérifié, \(unspecifiedPairCount) non précisées. Valeur p nominale ; aucune validation causale.",
+                es: "Asociación exploratoria (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE (en la muestra) = \(maeText) bits. Correlación \(sigEs). Entradas moleculares: \(dockingPairCount) acoplamiento, \(catalogPairCount) catálogo sin verificar, \(unspecifiedPairCount) sin especificar. Valor p nominal; sin validación causal.",
+                ja: "探索的関連（n=\(n)）：r = \(rText)、R² = \(r2Text)、p = \(pText)、MAE (標本内) = \(maeText) ビット。相関は\(sigJa)。 分子入力：ドッキング \(dockingPairCount)、未検証カタログ \(catalogPairCount)、不明 \(unspecifiedPairCount)。名目上のp値であり、因果関係の検証ではありません。",
+                zh: "探索性关联（n=\(n)）：r = \(rText)，R² = \(r2Text)，p = \(pText)，MAE (样本内) = \(maeText) 比特。相关性\(sigZh)。 分子输入：对接 \(dockingPairCount)，未核实目录 \(catalogPairCount)，未指定 \(unspecifiedPairCount)。名义p值，不构成因果验证。",
+                ko: "탐색적 연관성 (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE (표본 내) = \(maeText) 비트. 상관관계 \(sigKo). 분자 입력: 도킹 \(dockingPairCount), 미검증 목록 \(catalogPairCount), 미지정 \(unspecifiedPairCount). 명목 p값이며 인과 검증이 아닙니다.",
+                ru: "Исследовательская связь (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE (на обучающей выборке) = \(maeText) бит. Корреляция \(sigRu). Молекулярные данные: докинг \(dockingPairCount), непроверенный каталог \(catalogPairCount), не указано \(unspecifiedPairCount). Номинальное p; причинность не подтверждена.",
+                de: "Explorative Assoziation (n=\(n)): r = \(rText), R² = \(r2Text), p = \(pText), MAE (in der Stichprobe) = \(maeText) Bits. Korrelation \(sigDe). Molekulare Eingaben: \(dockingPairCount) Docking, \(catalogPairCount) ungeprüfter Katalog, \(unspecifiedPairCount) unbestimmt. Nominaler p-Wert; keine kausale Validierung.",
+                ar: "ارتباط استكشافي (n=\(n)): r = \(rText)، R² = \(r2Text)، p = \(pText)، MAE (داخل العينة) = \(maeText) بت. الارتباط \(sigAr). المدخلات الجزيئية: \(dockingPairCount) إرساء، \(catalogPairCount) كتالوج غير متحقق، \(unspecifiedPairCount) غير محدد. قيمة p اسمية؛ لا تحقق سببي."
             )
         }
 
@@ -196,7 +199,8 @@ public struct CrossDomainValidator: Sendable {
                 entropyPenaltyKcal: dockingAnalyzer.entropyPenaltyKcal(
                     deltaSBits: docking.totalDeltaSConfig
                 ),
-                inVivoEffectSize: response.effectSize
+                inVivoEffectSize: response.effectSize,
+                molecularSource: .dockingResult
             ))
         }
 
@@ -205,10 +209,9 @@ public struct CrossDomainValidator: Sendable {
 
     // MARK: - Validation from Known Profiles
 
-    /// Validate using BindingEntropyProfile known values against DrugResponseResults.
+    /// Compare unverified catalog estimates with DrugResponseResults.
     ///
-    /// Useful when actual FlexAID docking has not been run but published/reference
-    /// ΔS_config values exist for the substances.
+    /// Catalog inputs are not actual docking runs or independently verified measurements.
     ///
     /// - Parameter drugResponseResults: In-vivo DrugResponseAnalyzer results.
     /// - Returns: ValidationResult, or nil if fewer than `crossDomainMinPairs` paired substances.
@@ -227,7 +230,8 @@ public struct CrossDomainValidator: Sendable {
                 deltaSConfig: bindingProfile.expectedDeltaSBits,
                 deltaHHRV: response.peakDeltaH,
                 entropyPenaltyKcal: bindingProfile.expectedEntropyPenaltyKcal,
-                inVivoEffectSize: response.effectSize
+                inVivoEffectSize: response.effectSize,
+                molecularSource: .unverifiedCatalog
             ))
         }
 
@@ -244,6 +248,7 @@ public struct CrossDomainValidator: Sendable {
         dockingResults: [FlexAIDdSResult],
         drugResponseResults: [DrugResponseResult]
     ) -> ValidationResult? {
+        let actualDockingIDs = Set(dockingResults.map(\.substanceId))
         var dockingBySubstance: [String: Double] = [:]
         var penaltyBySubstance: [String: Double] = [:]
 
@@ -274,7 +279,8 @@ public struct CrossDomainValidator: Sendable {
                 deltaSConfig: deltaS,
                 deltaHHRV: response.peakDeltaH,
                 entropyPenaltyKcal: penalty,
-                inVivoEffectSize: response.effectSize
+                inVivoEffectSize: response.effectSize,
+                molecularSource: actualDockingIDs.contains(id) ? .dockingResult : .unverifiedCatalog
             ))
         }
 
@@ -459,10 +465,14 @@ public struct CrossDomainValidator: Sendable {
     private func buildResult(from pairs: [PairedObservation]) -> ValidationResult? {
         guard pairs.count >= configuration.crossDomainMinPairs else { return nil }
 
-        // Filter out non-finite values
-        let cleanPairs = pairs.filter {
+        // One pair per substance, matching validate(dockingResults:...). Repeated
+        // doses must not inflate the substance count or nominal degrees of freedom.
+        // Keep the last supplied pair; callers control ordering, not timestamp inference.
+        var bySubstance: [String: PairedObservation] = [:]
+        for pair in pairs { bySubstance[pair.substanceId] = pair }
+        let cleanPairs = bySubstance.values.filter {
             $0.deltaSConfig.isFinite && $0.deltaHHRV.isFinite
-        }
+        }.sorted { $0.substanceId < $1.substanceId }
         guard cleanPairs.count >= configuration.crossDomainMinPairs else { return nil }
 
         let x = cleanPairs.map { abs($0.deltaSConfig) }

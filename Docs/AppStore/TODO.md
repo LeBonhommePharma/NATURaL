@@ -23,7 +23,8 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
   - [ ] Install from TestFlight on physical iPhone and complete permission/backward/permission-revoke behavior matrix.
   - [ ] Capture App Store iPhone screenshots and finalize all App Store Connect privacy/age-rating/review fields.
 - **iPad / iPadOS**
-  - [x] Responsive iPad session layout and simulator journeys are validated with larger text.
+  - [x] Responsive iPad session layout and larger-text journeys passed the historical 12 September run.
+  - [ ] Re-run the current revision on iPad, including landscape guide and controls; retain native screenshots.
   - [ ] Validate portrait/landscape, split-view/resizable windows, and hardware permissions on physical iPad.
   - [ ] Capture final iPad screenshots at currently accepted App Store families.
 - **watchOS**
@@ -33,7 +34,7 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - **Apple TV / tvOS**
   - [x] Add a shared `BonhommeTV` scheme, unsigned Release CI job, and `PLATFORM=tvos` archive/inspection path.
   - [x] Implement explicit ephemeral QR/manual pairing, standard TLS-PSK transport, bounded sends, generation filtering and stale/end clearing.
-  - [ ] Pass current-revision tvOS SDK compilation and layered-icon asset compilation in CI.
+  - [x] Pass tvOS SDK and layered-icon compilation at `c216e66` / CI `35470772237`; rerun after subsequent source changes.
   - [ ] Register/sign `com.natural.BonhommeTV` on team `ZJLX84G8QV`, configure its App Store Connect platform/listing, and validate a signed Apple TV archive.
   - [ ] Verify actual paired iPhone/iPad → Apple TV sessions, interruptions, screen privacy, Siri Remote focus and VoiceOver on hardware.
   - [ ] Capture actual Apple TV screenshots and complete the tvOS review/TestFlight gates below.
@@ -55,10 +56,15 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [ ] Merge only after current-revision required checks pass and remaining review findings are resolved.
 - [x] Add 110 permission purpose strings across 11 supported languages and regression checks.
 - [ ] Complete missing app-content translations; OS language selection falls back to English where content is untranslated.
-- [ ] Execute current-revision iOS/Watch/Mac/TV builds and app tests in GitHub CI; fix all failures.
+- [x] Execute iOS/Watch/Mac/TV Release builds and app tests at `c216e66`: all six jobs passed in CI `35470772237`, including 21 hosted app tests and 9 UI tests. Later changes require a fresh green run.
+- [x] Add manual hosted signing with isolated credentials and distribution-profile checks; see [cloud-signing.md](cloud-signing.md).
+- [ ] Configure the protected signing environment and run actual signed archives; offline fixtures do not establish working signing.
+- [x] Add exact-key supplemental translations for common navigation/guide/TV phrases and a reproducible fallback inventory.
+- [ ] Complete linguistic review and remaining untranslated static, interpolated and native SwiftUI copy; see [localization-coverage.md](localization-coverage.md).
 - [ ] Review final native rendering across sizes, accessibility and every supported language. HTML/design references are not runtime proof.
 - [ ] Validate TV/Vision layered icon delivery with their SDKs; flattened source assets are not enough to certify those store products.
-- [ ] Review remaining experimental profile data/provenance and all reachable generated insight text; wording repairs alone do not validate scientific claims.
+- [x] Audit reachable profile/insight claims, distinguish catalog estimates from actual docking, and prevent repeated doses inflating the substance denominator; see [scientific-claims-audit.md](scientific-claims-audit.md).
+- [ ] Complete per-value experimental profile provenance and validation; wording repairs alone do not validate scientific claims.
 
 ## TV display and native tvOS release
 
@@ -184,7 +190,8 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [x] Bundle approved bloom icon at native Mac sizes, privacy manifest, sandbox entitlement and export declaration.
 - [x] Refine plan selection, pose guidance, scrollable window, keyboard controls, early-end summary and privacy/support entry points.
 - [x] Show only supported session information; native Mac has no live Health feed or workout recording.
-- [ ] Pass current-revision Release build and test actual launch, window resize/close, keyboard navigation, VoiceOver and complete session flow.
+- [x] Pass native macOS Release compilation at `c216e66` / CI `35470772237`.
+- [ ] Test actual launch, window resize/close, keyboard navigation, VoiceOver and complete session flow on Mac.
 - [ ] Verify timer behavior through app suspension/sleep; ensure outcome and elapsed time remain coherent.
 - [ ] Verify distribution identity, Mac App Store archive, signing, sandbox, notarization/validation as required by the selected distribution path, screenshots and metadata describing actual Mac capabilities.
 - [ ] Confirm Mac App Store record strategy for the separate bundle identifier; do not assume it can share the iOS record automatically.

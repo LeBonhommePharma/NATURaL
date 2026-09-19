@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Release journeys: fresh launch, free session entry and local-data navigation.
 final class WorkoutFlowUITests: XCTestCase {
@@ -52,6 +53,39 @@ final class WorkoutFlowUITests: XCTestCase {
         begin.tap()
     }
 
+    private func capture(_ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testIPadLandscapeKeepsGuideAndControlsReachable() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad landscape journey")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        finishWelcome()
+        let start = app.buttons["home.start"]
+        for _ in 0..<8 where !start.isHittable { app.swipeUp() }
+        XCTAssertTrue(start.isHittable)
+        start.tap()
+        startSessionFromReady()
+        XCTAssertTrue(app.staticTexts["session.pose.name"].waitForExistence(timeout: 15))
+        app.tap()
+        let pause = app.buttons["session.pauseResume"]
+        XCTAssertTrue(pause.isHittable)
+        pause.tap()
+        XCTAssertTrue(pause.label.contains("Resume"))
+        capture("iPad landscape paused guide")
+        let end = app.buttons["session.end"]
+        XCTAssertTrue(end.isHittable)
+        end.tap()
+        XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
+        capture("iPad landscape summary")
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
+    }
+
     func testWelcomeLeadsToFreeSession() {
         finishWelcome()
         let start = app.buttons["home.start"]
@@ -64,6 +98,7 @@ final class WorkoutFlowUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["Begin Session"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Subscribe"].exists)
+        capture("Session preparation")
     }
 
     func testLargestTextKeepsWelcomeAndSessionEntryReachable() {

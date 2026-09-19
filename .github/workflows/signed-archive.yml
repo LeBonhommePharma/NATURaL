@@ -1,0 +1,108 @@
+name: Manual signed archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Archive platform (iOS includes iPad and Watch)
+        required: true
+        type: choice
+        options: [ios, tvos, macos]
+      build_number:
+        description: New positive App Store build number
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-signed-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    name: Prepare distribution archive (no upload)
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: app-store-signing
+    env:
+      PLATFORM: ${{ inputs.platform }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      SIGNING_XCCONFIG: ${{ runner.temp }}/natural-signing/signing.xcconfig
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate inputs and signing regression fixtures
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          assert os.environ['PLATFORM'] in ('ios', 'tvos', 'macos'), 'Unknown platform'
+          assert re.fullmatch(r'[1-9][0-9]*', os.environ['BUILD_NUMBER']), 'Build number must be a positive integer'
+          sdk = {'ios': 'iphoneos', 'tvos': 'appletvos', 'macos': 'macosx'}[os.environ['PLATFORM']]
+          sdks = [sdk, 'watchos'] if sdk == 'iphoneos' else [sdk]
+          for sdk in sdks:
+              version = subprocess.check_output(['xcrun', '--sdk', sdk, '--show-sdk-version'], text=True).strip()
+              assert int(version.split('.')[0]) >= 26, f'{sdk} SDK26 or later is required'
+          PY
+          python3 scripts/test_cloud_signing.py
+          python3 scripts/validate-submission.py --include-macos
+      - name: Install isolated signing inputs
+        env:
+          NATURAL_DISTRIBUTION_P12_BASE64: ${{ secrets.NATURAL_DISTRIBUTION_P12_BASE64 }}
+          NATURAL_P12_PASSWORD: ${{ secrets.NATURAL_P12_PASSWORD }}
+          NATURAL_MAC_DISTRIBUTION_P12_BASE64: ${{ secrets.NATURAL_MAC_DISTRIBUTION_P12_BASE64 }}
+          NATURAL_MAC_P12_PASSWORD: ${{ secrets.NATURAL_MAC_P12_PASSWORD }}
+          NATURAL_IOS_PROFILE_BASE64: ${{ secrets.NATURAL_IOS_PROFILE_BASE64 }}
+          NATURAL_WATCH_PROFILE_BASE64: ${{ secrets.NATURAL_WATCH_PROFILE_BASE64 }}
+          NATURAL_WIDGETS_PROFILE_BASE64: ${{ secrets.NATURAL_WIDGETS_PROFILE_BASE64 }}
+          NATURAL_LIVE_ACTIVITY_PROFILE_BASE64: ${{ secrets.NATURAL_LIVE_ACTIVITY_PROFILE_BASE64 }}
+          NATURAL_TVOS_PROFILE_BASE64: ${{ secrets.NATURAL_TVOS_PROFILE_BASE64 }}
+          NATURAL_MACOS_PROFILE_BASE64: ${{ secrets.NATURAL_MACOS_PROFILE_BASE64 }}
+        run: python3 scripts/cloud_signing.py prepare --platform "$PLATFORM"
+      - name: Create and verify the distribution archive
+        run: |
+          set -euo pipefail
+          python3 scripts/cloud_signing.py verify-settings
+          bash scripts/archive-app-store.sh
+          case "$PLATFORM" in
+            ios) archive_name="NATURaL-$BUILD_NUMBER" ;;
+            tvos) archive_name="NATURaL-tvOS-$BUILD_NUMBER" ;;
+            macos) archive_name="NATURaL-macOS-$BUILD_NUMBER" ;;
+          esac
+          mkdir -p build/cloud-signing-artifacts
+          python3 scripts/cloud_signing.py verify --archive "build/AppStore/$archive_name.xcarchive" \
+            | tee build/cloud-signing-artifacts/distribution-validation.txt
+          ditto -c -k --keepParent "build/AppStore/$archive_name.xcarchive" \
+            "build/cloud-signing-artifacts/$archive_name.xcarchive.zip"
+      - name: Remove signing credentials and installed profiles
+        if: always()
+        run: python3 scripts/cloud_signing.py cleanup
+      - name: Collect narrow build receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, shutil, subprocess
+          out = pathlib.Path('build/cloud-signing-artifacts')
+          out.mkdir(parents=True, exist_ok=True)
+          receipt = {
+              'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              'platform': os.environ['PLATFORM'], 'build_number': os.environ['BUILD_NUMBER'],
+              'run_id': os.environ['GITHUB_RUN_ID'], 'uploaded_to_apple': False,
+          }
+          (out / 'receipt.json').write_text(json.dumps(receipt, indent=2))
+          for attempt in pathlib.Path('build/AppStore').glob('*-attempt.*'):
+              for name in ('xcode-version.txt', 'archive.log', 'validation.log'):
+                  source = attempt / name
+                  if source.is_file():
+                      shutil.copyfile(source, out / name)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: signed-archive-${{ inputs.platform }}-${{ github.run_id }}
+          path: build/cloud-signing-artifacts/
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 0

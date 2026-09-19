@@ -219,6 +219,37 @@ final class CrossDomainValidatorTests: XCTestCase {
         }
     }
 
+    func testRepeatedDosesCannotMeetDistinctSubstanceMinimum() {
+        let responses = (0..<8).map {
+            makeDrugResponse(medicationId: "caffeine", peakDeltaH: -Double($0 + 1) / 10)
+        }
+        XCTAssertNil(validator.validateFromProfiles(drugResponseResults: responses))
+        XCTAssertNil(validator.validateHybrid(dockingResults: [], drugResponseResults: responses))
+    }
+
+    func testCatalogAndHybridPreserveProvenanceAndUniqueDenominator() throws {
+        let ids = Array(BindingEntropyProfile.knownProfiles.prefix(5).map(\.substanceId))
+        var responses = ids.enumerated().map {
+            makeDrugResponse(medicationId: $0.element, peakDeltaH: -Double($0.offset + 1) / 10)
+        }
+        responses.append(makeDrugResponse(medicationId: ids[0], peakDeltaH: -0.9))
+        let catalog = try XCTUnwrap(validator.validateFromProfiles(drugResponseResults: responses))
+        XCTAssertEqual(catalog.n, 5)
+        XCTAssertEqual(catalog.catalogPairCount, 5)
+        XCTAssertEqual(catalog.dockingPairCount, 0)
+        XCTAssertEqual(catalog.observations.first { $0.substanceId == ids[0] }?.deltaHHRV, -0.9)
+        let hybrid = try XCTUnwrap(validator.validateHybrid(
+            dockingResults: [makeDockingResult(substanceId: ids[0], totalDeltaS: -2)],
+            drugResponseResults: responses
+        ))
+        XCTAssertEqual(hybrid.n, 5)
+        XCTAssertEqual(hybrid.dockingPairCount, 1)
+        XCTAssertEqual(hybrid.catalogPairCount, 4)
+        XCTAssertEqual(hybrid.unspecifiedPairCount, 0)
+        XCTAssertTrue(hybrid.summary.en.contains("unverified catalog"))
+        XCTAssertTrue(hybrid.summary.en.contains("in-sample"))
+    }
+
     // MARK: - NaN / Infinity Handling
 
     /// Pairs containing NaN values should not crash or produce NaN.
