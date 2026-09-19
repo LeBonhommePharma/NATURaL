@@ -3,6 +3,185 @@ import XCTest
 
 @MainActor
 final class GuidedSessionControllerTests: XCTestCase {
+    private final class TestClock {
+        var now: TimeInterval = 0
+    }
+
+    private func plan(durations: [TimeInterval], transition: TimeInterval = 0) -> WorkoutPlan {
+        let original = PoseCatalog.beginnerFlow.poses[0]
+        let poses = durations.enumerated().map { index, duration in
+            Pose(id: "test-\(index)", name: original.name, description: original.description,
+                 durationSeconds: duration, difficulty: original.difficulty, category: original.category,
+                 imageName: original.imageName, voiceCueText: original.voiceCueText,
+                 modifications: original.modifications)
+        }
+        return WorkoutPlan(id: "clock-test", name: original.name, description: original.description,
+                           poses: poses, transitionSeconds: transition)
+    }
+
+    private func controller(_ plan: WorkoutPlan, clock: TestClock) -> GuidedSessionController {
+        GuidedSessionController(plan: plan, clock: { clock.now }, automaticallyTicks: false)
+    }
+
+    func testIrregularCallbacksConsumeActualTimeAndPauseExcludesGap() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [10]), clock: clock)
+        session.start()
+        clock.now = 1.7
+        session.tick()
+        XCTAssertEqual(session.elapsedTime, 1.7, accuracy: 0.0001)
+        XCTAssertEqual(session.poseTimeRemaining, 8.3, accuracy: 0.0001)
+        clock.now = 2.1
+        session.pause()
+        XCTAssertEqual(session.elapsedTime, 2.1, accuracy: 0.0001)
+        clock.now = 1002.1
+        session.tick()
+        XCTAssertEqual(session.elapsedTime, 2.1, accuracy: 0.0001)
+        session.resume()
+        clock.now += 0.6
+        session.tick()
+        XCTAssertEqual(session.elapsedTime, 2.7, accuracy: 0.0001)
+        XCTAssertEqual(session.poseTimeRemaining, 7.3, accuracy: 0.0001)
+    }
+
+    func testLongSuspensionPausesWithoutCompletingUnseenPoses() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [5, 5]), clock: clock)
+        session.start()
+        clock.now = 1
+        session.tick()
+        clock.now += 3600
+        session.tick()
+        XCTAssertTrue(session.isPaused)
+        XCTAssertTrue(session.pausedForSuspension)
+        XCTAssertEqual(session.phase, .active(poseIndex: 0))
+        XCTAssertEqual(session.elapsedTime, 1)
+        XCTAssertEqual(session.poseTimeRemaining, 4)
+        XCTAssertEqual(session.posesCompletedCount, 0)
+        session.resume()
+        clock.now += 1
+        session.tick()
+        XCTAssertFalse(session.pausedForSuspension)
+        XCTAssertEqual(session.elapsedTime, 2)
+        XCTAssertEqual(session.poseTimeRemaining, 3)
+    }
+
+    func testFractionalTransitionAndNaturalCompletionKeepExactElapsed() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [1, 1], transition: 0.5), clock: clock)
+        session.start()
+        clock.now = 1
+        session.tick()
+        XCTAssertEqual(session.phase, .transition(nextPoseIndex: 1, secondsRemaining: 1))
+        XCTAssertEqual(session.upcomingPose?.id, "test-1")
+        XCTAssertEqual(session.currentPose?.id, "test-0")
+        XCTAssertEqual(session.posesCompletedCount, 1)
+        clock.now = 1.5
+        session.tick()
+        XCTAssertNil(session.upcomingPose)
+        XCTAssertEqual(session.phase, .active(poseIndex: 1))
+        clock.now = 2.8
+        session.tick()
+        XCTAssertEqual(session.phase, .complete)
+        XCTAssertFalse(session.endedEarly)
+        XCTAssertEqual(session.posesCompletedCount, 2)
+        XCTAssertEqual(session.currentPoseIndex, 1)
+        XCTAssertEqual(session.elapsedTime, 2.5)
+    }
+
+    func testTransitionPausePreservesFractionAndSuspensionDoesNotAdvanceIt() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [1, 10], transition: 2.5), clock: clock)
+        session.start()
+        clock.now = 1.4
+        session.pause()
+        XCTAssertEqual(session.phase, .transition(nextPoseIndex: 1, secondsRemaining: 3))
+        clock.now = 100
+        session.resume()
+        clock.now += 0.6
+        session.tick()
+        XCTAssertEqual(session.phase, .transition(nextPoseIndex: 1, secondsRemaining: 2))
+        XCTAssertEqual(session.elapsedTime, 2, accuracy: 0.0001)
+        clock.now += 100
+        session.tick()
+        XCTAssertTrue(session.pausedForSuspension)
+        XCTAssertEqual(session.phase, .transition(nextPoseIndex: 1, secondsRemaining: 2))
+        XCTAssertEqual(session.posesCompletedCount, 1)
+    }
+
+    func testZeroTransitionsAndDurationsDoNotAddPhantomSeconds() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [0, 0, 1], transition: 0), clock: clock)
+        session.start()
+        XCTAssertEqual(session.phase, .active(poseIndex: 2))
+        XCTAssertEqual(session.posesCompletedCount, 2)
+        XCTAssertEqual(session.elapsedTime, 0)
+        clock.now = 1
+        session.tick()
+        XCTAssertEqual(session.phase, .complete)
+        XCTAssertEqual(session.elapsedTime, 1)
+    }
+
+    func testOneDelayedTickCarriesFractionAcrossPoseAndTransition() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [1, 3], transition: 0.5), clock: clock)
+        session.start()
+        clock.now = 2.5
+        session.tick()
+        XCTAssertEqual(session.phase, .active(poseIndex: 1))
+        XCTAssertEqual(session.posesCompletedCount, 1)
+        XCTAssertEqual(session.elapsedTime, 2.5)
+        XCTAssertEqual(session.poseTimeRemaining, 2)
+    }
+
+    func testClockDiscontinuityPausesWithoutNegativeElapsed() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [10]), clock: clock)
+        session.start()
+        clock.now = -1
+        session.tick()
+        XCTAssertTrue(session.pausedForSuspension)
+        XCTAssertEqual(session.elapsedTime, 0)
+        XCTAssertEqual(session.poseTimeRemaining, 10)
+    }
+
+    func testEarlyStopConsumesOnlyTimeBeforeStopAndCannotRestartTimer() {
+        let clock = TestClock()
+        let session = controller(plan(durations: [10]), clock: clock)
+        session.start()
+        clock.now = 0.3
+        session.stop()
+        XCTAssertTrue(session.endedEarly)
+        XCTAssertEqual(session.elapsedTime, 0.3)
+        XCTAssertEqual(session.posesCompletedCount, 0)
+        clock.now = 100
+        session.resume()
+        session.tick()
+        XCTAssertEqual(session.elapsedTime, 0.3)
+        session.reset()
+        XCTAssertFalse(session.endedEarly)
+        XCTAssertFalse(session.pausedForSuspension)
+    }
+
+    func testEmptyPlanCompletesWithoutStartingATimer() {
+        let clock = TestClock()
+        let session = controller(plan(durations: []), clock: clock)
+        session.start()
+        XCTAssertEqual(session.phase, .complete)
+        XCTAssertFalse(session.endedEarly)
+        XCTAssertEqual(session.elapsedTime, 0)
+    }
+
+    func testTimerDoesNotRetainControllerWhileSleeping() async {
+        let clock = TestClock()
+        var session: GuidedSessionController? = GuidedSessionController(
+            plan: plan(durations: [10]), clock: { clock.now }, automaticallyTicks: true)
+        weak var weakSession = session
+        session?.start()
+        await Task.yield()
+        session = nil
+        XCTAssertNil(weakSession)
+    }
 
     func testStartPauseResumeStopReset() {
         let controller = GuidedSessionController(plan: PoseCatalog.beginnerFlow)

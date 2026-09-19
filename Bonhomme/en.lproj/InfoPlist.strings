@@ -1,0 +1,8 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSMotionUsageDescription" = "NATURaL uses AirPods motion to keep spatial audio aligned with your head during chair yoga. Motion stays on this device.";
+"NSCameraUsageDescription" = "NATURaL uses the camera for an optional on-device AR pose coach. Video is processed on this device and is never uploaded.";
+"NSAppleMusicUsageDescription" = "NATURaL plays adaptive music during your chair yoga sessions, adjusting tempo and energy based on your biofeedback.";
+"NSHealthShareUsageDescription" = "NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time. With your explicit consent, NATURaL may also read medication clinical records you connected in the Health app to help you manage user-entered prescriptions — never without your opt-in, and never as medical advice.";
+"NSHealthUpdateUsageDescription" = "NATURaL saves completed yoga sessions as workouts and mindful sessions so they appear in the Health and Fitness apps.";
+"NSHealthClinicalHealthRecordsShareUsageDescription" = "With your explicit opt-in, NATURaL imports medication records from institutions you connected in the Health app so you can manage reminders and CareKit tasks. This is user-managed data, not medical advice. Confirm all prescriptions with your clinician. NATURaL does not log into pharmacies or scrape pharmacy websites.";
+"NSLocalNetworkUsageDescription" = "NATURaL uses the local network to stream your workout display to Apple TV via Bonjour.";

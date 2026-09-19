@@ -7,6 +7,7 @@ import plistlib
 import struct
 import subprocess
 from submission_assets import validate_acknowledgements, validate_mac_icon_catalog
+from permission_localizations import validate_permission_localizations
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
@@ -22,13 +23,27 @@ project = json.loads(subprocess.check_output([
     str(ROOT / 'NATURaL.xcodeproj/project.pbxproj')
 ]))
 objects = project['objects']
-parents = {child: key for key, value in objects.items() if value.get('isa') == 'PBXGroup' for child in value.get('children', [])}
+parents = {child: key for key, value in objects.items() if value.get('isa') in ('PBXGroup', 'PBXVariantGroup') for child in value.get('children', [])}
 def resolved_path(ref):
     value = objects[ref]
     path = Path(value.get('path', ''))
     if ref in parents and value.get('sourceTree') == '<group>':
         path = resolved_path(parents[ref]) / path
     return path
+def resource_paths(ref):
+    value = objects[ref]
+    if value['isa'] == 'PBXVariantGroup':
+        require(bool(value.get('children')), 'Localized resource group must not be empty')
+        return [path for child in value['children'] for path in resource_paths(child)]
+    return [resolved_path(ref)]
+def resource_name(ref):
+    value = objects[ref]
+    return value.get('path', value.get('name'))
+
+try:
+    validate_permission_localizations(ROOT, project)
+except (ValueError, OSError, subprocess.CalledProcessError) as error:
+    raise SystemExit('FAIL: ' + str(error))
 targets = {v['name']: v for v in objects.values() if v.get('isa') == 'PBXNativeTarget'}
 ios_products = {objects[p]['productName'] for p in targets['Bonhomme'].get('packageProductDependencies', [])}
 require(ios_products == {'BonhommeCore', 'CareKitStore'}, 'Linked products changed: review dependency acknowledgements before release')
@@ -41,11 +56,12 @@ except (ValueError, OSError) as error:
 for name, platform in [('Bonhomme', 'ios'), ('BonhommeWatch', 'watchos')]:
     target = targets[name]
     resources = [objects[p] for p in target['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase']
-    filenames = [objects[objects[b]['fileRef']]['path'] for p in resources for b in p['files']]
+    filenames = [resource_name(objects[b]['fileRef']) for p in resources for b in p['files']]
     for phase in resources:
         for build_file in phase['files']:
             resource = objects[build_file]['fileRef']
-            require((ROOT / resolved_path(resource)).exists(), name + ' resource path: ' + str(resolved_path(resource)))
+            for path in resource_paths(resource):
+                require((ROOT / path).exists(), name + ' resource path: ' + str(path))
     require('Assets.xcassets' in filenames and 'PrivacyInfo.xcprivacy' in filenames, name + ' resources not bundled')
     for config_id in objects[target['buildConfigurationList']]['buildConfigurations']:
         settings = objects[config_id]['buildSettings']
@@ -96,7 +112,8 @@ for extension in ('NATURaLWidgets', 'NATURaLLiveActivity'):
     resource_refs = [objects[f]['fileRef'] for p in targets[extension]['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
     require(any(objects[r].get('path') == 'PrivacyInfo.xcprivacy' for r in resource_refs), extension + ' privacy manifest not bundled')
     for ref in resource_refs:
-        require((ROOT / resolved_path(ref)).exists(), extension + ' resource path: ' + str(resolved_path(ref)))
+        for path in resource_paths(ref):
+            require((ROOT / path).exists(), extension + ' resource path: ' + str(path))
 release_versions = set()
 for name in ('Bonhomme', 'BonhommeWatch', 'NATURaLWidgets', 'NATURaLLiveActivity'):
     target = targets[name]
@@ -130,7 +147,7 @@ youtube = (ROOT / 'Bonhomme/Features/Workout/YouTubePlayerView.swift').read_text
 require('#if DEBUG && canImport(UIKit)' in youtube, 'YouTube player must be Debug-only')
 live_target = targets['NATURaLLiveActivity']
 live_resources = [objects[p] for p in live_target['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase']
-live_filenames = [objects[objects[b]['fileRef']]['path'] for p in live_resources for b in p['files']]
+live_filenames = [resource_name(objects[b]['fileRef']) for p in live_resources for b in p['files']]
 require('PrivacyInfo.xcprivacy' in live_filenames, 'Live Activity privacy manifest not bundled')
 for extra in (
     ROOT / 'NATURaLWidgets/PrivacyInfo.xcprivacy',
@@ -149,7 +166,7 @@ for name, iconset, size in (
     target = targets[name]
     resources = [objects[p] for p in target['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase']
     require(resources, name + ' missing Resources build phase')
-    filenames = [objects[objects[b]['fileRef']]['path'] for p in resources for b in p['files']]
+    filenames = [resource_name(objects[b]['fileRef']) for p in resources for b in p['files']]
     require('Assets.xcassets' in filenames and 'PrivacyInfo.xcprivacy' in filenames, name + ' resources not bundled')
     for config_id in objects[target['buildConfigurationList']]['buildConfigurations']:
         settings = objects[config_id]['buildSettings']
@@ -166,6 +183,15 @@ for name, iconset, size in (
     info = plistlib.loads((ROOT / name / 'Info.plist').read_bytes())
     require(info.get('ITSAppUsesNonExemptEncryption') is False, name + ' export compliance missing')
     require(info.get('CFBundleDisplayName') == 'NATURaL', name + ' display name')
+# Hosted tests import the app module and cannot target an older iOS version.
+app_configs = {objects[c]['name']: objects[c]['buildSettings'] for c in objects[targets['Bonhomme']['buildConfigurationList']]['buildConfigurations']}
+for test_name in ('BonhommeTests', 'BonhommeUITests'):
+    for c in objects[targets[test_name]['buildConfigurationList']]['buildConfigurations']:
+        config = objects[c]
+        app_version = tuple(map(int, app_configs[config['name']]['IPHONEOS_DEPLOYMENT_TARGET'].split('.')))
+        test_version = tuple(map(int, config['buildSettings']['IPHONEOS_DEPLOYMENT_TARGET'].split('.')))
+        require(test_version >= app_version, test_name + ' deployment target is older than its host app')
+
 if args.include_macos:
     try:
         validate_mac_icon_catalog(ROOT / 'BonhommeMac/Assets.xcassets/AppIcon.appiconset')
@@ -173,13 +199,14 @@ if args.include_macos:
         raise SystemExit('FAIL: ' + str(error))
     require('BonhommeMac' in targets, 'native macOS target missing')
     mac = targets['BonhommeMac']
-    resources = [objects[objects[f]['fileRef']].get('path') for p in mac['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
+    resources = [resource_name(objects[f]['fileRef']) for p in mac['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
     require('Assets.xcassets' in resources and 'PrivacyInfo.xcprivacy' in resources, 'Mac icon catalog and privacy manifest must be bundled')
     for p in mac['buildPhases']:
         if objects[p]['isa'] == 'PBXResourcesBuildPhase':
             for f in objects[p]['files']:
                 ref = objects[f]['fileRef']
-                require((ROOT / resolved_path(ref)).exists(), 'Mac resource missing: ' + str(resolved_path(ref)))
+                for path in resource_paths(ref):
+                    require((ROOT / path).exists(), 'Mac resource missing: ' + str(path))
     manifest = plistlib.loads((ROOT / 'BonhommeMac/PrivacyInfo.xcprivacy').read_bytes())
     require(manifest.get('NSPrivacyTracking') is False and manifest.get('NSPrivacyCollectedDataTypes') == [], 'Mac privacy declaration mismatch')
     for c in objects[mac['buildConfigurationList']]['buildConfigurations']:

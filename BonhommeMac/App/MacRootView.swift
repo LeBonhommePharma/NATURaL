@@ -146,7 +146,9 @@ private struct MacSessionCanvas: View {
             }
             if session.phase != .complete && session.phase != .ready {
                 if session.isPaused {
-                    Label(copy("Paused · Take your time", "En pause · Prenez votre temps"), systemImage: "pause.circle.fill")
+                    Label(session.pausedForSuspension
+                          ? copy("Paused after an interruption · Resume when ready", "En pause après une interruption · Reprenez à votre rythme")
+                          : copy("Paused · Take your time", "En pause · Prenez votre temps"), systemImage: "pause.circle.fill")
                         .font(.headline).foregroundStyle(BrandColor.strawberry)
                         .accessibilityIdentifier("session.paused")
                 }

@@ -9,7 +9,10 @@ Current baseline: `main` at `3fa2c61`; Cursor’s work is already merged. Review
 - Shared HUD numerical smoke checks exercise the actual formatter source with minimal wire stubs: 37 assertions passed. Consent smoke checks compile the actual Foundation consent source; grant/revoke/regrant/reset/cancellation cases pass. Neither substitutes for the full app tests.
 - Mac artwork export adds approximately 2.4 MB, reusing the approved bloom. No user files were deleted. Disk check showed 31 GiB available; available space can change.
 - Useful unmerged Cursor commit `b07a56c` was inspected and its Watch/Vision changes applied as patches; shared HUD/contract changes are incorporated alongside the crash fixes. Already merged branches were not reapplied.
-- Added native Mac CI build and stricter packaging tests. Current-run URLs/results will be recorded after execution.
+- First full remote run at `7ae2c93`: [CI 35469012431](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35469012431). Native Mac Release build, iOS + embedded Watch Release build, Swift core tests, assets and Linux contracts passed. Hosted simulator test compilation failed because the test target minimum was iOS 17 while the app required iOS 18. The test targets are now aligned; current-revision rerun pending.
+- Added 110 localized permission purpose strings across 11 languages (33 files); source validation and seven localization gate regressions pass. Actual localized system-sheet rendering remains unverified.
+- Guided-session timing now uses a monotonic clock, pauses after long scheduling gaps, handles fractional/zero transitions and releases cancelled timers. Standalone exact-controller smoke: 32 assertions passed; new XCTest cases await the final CI run.
+- Design reference rendered in the in-app browser at narrow/wide CSS viewports (355/1164px): no horizontal overflow or broken artwork observed; sample-state and pause controls verified. This remains a reference, not native app screenshots.
 - Native layouts, HealthKit/CareKit behavior, physical-device coverage, final screenshots, distribution signing and App Store Connect remain unverified for this revision. No app was uploaded or submitted.
 
 ---

@@ -22,6 +22,8 @@ public final class GuidedSessionController {
     public private(set) var isPaused = false
     public private(set) var posesCompletedCount = 0
     public private(set) var endedEarly = false
+    /// A long scheduling/sleep gap requires an explicit resume; no unseen poses are counted.
+    public private(set) var pausedForSuspension = false
 
     public var upcomingPose: Pose? {
         guard case .transition(let next, _) = phase else { return nil }
@@ -40,7 +42,8 @@ public final class GuidedSessionController {
         switch phase {
         case .active(let idx): return idx
         case .transition(let next, _): return max(0, next - 1)
-        default: return 0
+        case .complete: return lastPoseIndex
+        case .ready: return 0
         }
     }
 
@@ -58,115 +61,198 @@ public final class GuidedSessionController {
         )
     }
 
-    private var timerTask: Task<Void, Never>?
-    private var elapsedAnchor: Date?
+    @ObservationIgnored private var timerTask: Task<Void, Never>?
+    @ObservationIgnored private let clock: @MainActor () -> TimeInterval
+    @ObservationIgnored private let automaticallyTicks: Bool
+    @ObservationIgnored private var lastTick: TimeInterval?
+    private var transitionTimeRemaining: TimeInterval = 0
+    private var lastPoseIndex = 0
 
-    public init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+    // A 250 ms timer may occasionally be delayed; a multi-second gap means the
+    // guided presentation was interrupted. Freeze instead of replaying that gap.
+    static let suspensionThreshold: TimeInterval = 3
+
+    public convenience init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine()) {
+        let origin = ContinuousClock.now
+        self.init(plan: plan, feedbackEngine: feedbackEngine, clock: {
+            let components = origin.duration(to: ContinuousClock.now).components
+            return Double(components.seconds) + Double(components.attoseconds) / 1e18
+        }, automaticallyTicks: true)
+    }
+
+    /// Internal deterministic seam: tests advance the monotonic clock and call tick().
+    init(plan: WorkoutPlan, feedbackEngine: FeedbackEngine = FeedbackEngine(),
+         clock: @escaping @MainActor () -> TimeInterval, automaticallyTicks: Bool) {
         self.plan = plan
         self.feedbackEngine = feedbackEngine
+        self.clock = clock
+        self.automaticallyTicks = automaticallyTicks
         feedbackEngine.register(HRVAnalyzer())
     }
 
+    deinit { timerTask?.cancel() }
+
     public func start() {
         guard phase == .ready || phase == .complete else { return }
+        cancelTimer()
         posesCompletedCount = 0
         endedEarly = false
+        pausedForSuspension = false
         elapsedTime = 0
         isPaused = false
-        elapsedAnchor = Date()
+        lastPoseIndex = 0
+        lastTick = clock()
         beginPose(at: 0)
+        advance(by: 0) // Resolve empty/zero-duration poses and transitions immediately.
+        startTimer()
     }
 
     public func pause() {
-        guard !isPaused, phase != .ready, phase != .complete else { return }
+        guard !isPaused, isRunning else { return }
+        tick()
+        guard isRunning else { return }
         isPaused = true
-        timerTask?.cancel()
-        updateElapsed()
-        elapsedAnchor = nil
+        cancelTimer()
+        lastTick = nil
     }
 
     public func resume() {
-        guard isPaused else { return }
+        guard isPaused, isRunning else { return }
         isPaused = false
-        elapsedAnchor = Date()
-        switch phase {
-        case .active(let idx): startPoseTimer(for: idx)
-        case .transition(let next, let seconds): startTransition(to: next, remaining: seconds)
-        default: break
-        }
+        pausedForSuspension = false
+        lastTick = clock()
+        startTimer()
     }
 
     public func stop() {
-        guard phase != .ready, phase != .complete else { return }
-        updateElapsed()
+        guard isRunning else { return }
+        tick()
+        guard isRunning else { return } // The final pose may have just finished.
         endedEarly = posesCompletedCount < plan.poseCount
-        timerTask?.cancel()
-        isPaused = false
-        elapsedAnchor = nil
-        phase = .complete
+        finish()
     }
 
     public func reset() {
-        timerTask?.cancel()
+        cancelTimer()
         isPaused = false
-        elapsedAnchor = nil
+        pausedForSuspension = false
+        lastTick = nil
         elapsedTime = 0
         posesCompletedCount = 0
         poseTimeRemaining = 0
+        transitionTimeRemaining = 0
+        lastPoseIndex = 0
         endedEarly = false
         phase = .ready
     }
 
-    private func beginPose(at index: Int) {
-        guard index < plan.poses.count else {
-            phase = .complete
-            timerTask?.cancel()
+    private var isRunning: Bool {
+        switch phase {
+        case .active, .transition: return true
+        case .ready, .complete: return false
+        }
+    }
+
+    /// Apply actual monotonic elapsed time, never the number of timer callbacks.
+    func tick() {
+        guard isRunning, !isPaused, let previous = lastTick else { return }
+        let now = clock()
+        let delta = now - previous
+        guard now.isFinite, delta.isFinite, delta >= 0,
+              delta <= Self.suspensionThreshold else {
+            isPaused = true
+            pausedForSuspension = true
+            lastTick = nil
+            cancelTimer()
             return
         }
-        poseTimeRemaining = plan.poses[index].durationSeconds
+        lastTick = now
+        advance(by: delta)
+    }
+
+    private func advance(by interval: TimeInterval) {
+        var unconsumed = interval
+        while isRunning {
+            switch phase {
+            case .active(let index):
+                let consumed = min(poseTimeRemaining, unconsumed)
+                poseTimeRemaining -= consumed
+                elapsedTime += consumed
+                unconsumed -= consumed
+                guard poseTimeRemaining <= 0 else { return }
+                posesCompletedCount = index + 1
+                let next = index + 1
+                guard next < plan.poses.count else {
+                    finish()
+                    return
+                }
+                transitionTimeRemaining = Self.validDuration(plan.transitionSeconds)
+                phase = .transition(nextPoseIndex: next, secondsRemaining: transitionSeconds)
+            case .transition(let next, _):
+                let consumed = min(transitionTimeRemaining, unconsumed)
+                transitionTimeRemaining -= consumed
+                elapsedTime += consumed
+                unconsumed -= consumed
+                if transitionTimeRemaining > 0 {
+                    phase = .transition(nextPoseIndex: next, secondsRemaining: transitionSeconds)
+                    return
+                }
+                beginPose(at: next)
+            case .ready, .complete:
+                return
+            }
+        }
+    }
+
+    private var transitionSeconds: Int {
+        Int(exactly: transitionTimeRemaining.rounded(.up)) ?? Int.max
+    }
+
+    private static func validDuration(_ seconds: TimeInterval) -> TimeInterval {
+        seconds.isFinite && seconds > 0 ? seconds : 0
+    }
+
+    private func beginPose(at index: Int) {
+        guard plan.poses.indices.contains(index) else {
+            finish()
+            return
+        }
+        lastPoseIndex = index
+        poseTimeRemaining = Self.validDuration(plan.poses[index].durationSeconds)
         phase = .active(poseIndex: index)
-        startPoseTimer(for: index)
     }
 
-    private func startPoseTimer(for index: Int) {
+    private func finish() {
+        cancelTimer()
+        lastTick = nil
+        isPaused = false
+        pausedForSuspension = false
+        phase = .complete
+    }
+
+    private func cancelTimer() {
         timerTask?.cancel()
-        timerTask = Task {
-            while poseTimeRemaining > 0 {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled, !isPaused else { return }
-                poseTimeRemaining = max(0, poseTimeRemaining - 1)
-                updateElapsed()
-            }
-            posesCompletedCount += 1
-            let next = index + 1
-            if next < plan.poses.count {
-                startTransition(to: next, remaining: Int(plan.transitionSeconds))
-            } else {
-                elapsedAnchor = nil
-                phase = .complete
+        timerTask = nil
+    }
+
+    private func startTimer() {
+        guard automaticallyTicks, isRunning, !isPaused else { return }
+        cancelTimer()
+        timerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(250)) }
+                catch { return }
+                guard !Task.isCancelled, self?.handleTimerTick() == true else { return }
             }
         }
     }
 
-    private func startTransition(to nextIndex: Int, remaining: Int) {
-        timerTask?.cancel()
-        timerTask = Task {
-            for seconds in stride(from: max(1, remaining), through: 1, by: -1) {
-                phase = .transition(nextPoseIndex: nextIndex, secondsRemaining: seconds)
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled, !isPaused else { return }
-                updateElapsed()
-            }
-            beginPose(at: nextIndex)
-        }
+    // Keep a strong reference only for synchronous work, never across Task.sleep.
+    private func handleTimerTick() -> Bool {
+        tick()
+        return isRunning && !isPaused
     }
 
-    private func updateElapsed() {
-        guard let elapsedAnchor else { return }
-        let now = Date()
-        elapsedTime += max(0, now.timeIntervalSince(elapsedAnchor))
-        self.elapsedAnchor = now
-    }
 }
 
 private extension Array {

@@ -1,0 +1,8 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSMotionUsageDescription" = "NATURaLはAirPodsのモーション情報を使い、椅子ヨガ中の空間オーディオを頭の向きに合わせます。モーション情報はこのデバイス内に留まります。";
+"NSCameraUsageDescription" = "NATURaLは、任意で使えるデバイス上のARポーズガイドのためにカメラを使用します。映像はこのデバイス上で処理され、アップロードされることはありません。";
+"NSAppleMusicUsageDescription" = "NATURaLは椅子ヨガ中に音楽を再生し、バイオフィードバックに応じてテンポや曲の活発さを調整します。";
+"NSHealthShareUsageDescription" = "NATURaLは心拍数、心拍変動、睡眠、活動データを読み取り、シャノン崩壊指数を計算してセッションをリアルタイムに調整します。明示的に同意した場合に限り、ヘルスケアで連携した薬の臨床記録も読み取り、自分で入力した処方情報の管理に役立てます。同意なく読み取ることはなく、医療上の助言を提供するものではありません。";
+"NSHealthUpdateUsageDescription" = "NATURaLは完了したヨガをワークアウトやマインドフルネスのセッションとして保存し、ヘルスケアやフィットネスに表示します。";
+"NSHealthClinicalHealthRecordsShareUsageDescription" = "明示的に同意した場合、NATURaLはヘルスケアで連携した医療機関の薬の記録を取り込み、リマインダーやCareKitタスクの管理に使います。データはユーザーが管理するもので、医療上の助言ではありません。処方内容は必ず医療従事者に確認してください。NATURaLは薬局へのログインや薬局サイトからの情報収集を行いません。";
+"NSLocalNetworkUsageDescription" = "NATURaLはローカルネットワークとBonjourを使い、ワークアウト画面をApple TVに送信します。";

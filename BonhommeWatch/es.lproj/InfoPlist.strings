@@ -1,0 +1,3 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSHealthShareUsageDescription" = "NATURaL lee la frecuencia cardíaca durante el yoga en silla para calcular la biorretroalimentación en tiempo real en tu muñeca.";
+"NSHealthUpdateUsageDescription" = "NATURaL guarda tus entrenamientos de yoga en silla en Apple Salud.";

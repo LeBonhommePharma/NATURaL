@@ -57,3 +57,25 @@ Marketing URL: https://thebonhomme.com/NATURaL/
 Support URL: https://thebonhomme.com/NATURaL/support/
 
 Privacy Policy URL: https://thebonhomme.com/NATURaL/privacy/
+
+## Native macOS listing — separate capability copy
+
+Use this copy only for the native `com.natural.Bonhomme.mac` build after its release and device checks pass. Do not reuse iOS Health/history claims for the Mac app.
+
+English subtitle: A little room to move
+
+English description:
+
+Make room for a gentle movement break at your desk. Choose a free yoga plan, explore its poses, and follow written guidance, breathing cues and a clear countdown. Pause, resume or finish whenever you need. Keyboard controls and a scrollable window keep your session close at hand.
+
+NATURaL for Mac offers guided movement without an account. It does not read live Health measurements, record workouts to Apple Health, or save session history. Use a stable chair and adapt every movement to your comfort.
+
+French Canadian subtitle: Un moment pour bouger
+
+French Canadian description:
+
+Accordez-vous une pause de mouvement à votre bureau. Choisissez un programme de yoga gratuit, découvrez ses postures et suivez les consignes, les repères respiratoires et le compte à rebours. Faites une pause, reprenez ou terminez à votre rythme. Les commandes au clavier et la fenêtre défilante facilitent votre séance.
+
+NATURaL pour Mac propose des séances guidées sans compte. L’app ne lit pas de mesures Santé en direct, n’enregistre pas de séances dans Apple Santé et ne conserve pas d’historique. Utilisez une chaise stable et adaptez chaque mouvement à votre confort.
+
+Mac review notes: no login or permission grant is required. Select a plan and Begin Session (Return). Space pauses/resumes; End shows the completed-pose count and elapsed time; Done returns to plan selection. Closing the window resets the active session. Verify these instructions against the uploaded build before entering them in App Store Connect.

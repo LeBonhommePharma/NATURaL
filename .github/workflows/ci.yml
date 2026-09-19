@@ -35,6 +35,7 @@ jobs:
         run: |
           python3 scripts/test_archive_validation.py
           python3 scripts/test_submission_assets.py
+          python3 scripts/test_permission_localizations.py
       - name: Verify website language routing
         run: node scripts/test-site-language.cjs
       - name: Product contracts (also run on Linux)
