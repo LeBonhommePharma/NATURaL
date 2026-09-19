@@ -1,20 +1,20 @@
 # App Store submission TODO — NATURaL 1.0
 
-Owner: LP / Le Bonhomme Pharma. Updated 12 September 2026.
+Owner: LP / Le Bonhomme Pharma. Updated 19 September 2026.
 
-This checklist covers **one iOS/iPadOS App Store record with its embedded watchOS companion**. It does not cover a separate native macOS, tvOS or visionOS release.
+This checklist covers **iOS/iPadOS with the embedded watchOS companion**, plus the existing **native macOS target** added by Cursor and included in preparation at LP’s request. TV and Vision UI/icon designs remain part of the product family; their distribution must be validated separately. ClusterFuck readiness is tracked in `/Users/lp.more/Projects/ClusterFuck/docs/AppStore/TODO.md`.
 
-Checked boxes mean repository work or validation was completed locally. **All repository-side release gates are now complete**.
+Checked boxes record the scope of a completed check, not overall readiness. Cursor’s subsequent changes and the current fixes require new build, runtime and visual verification. **The apps are not yet proven ready to submit.**
 
 Checklist legend:
 
 - `[x]` **Local/Repository complete** (validated in this checkout)
-- `[ ]` **External blocker** (requires App Store Connect, Apple Developer portal, Xcode team credentials on a release machine, or physical devices)
+- `[ ]` **Unfinished or unverified**, including local product work, CI, portal and physical-device checks
 
-Checked boxes mean repository work or validation was completed locally (or a failure was reproduced deterministically).
+A reproduced failure documents a blocker; it does not satisfy its release gate.
 `[ ]` items are unresolved blockers that still require additional work or external/portal actions.
 
-## Submission matrix (13 September 2026)
+## Submission matrix (historical results; current revalidation pending)
 
 - **iPhone / iOS**
   - [x] Swift-only code checks, localized site routing checks, and release simulation regression gates pass.
@@ -31,7 +31,25 @@ Checked boxes mean repository work or validation was completed locally (or a fai
   - [ ] Validate first-launch, pairing, haptics, interruptions, and Health-denied behavior on paired physical Watch.
   - [ ] Capture final Watch screenshots from approved test build and confirm installation path with app archive.
 
-**Current first blocker:** distribution signing/provisioning remains external. Local archive attempt fails because provisioning profiles are missing for all shipped identifiers. See verification.md and `build/submission/archive-attempt.log`.
+**Current environment:** Xcode is uninstalled (confirmed by LP). Command Line Tools cannot compile asset catalogs or run Apple-platform tests. Keep this Mac lightweight; run builds on the existing GitHub macOS runners. Local source/contract/archive-fixture checks pass, but do not prove a device build. Distribution signing and App Store Connect completion remain open.
+
+## Current review and integration — 19 September 2026
+
+- [x] Inspect current `main` and Cursor history; preserve the shared design tokens, native Mac target, unknown-value and Reduce Motion improvements.
+- [x] Incorporate useful unmerged Cursor `b07a56c` Watch/Vision unknown-progress changes and shared HUD guards; avoid duplicate cherry-picks of already merged work.
+- [x] Repair extension destination (`PlugIns`) and native Mac icon/privacy resource wiring.
+- [x] Harden HUD numeric formatting and small-width layout; add targeted regression coverage.
+- [x] Guard clinical consent across asynchronous reads/writes and remove unsupported receptor-binding claims from insight copy.
+- [x] Bundle exact linked dependency notices and expose them in iPhone/iPad About.
+- [x] Fix dose-label overflow in schedule/profile formatting and retain small fractional doses instead of rounding them to zero.
+- [x] Wire hosted medication persistence and dose-format tests into the Xcode test target.
+- [ ] Execute the new failed-save, retry and dose-format tests in CI.
+- [ ] Review and commit the current integration branch, push it, and merge only after the required checks pass.
+- [ ] Complete missing app translations and localized permission strings; OS language selection currently falls back to English for untranslated content.
+- [ ] Execute current-revision iOS/Watch/Mac builds and app tests in GitHub CI; fix all failures.
+- [ ] Review final native rendering across sizes, accessibility and every supported language. HTML/design references are not runtime proof.
+- [ ] Validate TV/Vision layered icon delivery with their SDKs; flattened source assets are not enough to certify those store products.
+- [ ] Review remaining experimental profile data/provenance and all reachable generated insight text; wording repairs alone do not validate scientific claims.
 
 ## 0. External release blockers (must be completed before upload)
 
@@ -50,7 +68,7 @@ Checked boxes mean repository work or validation was completed locally (or a fai
 - [ ] Register/verify every bundle identifier and App Group `group.com.natural.Bonhomme` under that team.
 - [ ] Verify HealthKit, clinical records if retained, background delivery, App Groups, Siri and all other shipped entitlements on the corresponding profiles. CloudKit and iCloud KVS are not shipped.
 - [ ] Provision distribution signing for the app, Watch and extensions; verify the archive uses the intended team.
-- [ ] Confirm the SDK/Xcode version is accepted for production uploads. This Mac currently has Xcode 27.0 build 27A266a; a successful local build does not establish App Store acceptance of that toolchain.
+- [ ] Confirm the SDK/Xcode version is accepted for production uploads. This Mac currently has only Command Line Tools. Verify the selected CI/release-machine Xcode and SDK against Apple’s current requirements.
 
 ## 2. Product and metadata
 
@@ -62,7 +80,8 @@ Checked boxes mean repository work or validation was completed locally (or a fai
 - [x] Verify website localization and RTL behavior for all 11 supported languages using `node scripts/test-site-language.cjs`.
 - [x] Review app translation coverage in all 11 declared languages; English fallback is still used for strings without translations. Test Arabic layout and regional formats on devices.
 - [ ] Create or confirm the App Store Connect record with the exact bundle ID. Check availability of display name **NATURaL**; choose an internal SKU and primary language.
-- [x] Set pricing to **Free**. Do not create paid product gates for this release.
+- [x] Keep all plans freely accessible in the app.
+- [ ] Confirm **Free** pricing in App Store Connect; no account-side change is inferred from source code.
 - [ ] Complete business/trader status and territory-specific account requirements shown by App Store Connect; verify public contact information.
 - [ ] Enter category, subtitle, keywords, copyright, territories and release method. Review localized copy for the actual shipping feature set.
 - [ ] Set Marketing URL to `https://thebonhomme.com/NATURaL/`, Support URL to `https://thebonhomme.com/NATURaL/support/`, and Privacy Policy URL to `https://thebonhomme.com/NATURaL/privacy/`.
@@ -76,7 +95,8 @@ Checked boxes mean repository work or validation was completed locally (or a fai
 - [x] Keep health-related SwiftData on-device, remove CloudKit/iCloud entitlements, and do not publish cloud session presence.
 - [x] Configure backup exclusion and data protection on local app health-storage directories.
 - [x] Link privacy/support information from the app; explain optional permissions and experimental indicators.
-- [x] Review the public privacy policy against the final binary and all enabled integrations. Review translations before submission.
+- [x] Audit source data flows and prepare the policy revision; see [privacy-dataflow-review.md](privacy-dataflow-review.md).
+- [ ] Verify the public policy and translations against the actual final signed binary and enabled integrations; publish reviewed revisions.
 - [x] Complete App Privacy labels from the actual data flows and dependencies. Required-reason API manifests are **not** an answer to the data-collection questionnaire. Draft: [app-store-connect.md](app-store-connect.md) — **Data Not Collected**. Enter the same answers in App Store Connect.
 - [ ] Verify backup exclusion and file protection on a real device, including SQLite/WAL files, CareKit, recovery snapshots and App Group state.
 - [x] Resolve retention/deletion and migration for records that earlier development builds may have synchronized to CloudKit. This release no longer uses or accesses that container and does not delete leftover remote records; users can remove them from iCloud settings.
@@ -119,7 +139,18 @@ Checked boxes mean repository work or validation was completed locally (or a fai
 - [ ] Verify companion install/update and decide how to handle development data under the old `com.natural.BonhommeWatch` identifier.
 - [ ] Supply current accepted Watch screenshots and confirm the companion appears correctly in the archive and store listing.
 
-## 7. Archive, TestFlight and review
+## 7. Native macOS
+
+- [x] Reuse Cursor’s native `BonhommeMac` target (`com.natural.Bonhomme.mac`, macOS 14+).
+- [x] Bundle approved bloom icon at native Mac sizes, privacy manifest, sandbox entitlement and export declaration.
+- [x] Refine plan selection, pose guidance, scrollable window, keyboard controls, early-end summary and privacy/support entry points.
+- [x] Show only supported session information; native Mac has no live Health feed or workout recording.
+- [ ] Pass current-revision Release build and test actual launch, window resize/close, keyboard navigation, VoiceOver and complete session flow.
+- [ ] Verify timer behavior through app suspension/sleep; ensure outcome and elapsed time remain coherent.
+- [ ] Verify distribution identity, Mac App Store archive, signing, sandbox, notarization/validation as required by the selected distribution path, screenshots and metadata describing actual Mac capabilities.
+- [ ] Confirm Mac App Store record strategy for the separate bundle identifier; do not assume it can share the iOS record automatically.
+
+## 8. Archive, TestFlight and review
 
 - [x] Add deterministic submission-configuration checks, Swift tests, simulator regression CI and unsigned device-build CI.
 - [x] Run local configuration, language, Swift and simulator checks and record exact results in [verification.md](verification.md):

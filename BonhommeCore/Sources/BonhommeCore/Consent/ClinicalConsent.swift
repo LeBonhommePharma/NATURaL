@@ -80,6 +80,14 @@ public final class ConsentStore: @unchecked Sendable {
     private let auditKey = "natural.clinicalConsent.audit.v1"
     private let maxAuditEntries = 100
     private let lock = NSLock()
+    private var accessGeneration = UUID()
+
+    /// A grant-scoped capability for asynchronous work. A later grant never
+    /// revives work started before a revoke, even if timestamps are identical.
+    public struct AccessToken: Sendable {
+        fileprivate let generation: UUID
+        fileprivate let consent: ClinicalConsent
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -102,6 +110,27 @@ public final class ConsentStore: @unchecked Sendable {
         consent.isValidForCurrentPolicy
     }
 
+    public func beginAccess() -> AccessToken? {
+        lock.lock()
+        defer { lock.unlock() }
+        let current = loadConsentUnlocked()
+        guard current.isValidForCurrentPolicy else { return nil }
+        return AccessToken(generation: accessGeneration, consent: current)
+    }
+
+    /// Call after every suspension and before publishing or persisting results.
+    /// Cancellation and consent withdrawal both discard the pending operation.
+    public func validateAccess(_ token: AccessToken) throws {
+        try Task.checkCancellation()
+        lock.lock()
+        defer { lock.unlock() }
+        let current = loadConsentUnlocked()
+        guard token.generation == accessGeneration,
+              current.isValidForCurrentPolicy, current == token.consent else {
+            throw CancellationError()
+        }
+    }
+
     public var auditLog: [ConsentAuditEntry] {
         lock.lock()
         defer { lock.unlock() }
@@ -115,6 +144,7 @@ public final class ConsentStore: @unchecked Sendable {
     public func grant(at date: Date = Date()) -> ClinicalConsent {
         lock.lock()
         defer { lock.unlock() }
+        accessGeneration = UUID()
         let updated = ClinicalConsent(
             isGranted: true,
             grantedAt: date,
@@ -135,6 +165,7 @@ public final class ConsentStore: @unchecked Sendable {
     public func revoke(at date: Date = Date()) -> ClinicalConsent {
         lock.lock()
         defer { lock.unlock() }
+        accessGeneration = UUID()
         let previous = loadConsentUnlocked()
         let updated = ClinicalConsent(
             isGranted: false,
@@ -162,6 +193,7 @@ public final class ConsentStore: @unchecked Sendable {
     public func reset() {
         lock.lock()
         defer { lock.unlock() }
+        accessGeneration = UUID()
         defaults.removeObject(forKey: consentKey)
         defaults.removeObject(forKey: auditKey)
     }

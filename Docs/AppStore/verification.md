@@ -1,4 +1,20 @@
-# Release preparation evidence — 12 September 2026
+# Current release verification — 19 September 2026
+
+Current baseline: `main` at `3fa2c61`; Cursor’s work is already merged. Review branch: `codex/app-store-native-refinement-20260919`. Historical results below predate current source and do not prove this revision.
+
+- LP confirmed Xcode is uninstalled. `xcodebuild -version` fails because the active developer directory is Command Line Tools; a full Swift package test also fails at asset compilation (`actool` requires Xcode). No Xcode/simulator downloads are being made.
+- Source preflight including native Mac passes (`python3 scripts/validate-submission.py --include-macos`).
+- Website language routing passes. Eight Python product contracts pass. Twelve archive-validator fixture tests passed before additional acknowledgment checks; the latest CI run is authoritative for the final count.
+- Swift parser checks pass for changed source. This is syntax checking, not SDK typechecking or application execution.
+- Shared HUD numerical smoke checks exercise the actual formatter source with minimal wire stubs: 37 assertions passed. Consent smoke checks compile the actual Foundation consent source; grant/revoke/regrant/reset/cancellation cases pass. Neither substitutes for the full app tests.
+- Mac artwork export adds approximately 2.4 MB, reusing the approved bloom. No user files were deleted. Disk check showed 31 GiB available; available space can change.
+- Useful unmerged Cursor commit `b07a56c` was inspected and its Watch/Vision changes applied as patches; shared HUD/contract changes are incorporated alongside the crash fixes. Already merged branches were not reapplied.
+- Added native Mac CI build and stricter packaging tests. Current-run URLs/results will be recorded after execution.
+- Native layouts, HealthKit/CareKit behavior, physical-device coverage, final screenshots, distribution signing and App Store Connect remain unverified for this revision. No app was uploaded or submitted.
+
+---
+
+# Historical release preparation evidence — 12 September 2026
 
 This record separates repository verification from App Store approval. No archive has been uploaded to Apple, and no App Review submission has been made.
 

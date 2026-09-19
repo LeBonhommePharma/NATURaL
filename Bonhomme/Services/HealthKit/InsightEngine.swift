@@ -407,6 +407,9 @@ final class InsightEngine: ObservableObject {
         Never invent data. Prefer the user's language when specified; otherwise English.
         When drug–HRV entropy (ΔH), docking entropy (ΔS_config), or cross-domain correlation
         data is provided, weave it in as observational wellness context only — not clinical claims.
+        HRV entropy is an observational signal, not a measure of receptor binding or a drug effect.
+        Docking calculations, reference profiles and HRV measurements are distinct data sources.
+        Do not claim that co-occurrence, a threshold crossing or a correlation validates one from another.
         All data is processed on-device; do not mention cloud services or external servers.
         """
 
@@ -417,13 +420,15 @@ final class InsightEngine: ObservableObject {
         If recent dose / drug–HRV context is provided, adapt tone gently (calm or steady)
         without naming diagnoses or giving medication advice.
         Be warm, specific, and actionable. No medical advice or diagnoses.
+        Never infer drug effects, autonomic mechanism or receptor binding from HRV.
         Prefer the language indicated in the prompt (English or French).
         Do not use markdown, bullet lists, or quotation marks around the whole cue.
         """
 
     private static let sciExplainInstructions = """
         You explain the Shannon Collapse Index (SCI) for NATURaL chair yoga.
-        SCI is Shannon entropy of heart-rate variability on this device. Not medical advice.
+        SCI is an experimental indicator derived from heart-rate variability entropy on this device.
+        It does not measure concentration, medication effects or molecular binding. Not medical advice.
         Two short sentences maximum. Never invent numbers. Never mention cloud or servers.
         If a template is provided, stay consistent with its facts.
         """
@@ -478,7 +483,7 @@ final class InsightEngine: ObservableObject {
         if let docking = insights[.molecularDocking] {
             let scoreText = docking.score.map { String(format: "%.0f%%", $0 * 100) } ?? "unavailable"
             sections.append(
-                "Molecular Docking Entropy (FlexAID ΔS_config): binding signal = \(scoreText), "
+                "Imported Molecular Docking Entropy (FlexAID ΔS_config): analysis score = \(scoreText), "
                 + "trend: \(docking.trend.rawValue), "
                 + "status: \(docking.status.rawValue). \(docking.summary.en)"
             )
@@ -535,7 +540,7 @@ final class InsightEngine: ObservableObject {
             prompt += "Recent drug–HRV context: \(drug.summary.en)\n"
             prompt += "Response direction: \(drug.responseDirection.rawValue)\n"
             if drug.bindingDetected {
-                prompt += "Adapt cue gently for post-dose autonomic shift (no medical advice).\n"
+                prompt += "Adapt cue gently to the observed entropy change; do not infer a drug effect or autonomic mechanism.\n"
             }
         }
 
@@ -601,7 +606,7 @@ final class InsightEngine: ObservableObject {
         section += "(\(drug.doseEvent.doseValue) \(drug.doseEvent.doseUnit))\n"
         section += "Peak ΔH = \(delta) bits at +\(peak) min post-dose "
         section += "(effect size \(effect)%). "
-        section += "Binding detected: \(drug.bindingDetected). "
+        section += "Experimental entropy-change threshold exceeded: \(drug.bindingDetected). This is not evidence of receptor binding or medication causality. "
         section += "Direction: \(drug.responseDirection.rawValue).\n"
         section += "Summary: \(drug.summary.en)"
         if let match = drug.profileMatch {
@@ -824,13 +829,13 @@ final class InsightEngine: ObservableObject {
             switch drug.responseDirection {
             case .sympathomimeticCollapse:
                 text += " " + LocalizedString(
-                    en: "HRV entropy collapsed about \(peak) min after \(name) — consistent with a sympathomimetic-style profile (observational only).",
-                    fr: "L'entropie VFC s'est effondrée environ \(peak) min après \(name) — cohérent avec un profil de type sympathomimétique (observation seulement)."
+                    en: "HRV entropy decreased about \(peak) min after the logged dose of \(name). Timing alone does not establish a medication effect or receptor binding.",
+                    fr: "L'entropie VFC a diminué environ \(peak) min après la prise consignée de \(name). La chronologie seule ne démontre ni effet médicamenteux ni liaison aux récepteurs."
                 ).localized
             case .parasympathomimeticExpansion:
                 text += " " + LocalizedString(
-                    en: "HRV entropy expanded about \(peak) min after \(name) — consistent with a parasympathomimetic / vagotonic-style profile (observational only).",
-                    fr: "L'entropie VFC s'est élargie environ \(peak) min après \(name) — cohérent avec un profil de type parasympathomimétique / vagotonique (observation seulement)."
+                    en: "HRV entropy increased about \(peak) min after the logged dose of \(name). Timing alone does not establish a medication effect or receptor binding.",
+                    fr: "L'entropie VFC a augmenté environ \(peak) min après la prise consignée de \(name). La chronologie seule ne démontre ni effet médicamenteux ni liaison aux récepteurs."
                 ).localized
             case .noSignificantChange:
                 break
@@ -857,8 +862,8 @@ final class InsightEngine: ObservableObject {
             if let docking, let dockingScore = docking.score, dockingScore > 0.3 {
                 let focus = hrvPct.map { "\($0)%" } ?? "n/a"
                 return LocalizedString(
-                    en: "Molecular binding entropy for \(name) aligns with post-dose HRV ΔH \(delta) bits at +\(peak) min (SCI focus \(focus)).",
-                    fr: "L'entropie de liaison moléculaire pour \(name) s'aligne avec ΔH VFC \(delta) bits à +\(peak) min (focus SCI \(focus))."
+                    en: "Imported docking data is available separately from the HRV change after \(name): ΔH \(delta) bits at +\(peak) min (SCI \(focus)). These observations do not establish molecular binding in the body.",
+                    fr: "Des données d'amarrage importées sont disponibles séparément du changement VFC après \(name) : ΔH \(delta) bits à +\(peak) min (SCI \(focus)). Ces observations ne démontrent pas de liaison moléculaire dans l'organisme."
                 ).localized
             }
 
@@ -885,8 +890,8 @@ final class InsightEngine: ObservableObject {
         if let dockingScore = docking?.score, dockingScore > 0.3, let hrvScore {
             let hrvPct = Int(hrvScore * 100)
             return LocalizedString(
-                en: "Molecular binding entropy detected — correlating with HRV coherence (\(hrvPct)%).",
-                fr: "Entropie de liaison moléculaire détectée — corrélation avec la cohérence VFC (\(hrvPct) %)."
+                en: "Imported docking data and an SCI value of \(hrvPct)% are available. Their coexistence does not establish a correlation or measure molecular binding in the body.",
+                fr: "Des données d'amarrage importées et un SCI de \(hrvPct) % sont disponibles. Leur coexistence ne démontre ni corrélation ni liaison moléculaire dans l'organisme."
             ).localized
         }
 

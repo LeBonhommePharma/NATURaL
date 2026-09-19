@@ -8,6 +8,22 @@ import BonhommeCore
 final class MedicationPrescriptionServiceTests: XCTestCase {
     private enum SaveFailure: Error { case diskUnavailable }
 
+    func testMissingCareKitTaskDoesNotClaimDoseWrite() async throws {
+        let suite = "MissingCareKitMedicationTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let consent = ConsentStore(defaults: defaults)
+        consent.grant()
+        let bridge = CareKitBridge(storeName: suite)
+
+        let recorded = try await bridge.recordMedicationDose(
+            medicationId: "not-imported", doseValue: 1, doseUnit: "mg",
+            consentStore: consent
+        )
+
+        XCTAssertFalse(recorded)
+    }
+
     func testFailedManualSaveKeepsOtherEditsAndRetryCreatesOneRecord() async throws {
         let container = try PersistenceConfiguration.makeEphemeralContainer()
         let context = ModelContext(container)

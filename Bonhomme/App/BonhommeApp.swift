@@ -402,6 +402,18 @@ struct AppInformationView: View {
             Section(LocalizedString(en: "Understanding biofeedback", fr: "Comprendre la rétroaction").localized) {
                 Text(LocalizedString(en: "Shannon entropy describes variation in a sampled signal. Signal quality, movement, breathing and sampling affect it. A change is not proof of relaxation, treatment response, or molecular binding. These experimental indicators support exploration, not clinical decisions.", fr: "L’entropie de Shannon décrit la variation d’un signal échantillonné. La qualité du signal, le mouvement, la respiration et l’échantillonnage l’influencent. Un changement ne prouve pas une relaxation, une réponse au traitement ou une liaison moléculaire. Ces indicateurs expérimentaux servent à l’exploration, pas aux décisions cliniques.").localized)
             }
+            Section(LocalizedString(en: "Acknowledgements", fr: "Remerciements").localized) {
+                NavigationLink(LocalizedString(en: "Open-source licenses", fr: "Licences open source").localized) {
+                    ScrollView {
+                        Text(acknowledgements)
+                            .font(.footnote)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .navigationTitle(LocalizedString(en: "Licenses", fr: "Licences").localized)
+                }
+            }
             Section(LocalizedString(en: "Contact", fr: "Contact").localized) {
                 Link(LocalizedString(en: "Support & help", fr: "Aide et assistance").localized, destination: URL(string: "https://thebonhomme.com/NATURaL/support/")!)
                 Link("lp@thebonhomme.com", destination: URL(string: "mailto:lp@thebonhomme.com")!)
@@ -411,6 +423,14 @@ struct AppInformationView: View {
         }
         .navigationTitle(LocalizedString(en: "About & Privacy", fr: "À propos et confidentialité").localized)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var acknowledgements: String {
+        guard let url = Bundle.main.url(forResource: "Acknowledgements", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return LocalizedString(en: "Licenses are unavailable. Please contact support.", fr: "Les licences sont indisponibles. Contactez l’assistance.").localized
+        }
+        return text
     }
 
     @MainActor private func connectHealth() async {

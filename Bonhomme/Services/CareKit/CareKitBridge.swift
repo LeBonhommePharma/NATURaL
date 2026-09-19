@@ -150,23 +150,28 @@ final class CareKitBridge: ObservableObject {
     ///   - doseUnit: Dose unit string.
     ///   - event: Taken / late (others are ignored for CareKit outcomes).
     ///   - at: Event timestamp (defaults to now).
+    @discardableResult
     func recordMedicationDose(
         medicationId: String,
         doseValue: Double,
         doseUnit: String,
         event: MedicationEvent = .taken,
-        at date: Date = Date()
-    ) async throws {
-        guard event == .taken || event == .late else { return }
+        at date: Date = Date(),
+        consentStore: ConsentStore = .shared,
+        accessToken: ConsentStore.AccessToken? = nil
+    ) async throws -> Bool {
+        guard event == .taken || event == .late else { return false }
+        guard let access = accessToken ?? consentStore.beginAccess() else { throw CancellationError() }
+        try consentStore.validateAccess(access)
 
         let taskId = MedicationTaskBuilder.taskId(for: medicationId)
-        let task: OCKTask
-        do {
-            task = try await store.fetchTask(withID: taskId)
-        } catch {
+        let existing = try await store.fetchExistingTask(withID: taskId)
+        guard let task = existing else {
+            try consentStore.validateAccess(access)
             // Medication not synced to CareKit yet
-            return
+            return false
         }
+        try consentStore.validateAccess(access)
 
         let values = MedicationTaskBuilder.buildOutcomeValues(
             doseValue: doseValue,
@@ -175,7 +180,11 @@ final class CareKitBridge: ObservableObject {
             at: date
         )
 
-        try await addOutcomeIfNeeded(for: task, values: values, at: date)
+        try await addOutcomeIfNeeded(
+            for: task, values: values, at: date,
+            validateAccess: { try consentStore.validateAccess(access) }
+        )
+        return true
     }
 
     /// Calculates adherence percentage for a specific prescribed yoga plan
@@ -230,13 +239,21 @@ final class CareKitBridge: ObservableObject {
     /// Call only after explicit clinical/medication consent.
     /// Does not invent pharmacy credentials — titles/doses come from HealthKit clinical
     /// import or user manual entry only.
-    func syncMedicationPrescriptions(_ medications: [MedicationPrescriptionSummary]) async throws {
+    func syncMedicationPrescriptions(
+        _ medications: [MedicationPrescriptionSummary],
+        consentStore: ConsentStore = .shared,
+        accessToken: ConsentStore.AccessToken? = nil
+    ) async throws {
+        guard let access = accessToken ?? consentStore.beginAccess() else { throw CancellationError() }
+        try consentStore.validateAccess(access)
         let desiredIds = Set(medications.map { MedicationTaskBuilder.taskId(for: $0.id) })
 
         for med in medications {
+            try consentStore.validateAccess(access)
             let task = MedicationTaskBuilder.buildTask(from: med)
-            do {
-                var existing = try await store.fetchTask(withID: task.id)
+            let existingTask = try await store.fetchExistingTask(withID: task.id)
+            try consentStore.validateAccess(access)
+            if var existing = existingTask {
                 existing.effectiveDate = Date()
                 existing.schedule = task.schedule
                 existing.instructions = task.instructions
@@ -244,17 +261,24 @@ final class CareKitBridge: ObservableObject {
                 existing.groupIdentifier = task.groupIdentifier
                 existing.impactsAdherence = task.impactsAdherence
                 try await store.updateTask(existing)
-            } catch {
+                try consentStore.validateAccess(access)
+            } else {
                 try await store.addTask(task)
+                try consentStore.validateAccess(access)
             }
         }
 
         // Drop CareKit med tasks no longer present in the user-managed list
         for task in medicationPrescribedTasks where !desiredIds.contains(task.id) {
-            try? await store.deleteTask(task)
+            try consentStore.validateAccess(access)
+            try await store.deleteTask(task)
+            try consentStore.validateAccess(access)
         }
 
-        await refreshPrescribedTasks()
+        let refreshed = try await store.fetchTasks(query: OCKTaskQuery(for: Date()))
+        try consentStore.validateAccess(access)
+        prescribedTasks = refreshed
+        isLoaded = true
     }
 
     /// Removes a CareKit medication task by medication id.
@@ -293,8 +317,10 @@ final class CareKitBridge: ObservableObject {
     private func addOutcomeIfNeeded(
         for task: OCKTask,
         values: [OCKOutcomeValue],
-        at date: Date
+        at date: Date,
+        validateAccess: () throws -> Void = {}
     ) async throws {
+        try validateAccess()
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
@@ -316,13 +342,15 @@ final class CareKitBridge: ObservableObject {
         // Skip if an outcome already exists for this occurrence
         var existingQuery = OCKOutcomeQuery(dateInterval: DateInterval(start: startOfDay, end: endOfDay))
         existingQuery.taskIDs = [task.id]
-        if let existing = try? await store.fetchOutcomes(query: existingQuery),
-           existing.contains(where: {
+        let existing = try await store.fetchOutcomes(query: existingQuery)
+        try validateAccess()
+        if existing.contains(where: {
                $0.taskUUID == task.uuid && $0.taskOccurrenceIndex == occurrenceIndex
            }) {
             return
         }
 
+        try validateAccess()
         let outcome = OCKOutcome(
             taskUUID: task.uuid,
             taskOccurrenceIndex: occurrenceIndex,
@@ -331,8 +359,22 @@ final class CareKitBridge: ObservableObject {
 
         do {
             try await store.addOutcome(outcome)
+            try validateAccess()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            // Duplicate or store conflict — treat as already recorded
+            try validateAccess()
+            // A competing writer may have inserted the same occurrence. Only
+            // treat that verified duplicate as success; storage failures must
+            // reach the caller so an unrecorded dose is not reported as saved.
+            let afterFailure = try? await store.fetchOutcomes(query: existingQuery)
+            try validateAccess()
+            if afterFailure?.contains(where: {
+                $0.taskUUID == task.uuid && $0.taskOccurrenceIndex == occurrenceIndex
+            }) == true {
+                return
+            }
+            throw error
         }
     }
 }
@@ -449,6 +491,15 @@ enum MedicationTaskBuilder {
 // MARK: - OCKStore Async Helpers
 
 private extension OCKStore {
+    /// Unlike fetchTask, an empty result is distinct from a database error.
+    func fetchExistingTask(withID id: String) async throws -> OCKTask? {
+        var query = OCKTaskQuery(for: Date())
+        query.sortDescriptors = [.effectiveDate(ascending: true)]
+        query.ids = [id]
+        query.limit = 1
+        return try await fetchTasks(query: query).first
+    }
+
     func fetchTask(withID id: String) async throws -> OCKTask {
         try await withCheckedThrowingContinuation { continuation in
             fetchTask(withID: id) { result in
