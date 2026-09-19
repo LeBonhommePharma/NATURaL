@@ -6,6 +6,8 @@ import BonhommeCore
 @main
 struct BonhommeApp: App {
     @State private var appState = AppState()
+    @AppStorage("natural.didFinishWelcome") private var didFinishWelcome = false
+    @State private var completedWelcomeThisLaunch = false
     @Environment(\.scenePhase) private var scenePhase
 
     /// Stored once at app launch — must NOT be a computed property.
@@ -19,14 +21,31 @@ struct BonhommeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // First use is a durable scene state, not a sheet owned by Home's
+            // adaptive navigation hierarchy. Rotation and split-view rebuilding
+            // must not dismiss it or count as completion.
+            Group {
+                if hasCompletedWelcome {
+                    ContentView()
+                } else {
+                    WelcomeView {
+                        // Explicit completion also takes effect immediately when
+                        // preferences are overridden or cannot persist this launch.
+                        completedWelcomeThisLaunch = true
+                        didFinishWelcome = true
+                    }
+                }
+            }
                 .environment(appState)
                 .onOpenURL { url in
                     guard (try? TVRelayPairing(url: url)) != nil else { return }
                     appState.pendingTVInvitation = url
                     appState.showsTVDisplay = true
                 }
-                .sheet(isPresented: $appState.showsTVDisplay, onDismiss: {
+                .sheet(isPresented: Binding(
+                    get: { hasCompletedWelcome && appState.showsTVDisplay },
+                    set: { appState.showsTVDisplay = $0 }
+                ), onDismiss: {
                     appState.pendingTVInvitation = nil
                 }) {
                     TVConnectionSheet(invitationURL: appState.pendingTVInvitation)
@@ -50,6 +69,10 @@ struct BonhommeApp: App {
                 }
         }
         .modelContainer(persistentContainer)
+    }
+
+    private var hasCompletedWelcome: Bool {
+        didFinishWelcome || completedWelcomeThisLaunch
     }
 
     /// Handles scene phase transitions for state persistence.
@@ -95,8 +118,6 @@ struct ContentView: View {
     @State private var navigateToIntentPlan = false
     @State private var initializationError: Error?
     @State private var showDebugDashboard = false
-    @AppStorage("natural.didFinishWelcome") private var didFinishWelcome = false
-    @State private var showingWelcome = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -176,14 +197,6 @@ struct ContentView: View {
             .task {
                 // Perform async initialization checks
                 await performInitializationChecks()
-            }
-            .onAppear { showingWelcome = !didFinishWelcome }
-            .sheet(isPresented: $showingWelcome) {
-                WelcomeView {
-                    didFinishWelcome = true
-                    showingWelcome = false
-                }
-                .interactiveDismissDisabled()
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 StorageStatusBanner(status: appState.persistenceSync)
@@ -368,7 +381,7 @@ private struct WelcomeView: View {
             .background(BrandColor.bg)
         }
         // This introduction uses the fixed midnight palette, including its artwork
-        // and system sheet chrome, regardless of the surrounding home appearance.
+        // and navigation chrome, regardless of the surrounding home appearance.
         .preferredColorScheme(.dark)
     }
 }

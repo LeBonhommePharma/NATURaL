@@ -2,6 +2,10 @@
 
 ## Latest completed integration evidence
 
+Expanded [CI 35472257889](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35472257889) for PR head `ccfe781` (tested merge `90a8765f61e64aa96dc054471c425a50774925fd`) passed **613 core tests**, all contracts/assets, all four platform Release builds, and iPhone 17 Pro Max / iOS 26.5 journeys (**21 app tests, 9 UI tests passed; the iPad-only test was skipped**). Native PNG review confirms corrected dark bloom selection, mint-button contrast, multiline largest-text entry, and the separate guide viewport/footer. These are Debug QA captures, not a finalized App Store screenshot set.
+
+The new iPad Pro 13-inch (M5) / iOS 26.5 lane found **three UI failures** despite its 21 hosted app tests passing: two TV-card assertions (the iPad home omitted the card) and onboarding disappearing when rotating before completion. The follow-up adds iPad TV/prescription entries and makes onboarding durable root content until Continue. Tests keep the same requirements, explicitly reset orientation between cases, and wait for landscape layout. This follow-up requires its own green run; the failed expanded run is not a release pass.
+
 [PR #39](https://github.com/LeBonhommePharma/NATURaL/pull/39), commit `c216e666186be35bd446d512aba6bc17211dbb49`, passed all six jobs in [CI 35470772237](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470772237): Linux contracts, submission assets/Swift core, iOS with embedded Watch Release, native macOS Release, native tvOS Release (including layered icons/Top Shelf), and hosted iPhone simulator tests. The simulator ran **21 app tests and 9 UI tests with zero failures**. The Watch/tvOS API incompatibilities and SwiftUI type-check timeout from earlier attempts are fixed.
 
 This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. Current iPad runtime coverage is historical until the new two-device CI matrix completes.

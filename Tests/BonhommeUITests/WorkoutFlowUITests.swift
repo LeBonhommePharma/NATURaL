@@ -7,6 +7,9 @@ final class WorkoutFlowUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // A failed XCTest assertion can abort before a previous test's Swift defer.
+        // Establish orientation explicitly for each independent journey.
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
                                "-natural.didFinishWelcome", "NO",
@@ -65,6 +68,12 @@ final class WorkoutFlowUITests: XCTestCase {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad landscape journey")
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
+        let landscape = XCTNSPredicateExpectation(
+            predicate: NSPredicate { [application = self.app] _, _ in
+                guard let application else { return false }
+                return application.frame.width > application.frame.height
+            }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 8), .completed)
         finishWelcome()
         let start = app.buttons["home.start"]
         for _ in 0..<8 where !start.isHittable { app.swipeUp() }
