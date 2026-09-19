@@ -69,7 +69,7 @@ public struct TVRelayPairing: Sendable {
         let identity = Data(id.uuidString.utf8).withUnsafeBytes { DispatchData(bytes: $0) }
         sec_protocol_options_add_pre_shared_key(tls.securityProtocolOptions, key as __DispatchData, identity as __DispatchData)
         sec_protocol_options_append_tls_ciphersuite(tls.securityProtocolOptions,
-            tls_ciphersuite_t(rawValue: TLS_PSK_WITH_AES_128_GCM_SHA256)!)
+            tls_ciphersuite_t(rawValue: UInt16(TLS_PSK_WITH_AES_128_GCM_SHA256))!)
         sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
         sec_protocol_options_set_max_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
         let tcp = NWProtocolTCP.Options()

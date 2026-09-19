@@ -88,8 +88,8 @@ final class TVDisplayCoordinator: ObservableObject {
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                guard !Task.isCancelled else { return }
-                self?.sendHeartbeat()
+                guard !Task.isCancelled, let self else { return }
+                self.sendHeartbeat()
             }
         }
         refreshMode()

@@ -1,9 +1,9 @@
 import XCTest
 @testable import BonhommeCore
+@testable import Bonhomme
 
-/// Tests for WorkoutFlowViewModel state machine logic.
-/// Run on iOS Simulator: Xcode > Product > Test (Cmd+U)
-/// Target: iPhone 15 Pro Simulator (iOS 17+)
+/// Hosted iOS tests for catalog data and actual view-model TV projections.
+/// Restored sessions are constructed without starting timers, HealthKit or Music authorization.
 final class WorkoutFlowViewModelTests: XCTestCase {
 
     // MARK: - WorkoutPlan Duration
@@ -38,6 +38,93 @@ final class WorkoutFlowViewModelTests: XCTestCase {
     }
 
     // MARK: - TV Payload Construction
+
+    @MainActor
+    func testRestoredTransitionDisplaysUpcomingPoseAndTransitionCountdown() throws {
+        let plan = PoseCatalog.beginnerFlow
+        let nextIndex = 1
+        let viewModel = restoredModel(plan: plan,
+                                      phase: .transition(nextPoseIndex: nextIndex, secondsRemaining: 2),
+                                      remaining: plan.poses[nextIndex].durationSeconds,
+                                      currentIndex: 0, completed: 1)
+
+        let payload = try XCTUnwrap(viewModel.buildTVPayload())
+
+        // The phone's currentPose still names the previous hold during transition;
+        // the television must explicitly preview the next one instead.
+        XCTAssertEqual(viewModel.currentPose?.id, plan.poses[0].id)
+        XCTAssertEqual(payload.currentPose.id, plan.poses[nextIndex].id)
+        XCTAssertEqual(payload.poseTimeRemaining, 2)
+        XCTAssertEqual(payload.totalPoseTime, plan.transitionSeconds)
+        XCTAssertEqual(payload.isTransition, true)
+        XCTAssertEqual(payload.sequenceIndex, nextIndex)
+        XCTAssertEqual(payload.sequenceTotal, plan.poseCount)
+        XCTAssertEqual(payload.sessionElapsed, 123)
+        XCTAssertFalse(payload.isPaused)
+        XCTAssertNil(payload.biofeedback.heartRate)
+        XCTAssertNil(payload.biofeedback.sciScore)
+        XCTAssertFalse(viewModel.recorder.isRecording)
+        XCTAssertFalse(viewModel.musicService.isPlaying)
+    }
+
+    @MainActor
+    func testRestoredActivePayloadUsesActualHoldAndRemainingTime() throws {
+        let plan = PoseCatalog.beginnerFlow
+        let index = 2
+        let viewModel = restoredModel(plan: plan, phase: .active(poseIndex: index),
+                                      remaining: 17, currentIndex: index, completed: index)
+
+        let payload = try XCTUnwrap(viewModel.buildTVPayload())
+
+        XCTAssertEqual(payload.currentPose.id, plan.poses[index].id)
+        XCTAssertEqual(payload.poseTimeRemaining, 17)
+        XCTAssertEqual(payload.totalPoseTime, plan.poses[index].durationSeconds)
+        XCTAssertEqual(payload.isTransition, false)
+        XCTAssertEqual(payload.sequenceIndex, index)
+        XCTAssertEqual(payload.sequenceTotal, plan.poseCount)
+        XCTAssertEqual(payload.sessionElapsed, 123)
+        XCTAssertNil(payload.biofeedback.heartRate)
+        XCTAssertNil(payload.biofeedback.sciScore)
+        XCTAssertFalse(viewModel.recorder.isRecording)
+        XCTAssertFalse(viewModel.musicService.isPlaying)
+    }
+
+    @MainActor
+    func testReadyCountdownCooldownAndCompleteDoNotPublishAPose() {
+        let plan = PoseCatalog.beginnerFlow
+        XCTAssertNil(WorkoutFlowViewModel(plan: plan).buildTVPayload())
+        let phases: [WorkoutStateStore.PersistedPhase] = [
+            .ready, .countdown(secondsRemaining: 3), .cooldown, .complete
+        ]
+        for phase in phases {
+            let viewModel = restoredModel(plan: plan, phase: phase, remaining: 0)
+            XCTAssertNil(viewModel.buildTVPayload(), "Non-pose phase must clear the TV: \(phase)")
+            XCTAssertFalse(viewModel.recorder.isRecording)
+        }
+    }
+
+    @MainActor
+    func testMalformedRestoredPoseIndicesDoNotPublishAPose() {
+        let plan = PoseCatalog.beginnerFlow
+        for index in [-1, plan.poseCount] {
+            for phase: WorkoutStateStore.PersistedPhase in [
+                .active(poseIndex: index), .transition(nextPoseIndex: index, secondsRemaining: 2)
+            ] {
+                let viewModel = restoredModel(plan: plan, phase: phase, remaining: 10, currentIndex: index)
+                XCTAssertNil(viewModel.buildTVPayload(), "Invalid restored index must not access the catalog")
+            }
+        }
+    }
+
+    @MainActor
+    private func restoredModel(plan: WorkoutPlan, phase: WorkoutStateStore.PersistedPhase,
+                               remaining: TimeInterval, currentIndex: Int = 0,
+                               completed: Int = 0) -> WorkoutFlowViewModel {
+        WorkoutFlowViewModel(restoredSession: RestoredLocalSession(
+            plan: plan, phase: phase, poseTimeRemaining: remaining, elapsedTime: 123,
+            sessionStartDate: Date(timeIntervalSince1970: 1_700_000_000),
+            currentPoseIndex: currentIndex, posesCompletedCount: completed))
+    }
 
     func testTVPayloadEncoding() throws {
         let pose = PoseCatalog.seatedMountain

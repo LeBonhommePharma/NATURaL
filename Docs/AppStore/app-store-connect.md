@@ -59,3 +59,11 @@ Use [metadata.md](metadata.md), with these additional details:
 5. The Watch companion records sessions on the wrist; live sensors and phone/Watch transfers require hardware testing.
 
 Supply a reachable reviewer name, email and phone; no phone number has been inferred. Upload, processed-build selection, TestFlight, final review submission and approval remain separate actions with their own receipts.
+
+## Native tvOS listing and review path
+
+Use bundle `com.natural.BonhommeTV`, team `ZJLX84G8QV`, and the standalone-TV EN/FR section of `metadata.md`. The native TV app offers all catalog plans without a phone, account, payment or Health permission. Reviewers can choose a plan, Begin, pause/resume with the remote, and finish. Standalone TV shows unavailable Health/SCI values; it does not synthesize sensor readings.
+
+Optional companion mode requires NATURaL on iPhone/iPad and the same local network. On TV choose Pair iPhone or iPad. On phone scan the invitation with Camera, enable session sharing and confirm the selected TV. The invitation expires after five minutes. Native transport uses OS-provided TLS with a random pre-shared key; the key is not advertised or stored. On-screen health readings are visible to people in the room. AirPlay Screen Mirroring and wired HDMI use the iOS external-display path separately.
+
+Capture actual standalone and paired TV screens after SDK/device validation; do not publish a live pairing credential. Verify listing platform association and bundle identifiers in App Store Connect before creating records. Signed upload, privacy/export answers, device tests, screenshots and final review submission remain pending.

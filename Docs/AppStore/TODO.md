@@ -2,7 +2,7 @@
 
 Owner: LP / Le Bonhomme Pharma. Updated 19 September 2026.
 
-This checklist covers **iOS/iPadOS with the embedded watchOS companion**, the existing **native macOS target** added by Cursor, and the **native tvOS companion** explicitly requested by LP. AirPlay/HDMI second-screen output remains part of the iOS product. Vision UI/icon designs remain part of the family but do not establish a visionOS release. ClusterFuck readiness is tracked in `/Users/lp.more/Projects/ClusterFuck/docs/AppStore/TODO.md`.
+This checklist covers **iOS/iPadOS with the embedded watchOS companion**, the existing **native macOS target** added by Cursor, and the **native tvOS app** explicitly requested by LP. AirPlay/HDMI second-screen output remains part of the iOS product. Vision UI/icon designs remain part of the family but do not establish a visionOS release. ClusterFuck readiness is tracked in `/Users/lp.more/Projects/ClusterFuck/docs/AppStore/TODO.md`.
 
 Checked boxes record the scope of a completed check, not overall readiness. Cursor’s subsequent changes and the current fixes require new build, runtime and visual verification. **The apps are not yet proven ready to submit.**
 
@@ -14,7 +14,7 @@ Checklist legend:
 A reproduced failure documents a blocker; it does not satisfy its release gate.
 `[ ]` items are unresolved blockers that still require additional work or external/portal actions.
 
-## Submission matrix (historical results; current revalidation pending)
+## Submission matrix (current source; device gates pending)
 
 - **iPhone / iOS**
   - [x] Swift-only code checks, localized site routing checks, and release simulation regression gates pass.
@@ -50,15 +50,21 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [x] Bundle exact linked dependency notices and expose them in iPhone/iPad About.
 - [x] Fix dose-label overflow in schedule/profile formatting and retain small fractional doses instead of rounding them to zero.
 - [x] Wire hosted medication persistence and dose-format tests into the Xcode test target.
-- [ ] Execute the new failed-save, retry and dose-format tests in CI.
-- [ ] Review and commit the current integration branch, push it, and merge only after the required checks pass.
-- [ ] Complete missing app translations and localized permission strings; OS language selection currently falls back to English for untranslated content.
+- [x] Execute the failed-save, retry and dose-format tests: `51f9252` / CI `35469339246`, 14 hosted app tests and 9 UI tests passed. Re-run after integration changes.
+- [x] Review, commit and push the integration branch (`057b5aa` contains TV/kinematics/icon work).
+- [ ] Merge only after current-revision required checks pass and remaining review findings are resolved.
+- [x] Add 110 permission purpose strings across 11 supported languages and regression checks.
+- [ ] Complete missing app-content translations; OS language selection falls back to English where content is untranslated.
 - [ ] Execute current-revision iOS/Watch/Mac/TV builds and app tests in GitHub CI; fix all failures.
 - [ ] Review final native rendering across sizes, accessibility and every supported language. HTML/design references are not runtime proof.
 - [ ] Validate TV/Vision layered icon delivery with their SDKs; flattened source assets are not enough to certify those store products.
 - [ ] Review remaining experimental profile data/provenance and all reachable generated insight text; wording repairs alone do not validate scientific claims.
 
 ## TV display and native tvOS release
+
+- [x] Implement standalone free TV sessions with the shared session controller, illustrated guide, pinned remote controls, pause/transition and completion. No phone or Health data is required.
+- [x] Wire the iPhone/iPad sharing toggle, QR invitation confirmation, latest-state producer and scene/finish clearing. External-display output uses the same payload as native TV.
+- [x] Export actual two-layer tvOS icons and standard/wide Top Shelf assets; retain original source artwork and validate dimensions/alpha/safe margins. SDK acceptance remains a separate gate below.
 
 - [x] Discovery lists receivers without connecting to the first Bonjour result. Pairing requires a selected television and its ephemeral 256-bit credential; no plaintext socket fallback remains.
 - [x] Use Apple's Network/Security TLS-PSK APIs. Matching-key loopback transfer succeeds and a different key is rejected; this verifies the transport helper on macOS, not the full tvOS app.
@@ -69,7 +75,8 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [ ] Verify Control Center **Screen Mirroring** and HDMI external scenes separately. `AVRoutePickerView` selects supported media routes; it does not by itself establish whole-screen mirroring.
 - [ ] Validate the native TV's real layered app icons and top-shelf assets with `actool`, inspect focus/parallax on Apple TV, and confirm the signed bundle's assets in Organizer. A flat `.appiconset` preview is not sufficient. [Apple asset guidance](https://developer.apple.com/documentation/xcode/configuring-your-app-icon), [brand asset format](https://developer.apple.com/library/archive/documentation/Xcode/Reference/xcode_ref-Asset_Catalog_Format/BrandAssetsType.html).
 - [ ] Capture real tvOS pairing, active, paused and transition screens at accepted Apple TV dimensions, **1920×1080 or 3840×2160**, without alpha; never expose a live pairing secret in store screenshots. [Apple screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications).
-- [ ] Explain the required iPhone/iPad companion and pairing steps in tvOS metadata/reviewer notes; check privacy and export-compliance answers against the final native transport.
+- [x] Prepare EN/FR tvOS metadata distinguishing standalone sessions from optional phone pairing.
+- [ ] Review the final tvOS listing, privacy and export-compliance answers against the signed native transport and runtime behavior.
 - [ ] Run `PLATFORM=tvos BUILD_NUMBER=<fresh-number> scripts/archive-app-store.sh` on the signing machine, complete Organizer validation, upload/process the build, test through TestFlight and obtain LP's release approval.
 
 ## 0. External release blockers (must be completed before upload)
@@ -78,6 +85,17 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [ ] Create/confirm App Store Connect app record, metadata, age rating, category, keywords, pricing model, URLs, and release settings.
 - [ ] Run Organizer validation and upload a signed archive; install TestFlight builds on iPhone, iPad and paired Watch for device verification.
 - [ ] Complete final App Review artifacts: privacy labels, accessibility declarations, screenshots, reviewer notes, and submission details.
+
+## Kinematics and approved identity
+
+- [x] Preserve the approved bloom, with warm ivory light and website midnight-indigo dark exports; iOS uses the system dark-icon appearance.
+- [x] Provide illustrated pose guides and persistent numbered steps, breathing, adaptations and catalog cautions across phone, tablet, Watch, Mac and TV.
+- [x] Keep pause state authoritative, stop hidden/background animation and honor Reduced Motion. Pausing leaves instructions visible.
+- [x] Share one guided-session model between Vision window and immersion; remove the fabricated static SCI ring.
+- [x] Make iOS AR optional with camera consent, tracking feedback and fallback to the complete 2D guide.
+- [ ] Inspect every pose in 2D and spatial rendering on target hardware, including comfortable movement direction and timing. Source geometry checks do not certify exercise safety or anatomical correctness.
+- [ ] Verify guide scrolling, pinned controls, VoiceOver, large text, RTL languages, TV focus and reduced motion in final native builds.
+- [ ] Finish valid visionOS layered icon delivery and its SDK validation before a separate Vision release.
 
 ## 1. Identity, membership and signing
 

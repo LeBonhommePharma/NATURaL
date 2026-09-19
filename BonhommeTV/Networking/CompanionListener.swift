@@ -131,7 +131,8 @@ final class CompanionListener: ObservableObject {
         freshnessTask = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                self?.checkFreshness()
+                guard let self else { return }
+                self.checkFreshness()
             }
         }
     }

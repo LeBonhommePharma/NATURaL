@@ -25,13 +25,18 @@ public struct PoseGuideDetails: View {
                 Label(pose.breathingPattern.localized, systemImage: "wind")
             }
             if !pose.modifications.localized.isEmpty {
+                #if os(watchOS) || os(tvOS)
+                // DisclosureGroup is unavailable on these platforms. Keep every
+                // adaptation visible in the scrollable guide and its accessibility tree.
+                Text(LocalizedString(en: "Make it comfortable", fr: "Adaptez la posture").localized)
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                adaptations
+                #else
                 DisclosureGroup(LocalizedString(en: "Make it comfortable", fr: "Adaptez la posture").localized) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(pose.modifications.localized.enumerated()), id: \.offset) { _, modification in
-                            Text(modification)
-                        }
-                    }.padding(.top, 8)
+                    adaptations.padding(.top, 8)
                 }
+                #endif
             }
             if !pose.contraindications.localized.isEmpty {
                 Text(LocalizedString(en: "Before you begin", fr: "Avant de commencer").localized)
@@ -49,4 +54,13 @@ public struct PoseGuideDetails: View {
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private var adaptations: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(pose.modifications.localized.enumerated()), id: \.offset) { _, modification in
+                Text(modification).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
 }

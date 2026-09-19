@@ -1,9 +1,73 @@
 import XCTest
 @testable import BonhommeCore
+@testable import Bonhomme
 
-/// Tests for the TV display relay and coordinator logic.
-/// Run on iOS Simulator to validate NWBrowser/NWConnection behavior.
+/// Hosted iOS tests for the real coordinator state and relay encoding.
+/// These do not browse, connect to a television, or claim transport validation.
 final class TVDisplayCoordinatorTests: XCTestCase {
+
+    // MARK: - Real coordinator consent and lifecycle (no discovery or pairing)
+
+    @MainActor
+    func testCoordinatorDoesNotPublishBeforeOptIn() {
+        let coordinator = TVDisplayCoordinator()
+        defer { coordinator.stopTVDiscovery() }
+
+        coordinator.send(payload: samplePayload())
+
+        XCTAssertFalse(coordinator.displayEnabled)
+        XCTAssertNil(coordinator.currentPayload)
+        XCTAssertFalse(coordinator.nativeConnected)
+        XCTAssertFalse(coordinator.nativeConnecting)
+        XCTAssertTrue(coordinator.discoveredTVs.isEmpty)
+        XCTAssertEqual(coordinator.mode, .idle)
+    }
+
+    @MainActor
+    func testDisabledSharingRejectsNextPayloadAndClearsPriorDisplay() throws {
+        let coordinator = TVDisplayCoordinator()
+        defer { coordinator.stopTVDiscovery() }
+        coordinator.displayEnabled = true
+        coordinator.send(payload: samplePayload())
+        XCTAssertEqual(try XCTUnwrap(coordinator.currentPayload).sessionElapsed, 20)
+
+        coordinator.displayEnabled = false
+        coordinator.send(payload: samplePayload(elapsed: 99))
+
+        XCTAssertNil(coordinator.currentPayload, "Revoked display must not retain or replace health/pose data")
+        XCTAssertFalse(coordinator.nativeConnected)
+        XCTAssertFalse(coordinator.nativeConnecting)
+    }
+
+    @MainActor
+    func testStopClearsPayloadAndRequiresFreshOptIn() throws {
+        let coordinator = TVDisplayCoordinator()
+        coordinator.displayEnabled = true
+        coordinator.send(payload: samplePayload())
+        XCTAssertNotNil(coordinator.currentPayload)
+
+        coordinator.stopTVDiscovery()
+
+        XCTAssertFalse(coordinator.displayEnabled)
+        XCTAssertNil(coordinator.currentPayload)
+        XCTAssertFalse(coordinator.nativeConnected)
+        XCTAssertFalse(coordinator.nativeConnecting)
+        XCTAssertTrue(coordinator.discoveredTVs.isEmpty)
+        XCTAssertEqual(coordinator.mode, .idle)
+        coordinator.send(payload: samplePayload(elapsed: 45))
+        XCTAssertNil(coordinator.currentPayload, "Stopping must not implicitly authorize a later sender")
+
+        coordinator.displayEnabled = true
+        coordinator.send(payload: samplePayload(elapsed: 60))
+        XCTAssertEqual(try XCTUnwrap(coordinator.currentPayload).sessionElapsed, 60)
+        coordinator.stopTVDiscovery()
+    }
+
+    private func samplePayload(elapsed: TimeInterval = 20) -> TVDisplayPayload {
+        TVDisplayPayload(currentPose: PoseCatalog.seatedMountain, poseTimeRemaining: 10,
+                         totalPoseTime: 30, biofeedback: BiofeedbackSnapshot(),
+                         sessionElapsed: elapsed, isPaused: false, sequenceIndex: 0, sequenceTotal: 1)
+    }
 
     // MARK: - Payload Serialization
 
@@ -61,7 +125,8 @@ final class TVDisplayCoordinatorTests: XCTestCase {
 
     func testBonjourServiceType() {
         // The service type must match between iOS browser and tvOS listener
-        let serviceType = "_bonhomme._tcp"
+        let serviceType = TVRelayPairing.serviceType
+        XCTAssertEqual(serviceType, "_bonhomme._tcp")
         XCTAssertTrue(serviceType.hasPrefix("_"))
         XCTAssertTrue(serviceType.hasSuffix("._tcp"))
     }
