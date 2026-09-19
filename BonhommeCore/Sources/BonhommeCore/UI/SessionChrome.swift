@@ -164,11 +164,8 @@ public enum SessionHUDCopy {
         ru: "Недоступно", de: "Nicht verfügbar", ar: "غير متاح",
         it: "Non disponibile", pt: "Indisponível"
     )
-    public static let focusIndex = LocalizedString(
-        en: "Focus Index", fr: "Indice de concentration", es: "Índice de concentración",
-        ja: "集中力指数", zh: "专注力指数", ko: "집중력 지수",
-        ru: "Индекс концентрации", de: "Fokus-Index", ar: "مؤشر التركيز"
-    )
+    /// Retain the public API name without labeling SCI as measured concentration.
+    public static let focusIndex = sci
     public static let sci = LocalizedString(
         en: "SCI", fr: "SCI", es: "SCI", ja: "SCI", zh: "SCI", ko: "SCI", ru: "SCI", de: "SCI", ar: "SCI"
     )

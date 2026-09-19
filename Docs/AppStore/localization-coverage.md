@@ -12,7 +12,7 @@ python3 scripts/localization_inventory.py --check-resources
 python3 scripts/test_localization_inventory.py
 ```
 
-The current inventory found 1,106 nonempty static English entries. Remaining static fallbacks are 390 each for Spanish, Japanese, Chinese, Korean, Russian, German and Arabic; Italian and Portuguese each have 959. Separately counted are 60 interpolated entries, 15 expression entries and 92 native SwiftUI literal candidates. Counts describe conservative source analysis, not distinct screens, translation quality or completed language support. Re-run after source changes.
+The current inventory found 1,105 nonempty static English entries. Remaining static fallbacks are 390 each for Spanish, Japanese, Chinese, Korean, Russian, German and Arabic; Italian and Portuguese each have 958. Separately counted are 60 interpolated entries, 15 expression entries and 92 native SwiftUI literal candidates. Counts describe conservative source analysis, not distinct screens, translation quality or completed language support. Re-run after source changes.
 
 Six Python resource/inventory tests pass. An isolated SwiftPM executable using actual source and bundled JSON verified all eleven language lookups, regional normalization, explicit overrides, missing keys, arrays and Codable preservation. Five added XCTest cases run in hosted CI; local Command Line Tools lack XCTest/asset compilation support.
 
