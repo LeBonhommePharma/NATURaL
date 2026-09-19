@@ -544,31 +544,23 @@ public struct SessionCountdownNumeral: View {
 
 // MARK: - Pause chrome
 
-/// Dims the pose stage without covering pause/end controls.
+/// Compact pause status leaves the frozen illustration and instructions readable.
 public struct SessionPausedOverlay: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     public init() {}
 
     public var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
-            VStack(spacing: SessionSpacing.sm) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 56, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(BrandColor.fg.opacity(0.92))
-                    .sessionGlow(BrandColor.strawberry, radius: 12, paused: reduceMotion)
-                    .accessibilityHidden(true)
-                Text(SessionHUDCopy.paused.localized)
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(BrandColor.fg)
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityLabel(Text(SessionHUDCopy.paused.localized))
+        Label(SessionHUDCopy.paused.localized, systemImage: "pause.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(BrandColor.fg)
+            .padding(.horizontal, SessionSpacing.md)
+            .padding(.vertical, SessionSpacing.sm)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(BrandColor.strawberry.opacity(0.5), lineWidth: 1))
+            .padding(SessionSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityLabel(Text(SessionHUDCopy.paused.localized))
     }
 }

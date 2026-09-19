@@ -5,13 +5,14 @@ import BonhommeCore
 /// Displays workout plan selection, active pose flow, and controls.
 /// Biofeedback gauges are rendered as ornament attachments on the window.
 struct SpatialPoseView: View {
-    @Binding var selectedPlan: WorkoutPlan?
+    @Binding var viewModel: SpatialWorkoutViewModel?
     @Binding var isImmersiveSpaceOpen: Bool
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
-    @State private var viewModel: SpatialWorkoutViewModel?
-    @State private var phase: SpatialWorkoutViewModel.Phase = .browsing
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var changingImmersion = false
+    private var phase: SpatialWorkoutViewModel.Phase { viewModel?.phase ?? .browsing }
 
     var body: some View {
         NavigationStack {
@@ -35,6 +36,13 @@ struct SpatialPoseView: View {
                     .frame(width: 200)
             }
         }
+        .onChange(of: phase) { _, value in
+            if value == .complete { closeImmersion() }
+        }
+        .onChange(of: scenePhase) { _, value in
+            if value == .background { viewModel?.pause() }
+        }
+        .onDisappear { viewModel?.pause() }
     }
 
     // MARK: - Plan Browser
@@ -99,75 +107,77 @@ struct SpatialPoseView: View {
     // MARK: - Active Workout
 
     private func activeWorkoutView(vm: SpatialWorkoutViewModel) -> some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            if let pose = vm.currentPose {
-                Image(systemName: pose.category.symbolName)
-                    .font(.system(size: 72))
-                    .foregroundStyle(Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9).opacity(0.4))
-                    .symbolRenderingMode(.hierarchical)
-                    .accessibilityHidden(true)
-
-                SessionPoseHeader(pose: pose, prominence: .large)
-
-                Text(pose.description.localized)
-                    .font(.body)
-                    .foregroundStyle(BrandColor.fgMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 48)
-
-                SessionCountdownNumeral(remaining: vm.poseTimeRemaining)
-
-                if !pose.breathingPattern.localized.isEmpty {
-                    Label(pose.breathingPattern.localized, systemImage: "wind")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(BrandColor.fgMuted)
+        ScrollView {
+            VStack(spacing: SessionSpacing.lg) {
+                if let pose = vm.currentPose {
+                    if vm.coachPhase == .transition {
+                        Text(SessionHUDCopy.nextUp.localized).font(.headline)
+                    }
+                    SessionPoseHeader(pose: pose, prominence: .large)
+                    MotionCoachView(pose: pose, phase: vm.coachPhase,
+                                    poseElapsed: vm.poseElapsed, isPaused: vm.isPaused)
+                        .frame(maxWidth: 620).frame(height: 340)
+                    SessionCountdownNumeral(remaining: vm.displayTimeRemaining)
+                    if vm.isPaused {
+                        Label(SessionHUDCopy.paused.localized, systemImage: "pause.circle.fill")
+                            .font(.headline).foregroundStyle(BrandColor.strawberry)
+                    }
+                    PoseGuideDetails(pose: pose).frame(maxWidth: 620)
                 }
             }
+            .padding(SessionSpacing.lg)
+            .frame(maxWidth: .infinity)
+        }
+        .safeAreaInset(edge: .bottom) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 24) { sessionControls(vm) }
+                VStack(spacing: 12) { sessionControls(vm) }
+            }
+            .padding().frame(maxWidth: .infinity).background(.regularMaterial)
+        }
+    }
 
-            Spacer()
-
-            // Controls
-            HStack(spacing: 32) {
-                // Immersive space toggle
-                Button {
-                    Task {
-                        if isImmersiveSpaceOpen {
-                            await dismissImmersiveSpace()
-                            isImmersiveSpaceOpen = false
-                        } else {
-                            let result = await openImmersiveSpace(id: "poseSpace")
-                            isImmersiveSpaceOpen = result == .opened
-                        }
+    @ViewBuilder
+    private func sessionControls(_ vm: SpatialWorkoutViewModel) -> some View {
+        Button {
+            changingImmersion = true
+            Task { @MainActor in
+                defer { changingImmersion = false }
+                if isImmersiveSpaceOpen {
+                    await dismissImmersiveSpace()
+                    isImmersiveSpaceOpen = false
+                } else {
+                    let result = await openImmersiveSpace(id: "poseSpace")
+                    isImmersiveSpaceOpen = result == .opened
+                    if vm.phase != .active && isImmersiveSpaceOpen {
+                        await dismissImmersiveSpace()
+                        isImmersiveSpaceOpen = false
                     }
-                } label: {
-                    Label(
-                        isImmersiveSpaceOpen
-                            ? LocalizedString(en: "Close 3D", fr: "Fermer 3D").localized
-                            : LocalizedString(en: "Open 3D", fr: "Ouvrir 3D").localized,
-                        systemImage: isImmersiveSpaceOpen ? "cube.transparent" : "cube.fill"
-                    )
-                }
-
-                Button {
-                    vm.stop()
-                    phase = .complete
-                    Task {
-                        if isImmersiveSpaceOpen {
-                            await dismissImmersiveSpace()
-                            isImmersiveSpaceOpen = false
-                        }
-                    }
-                } label: {
-                    Label(
-                        LocalizedString(en: "End", fr: "Fin").localized,
-                        systemImage: "xmark.circle"
-                    )
-                    .foregroundStyle(BrandColor.firetruck)
                 }
             }
-            .padding(.bottom, 24)
+        } label: {
+            Label(isImmersiveSpaceOpen
+                  ? LocalizedString(en: "Close 3D", fr: "Fermer 3D").localized
+                  : LocalizedString(en: "Open 3D", fr: "Ouvrir 3D").localized,
+                  systemImage: isImmersiveSpaceOpen ? "cube.transparent" : "cube.fill")
+        }
+        .disabled(changingImmersion)
+        Button {
+            if vm.isPaused { vm.resume() } else { vm.pause() }
+        } label: {
+            Label(vm.isPaused ? SessionHUDCopy.resume.localized : SessionHUDCopy.pause.localized,
+                  systemImage: vm.isPaused ? "play.fill" : "pause.fill")
+        }
+        Button(role: .destructive) { vm.stop() } label: {
+            Label(LocalizedString(en: "End", fr: "Fin").localized, systemImage: "xmark.circle")
+        }
+    }
+
+    private func closeImmersion() {
+        guard isImmersiveSpaceOpen else { return }
+        Task { @MainActor in
+            await dismissImmersiveSpace()
+            isImmersiveSpaceOpen = false
         }
     }
 
@@ -182,28 +192,27 @@ struct SpatialPoseView: View {
                 .foregroundStyle(BrandColor.mint)
                 .symbolRenderingMode(.hierarchical)
 
-            Text(LocalizedString(en: "Session Complete!", fr: "Séance terminée!").localized)
+            Text((viewModel?.session.endedEarly == true
+                  ? LocalizedString(en: "Session ended", fr: "Séance arrêtée")
+                  : LocalizedString(en: "Session complete", fr: "Séance terminée")).localized)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
 
             if let vm = viewModel {
-                let minutes = Int(vm.elapsedTime) / 60
-                let poseBit = vm.hudMetrics.poseProgressText
-                Text(LocalizedString(
-                    en: poseBit == "—"
-                        ? "\(minutes) minutes"
-                        : "\(poseBit) poses in \(minutes) minutes",
-                    fr: poseBit == "—"
-                        ? "\(minutes) minutes"
-                        : "\(poseBit) postures en \(minutes) minutes"
-                ).localized)
-                .font(.system(size: 18))
-                .foregroundStyle(.secondary)
+                if vm.plan.poseCount > 0 {
+                    Text(LocalizedString(
+                        en: "\(vm.session.posesCompletedCount) / \(vm.plan.poseCount) poses completed · \(vm.hudMetrics.elapsedText)",
+                        fr: "\(vm.session.posesCompletedCount) / \(vm.plan.poseCount) postures terminées · \(vm.hudMetrics.elapsedText)"
+                    ).localized)
+                    .font(.system(size: 18))
+                    .foregroundStyle(.secondary)
+                } else {
+                    Text(vm.hudMetrics.elapsedText).foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
 
             Button {
-                phase = .browsing
                 viewModel = nil
             } label: {
                 Text(LocalizedString(en: "Done", fr: "Terminé").localized)
@@ -220,105 +229,49 @@ struct SpatialPoseView: View {
     // MARK: - Actions
 
     private func startWorkout(plan: WorkoutPlan) {
-        selectedPlan = plan
         let vm = SpatialWorkoutViewModel(plan: plan)
         viewModel = vm
-        phase = .active
         vm.start()
     }
 }
 
 // MARK: - Spatial Workout ViewModel
 
-/// Simplified workout state machine for visionOS (no HealthKit recording).
+/// Both Vision scenes read the same tested monotonic session controller.
+/// This platform has no health-data input; missing telemetry stays unavailable.
 @Observable
 @MainActor
 final class SpatialWorkoutViewModel {
     enum Phase { case browsing, active, complete }
+    let session: GuidedSessionController
 
-    let plan: WorkoutPlan
-    let feedbackEngine = FeedbackEngine()
-    private let hrvAnalyzer = HRVAnalyzer()
-
-    private(set) var currentPoseIndex: Int = 0
-    private(set) var poseTimeRemaining: TimeInterval = 0
-    private(set) var elapsedTime: TimeInterval = 0
-    private(set) var isActive = false
-
-    var currentPose: Pose? {
-        plan.poses[safe: currentPoseIndex]
-    }
-
-    var hudMetrics: SessionHUDMetrics {
-        let insight = feedbackEngine.latestInsight(for: .heartRateVariability)
-        return SessionHUDMetrics(
-            sciScore: insight?.score,
-            sciTrend: insight?.trend.asSCITrend ?? .stable,
-            elapsed: elapsedTime,
-            poseIndex: currentPoseIndex,
-            poseCount: plan.poseCount
-        )
-    }
-
-    private var timerTask: Task<Void, Never>?
-    private var sessionStartDate: Date?
-
-    init(plan: WorkoutPlan) {
-        self.plan = plan
-        feedbackEngine.register(hrvAnalyzer)
-    }
-
-    func start() {
-        sessionStartDate = Date()
-        isActive = true
-        beginPose(at: 0)
-    }
-
-    func stop() {
-        timerTask?.cancel()
-        isActive = false
-    }
-
-    private func beginPose(at index: Int) {
-        guard index < plan.poses.count else {
-            isActive = false
-            return
-        }
-
-        currentPoseIndex = index
-        poseTimeRemaining = plan.poses[index].durationSeconds
-        startPoseTimer(for: index)
-    }
-
-    private func startPoseTimer(for index: Int) {
-        timerTask?.cancel()
-        timerTask = Task {
-            while poseTimeRemaining > 0 {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled else { return }
-                poseTimeRemaining = max(0, poseTimeRemaining - 1)
-                if let start = sessionStartDate {
-                    elapsedTime = Date().timeIntervalSince(start)
-                }
-            }
-
-            let nextIndex = index + 1
-            if nextIndex < plan.poses.count {
-                // Brief transition pause
-                try? await Task.sleep(for: .seconds(Int(plan.transitionSeconds)))
-                guard !Task.isCancelled else { return }
-                beginPose(at: nextIndex)
-            } else {
-                isActive = false
-            }
+    init(plan: WorkoutPlan) { session = GuidedSessionController(plan: plan) }
+    var plan: WorkoutPlan { session.plan }
+    var phase: Phase {
+        switch session.phase {
+        case .ready: return .browsing
+        case .active, .transition: return .active
+        case .complete: return .complete
         }
     }
-}
-
-// MARK: - Safe Array Access
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
+    var currentPose: Pose? { session.upcomingPose ?? session.currentPose }
+    var coachPhase: MotionCoachPhase {
+        if case .transition = session.phase { return .transition }
+        return .active
     }
+    var poseElapsed: TimeInterval {
+        guard coachPhase == .active, let pose = session.currentPose else { return 0 }
+        return max(0, pose.durationSeconds - session.poseTimeRemaining)
+    }
+    var displayTimeRemaining: TimeInterval {
+        if case .transition(_, let seconds) = session.phase { return TimeInterval(seconds) }
+        return session.poseTimeRemaining
+    }
+    var elapsedTime: TimeInterval { session.elapsedTime }
+    var isPaused: Bool { session.isPaused }
+    var hudMetrics: SessionHUDMetrics { session.hudMetrics }
+    func start() { session.start() }
+    func stop() { session.stop() }
+    func pause() { session.pause() }
+    func resume() { session.resume() }
 }

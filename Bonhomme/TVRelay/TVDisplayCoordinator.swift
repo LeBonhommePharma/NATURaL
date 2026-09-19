@@ -1,257 +1,164 @@
 import Foundation
 import Network
 import AVFoundation
-import AVRouting
 import Combine
-import SwiftUI
 import BonhommeCore
 
-/// Orchestrates TV display delivery: prefers native tvOS companion via NWConnection,
-/// falls back to AirPlay 2 second-screen via UIScene when unavailable.
-///
-/// State machine:
-///   .idle → .searching → .nativeTV | .airplayAvailable → .airplaySecondScreen
-///
-/// Use `TVDisplayCoordinator.shared` so AirPlay external display (UIScene) and
-/// the in-app workout path observe the same payload stream.
+/// Consent-led native TLS relay plus the system AirPlay/HDMI external scene.
+/// Discovery lists televisions; only an explicit pair call authorizes transmission.
 @MainActor
 final class TVDisplayCoordinator: ObservableObject {
-
-    /// Process-wide singleton — AppState + ExternalDisplaySceneDelegate must share this.
     static let shared = TVDisplayCoordinator()
-
-    // MARK: - Display Mode
-
-    enum DisplayMode: Equatable {
-        case idle
-        case searching
-        case nativeTV
-        case airplayAvailable
-        case airplaySecondScreen
+    enum DisplayMode: Equatable { case idle, searching, nativeTV, airplayAvailable, airplaySecondScreen }
+    struct DiscoveredTV: Identifiable {
+        let id: UUID
+        let name: String
+        fileprivate let endpoint: NWEndpoint
     }
-
-    // MARK: - Published State
-
-    @Published var mode: DisplayMode = .idle
-    @Published var currentPayload: TVDisplayPayload?
-    @Published var externalDisplayConnected = false
-
-    // MARK: - Private
-
-    private var browser: NWBrowser?
-    private var nativeConnection: NWConnection?
-    /// Endpoint of the last successful/attempted native TV — used for reconnect.
-    private var lastNativeEndpoint: NWEndpoint?
+    enum PairingError: LocalizedError {
+        case televisionNotFound
+        var errorDescription: String? { TVRelayCopy.notFound.localized }
+    }
+    @Published var displayEnabled = false
+    @Published private(set) var mode: DisplayMode = .idle
+    @Published private(set) var currentPayload: TVDisplayPayload?
+    @Published private(set) var discoveredTVs: [DiscoveredTV] = []
+    @Published private(set) var nativeConnected = false
+    @Published private(set) var nativeConnecting = false
+    @Published private(set) var discoveryUnavailable = false
+    @Published var externalDisplayConnected = false { didSet { refreshMode() } }
+    private let native = NativeCompanionClient()
     private let routeDetector = AVRouteDetector()
-    private var searchTimeoutTask: Task<Void, Never>?
-    private var reconnectTask: Task<Void, Never>?
-    private var cancellables = Set<AnyCancellable>()
-    private let encoder = JSONEncoder()
-    /// Serializes connect/reconnect so browse bursts don't open multiple sockets.
-    private var isConnecting = false
-    /// Generation token: cancel in-flight state handlers after stop / replace.
-    private var connectionGeneration = 0
+    private var routeObservation: NSObjectProtocol?
+    private var browser: NWBrowser?
+    private var generation = 0
+    private var heartbeat: Task<Void, Never>?
+    private var sessionID = UUID()
+    private var sequence: UInt64 = 0
+    private var lastPayloadAt: TimeInterval?
+    private var isDiscovering = false
 
     init() {
-        // Observe external display connection from ExternalDisplaySceneDelegate
-        $externalDisplayConnected
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] connected in
-                guard let self else { return }
-                if connected {
-                    self.mode = .airplaySecondScreen
-                } else if self.mode == .airplaySecondScreen {
-                    // Prefer native if still up; otherwise idle/search.
-                    self.mode = (self.nativeConnection != nil) ? .nativeTV : .idle
-                }
-            }
-            .store(in: &cancellables)
+        native.stateChanged = { [weak self] in
+            guard let self else { return }
+            self.nativeConnected = self.native.isConnected
+            self.nativeConnecting = self.native.isConnecting
+            self.refreshMode()
+        }
+        native.becameReady = { [weak self] in self?.sendHeartbeat() }
     }
 
-    // MARK: - Discovery
-
-    /// Call when a workout session begins to start looking for TV displays.
     func beginTVDiscovery() {
-        // Idempotent restart: tear down prior browser/connection first.
-        stopNetworking(clearPayload: false)
-        mode = .searching
-        startBrowsingForNativeTV()
+        guard !isDiscovering else { return }
+        isDiscovering = true; discoveryUnavailable = false
+        generation += 1
+        let token = generation
         routeDetector.isRouteDetectionEnabled = true
-
-        // 3-second timeout: if no tvOS app, check AirPlay
-        searchTimeoutTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
-            guard let self, !Task.isCancelled, self.mode == .searching else { return }
-
-            if self.routeDetector.multipleRoutesDetected {
-                self.mode = .airplayAvailable
-            } else {
-                self.mode = .idle
+        routeObservation = NotificationCenter.default.addObserver(
+            forName: Notification.Name.AVRouteDetectorMultipleRoutesDetectedDidChange,
+            object: routeDetector, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.refreshMode() }
             }
-        }
-    }
-
-    /// Call when the workout ends or the user navigates away.
-    func stopTVDiscovery() {
-        stopNetworking(clearPayload: true)
-        mode = .idle
-    }
-
-    // MARK: - Data Relay
-
-    /// Routes the payload to whichever TV display is active.
-    func send(payload: TVDisplayPayload) {
-        currentPayload = payload
-
-        switch mode {
-        case .nativeTV:
-            sendOverNWConnection(payload)
-        case .airplaySecondScreen:
-            // No network send needed — ExternalDisplaySceneDelegate observes
-            // currentPayload via this coordinator directly.
-            break
-        default:
-            break
-        }
-    }
-
-    // MARK: - Native tvOS Discovery (NWBrowser + Bonjour)
-
-    private func startBrowsingForNativeTV() {
-        let params = NWParameters.tcp
-        // Local-only companion; disable proxying.
-        params.includePeerToPeer = true
-        let browser = NWBrowser(for: .bonjour(type: "_bonhomme._tcp", domain: nil), using: params)
-
+        let parameters = NWParameters.tcp
+        parameters.includePeerToPeer = true
+        let browser = NWBrowser(for: .bonjour(type: TVRelayPairing.serviceType, domain: nil), using: parameters)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             Task { @MainActor in
-                guard let self else { return }
-                // Already native-connected or connecting — ignore churn.
-                guard self.mode != .nativeTV, !self.isConnecting else { return }
-                guard let result = results.first else { return }
-                self.searchTimeoutTask?.cancel()
-                self.connectToNativeTV(endpoint: result.endpoint)
+                guard let self, self.generation == token else { return }
+                self.discoveredTVs = results.compactMap { result in
+                    guard case .service(let name, _, _, _) = result.endpoint,
+                          let id = TVRelayPairing.identifier(serviceName: name) else { return nil }
+                    return DiscoveredTV(id: id, name: "NATURaL TV · " + id.uuidString.prefix(8), endpoint: result.endpoint)
+                }.sorted { $0.name < $1.name }
+                self.refreshMode()
             }
         }
-
-        browser.start(queue: .main)
-        self.browser = browser
-    }
-
-    private func connectToNativeTV(endpoint: NWEndpoint) {
-        isConnecting = true
-        lastNativeEndpoint = endpoint
-        connectionGeneration += 1
-        let generation = connectionGeneration
-
-        // Drop previous socket before opening a new one (avoids duplicate sends).
-        nativeConnection?.cancel()
-        nativeConnection = nil
-
-        let connection = NWConnection(to: endpoint, using: .tcp)
-
-        connection.stateUpdateHandler = { [weak self] state in
+        browser.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
-                guard let self, generation == self.connectionGeneration else { return }
+                guard let self, self.generation == token else { return }
                 switch state {
-                case .ready:
-                    self.isConnecting = false
-                    self.nativeConnection = connection
-                    self.mode = .nativeTV
-                    self.reconnectTask?.cancel()
-                    self.reconnectTask = nil
-                    // Resend last payload so TV catches up after reconnect.
-                    if let payload = self.currentPayload {
-                        self.sendOverNWConnection(payload)
-                    }
-                case .failed, .cancelled:
-                    self.handleNativeDisconnect(wasFailure: true)
-                case .waiting:
-                    // Transient (e.g. path down) — schedule reconnect without clearing mode yet.
-                    break
-                default:
-                    break
+                case .failed, .waiting: self.discoveryUnavailable = true
+                case .ready: self.discoveryUnavailable = false
+                default: break
                 }
             }
         }
-
-        connection.start(queue: .main)
-        // Intentionally do NOT assign nativeConnection until .ready
-        // so send() never writes to a half-open socket.
-    }
-
-    /// Connection dropped while we still want TV relay — fall back or reconnect.
-    private func handleNativeDisconnect(wasFailure: Bool) {
-        isConnecting = false
-        nativeConnection = nil
-
-        guard mode != .idle else { return }
-
-        if externalDisplayConnected {
-            mode = .airplaySecondScreen
-            return
-        }
-
-        if routeDetector.multipleRoutesDetected {
-            mode = .airplayAvailable
-        } else {
-            mode = .searching
-        }
-
-        if wasFailure, let endpoint = lastNativeEndpoint {
-            scheduleReconnect(to: endpoint)
-        }
-    }
-
-    /// Exponential backoff reconnect: 2s, 4s, 8s (mirrors NativeCompanionClient).
-    private func scheduleReconnect(to endpoint: NWEndpoint) {
-        reconnectTask?.cancel()
-        reconnectTask = Task { [weak self] in
-            for delay in [2, 4, 8] {
-                try? await Task.sleep(for: .seconds(delay))
-                guard let self, !Task.isCancelled else { return }
-                // Stop if user ended session or already reconnected.
-                guard self.mode != .idle, self.nativeConnection == nil else { return }
-                self.connectToNativeTV(endpoint: endpoint)
-                try? await Task.sleep(for: .seconds(2))
-                if self.mode == .nativeTV { return }
+        self.browser = browser
+        browser.start(queue: .main)
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                guard !Task.isCancelled else { return }
+                self?.sendHeartbeat()
             }
         }
+        refreshMode()
     }
 
-    private func stopNetworking(clearPayload: Bool) {
-        searchTimeoutTask?.cancel()
-        searchTimeoutTask = nil
-        reconnectTask?.cancel()
-        reconnectTask = nil
-        connectionGeneration += 1
-        isConnecting = false
-        browser?.cancel()
-        browser = nil
-        nativeConnection?.cancel()
-        nativeConnection = nil
-        lastNativeEndpoint = nil
+    /// Call only after the user selects this television and confirms sharing.
+    func pair(with televisionID: UUID, key: String) throws {
+        let pairing = try TVRelayPairing(id: televisionID, code: key)
+        guard let television = discoveredTVs.first(where: { $0.id == televisionID }) else {
+            throw PairingError.televisionNotFound
+        }
+        native.connect(to: television.endpoint, pairing: pairing)
+    }
+
+    /// Parsing a URL does not connect; the caller presents consent before this call.
+    func pair(invitationURL: URL) throws {
+        let invitation = try TVRelayPairing(url: invitationURL)
+        try pair(with: invitation.id, key: invitation.code)
+    }
+
+    func disconnectNativeTV() {
+        native.finish(with: message(.end))
+    }
+
+    func stopTVDiscovery() {
+        displayEnabled = false
+        native.finish(with: message(.end))
+        generation += 1; isDiscovering = false
+        browser?.cancel(); browser = nil; discoveredTVs = []
+        heartbeat?.cancel(); heartbeat = nil
+        if let routeObservation { NotificationCenter.default.removeObserver(routeObservation) }
+        routeObservation = nil
         routeDetector.isRouteDetectionEnabled = false
-        if clearPayload {
-            currentPayload = nil
-        }
+        currentPayload = nil; lastPayloadAt = nil
+        sessionID = UUID(); sequence = 0
+        refreshMode()
     }
 
-    // MARK: - Length-Prefixed NWConnection Sending
+    /// Publish only while the user has opted into TV display. Health data remains
+    /// local unless an authenticated native television has explicitly been paired.
+    func send(payload: TVDisplayPayload) {
+        guard displayEnabled else { clearPayload(); return }
+        currentPayload = payload; lastPayloadAt = TVRelayClock.now
+        native.send(message(.state, payload: payload))
+    }
 
-    private func sendOverNWConnection(_ payload: TVDisplayPayload) {
-        guard let connection = nativeConnection else { return }
-        guard let data = try? encoder.encode(payload) else { return }
-        // Bound frame size — oversized encode is dropped rather than fragmenting badly.
-        guard let frame = TVRelayFraming.encodeLengthPrefixed(data) else { return }
+    /// Remove the pose during transitions, completion, or other non-display phases.
+    func clearPayload() {
+        currentPayload = nil; lastPayloadAt = nil
+        native.send(message(.clear))
+    }
 
-        connection.send(content: frame, completion: .contentProcessed { [weak self] error in
-            if error != nil {
-                Task { @MainActor in
-                    // stateUpdateHandler may also fire; force a reconnect attempt.
-                    self?.handleNativeDisconnect(wasFailure: true)
-                }
-            }
-        })
+    private func sendHeartbeat() {
+        if let lastPayloadAt, TVRelayClock.now - lastPayloadAt > 3 {
+            currentPayload = nil; self.lastPayloadAt = nil
+        }
+        if let currentPayload { native.send(message(.state, payload: currentPayload)) }
+        else { native.send(message(.clear)) }
+    }
+
+    private func message(_ kind: TVRelayMessage.Kind, payload: TVDisplayPayload? = nil) -> TVRelayMessage {
+        sequence += 1
+        return TVRelayMessage(sessionID: sessionID, sequence: sequence, kind: kind, payload: payload)
+    }
+
+    private func refreshMode() {
+        if externalDisplayConnected { mode = .airplaySecondScreen }
+        else if native.isConnected { mode = .nativeTV }
+        else if routeDetector.multipleRoutesDetected { mode = .airplayAvailable }
+        else { mode = isDiscovering ? .searching : .idle }
     }
 }

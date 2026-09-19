@@ -1,82 +1,38 @@
 import SwiftUI
 
-/// The shared TV display view with ambient depth gradient and refined panel separator.
+/// Shared native-TV and AirPlay/HDMI canvas. Pause preserves the visible guide.
 public struct TVDisplayView: View {
     public let payload: TVDisplayPayload
-
-    public init(payload: TVDisplayPayload) {
-        self.payload = payload
-    }
+    public init(payload: TVDisplayPayload) { self.payload = payload }
 
     public var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                // Ambient depth background
-                RadialGradient(
-                    colors: [
-                        BrandColor.bgPanel,
-                        BrandColor.bg
-                    ],
-                    center: .center,
-                    startRadius: 100,
-                    endRadius: max(geo.size.width, geo.size.height) * 0.7
-                )
-                .ignoresSafeArea()
-
-                HStack(spacing: 0) {
-                    // Left 60%: pose visual + countdown
-                    PoseCountdownView(
-                        pose: payload.currentPose,
-                        remaining: payload.poseTimeRemaining,
-                        total: payload.totalPoseTime
-                    )
-                    .frame(width: geo.size.width * 0.6)
-                    .frame(maxHeight: .infinity)
-
-                    // Subtle vertical separator
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.clear, BrandColor.hairlineStrong, .clear],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                        .frame(width: 1)
-
-                    // Right 40%: biofeedback inspector (shared HUD language)
-                    SessionHUDPanel(metrics: payload.hudMetrics, showsGauges: true, spaciousChips: true)
-                        .frame(width: geo.size.width * 0.4 - 1)
-                        .frame(maxHeight: .infinity)
-                        .focusable(true)
-                }
-
-                // Pause overlay
-                if payload.isPaused {
-                    pauseOverlay
+        GeometryReader { geometry in
+            ScrollView {
+                if geometry.size.width >= 900 {
+                    HStack(alignment: .top, spacing: 24) {
+                        poseGuide.frame(maxWidth: .infinity)
+                        inspector.frame(width: min(420, geometry.size.width * 0.32))
+                    }
+                } else {
+                    VStack(spacing: 24) { poseGuide; inspector }
                 }
             }
+            .padding(.horizontal, geometry.size.width >= 900 ? 48 : 16)
+            .padding(.vertical, 32)
+            .background(BrandColor.bg.ignoresSafeArea())
         }
         .preferredColorScheme(.dark)
     }
 
-    private var pauseOverlay: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
+    private var poseGuide: some View {
+        PoseCountdownView(pose: payload.currentPose, remaining: payload.poseTimeRemaining,
+                          total: payload.totalPoseTime, isPaused: payload.isPaused,
+                          isTransition: payload.isTransition ?? false)
+    }
 
-            VStack(spacing: 16) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(BrandColor.strawberry)
-                    .sessionGlow(BrandColor.strawberry, radius: 10)
-                    .transition(.scale.combined(with: .opacity))
-
-                Text(SessionHUDCopy.paused.localized)
-                    .font(.largeTitle.weight(.semibold))
-                    .foregroundStyle(BrandColor.fg)
-            }
-        }
+    private var inspector: some View {
+        SessionHUDPanel(metrics: payload.hudMetrics, showsGauges: true, spaciousChips: true)
+            .background(BrandColor.bgPanel, in: RoundedRectangle(cornerRadius: 26))
     }
 }
 

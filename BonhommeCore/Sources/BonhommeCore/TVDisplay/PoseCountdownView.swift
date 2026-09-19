@@ -1,136 +1,64 @@
 import SwiftUI
 
+/// A readable large-screen guide driven by the phone's authoritative hold state.
 public struct PoseCountdownView: View {
     public let pose: Pose
     public let remaining: TimeInterval
     public let total: TimeInterval
+    public var isPaused: Bool
+    public var isTransition: Bool
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    public init(pose: Pose, remaining: TimeInterval, total: TimeInterval) {
-        self.pose = pose
-        self.remaining = remaining
-        self.total = total
+    public init(pose: Pose, remaining: TimeInterval, total: TimeInterval,
+                isPaused: Bool = false, isTransition: Bool = false) {
+        self.pose = pose; self.remaining = remaining; self.total = total
+        self.isPaused = isPaused; self.isTransition = isTransition
     }
 
     public var body: some View {
-        TimelineView(.animation(
-            minimumInterval: SessionMotion.timelineInterval(reduceMotion),
-            paused: !known || SessionMotion.timelinePaused(reduceMotion)
-        )) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            let pulse = reduceMotion || !known ? 0.5 : (sin(t * .pi * 2.0 / 4.0) + 1.0) * 0.5
-            let kinematics = pose.kinematics
-            let catColor = Color(hue: pose.category.accentHue, saturation: 0.7, brightness: 0.9)
-            let fraction = remainingFraction
-
-            VStack(spacing: 24) {
-                Spacer()
-
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [catColor.opacity(0.12 + pulse * 0.06), .clear],
-                                center: .center, startRadius: 10, endRadius: 80
-                            )
-                        )
-                        .frame(width: 160, height: 160)
-
-                    MotionCoachView(pose: pose, phase: .active, cornerRadius: 20)
-                        .frame(width: 120, height: 120)
-                        .scaleEffect(0.97 + pulse * 0.04)
-                        .shadow(color: catColor.opacity(0.4), radius: 8)
-                        .shadow(color: catColor.opacity(0.15), radius: 20)
-                }
-
-                if !kinematics.setupSteps.isEmpty {
-                    Text(kinematics.setupSteps.first?.localized ?? "")
-                        .font(.system(size: 18, weight: .medium, design: .rounded))
-                        .foregroundStyle(BrandColor.fgMuted)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-
-                Text(pose.name.localized)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(BrandColor.fg)
-                    .shadow(color: catColor.opacity(0.3), radius: 8)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                // Volumetric countdown ring
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [catColor.opacity(0.05), .clear],
-                                center: .center, startRadius: 50, endRadius: 90
-                            )
-                        )
-                        .frame(width: 180, height: 180)
-
-                    if let fraction, fraction > 0 {
-                        Circle()
-                            .trim(from: 0, to: fraction)
-                            .stroke(catColor.opacity(0.3), style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .blur(radius: 6)
-                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
-                    }
-
-                    Circle()
-                        .stroke(
-                            BrandColor.hairline,
-                            style: StrokeStyle(lineWidth: 8, dash: known ? [] : [4, 3])
-                        )
-
-                    if let fraction, fraction > 0 {
-                        Circle()
-                            .trim(from: 0, to: fraction)
-                            .stroke(catColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .shadow(color: catColor.opacity(0.6), radius: 10)
-                            .shadow(color: catColor.opacity(0.3), radius: 3)
-                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
-
-                        Circle()
-                            .trim(from: 0, to: fraction)
-                            .stroke(BrandColor.magnesium.opacity(0.35), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .animation(SessionMotion.spring(reduceMotion: reduceMotion), value: remaining)
-                    }
-
-                    Text(timeString)
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(known ? BrandColor.fg : BrandColor.magnesium)
-                        .shadow(color: catColor.opacity(known ? 0.3 : 0), radius: 6)
-                        .contentTransition(reduceMotion || !known ? .identity : .numericText())
-                }
-                .frame(width: 140, height: 140)
-
-                Spacer()
+        VStack(spacing: 20) {
+            if isTransition {
+                Text(SessionHUDCopy.nextUp.localized)
+                    .font(.title2).foregroundStyle(BrandColor.mint)
             }
+            Text(pose.name.localized)
+                .font(.largeTitle.weight(.semibold))
+                .foregroundStyle(BrandColor.fg)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 16) {
+                if isPaused {
+                    Label(SessionHUDCopy.paused.localized, systemImage: "pause.circle.fill")
+                        .foregroundStyle(BrandColor.strawberry)
+                }
+                Text(timeString)
+                    .font(.largeTitle.monospacedDigit().weight(.bold))
+                    .foregroundStyle(BrandColor.fg)
+                    .accessibilityLabel(LocalizedString(en: "Time remaining", fr: "Temps restant").localized)
+                    .accessibilityValue(timeString)
+            }
+            MotionCoachView(pose: pose, phase: isTransition ? .transition : .active,
+                            cornerRadius: 26, poseElapsed: poseElapsed,
+                            isPaused: isPaused || !known)
+                .frame(minHeight: 280, idealHeight: 420, maxHeight: 500)
+                .id(pose.id)
+            if let fraction {
+                ProgressView(value: fraction)
+                    .tint(BrandColor.mint)
+                    .accessibilityLabel(LocalizedString(en: "Hold remaining", fr: "Maintien restant").localized)
+            }
+            PoseGuideDetails(pose: pose)
+                .font(.title3)
+                .foregroundStyle(BrandColor.fg)
         }
+        .frame(maxWidth: .infinity)
+        .padding(24)
     }
 
-    private var known: Bool {
-        total.isFinite && total > 0 && remaining.isFinite
-    }
-
-    private var remainingFraction: CGFloat? {
-        guard known else { return nil }
-        return CGFloat(min(1, max(0, remaining / total)))
-    }
-
+    private var known: Bool { total.isFinite && total > 0 && remaining.isFinite && remaining >= 0 }
+    private var fraction: Double? { known ? min(1, max(0, remaining / total)) : nil }
+    private var poseElapsed: TimeInterval { known && !isTransition ? max(0, total - remaining) : 0 }
     private var timeString: String {
-        guard known else { return "—" }
-        let seconds = Int(remaining)
-        if seconds >= 60 {
-            return String(format: "%d:%02d", seconds / 60, seconds % 60)
-        }
-        return "\(seconds)"
+        guard known, let seconds = Int(exactly: remaining.rounded(.down)) else { return "—" }
+        return "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 }

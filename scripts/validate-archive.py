@@ -26,9 +26,10 @@ def validate_structure(archive, platform, build_number=None):
     require(len(apps) == 1, 'Archive must contain exactly one top-level application')
     app = apps[0]
     is_mac = platform == 'macos'
+    require(platform in ('ios', 'macos', 'tvos'), 'Unknown archive platform')
     info_path = lambda bundle: bundle / ('Contents/Info.plist' if is_mac else 'Info.plist')
     root_info = read_plist(info_path(app))
-    expected_id = 'com.natural.Bonhomme.mac' if is_mac else 'com.natural.Bonhomme'
+    expected_id = {'ios': 'com.natural.Bonhomme', 'macos': 'com.natural.Bonhomme.mac', 'tvos': 'com.natural.BonhommeTV'}[platform]
     require(root_info.get('CFBundleIdentifier') == expected_id, 'Unexpected application bundle identifier')
     archive_info = read_plist(archive / 'Info.plist')
     properties = archive_info.get('ApplicationProperties', {})
@@ -41,8 +42,14 @@ def validate_structure(archive, platform, build_number=None):
     if build_number is not None:
         require(build == str(build_number), 'Archive has the wrong build number')
     require(properties.get('CFBundleVersion') == build, 'Archive build number differs from app')
-    bundles = [(app, expected_id, 'MacOSX' if is_mac else 'iPhoneOS')]
-    if not is_mac:
+    supported_platform = {'ios': 'iPhoneOS', 'macos': 'MacOSX', 'tvos': 'AppleTVOS'}[platform]
+    bundles = [(app, expected_id, supported_platform)]
+    if platform == 'tvos':
+        require(set(root_info.get('UIDeviceFamily', [])) == {3}, 'tvOS archive must target Apple TV')
+        require('_bonhomme._tcp' in root_info.get('NSBonjourServices', []), 'tvOS Bonjour service declaration missing')
+        require(bool(root_info.get('NSLocalNetworkUsageDescription', '').strip()), 'tvOS local network purpose string missing')
+        require((app / 'Assets.car').is_file(), 'tvOS compiled icon/top-shelf asset catalog missing')
+    if platform == 'ios':
         validate_acknowledgements(app / 'Acknowledgements.txt')
         require(set(root_info.get('UIDeviceFamily', [])) == {1, 2}, 'iOS app must support both iPhone and iPad')
         watch_apps = list((app / 'Watch').glob('*.app'))
@@ -85,7 +92,7 @@ def validate_signatures(bundles, platform):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('archive', type=Path)
-    parser.add_argument('--platform', choices=['ios', 'macos'], default='ios')
+    parser.add_argument('--platform', choices=['ios', 'macos', 'tvos'], default='ios')
     parser.add_argument('--build-number')
     args = parser.parse_args()
     try:

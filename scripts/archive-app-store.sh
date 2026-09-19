@@ -8,7 +8,8 @@ platform="${PLATFORM:-ios}"
 case "$platform" in
   ios) scheme=Bonhomme; destination='generic/platform=iOS'; preflight=() ;;
   macos) scheme=BonhommeMac; destination='generic/platform=macOS'; preflight=(--include-macos) ;;
-  *) echo 'PLATFORM must be ios or macos' >&2; exit 1 ;;
+  tvos) scheme=BonhommeTV; destination='generic/platform=tvOS'; preflight=() ;;
+  *) echo 'PLATFORM must be ios, macos, or tvos' >&2; exit 1 ;;
 esac
 if ! xcode_version="$(xcodebuild -version 2>&1)" || [[ "$xcode_version" != Xcode* ]]; then
   echo 'Full Xcode is required to archive. Install Xcode and select it in Xcode > Settings > Locations > Command Line Tools (or set DEVELOPER_DIR).' >&2
@@ -17,7 +18,10 @@ if ! xcode_version="$(xcodebuild -version 2>&1)" || [[ "$xcode_version" != Xcode
 fi
 python3 scripts/validate-submission.py "${preflight[@]}"
 archive_name="NATURaL-$build_number"
-[[ "$platform" == ios ]] || archive_name="NATURaL-macOS-$build_number"
+case "$platform" in
+  macos) archive_name="NATURaL-macOS-$build_number" ;;
+  tvos) archive_name="NATURaL-tvOS-$build_number" ;;
+esac
 archive_path="$PWD/build/AppStore/$archive_name.xcarchive"
 [[ ! -e "$archive_path" ]] || { echo "Archive already exists: $archive_path" >&2; exit 1; }
 mkdir -p "$PWD/build/AppStore"

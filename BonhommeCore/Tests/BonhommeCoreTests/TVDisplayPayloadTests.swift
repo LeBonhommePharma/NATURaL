@@ -3,6 +3,22 @@ import XCTest
 
 final class TVDisplayPayloadTests: XCTestCase {
 
+    func testTransitionPreviewRoundTripAndOlderPayloadCompatibility() throws {
+        let preview = TVDisplayPayload(currentPose: PoseCatalog.seatedMountain,
+            poseTimeRemaining: 3, totalPoseTime: 5, biofeedback: BiofeedbackSnapshot(),
+            sessionElapsed: 60, isPaused: true, sequenceIndex: 1, sequenceTotal: 3,
+            isTransition: true)
+        let data = try JSONEncoder().encode(preview)
+        let decoded = try JSONDecoder().decode(TVDisplayPayload.self, from: data)
+        XCTAssertEqual(decoded.isTransition, true)
+        XCTAssertTrue(decoded.isPaused)
+        XCTAssertEqual(decoded.poseTimeRemaining, 3)
+        var old = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        old.removeValue(forKey: "isTransition")
+        let oldData = try JSONSerialization.data(withJSONObject: old)
+        XCTAssertNil(try JSONDecoder().decode(TVDisplayPayload.self, from: oldData).isTransition)
+    }
+
     func testPayloadCodableRoundTrip() throws {
         let pose = PoseCatalog.seatedMountain
         let snapshot = BiofeedbackSnapshot(

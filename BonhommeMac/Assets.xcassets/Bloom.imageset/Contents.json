@@ -3,6 +3,16 @@
     {
       "filename": "Bloom.png",
       "idiom": "universal"
+    },
+    {
+      "filename": "Bloom-dark.png",
+      "idiom": "universal",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
     }
   ],
   "info": {

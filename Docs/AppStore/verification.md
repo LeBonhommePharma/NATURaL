@@ -1,5 +1,18 @@
 # Current release verification — 19 September 2026
 
+## TV relay and tvOS preparation — current working tree
+
+The native tvOS companion is now explicitly in the requested submission scope, alongside iOS/iPadOS/watchOS and macOS. AirPlay/HDMI remains a separate system-managed output path. The evidence below predates the next full CI run and does not establish a shipping television binary.
+
+- Replaced automatic first-result Bonjour connection and plaintext TCP transport with explicit television selection and an ephemeral random 256-bit pairing credential. The TV generates a QR invitation/manual key only after its Pair action; it expires after five minutes and is never persisted or included in Bonjour advertisement data. The phone integration requires the user's sharing toggle and confirmation before pairing.
+- Security uses the OS Network/Security TLS-PSK APIs and AES-GCM cipher suite following [Apple's peer-to-peer sample](https://developer.apple.com/documentation/network/building-a-custom-peer-to-peer-protocol). Actual macOS loopback sockets transmitted a test byte with matching keys and rejected a different random key. No application health data was used in that check.
+- `TVRelayPairing` typechecked against the installed Network/Security SDK. Actual client, coordinator and listener sources typechecked on macOS with the actual relay helper module and a small display-payload stub. This does **not** typecheck the final iOS/tvOS SwiftUI application or exercise Bonjour on physical devices.
+- Twenty-four standalone assertions passed against actual pairing, session/sequence/freshness, bounded-buffer and framing helpers using a stub display payload. Seven XCTest cases were added for full-package CI. One pending replacement plus one in-flight frame bounds stream memory; generation tokens isolate old send/receive callbacks; malformed/wrong-session messages and stale/end/disconnect paths clear the receiver.
+- Added the shared `BonhommeTV` scheme and unsigned tvOS Release CI job. `PLATFORM=tvos` produces a separate local archive and checks the Apple TV bundle identifier, device family/platform, local-network declarations, compiled asset presence, privacy manifest, symbols and signing team. Nineteen archive-fixture tests now pass, including five tvOS cases. Scheme XML, shell syntax and changed Swift syntax checks pass locally.
+- Real tvOS SDK compilation, layered icon/top-shelf compilation, final phone URL/consent integration, AirPlay mirroring, HDMI output, Siri Remote/VoiceOver behavior, network interruption recovery, signed archive validation and App Store/TestFlight acceptance remain release gates. Synthetic archive fixtures and the loopback TLS check do not satisfy those gates.
+
+## Other current verification
+
 Current baseline: `main` at `3fa2c61`; Cursor’s work is already merged. Review branch: `codex/app-store-native-refinement-20260919`. Historical results below predate current source and do not prove this revision.
 
 - LP confirmed Xcode is uninstalled. `xcodebuild -version` fails because the active developer directory is Command Line Tools; a full Swift package test also fails at asset compilation (`actool` requires Xcode). No Xcode/simulator downloads are being made.

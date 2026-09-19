@@ -23,7 +23,15 @@ struct MacRootView: View {
             .background(BrandColor.bg)
             .navigationTitle("NATURaL")
             .toolbarBackground(BrandColor.bgPanel, for: .automatic)
-            .safeAreaInset(edge: .bottom) { footer }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 0) {
+                    if let session, session.phase != .ready && session.phase != .complete {
+                        MacSessionControls(session: session)
+                            .padding(SessionSpacing.md).background(BrandColor.bgPanel)
+                    }
+                    footer
+                }
+            }
         }
         .frame(minWidth: 480, minHeight: 420)
         .onDisappear { closeSession() }
@@ -128,6 +136,8 @@ private struct MacSessionCanvas: View {
                     Text(SessionHUDCopy.nextUp.localized).font(.headline)
                     if let pose = session.upcomingPose {
                         SessionPoseHeader(pose: pose)
+                        MotionCoachView(pose: pose, phase: .transition, isPaused: session.isPaused)
+                            .frame(height: 260)
                     }
                     SessionCountdownNumeral(remaining: TimeInterval(seconds), tint: SessionPalette.accent)
                 }
@@ -160,6 +170,30 @@ private struct MacSessionCanvas: View {
                 .font(.body.monospacedDigit())
                 .padding(SessionSpacing.md)
                 .background(BrandColor.bgPanel, in: SessionRadius.cardShape())
+
+            }
+        }
+        .foregroundStyle(BrandColor.fg)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func active(_ pose: Pose) -> some View {
+        VStack(spacing: SessionSpacing.md) {
+            SessionPoseHeader(pose: pose, prominence: .large)
+            SessionCountdownNumeral(remaining: session.poseTimeRemaining)
+            MotionCoachView(pose: pose, phase: .active,
+                            poseElapsed: pose.durationSeconds - session.poseTimeRemaining,
+                            isPaused: session.isPaused)
+                .frame(height: 320)
+            PoseGuideDetails(pose: pose)
+
+        }
+    }
+}
+
+private struct MacSessionControls: View {
+    @Bindable var session: GuidedSessionController
+    var body: some View {
                 HStack(spacing: SessionSpacing.md) {
                     Button {
                         if session.isPaused { session.resume() } else { session.pause() }
@@ -178,32 +212,6 @@ private struct MacSessionCanvas: View {
                     .buttonStyle(.bordered).tint(BrandColor.strawberry)
                     .accessibilityIdentifier("session.end")
                 }
-            }
-        }
-        .foregroundStyle(BrandColor.fg)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func active(_ pose: Pose) -> some View {
-        VStack(spacing: SessionSpacing.md) {
-            SessionPoseHeader(pose: pose, prominence: .large)
-            SessionCountdownNumeral(remaining: session.poseTimeRemaining)
-            Text(pose.description.localized)
-                .font(.title3).multilineTextAlignment(.center)
-                .foregroundStyle(BrandColor.magnesium)
-                .fixedSize(horizontal: false, vertical: true)
-            if !pose.breathingPattern.localized.isEmpty {
-                Label(pose.breathingPattern.localized, systemImage: "wind")
-                    .foregroundStyle(BrandColor.mint)
-            }
-            if !pose.modifications.localized.isEmpty {
-                DisclosureGroup(copy("Make it comfortable", "Adaptez la posture")) {
-                    VStack(alignment: .leading, spacing: SessionSpacing.xs) {
-                        ForEach(pose.modifications.localized, id: \.self) { Text($0) }
-                    }.padding(.top, SessionSpacing.sm)
-                }.tint(BrandColor.mint)
-            }
-        }
     }
 }
 

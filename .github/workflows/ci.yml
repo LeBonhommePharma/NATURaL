@@ -62,7 +62,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -derivedDataPath build/ci \
-            CODE_SIGNING_ALLOWED=NO | tee build-release.log
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-release.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -91,7 +91,7 @@ jobs:
           xcodebuild test -project NATURaL.xcodeproj -scheme Bonhomme \
             -configuration Debug -destination "platform=iOS Simulator,id=$NATURAL_TEST_SIMULATOR" \
             -parallel-testing-enabled NO -resultBundlePath build/ui-tests.xcresult \
-            CODE_SIGNING_ALLOWED=NO | tee simulator-tests.log
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee simulator-tests.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -111,9 +111,31 @@ jobs:
           set -o pipefail
           xcodebuild build -project NATURaL.xcodeproj -scheme BonhommeMac \
             -configuration Release -destination 'generic/platform=macOS' \
-            -derivedDataPath build/mac-ci CODE_SIGNING_ALLOWED=NO | tee macos-build.log
+            -derivedDataPath build/mac-ci CODE_SIGNING_ALLOWED=NO 2>&1 | tee macos-build.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: macos-build-log
           path: macos-build.log
+
+  tvos-build:
+    name: Native tvOS release build
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record selected Xcode and tvOS SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk appletvos --show-sdk-version
+      - name: Build Apple TV app without distribution signing
+        run: |
+          set -o pipefail
+          xcodebuild build -project NATURaL.xcodeproj -scheme BonhommeTV \
+            -configuration Release -destination 'generic/platform=tvOS' \
+            -derivedDataPath build/tv-ci CODE_SIGNING_ALLOWED=NO 2>&1 | tee tvos-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tvos-build-log
+          path: tvos-build.log

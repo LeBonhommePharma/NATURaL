@@ -21,6 +21,16 @@ struct BonhommeApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .onOpenURL { url in
+                    guard (try? TVRelayPairing(url: url)) != nil else { return }
+                    appState.pendingTVInvitation = url
+                    appState.showsTVDisplay = true
+                }
+                .sheet(isPresented: $appState.showsTVDisplay, onDismiss: {
+                    appState.pendingTVInvitation = nil
+                }) {
+                    TVConnectionSheet(invitationURL: appState.pendingTVInvitation)
+                }
                 .onChange(of: scenePhase) { oldPhase, newPhase in
                     handleScenePhaseChange(from: oldPhase, to: newPhase)
                 }

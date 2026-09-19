@@ -6,7 +6,7 @@ import json
 import plistlib
 import struct
 import subprocess
-from submission_assets import validate_acknowledgements, validate_mac_icon_catalog
+from submission_assets import validate_acknowledgements, validate_mac_icon_catalog, validate_tv_brand_catalog
 from permission_localizations import validate_permission_localizations
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -158,9 +158,9 @@ for extra in (
     require(extra_manifest.get('NSPrivacyTracking') is False, str(extra) + ' must declare no tracking')
     require(extra_manifest.get('NSPrivacyCollectedDataTypes') == [], str(extra) + ' must declare no collected data types')
 
-# TV / visionOS: resource phases, catalogs, privacy. Flattened RGB until layered Design files land.
+# TV / visionOS: resource phases, catalogs, privacy. TV uses true layered brand assets.
 for name, iconset, size in (
-    ('BonhommeTV', ROOT / 'BonhommeTV/Assets.xcassets/AppIcon.appiconset', (1280, 768)),
+    ('BonhommeTV', ROOT / 'BonhommeTV/Assets.xcassets/AppIcon.brandassets', (1280, 768)),
     ('BonhommeVision', ROOT / 'BonhommeVision/Assets.xcassets/AppIcon.appiconset', (1024, 1024)),
 ):
     target = targets[name]
@@ -171,11 +171,17 @@ for name, iconset, size in (
     for config_id in objects[target['buildConfigurationList']]['buildConfigurations']:
         settings = objects[config_id]['buildSettings']
         require(settings.get('ASSETCATALOG_COMPILER_APPICON_NAME') == 'AppIcon', name + ' icon selection')
-    data = (iconset / 'AppIcon.png').read_bytes()
-    require(data[:8] == b'\x89PNG\r\n\x1a\n', name + ' icon must be PNG')
-    width, height, depth, color = struct.unpack('>IIBB', data[16:26])
-    require((width, height) == size, name + ' icon pixel size')
-    require(depth == 8 and color == 2 and b'tRNS' not in data, name + ' icon must be opaque RGB')
+    if name == 'BonhommeTV':
+        try:
+            validate_tv_brand_catalog(iconset)
+        except (ValueError, OSError) as error:
+            raise SystemExit('FAIL: ' + str(error))
+    else:
+        data = (iconset / 'AppIcon.png').read_bytes()
+        require(data[:8] == b'\x89PNG\r\n\x1a\n', name + ' icon must be PNG')
+        width, height, depth, color = struct.unpack('>IIBB', data[16:26])
+        require((width, height) == size, name + ' icon pixel size')
+        require(depth == 8 and color == 2 and b'tRNS' not in data, name + ' icon must be opaque RGB')
     extra = ROOT / name / 'PrivacyInfo.xcprivacy'
     extra_manifest = plistlib.loads(extra.read_bytes())
     require(extra_manifest.get('NSPrivacyTracking') is False, str(extra) + ' must declare no tracking')

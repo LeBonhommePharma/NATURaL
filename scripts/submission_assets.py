@@ -50,3 +50,112 @@ def validate_mac_icon_catalog(iconset):
         pixels = int(entry['size'].split('x')[0]) * int(entry['scale'][0])
         require((width, height) == (pixels, pixels), f'{filename}: expected {pixels}x{pixels} pixels for {entry["size"]}@{entry["scale"]}')
         require(depth == 8 and color in (2, 6), f'{filename}: expected 8-bit RGB or RGBA PNG')
+
+
+def validate_tv_brand_catalog(catalog):
+    """Validate Apple's layered TV brand schema and our conservative bloom safe zone.
+
+    Two real layers are intentional: translucent artwork over an opaque background.
+    Asset compilation, parallax appearance and store acceptance still require Xcode.
+    """
+    def metadata(path):
+        value = json.loads((path / 'Contents.json').read_text())
+        require(value.get('info', {}).get('version') == 1, f'{path.name}: missing asset format version')
+        return value
+
+    def child(parent, filename, suffix):
+        require(filename and Path(filename).name == filename and filename.endswith(suffix),
+                f'{parent.name}: invalid local {suffix} reference')
+        return parent / filename
+
+    def image_set(path, size, scales, transparent=False):
+        entries = metadata(path).get('images', [])
+        require(len(entries) == len(scales) and {e.get('scale') for e in entries} == set(scales),
+                f'{path}: missing or duplicate TV image scales')
+        for entry in entries:
+            require(entry.get('idiom') == 'tv', f'{path}: TV image has wrong idiom')
+            file = child(path, entry.get('filename'), '.png')
+            data = file.read_bytes()
+            require(len(data) >= 33 and data[:8] == b'\x89PNG\r\n\x1a\n' and data[12:16] == b'IHDR', f'{file}: invalid PNG')
+            width, height, depth, color = struct.unpack('>IIBB', data[16:26])
+            scale = int(entry['scale'][0])
+            require((width, height) == (size[0] * scale, size[1] * scale), f'{file}: incorrect TV pixel dimensions')
+            require(depth == 8 and color == (6 if transparent else 2), f'{file}: expected {"RGBA foreground" if transparent else "opaque RGB background or shelf"}')
+            require(b'tRNS' not in data, f'{file}: unexpected palette transparency')
+            if transparent:
+                _validate_tv_foreground_alpha(data, width, height, file)
+
+    require(catalog.suffix == '.brandassets', 'TV app icon must be layered .brandassets')
+    require(not catalog.with_suffix('.appiconset').exists(), 'Duplicate flat TV AppIcon catalog must be archived outside Assets.xcassets')
+    assets = metadata(catalog).get('assets', [])
+    expected = {('primary-app-icon', '400x240'), ('primary-app-icon', '1280x768'),
+                ('top-shelf-image', '1920x720'), ('top-shelf-image-wide', '2320x720')}
+    require(len(assets) == 4 and {(a.get('role'), a.get('size')) for a in assets} == expected,
+            'TV brand needs small/store layered icons and standard/wide Top Shelf')
+    for asset in assets:
+        require(asset.get('idiom') == 'tv', 'TV brand asset has wrong idiom')
+        size = tuple(map(int, asset['size'].split('x')))
+        scales = ('1x',) if size == (1280, 768) else ('1x', '2x')
+        if asset['role'] != 'primary-app-icon':
+            image_set(child(catalog, asset.get('filename'), '.imageset'), size, scales)
+            continue
+        stack = child(catalog, asset.get('filename'), '.imagestack')
+        layers = metadata(stack).get('layers', [])
+        require(len(layers) == 2, f'{stack}: expected separate foreground and background layers')
+        require(len({layer.get('filename') for layer in layers}) == 2, f'{stack}: duplicate layers')
+        for index, layer in enumerate(layers):
+            directory = child(stack, layer.get('filename'), '.imagestacklayer')
+            metadata(directory)
+            sets = list(directory.glob('*.imageset'))
+            require(len(sets) == 1, f'{directory}: expected one embedded imageset')
+            image_set(sets[0], size, scales, transparent=index == 0)
+
+
+def _validate_tv_foreground_alpha(data, width, height, file):
+    """Decode RGBA8 PNG alpha without an imaging dependency (all PNG row filters)."""
+    import zlib
+    compressed = bytearray()
+    offset = 8
+    while offset + 12 <= len(data):
+        length = struct.unpack('>I', data[offset:offset + 4])[0]
+        kind = data[offset + 4:offset + 8]
+        block = data[offset + 8:offset + 8 + length]
+        require(len(block) == length, f'{file}: truncated PNG chunk')
+        if kind == b'IDAT':
+            compressed.extend(block)
+        offset += length + 12
+    require(data[28] == 0, f'{file}: interlaced foreground unsupported by offline gate')
+    raw = zlib.decompress(compressed)
+    stride = width * 4
+    require(len(raw) == (stride + 1) * height, f'{file}: invalid PNG scanlines')
+    previous = bytearray(stride)
+    visible = 0
+    for y in range(height):
+        start = y * (stride + 1)
+        filter_type = raw[start]
+        require(filter_type in range(5), f'{file}: invalid PNG filter')
+        row = bytearray(raw[start + 1:start + 1 + stride])
+        for x in range(3, stride, 4):
+            left = row[x - 4] if x >= 4 else 0
+            up = previous[x]
+            upper_left = previous[x - 4] if x >= 4 else 0
+            if filter_type == 1:
+                row[x] = (row[x] + left) & 255
+            elif filter_type == 2:
+                row[x] = (row[x] + up) & 255
+            elif filter_type == 3:
+                row[x] = (row[x] + (left + up) // 2) & 255
+            elif filter_type == 4:
+                p = left + up - upper_left
+                distances = (abs(p - left), abs(p - up), abs(p - upper_left))
+                predictor = (left, up, upper_left)[distances.index(min(distances))]
+                row[x] = (row[x] + predictor) & 255
+            alpha = row[x]
+            px = x // 4
+            # Project policy, not a claimed Apple numeric requirement: at least
+            # 10% clear padding gives the bloom room during focus/parallax.
+            if px < width // 10 or px >= width - width // 10 or y < height // 10 or y >= height - height // 10:
+                require(alpha == 0, f'{file}: foreground exceeds 10% transparent safe zone')
+            visible += alpha > 0
+        previous = row
+    require(visible > width * height // 100, f'{file}: foreground is empty or negligible')

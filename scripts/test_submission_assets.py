@@ -7,9 +7,10 @@ import struct
 import sys
 import tempfile
 import unittest
+import zlib
 
 sys.dont_write_bytecode = True
-from submission_assets import ROOT, validate_acknowledgements, validate_mac_icon_catalog
+from submission_assets import ROOT, validate_acknowledgements, validate_mac_icon_catalog, validate_tv_brand_catalog, _validate_tv_foreground_alpha
 
 
 class MacIconTests(unittest.TestCase):
@@ -50,6 +51,83 @@ class MacIconTests(unittest.TestCase):
         self.rewrite_catalog(lambda value: value['images'][0].update(idiom='ios'))
         with self.assertRaisesRegex(ValueError, 'wrong idiom'):
             validate_mac_icon_catalog(self.catalog)
+
+
+class TVBrandTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.catalog = Path(self.temp.name) / 'AppIcon.brandassets'
+        shutil.copytree(ROOT / 'BonhommeTV/Assets.xcassets/AppIcon.brandassets', self.catalog)
+        self.stack = self.catalog / 'App Icon - Small.imagestack'
+        self.foreground = self.stack / 'Foreground.imagestacklayer/Content.imageset'
+
+    def rewrite(self, path, transform):
+        value = json.loads(path.read_text())
+        transform(value)
+        path.write_text(json.dumps(value))
+
+    def test_current_layered_catalog(self):
+        validate_tv_brand_catalog(self.catalog)
+
+    def test_missing_top_shelf(self):
+        self.rewrite(self.catalog / 'Contents.json', lambda v: v['assets'].pop())
+        with self.assertRaisesRegex(ValueError, 'standard/wide'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_missing_retina_layer(self):
+        self.rewrite(self.foreground / 'Contents.json', lambda v: v['images'].pop())
+        with self.assertRaisesRegex(ValueError, 'image scales'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_duplicate_flat_catalog(self):
+        self.catalog.with_suffix('.appiconset').mkdir()
+        with self.assertRaisesRegex(ValueError, 'Duplicate flat'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_reversed_layers(self):
+        self.rewrite(self.stack / 'Contents.json', lambda v: v['layers'].reverse())
+        with self.assertRaisesRegex(ValueError, 'RGBA foreground'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_duplicate_layers(self):
+        self.rewrite(self.stack / 'Contents.json', lambda v: v['layers'].__setitem__(1, v['layers'][0]))
+        with self.assertRaisesRegex(ValueError, 'duplicate layers'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_wrong_layer_pixel_size(self):
+        path = self.foreground / 'image@1x.png'
+        data = bytearray(path.read_bytes())
+        data[16:24] = struct.pack('>II', 240, 400)
+        path.write_bytes(data)
+        with self.assertRaisesRegex(ValueError, 'pixel dimensions'):
+            validate_tv_brand_catalog(self.catalog)
+
+    def test_external_path_reference(self):
+        self.rewrite(self.stack / 'Contents.json', lambda v: v['layers'][0].update(filename='../Other.imagestacklayer'))
+        with self.assertRaisesRegex(ValueError, 'invalid local'):
+            validate_tv_brand_catalog(self.catalog)
+
+    @staticmethod
+    def alpha_fixture(alpha_at):
+        # Synthetic test pixels only; no production artwork is changed.
+        def chunk(kind, payload):
+            return struct.pack('>I', len(payload)) + kind + payload + struct.pack('>I', zlib.crc32(kind + payload))
+        raw = b''.join(b'\0' + b''.join(bytes((255, 100, 0, alpha_at(x, y))) for x in range(20)) for y in range(20))
+        return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 20, 20, 8, 6, 0, 0, 0))
+                + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
+
+    def test_transparent_margin_with_visible_art(self):
+        data = self.alpha_fixture(lambda x, y: 255 if 5 <= x < 15 and 5 <= y < 15 else 0)
+        _validate_tv_foreground_alpha(data, 20, 20, 'fixture')
+
+    def test_empty_foreground(self):
+        with self.assertRaisesRegex(ValueError, 'empty or negligible'):
+            _validate_tv_foreground_alpha(self.alpha_fixture(lambda x, y: 0), 20, 20, 'fixture')
+
+    def test_safe_zone_violation(self):
+        with self.assertRaisesRegex(ValueError, 'transparent safe zone'):
+            _validate_tv_foreground_alpha(self.alpha_fixture(lambda x, y: 255), 20, 20, 'fixture')
 
 
 class LicenseTests(unittest.TestCase):

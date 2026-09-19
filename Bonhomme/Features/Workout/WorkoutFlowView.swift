@@ -49,6 +49,8 @@ private struct WorkoutSessionView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sciExplainText: String?
+    @ObservedObject private var tvDisplay = TVDisplayCoordinator.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init(viewModel: WorkoutFlowViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -145,7 +147,26 @@ private struct WorkoutSessionView: View {
                 crossDomain: appState.medicationTracker.latestCrossDomainValidation
             )
         }
+        .task {
+            while !Task.isCancelled {
+                publishTVState()
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
+        .onChange(of: viewModel.phase) { _, _ in publishTVState() }
+        .onChange(of: viewModel.isPaused) { _, _ in publishTVState() }
+        .onChange(of: tvDisplay.displayEnabled) { _, _ in publishTVState() }
+        .onChange(of: scenePhase) { _, _ in publishTVState() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { appState.showsTVDisplay = true } label: {
+                    Label(LocalizedString(en: "TV display", fr: "Affichage TV").localized,
+                          systemImage: tvDisplay.displayEnabled ? "tv.fill" : "tv")
+                }.accessibilityIdentifier("session.tvDisplay")
+            }
+        }
         .onDisappear {
+            tvDisplay.stopTVDiscovery()
             if viewModel.phase != .ready && viewModel.phase != .complete { viewModel.stop() }
             appState.noteWorkoutDismissed()
         }
@@ -180,6 +201,16 @@ private struct WorkoutSessionView: View {
         } message: {
             Text(sciExplainText ?? "")
         }
+    }
+
+    private func publishTVState() {
+        guard tvDisplay.displayEnabled, scenePhase == .active else {
+            tvDisplay.clearPayload()
+            return
+        }
+        if viewModel.phase == .complete { tvDisplay.stopTVDiscovery(); return }
+        if let payload = viewModel.buildTVPayload() { tvDisplay.send(payload: payload) }
+        else { tvDisplay.clearPayload() }
     }
 
     @MainActor
@@ -229,6 +260,7 @@ private struct WorkoutSessionView: View {
 
     /// Breath ring during active / transition / countdown (not ready or summary).
     private var showsBreathingGuide: Bool {
+        guard !viewModel.isPaused else { return false }
         switch viewModel.phase {
         case .active, .transition, .countdown, .cooldown:
             return true
@@ -263,7 +295,6 @@ private struct WorkoutSessionView: View {
                 PoseCoachStage(pose: firstPose, phase: .preview)
                     .frame(maxWidth: 480, maxHeight: 420)
                     .popoverTip(SessionTips.arCoach)
-                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: SessionSpacing.md) {
@@ -299,13 +330,15 @@ private struct WorkoutSessionView: View {
             VStack(spacing: SessionSpacing.md) {
                 Spacer(minLength: SessionSpacing.md)
                 PoseCoachStage(pose: pose, phase: .active,
-                                poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
+                                poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining,
+                                isPaused: viewModel.isPaused)
                     .frame(maxWidth: 560, minHeight: 320, maxHeight: 440)
                     .padding(.horizontal, SessionSpacing.xl)
 
                 SessionPoseHeader(pose: pose, prominence: .large)
 
                 SessionCountdownNumeral(remaining: viewModel.poseTimeRemaining)
+                PoseGuideDetails(pose: pose).padding(.horizontal, SessionSpacing.xl)
 
                 if !pose.breathingPattern.localized.isEmpty {
                     Label(pose.breathingPattern.localized, systemImage: "wind")
@@ -377,7 +410,6 @@ private struct WorkoutSessionView: View {
                     .frame(maxHeight: 280)
                     .padding(.horizontal, SessionSpacing.lg)
                     .popoverTip(SessionTips.arCoach)
-                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "figure.yoga")
                     .font(.system(size: 64, weight: .medium))
@@ -418,7 +450,8 @@ private struct WorkoutSessionView: View {
             Spacer(minLength: SessionSpacing.sm)
 
             PoseCoachStage(pose: pose, phase: .active,
-                            poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining)
+                            poseElapsed: pose.durationSeconds - viewModel.poseTimeRemaining,
+                                isPaused: viewModel.isPaused)
                 .frame(height: dynamicTypeSize.isAccessibilitySize ? 220 : 280)
                 .padding(.horizontal, SessionSpacing.lg)
 
@@ -451,6 +484,7 @@ private struct WorkoutSessionView: View {
                     .animation(SessionMotion.animation(reduceMotion: reduceMotion, duration: 0.35), value: viewModel.currentVoiceCue)
             }
 
+            PoseGuideDetails(pose: pose).padding(SessionSpacing.lg)
             Spacer(minLength: SessionSpacing.xl)
         }
         .tint(catColor)
@@ -468,7 +502,7 @@ private struct WorkoutSessionView: View {
                 .foregroundStyle(BrandColor.fg.opacity(0.5))
 
             if let nextPose {
-                PoseCoachStage(pose: nextPose, phase: .transition)
+                PoseCoachStage(pose: nextPose, phase: .transition, isPaused: viewModel.isPaused)
                     .frame(height: 240)
                     .padding(.horizontal, SessionSpacing.lg)
                 SessionPoseHeader(pose: nextPose, prominence: .regular)
@@ -511,3 +545,114 @@ private struct WorkoutSessionView: View {
 }
 
 // InsightTrend → SCITrend bridge is defined in BonhommeCore/TVDisplay/TVDisplayPayload.swift
+
+/// Explicit consent applies to both authenticated TV relay and external scenes.
+/// An incoming QR URL pre-fills the invitation; it never starts sharing by itself.
+struct TVConnectionSheet: View {
+    let invitationURL: URL?
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var coordinator = TVDisplayCoordinator.shared
+    @State private var selectedTV: UUID?
+    @State private var pairingKey = ""
+    @State private var errorMessage: String?
+    @State private var attemptedPairing = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(copy("Show the pose guide, session timing and available heart-rate/SCI readings on your TV. Anyone in the room can see these readings.",
+                              "Affichez le guide, le chronomètre et les mesures cardiaques/SCI disponibles sur votre téléviseur. Les personnes présentes peuvent voir ces mesures."))
+                    Toggle(copy("Share this session on TV", "Partager cette séance à la télévision"), isOn: $coordinator.displayEnabled)
+                        .accessibilityIdentifier("tv.shareSession")
+                    Text(copy("The display clears when the session ends, the app leaves the foreground or the connection becomes stale. Keep your iPhone or iPad open during the session.",
+                              "L’affichage s’efface à la fin de la séance, lorsque l’app quitte le premier plan ou si la connexion n’est plus à jour. Gardez l’app ouverte pendant la séance."))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section(copy("NATURaL on Apple TV", "NATURaL sur Apple TV")) {
+                    if coordinator.nativeConnected {
+                        Label(copy("Connected securely", "Connexion sécurisée"), systemImage: "checkmark.shield")
+                        Button(TVRelayCopy.disconnect.localized) { coordinator.disconnectNativeTV() }
+                    } else {
+                        Text(copy("Open NATURaL on Apple TV and choose Pair iPhone or iPad. Scan its QR code using Camera, or choose the TV here and enter its key.",
+                                  "Ouvrez NATURaL sur Apple TV et choisissez Jumeler un iPhone ou iPad. Scannez le code QR avec Appareil photo ou choisissez le téléviseur ici et saisissez sa clé."))
+                        if coordinator.discoveryUnavailable {
+                            Text(TVRelayCopy.unavailable.localized).foregroundStyle(.secondary)
+                            Text(copy("Allow Local Network in Settings → Apps → NATURaL. Both devices must use the same local network.",
+                                      "Autorisez Réseau local dans Réglages → Apps → NATURaL. Les appareils doivent utiliser le même réseau local."))
+                                .font(.footnote)
+                        }
+                        Picker(copy("Television", "Téléviseur"), selection: $selectedTV) {
+                            Text(copy("Choose a TV", "Choisir un téléviseur")).tag(nil as UUID?)
+                            ForEach(coordinator.discoveredTVs) { tv in
+                                Text(tv.name).tag(Optional(tv.id))
+                            }
+                        }
+                        SecureField(copy("Pairing key", "Clé de jumelage"), text: $pairingKey)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .accessibilityIdentifier("tv.pairingKey")
+                        if coordinator.discoveredTVs.isEmpty {
+                            Label(copy("Looking for a pairing invitation…", "Recherche d’une invitation de jumelage…"), systemImage: "antenna.radiowaves.left.and.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        Button {
+                            guard let selectedTV else { return }
+                            do {
+                                try coordinator.pair(with: selectedTV, key: pairingKey)
+                                attemptedPairing = true
+                                errorMessage = nil
+                            } catch {
+                                errorMessage = copy("Could not pair. Check the selected TV and its current key, then try again.",
+                                                    "Jumelage impossible. Vérifiez le téléviseur et sa clé actuelle, puis réessayez.")
+                            }
+                        } label: {
+                            HStack {
+                                Text(copy("Confirm and connect", "Confirmer et connecter"))
+                                if coordinator.nativeConnecting { ProgressView() }
+                            }
+                        }
+                        .disabled(!coordinator.displayEnabled || selectedTV == nil || pairingKey.count != 43 || coordinator.nativeConnecting)
+                        .accessibilityIdentifier("tv.confirmPairing")
+                        if let errorMessage { Text(errorMessage).foregroundStyle(.secondary) }
+                    }
+                }
+                Section(copy("AirPlay or a cable", "AirPlay ou un câble")) {
+                    Label(coordinator.externalDisplayConnected
+                          ? copy("External display connected", "Écran externe connecté")
+                          : copy("No external display connected", "Aucun écran externe connecté"), systemImage: "tv")
+                    Text(copy("For AirPlay, open Control Center → Screen Mirroring and choose your television. For a wired display, connect a compatible HDMI adapter. Enable sharing above to show the dedicated guide when iOS provides a second screen.",
+                              "Pour AirPlay, ouvrez Centre de contrôle → Recopie de l’écran et choisissez votre téléviseur. Pour un écran filaire, utilisez un adaptateur HDMI compatible. Activez le partage ci-dessus pour afficher le guide lorsque iOS fournit un second écran."))
+                    Text(copy("Some receivers mirror the whole phone screen instead. Silence notifications and keep the workout open. The phone remains your controller if a TV connection fails.",
+                              "Certains récepteurs recopient tout l’écran du téléphone. Désactivez les notifications et gardez la séance ouverte. Le téléphone reste votre commande si la connexion TV échoue."))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle(copy("TV display", "Affichage TV"))
+            .toolbar { ToolbarItem(placement: .confirmationAction) {
+                Button(copy("Done", "Terminé")) { dismiss() }
+            } }
+        }
+        .task {
+            coordinator.beginTVDiscovery()
+            if let invitationURL, let pairing = try? TVRelayPairing(url: invitationURL) {
+                selectedTV = pairing.id
+                pairingKey = pairing.code
+            }
+        }
+        .onChange(of: coordinator.nativeConnecting) { old, connecting in
+            if old && !connecting && attemptedPairing && !coordinator.nativeConnected {
+                errorMessage = copy("The connection did not complete. Keep NATURaL open on the TV and try a new invitation.",
+                                    "La connexion n’a pas abouti. Gardez NATURaL ouvert sur le téléviseur et essayez une nouvelle invitation.")
+            }
+        }
+        .onChange(of: coordinator.displayEnabled) { _, enabled in
+            if !enabled { coordinator.clearPayload(); coordinator.disconnectNativeTV() }
+        }
+        .onDisappear {
+            pairingKey = ""
+            if !coordinator.displayEnabled { coordinator.stopTVDiscovery() }
+        }
+    }
+
+    private func copy(_ en: String, _ fr: String) -> String { LocalizedString(en: en, fr: fr).localized }
+}

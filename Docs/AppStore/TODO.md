@@ -2,7 +2,7 @@
 
 Owner: LP / Le Bonhomme Pharma. Updated 19 September 2026.
 
-This checklist covers **iOS/iPadOS with the embedded watchOS companion**, plus the existing **native macOS target** added by Cursor and included in preparation at LP’s request. TV and Vision UI/icon designs remain part of the product family; their distribution must be validated separately. ClusterFuck readiness is tracked in `/Users/lp.more/Projects/ClusterFuck/docs/AppStore/TODO.md`.
+This checklist covers **iOS/iPadOS with the embedded watchOS companion**, the existing **native macOS target** added by Cursor, and the **native tvOS companion** explicitly requested by LP. AirPlay/HDMI second-screen output remains part of the iOS product. Vision UI/icon designs remain part of the family but do not establish a visionOS release. ClusterFuck readiness is tracked in `/Users/lp.more/Projects/ClusterFuck/docs/AppStore/TODO.md`.
 
 Checked boxes record the scope of a completed check, not overall readiness. Cursor’s subsequent changes and the current fixes require new build, runtime and visual verification. **The apps are not yet proven ready to submit.**
 
@@ -30,6 +30,13 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
   - [x] Companion embedding, startup retries, save-failure visibility, and lifecycle cancellation safety are in place.
   - [ ] Validate first-launch, pairing, haptics, interruptions, and Health-denied behavior on paired physical Watch.
   - [ ] Capture final Watch screenshots from approved test build and confirm installation path with app archive.
+- **Apple TV / tvOS**
+  - [x] Add a shared `BonhommeTV` scheme, unsigned Release CI job, and `PLATFORM=tvos` archive/inspection path.
+  - [x] Implement explicit ephemeral QR/manual pairing, standard TLS-PSK transport, bounded sends, generation filtering and stale/end clearing.
+  - [ ] Pass current-revision tvOS SDK compilation and layered-icon asset compilation in CI.
+  - [ ] Register/sign `com.natural.BonhommeTV` on team `ZJLX84G8QV`, configure its App Store Connect platform/listing, and validate a signed Apple TV archive.
+  - [ ] Verify actual paired iPhone/iPad → Apple TV sessions, interruptions, screen privacy, Siri Remote focus and VoiceOver on hardware.
+  - [ ] Capture actual Apple TV screenshots and complete the tvOS review/TestFlight gates below.
 
 **Current environment:** Xcode is uninstalled (confirmed by LP). Command Line Tools cannot compile asset catalogs or run Apple-platform tests. Keep this Mac lightweight; run builds on the existing GitHub macOS runners. Local source/contract/archive-fixture checks pass, but do not prove a device build. Distribution signing and App Store Connect completion remain open.
 
@@ -46,10 +53,24 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [ ] Execute the new failed-save, retry and dose-format tests in CI.
 - [ ] Review and commit the current integration branch, push it, and merge only after the required checks pass.
 - [ ] Complete missing app translations and localized permission strings; OS language selection currently falls back to English for untranslated content.
-- [ ] Execute current-revision iOS/Watch/Mac builds and app tests in GitHub CI; fix all failures.
+- [ ] Execute current-revision iOS/Watch/Mac/TV builds and app tests in GitHub CI; fix all failures.
 - [ ] Review final native rendering across sizes, accessibility and every supported language. HTML/design references are not runtime proof.
 - [ ] Validate TV/Vision layered icon delivery with their SDKs; flattened source assets are not enough to certify those store products.
 - [ ] Review remaining experimental profile data/provenance and all reachable generated insight text; wording repairs alone do not validate scientific claims.
+
+## TV display and native tvOS release
+
+- [x] Discovery lists receivers without connecting to the first Bonjour result. Pairing requires a selected television and its ephemeral 256-bit credential; no plaintext socket fallback remains.
+- [x] Use Apple's Network/Security TLS-PSK APIs. Matching-key loopback transfer succeeds and a different key is rejected; this verifies the transport helper on macOS, not the full tvOS app.
+- [x] Bound output to one in-flight frame plus one latest replacement. Filter obsolete callbacks, reject wrong sessions/sequences, and clear display state on end/disconnect/staleness.
+- [x] Add 7 relay regression tests and tvOS archive fixtures; see [verification.md](verification.md) for evidence limits.
+- [ ] Exercise the phone's explicit sharing toggle and scanned-link confirmation. Declining, canceling and stopping must leave every display clear; no pose/health data may be transmitted before confirmation.
+- [ ] Verify pairing expiry, wrong/manual keys, local-network permission denial, two phones, Wi-Fi loss/rejoin, application backgrounding, TV sleep, blocked sends and renewed pairing on real devices.
+- [ ] Verify Control Center **Screen Mirroring** and HDMI external scenes separately. `AVRoutePickerView` selects supported media routes; it does not by itself establish whole-screen mirroring.
+- [ ] Validate the native TV's real layered app icons and top-shelf assets with `actool`, inspect focus/parallax on Apple TV, and confirm the signed bundle's assets in Organizer. A flat `.appiconset` preview is not sufficient. [Apple asset guidance](https://developer.apple.com/documentation/xcode/configuring-your-app-icon), [brand asset format](https://developer.apple.com/library/archive/documentation/Xcode/Reference/xcode_ref-Asset_Catalog_Format/BrandAssetsType.html).
+- [ ] Capture real tvOS pairing, active, paused and transition screens at accepted Apple TV dimensions, **1920×1080 or 3840×2160**, without alpha; never expose a live pairing secret in store screenshots. [Apple screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications).
+- [ ] Explain the required iPhone/iPad companion and pairing steps in tvOS metadata/reviewer notes; check privacy and export-compliance answers against the final native transport.
+- [ ] Run `PLATFORM=tvos BUILD_NUMBER=<fresh-number> scripts/archive-app-store.sh` on the signing machine, complete Organizer validation, upload/process the build, test through TestFlight and obtain LP's release approval.
 
 ## 0. External release blockers (must be completed before upload)
 

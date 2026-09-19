@@ -138,6 +138,46 @@ class ArchiveValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'lacks App Sandbox'):
                 validator.validate_signatures([self.app], 'macos')
 
+    def tv_archive(self):
+        self.archive = Path(self.temp.name) / 'TV.xcarchive'
+        app = self.archive / 'Products/Applications/BonhommeTV.app'
+        self.put(self.archive / 'Info.plist', {'ApplicationProperties': {
+            'ApplicationPath': 'Applications/BonhommeTV.app',
+            'CFBundleIdentifier': 'com.natural.BonhommeTV', 'CFBundleVersion': '42'}})
+        self.bundle(app, 'com.natural.BonhommeTV', 'AppleTVOS', UIDeviceFamily=[3],
+                    NSBonjourServices=['_bonhomme._tcp'],
+                    NSLocalNetworkUsageDescription='Share your session with this television.')
+        (app / 'Assets.car').touch()
+        return app
+
+    def test_tvos_structure(self):
+        app = self.tv_archive()
+        self.assertEqual(validator.validate_structure(self.archive, 'tvos', '42'), [app])
+
+    def test_tvos_simulator_archive_rejected(self):
+        app = self.tv_archive()
+        self.mutate(app / 'Info.plist', 'CFBundleSupportedPlatforms', ['AppleTVSimulator'])
+        with self.assertRaisesRegex(ValueError, 'wrong platform'):
+            validator.validate_structure(self.archive, 'tvos')
+
+    def test_tvos_wrong_device_family_rejected(self):
+        app = self.tv_archive()
+        self.mutate(app / 'Info.plist', 'UIDeviceFamily', [1, 2])
+        with self.assertRaisesRegex(ValueError, 'target Apple TV'):
+            validator.validate_structure(self.archive, 'tvos')
+
+    def test_tvos_missing_asset_catalog_rejected(self):
+        app = self.tv_archive()
+        (app / 'Assets.car').unlink()
+        with self.assertRaisesRegex(ValueError, 'asset catalog missing'):
+            validator.validate_structure(self.archive, 'tvos')
+
+    def test_tvos_missing_bonjour_declaration_rejected(self):
+        app = self.tv_archive()
+        self.mutate(app / 'Info.plist', 'NSBonjourServices', [])
+        with self.assertRaisesRegex(ValueError, 'Bonjour service'):
+            validator.validate_structure(self.archive, 'tvos')
+
 
 if __name__ == '__main__':
     unittest.main()
