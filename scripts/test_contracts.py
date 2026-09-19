@@ -200,8 +200,8 @@ def test_hud_honesty() -> None:
         fail("HUD must expose sciPercentLabel so glances never paint —%")
     if "sciPercentText" not in metrics.split("accessibilitySummary")[1]:
         fail("a11y summary must use clamped sciPercentText, not raw score*100")
-    if "display = min(poseCount, max(1, poseIndex + 1))" not in metrics:
-        fail("pose progress must be 1-based n/N, never 0/N")
+    if "return min(poseCount - 1, max(0, poseIndex)) + 1" not in metrics:
+        fail("pose progress must clamp before adding to avoid integer overflow")
     if "var poseProgressFraction: Double?" not in metrics:
         fail("pose progress fraction must be optional so 0 poses is not a 0% bar")
     if "guard poseCount > 0 else { return nil }" not in metrics:
@@ -218,19 +218,47 @@ def test_hud_honesty() -> None:
         fail("visionOS session must expose SessionHUDMetrics")
     if '"\\(completed)/\\(vm.plan.poseCount) poses' in vision_pose:
         fail("visionOS completion must not interpolate 0/0 poses when count is unknown")
-    if "poseProgressText" not in vision_pose:
-        fail("visionOS completion must use poseProgressText so unknown totals dash")
+    if "vm.plan.poseCount > 0" not in vision_pose or "vm.session.posesCompletedCount" not in vision_pose:
+        fail("visionOS completion must report actually completed poses and omit unknown totals")
+    vision_app = read("BonhommeVision/App/BonhommeVisionApp.swift")
+    for needle in ("viewModel: $viewModel", "ImmersivePoseSpace(viewModel: viewModel)"):
+        if needle not in vision_app:
+            fail(f"Vision window and immersive scenes must share the same session: {needle}")
+    for needle in (
+        "@Binding var viewModel: SpatialWorkoutViewModel?",
+        "let session: GuidedSessionController",
+        "viewModel?.phase ?? .browsing",
+        "session.upcomingPose ?? session.currentPose",
+        "var isPaused: Bool { session.isPaused }",
+        "session.poseTimeRemaining",
+        "case .transition(_, let seconds) = session.phase",
+        "if value == .background { viewModel?.pause() }",
+        "MotionCoachView(pose: pose, phase: vm.coachPhase",
+        "poseElapsed: vm.poseElapsed, isPaused: vm.isPaused",
+        "PoseGuideDetails(pose: pose)",
+    ):
+        if needle not in vision_pose:
+            fail(f"Vision guide must follow authoritative session lifecycle: {needle}")
+    if "Task.sleep" in vision_pose or "sciScore:" in vision_pose:
+        fail("Vision must not run a second session timer or manufacture an SCI score")
     vision_space = read("BonhommeVision/App/ImmersivePoseSpace.swift")
     if ".cyan" in vision_space:
-        fail("immersive figure/SCI ring must not use system cyan")
-    if "BrandPalette.violet" not in vision_space:
-        fail("immersive SCI ring must use BrandPalette.violet, not pose-category hue")
+        fail("immersive figure must not use system cyan")
+    if "biofeedbackRing" in vision_space or "createBiofeedbackRing" in vision_space:
+        fail("immersive guide must not display a fabricated SCI ring without a health-data source")
+    if "poses.first" in vision_space or "lastPoseIndex" in vision_space:
+        fail("immersive guide must not freeze on the first pose or maintain a separate pose index")
+    for needle in ("viewModel: SpatialWorkoutViewModel?", "pose = vm.currentPose",
+                   "vm.phase == .active", "vm.coachPhase", "vm.isPaused", "elapsed: vm.poseElapsed",
+                   "reduceMotion ? AnimationPhaseState.still", "figure.isEnabled = false"):
+        if needle not in vision_space:
+            fail(f"immersive guide must use current session and reduced-motion state: {needle}")
     if "duration: 1.0" in vision_space:
         fail("immersive pose transitions must honor Reduce Motion, not always animate 1s")
     if "accessibilityReduceMotion" not in vision_space:
         fail("ImmersivePoseSpace must read accessibilityReduceMotion")
-    if "SessionMotion.moveDuration(reduceMotion)" not in vision_space:
-        fail("immersive RealityKit moves must use SessionMotion.moveDuration")
+    if ".move(to:" in vision_space:
+        fail("immersive joint updates must not queue animations that continue after session pause")
     chrome = read("BonhommeCore/Sources/BonhommeCore/UI/SessionChrome.swift")
     if "func moveDuration" not in chrome:
         fail("SessionMotion must expose RealityKit moveDuration for Reduce Motion")
@@ -297,22 +325,14 @@ def test_hud_honesty() -> None:
     if "reduceMotion ? 0.5" not in tv:
         fail("TV idle breath must freeze at mid-cycle when Reduce Motion is on")
     countdown = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/PoseCountdownView.swift")
-    if "paused: false" in countdown:
-        fail("TV pose countdown must not hard-pause TimelineView off")
-    if "accessibilityReduceMotion" not in countdown:
-        fail("TV pose countdown must read accessibilityReduceMotion")
-    if "SessionMotion.timelineInterval" not in countdown:
-        fail("TV pose countdown must use SessionMotion.timelineInterval")
-    if "SessionMotion.timelinePaused" not in countdown:
-        fail("TV pose countdown must pause decorative pulse under Reduce Motion")
-    if "reduceMotion || !known ? 0.5" not in countdown:
-        fail("TV pose countdown pulse must freeze at mid-cycle when Reduce Motion or duration is unknown")
-    if "dash: known ? [] : [4, 3]" not in countdown:
-        fail("TV pose countdown must dash the track when duration is unknown")
-    if "total > 0 ? remaining / total : 0" in countdown:
-        fail("TV pose countdown must not trim to 0 when total is unknown")
-    if 'return "—"' not in countdown:
-        fail("TV pose countdown must show — when duration is unknown")
+    # The dedicated decorative loop was removed. MotionCoach owns reduced-motion
+    # handling, while the TV countdown supplies actual elapsed/pause state.
+    for token in ('MotionCoachView(', 'poseElapsed: poseElapsed', 'isPaused: isPaused || !known',
+                  'if let fraction', 'Int(exactly:', 'return "—"', 'PoseGuideDetails(pose: pose)'):
+        if token not in countdown:
+            fail(f"TV guide must preserve authoritative timing, accessible steps and unknown state: {token}")
+    if "TimelineView" in countdown or "Int(remaining)" in countdown:
+        fail("TV countdown must not introduce a separate animation clock or unsafe integer conversion")
     coach = read("BonhommeCore/Sources/BonhommeCore/UI/MotionCoachView.swift")
     if "paused: false" in coach:
         fail("MotionCoachView must pause TimelineView under Reduce Motion")
@@ -353,6 +373,14 @@ def test_hud_honesty() -> None:
         fail("Watch pose count must dash when the plan has zero poses, not interpolate 0/0")
     if "plan.poseCount > 0" not in watch_session:
         fail("Watch pose count must fail closed when poseCount is 0")
+    for needle in ("guideTab", "PoseGuideDetails(pose: pose)",
+                   "MotionCoachView(pose: pose, phase: guidePhase",
+                   "pose.durationSeconds - manager.poseTimeRemaining",
+                   "isPaused: manager.isPaused || selectedTab != 3 || manager.isEnding",
+                   "case .transition(let next, _): return plan.poses[safe: next]",
+                   "guard selectedTab != 3", ".focusable(selectedTab != 3)"):
+        if needle not in watch_session:
+            fail(f"Watch guide must follow the pose and permit safe scrolling: {needle}")
     if "Color.cyan" in read("Bonhomme/Features/Summary/ActivityRingsView.swift"):
         fail("activity rings must use BrandColor, not system cyan")
     summary_rings = read("Bonhomme/Features/Summary/ActivityRingsView.swift")
@@ -581,10 +609,6 @@ def test_icons() -> None:
         (ROOT / "Bonhomme/Assets.xcassets/AppIcon.appiconset/AppIcon.png", 1024, 1024),
         (ROOT / "BonhommeWatch/Assets.xcassets/AppIcon.appiconset/AppIcon.png", 1024, 1024),
         (ROOT / "BonhommeVision/Assets.xcassets/AppIcon.appiconset/AppIcon.png", 1024, 1024),
-        (ROOT / "BonhommeTV/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png", 1024, 1024),
-        (ROOT / "BonhommeTV/Assets.xcassets/AppIcon.appiconset/AppIcon.png", 1280, 768),
-        (ROOT / "BonhommeTV/Assets.xcassets/AppIcon.appiconset/AppIcon-400.png", 400, 240),
-        (ROOT / "BonhommeTV/Assets.xcassets/AppIcon.appiconset/AppIcon-800.png", 800, 480),
     ]
     for path, w, h in specs:
         if not path.is_file():
@@ -600,12 +624,12 @@ def test_icons() -> None:
     workorder = ROOT / "Docs/AppStore/claude-design-icon-workorder.md"
     if not workorder.is_file():
         fail("TV/Vision layered icon workorder missing")
-    tv_catalog = json.loads(
-        (ROOT / "BonhommeTV/Assets.xcassets/AppIcon.appiconset/Contents.json").read_text()
-    )
-    sizes = {entry.get("size") for entry in tv_catalog["images"]}
-    if "1280x768" not in sizes or "400x240" not in sizes:
-        fail("tvOS AppIcon catalog must list 400x240 runtime + 1280x768 App Store slots")
+    from submission_assets import validate_tv_brand_catalog
+    try:
+        validate_tv_brand_catalog(ROOT / "BonhommeTV/Assets.xcassets/AppIcon.brandassets")
+    except (ValueError, OSError) as error:
+        fail(str(error))
+
 
 
 def main() -> int:

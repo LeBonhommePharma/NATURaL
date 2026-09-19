@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import SwiftUI
 import AVKit
+import BonhommeCore
 
 /// UIViewRepresentable wrapper for AVRoutePickerView since no native
 /// SwiftUI AirPlay picker exists as of iOS 18.
@@ -8,8 +9,8 @@ import AVKit
 /// Shows the AirPlay icon. Tapping presents the system route picker
 /// for selecting AirPlay destinations (Apple TV, smart TVs, etc.).
 struct AirPlayRoutePickerView: UIViewRepresentable {
-    var tintColor: UIColor = .white
-    var activeTintColor: UIColor = .systemGreen
+    var tintColor: UIColor = UIColor(BrandColor.fg)
+    var activeTintColor: UIColor = UIColor(BrandColor.aqua)
 
     func makeUIView(context: Context) -> AVRoutePickerView {
         let picker = AVRoutePickerView()

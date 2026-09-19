@@ -3,6 +3,75 @@ import XCTest
 
 final class LocalizedStringTests: XCTestCase {
 
+    func testBundledSupplementalCatalogLoadsAllSupportedLanguages() {
+        XCTAssertFalse(SupplementalLocalization.catalog.isEmpty, "Supplemental resources must ship with BonhommeCore")
+        for key in ["Cancel", "Pose guide", "Pairing key"] {
+            XCTAssertNotNil(SupplementalLocalization.catalog[key], "Each supplemental resource must be bundled: \(key)")
+        }
+        for (english, translations) in SupplementalLocalization.catalog {
+            XCTAssertEqual(Set(translations.keys), Set(LocalizedString.supportedLanguages), english)
+            XCTAssertEqual(translations["en"], english)
+            XCTAssertTrue(translations.values.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }, english)
+        }
+        let guide = LocalizedString(en: "Pose guide", fr: "")
+        for language in LocalizedString.supportedLanguages where language != "en" {
+            XCTAssertNotEqual(guide.value(for: language), guide.en, language)
+        }
+    }
+
+    func testSupplementalFallbackResolvesOSRegionsAndPreservesExplicitOverrides() {
+        let guide = LocalizedString(en: "Pose guide", fr: "Texte choisi", es: "Texto explícito")
+        XCTAssertEqual(guide.value(for: "fr-CA"), "Texte choisi")
+        XCTAssertEqual(guide.value(for: "ES_mx"), "Texto explícito")
+        XCTAssertEqual(guide.value(for: "ja-JP"), "ポーズガイド")
+        XCTAssertEqual(guide.value(for: "zh-Hant-TW"), "体式指南")
+        XCTAssertEqual(guide.value(for: "pt-BR"), "Guia da postura")
+        XCTAssertEqual(guide.value(for: "it-IT"), "Guida alla posizione")
+        XCTAssertEqual(guide.value(for: "en-US"), "Pose guide")
+        XCTAssertEqual(guide.value(for: "sv-SE"), "Pose guide")
+        let osLanguage = LocalizedString.preferredLanguage(in: ["sv-SE", "ko-KR", "en-US"])
+        XCTAssertEqual(guide.value(for: osLanguage), "자세 가이드")
+    }
+
+    func testMissingKeysAndRuntimeTextRemainEnglishWithoutPartialReplacement() {
+        let unknown = "A test phrase absent from the bundled catalog"
+        XCTAssertEqual(LocalizedString(en: unknown, fr: "").value(for: "ja"), unknown)
+        let runtimeCopy = "Pose guide: \(17)"
+        XCTAssertEqual(LocalizedString(en: runtimeCopy, fr: "").value(for: "de"), runtimeCopy)
+        XCTAssertEqual(LocalizedString(en: "", fr: "").value(for: "pt"), "")
+        XCTAssertEqual(LocalizedString(en: "Pose guide", fr: "", es: " ").value(for: "es"), " ",
+                       "Existing explicit strings are not rewritten or trimmed")
+    }
+
+    func testArrayFallbackResolvesItemsWithoutReplacingExplicitArrays() {
+        let items = LocalizedStringArray(en: ["Pose guide", "Unlisted movement", "Cancel"], fr: [],
+                                         es: ["Custom translated list"])
+        XCTAssertEqual(items.value(for: "it-IT"), ["Guida alla posizione", "Unlisted movement", "Annulla"])
+        XCTAssertEqual(items.value(for: "es-MX"), ["Custom translated list"])
+        XCTAssertEqual(items.value(for: "en-US"), items.en)
+        XCTAssertEqual(items.value(for: "sv"), items.en)
+        XCTAssertEqual(LocalizedStringArray(en: [], fr: []).value(for: "de"), [])
+    }
+
+    func testSupplementalLookupPreservesCodableFieldsAndEquality() throws {
+        let text = LocalizedString(en: "Pose guide", fr: "Texte choisi")
+        let original = try JSONEncoder().encode(text)
+        XCTAssertEqual(text.value(for: "de"), "Posenanleitung")
+        let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(text)) as? [String: String])
+        XCTAssertEqual(fields["de"], "")
+        XCTAssertEqual(fields["fr"], "Texte choisi")
+        XCTAssertEqual(Set(fields.keys), Set(LocalizedString.supportedLanguages))
+        XCTAssertEqual(try JSONDecoder().decode(LocalizedString.self, from: original), text)
+
+        let array = LocalizedStringArray(en: ["Pose guide"], fr: [])
+        _ = array.value(for: "pt")
+        let arrayFields = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(array)) as? [String: [String]])
+        XCTAssertEqual(arrayFields["pt"], [])
+        XCTAssertEqual(arrayFields["en"], ["Pose guide"])
+        XCTAssertEqual(try JSONDecoder().decode(LocalizedStringArray.self, from: JSONEncoder().encode(array)), array)
+    }
+
+
     func testOSLanguagePreferenceMatching() {
         XCTAssertEqual(LocalizedString.preferredLanguage(in: ["sv-SE", "FR_ca", "en-US"]), "fr")
         XCTAssertEqual(LocalizedString.preferredLanguage(in: ["pt-BR", "en"]), "pt")

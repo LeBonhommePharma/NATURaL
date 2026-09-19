@@ -129,6 +129,7 @@ public struct SessionHeartRateReadout: View {
 
     public var body: some View {
         let tint = SessionPalette.heartRate(bpm)
+        let value = SessionHUDMetrics(heartRate: bpm).heartRateText
         VStack(alignment: compact ? .center : .leading, spacing: 2) {
             HStack(spacing: SessionSpacing.xxs) {
                 Image(systemName: "heart.fill")
@@ -136,7 +137,7 @@ public struct SessionHeartRateReadout: View {
                     .font(compact ? .caption.weight(.semibold) : .body.weight(.semibold))
                     .symbolRenderingMode(.hierarchical)
                     .accessibilityHidden(true)
-                Text(bpm.map { "\(Int($0.rounded()))" } ?? "—")
+                Text(value)
                     .font(SessionType.metric(compact ? .title3 : .title2))
                     .monospacedDigit()
                     .foregroundStyle(BrandColor.fg)
@@ -149,7 +150,7 @@ public struct SessionHeartRateReadout: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(SessionHUDCopy.heartRate.localized))
-        .accessibilityValue(Text(bpm.map { "\(Int($0.rounded())) BPM" } ?? "unavailable"))
+        .accessibilityValue(Text(value == "—" ? SessionHUDCopy.unavailable.localized : "\(value) \(SessionHUDCopy.bpm.localized)"))
     }
 }
 
@@ -221,17 +222,19 @@ public struct SessionHUDBar: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: SessionSpacing.sm) {
-            HStack(alignment: .center, spacing: SessionSpacing.md) {
-                CompactSCIMeter(score: metrics.sciScore, trend: metrics.sciTrend, size: 56)
-                SessionHeartRateReadout(bpm: metrics.heartRate)
-
-                Spacer(minLength: SessionSpacing.xs)
-
-                ViewThatFits(in: .horizontal) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: SessionSpacing.md) {
+                    metricReadouts
+                    Spacer(minLength: SessionSpacing.xs)
                     VStack(alignment: .trailing, spacing: SessionSpacing.xs) {
                         statusChips
                     }
-                    HStack(spacing: SessionSpacing.xs) {
+                }
+                VStack(alignment: .leading, spacing: SessionSpacing.sm) {
+                    HStack(spacing: SessionSpacing.md) {
+                        metricReadouts
+                    }
+                    VStack(alignment: .leading, spacing: SessionSpacing.xs) {
                         statusChips
                     }
                 }
@@ -262,6 +265,12 @@ public struct SessionHUDBar: View {
         .sessionGlassFill(in: SessionRadius.cardShape())
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(metrics.accessibilitySummary))
+    }
+
+    @ViewBuilder
+    private var metricReadouts: some View {
+        CompactSCIMeter(score: metrics.sciScore, trend: metrics.sciTrend, size: 56)
+        SessionHeartRateReadout(bpm: metrics.heartRate)
     }
 
     @ViewBuilder
@@ -491,6 +500,9 @@ public struct SessionBeginButton: View {
         Button(action: action) {
             Text(SessionHUDCopy.beginSession.localized)
                 .font(.headline)
+                .foregroundStyle(SessionPalette.onAccent)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
         }
         .sessionProminentButtonStyle()
@@ -521,37 +533,37 @@ public struct SessionCountdownNumeral: View {
             .monospacedDigit()
             .foregroundStyle(tint)
             .contentTransition(reduceMotion ? .identity : .numericText())
-            .accessibilityLabel(Text("\(Int(max(0, remaining.rounded()))) seconds remaining"))
+            .accessibilityLabel(Text(accessibleCountdown))
+    }
+
+    private var accessibleCountdown: String {
+        guard remaining.isFinite,
+              let seconds = Int(exactly: max(0, remaining).rounded()) else {
+            return SessionHUDCopy.unavailable.localized
+        }
+        return "\(seconds) seconds remaining"
     }
 }
 
 // MARK: - Pause chrome
 
-/// Dims the pose stage without covering pause/end controls.
+/// Compact pause status leaves the frozen illustration and instructions readable.
 public struct SessionPausedOverlay: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     public init() {}
 
     public var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
-            VStack(spacing: SessionSpacing.sm) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.system(size: 56, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(BrandColor.fg.opacity(0.92))
-                    .sessionGlow(BrandColor.strawberry, radius: 12, paused: reduceMotion)
-                    .accessibilityHidden(true)
-                Text(SessionHUDCopy.paused.localized)
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(BrandColor.fg)
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityLabel(Text(SessionHUDCopy.paused.localized))
+        Label(SessionHUDCopy.paused.localized, systemImage: "pause.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(BrandColor.fg)
+            .padding(.horizontal, SessionSpacing.md)
+            .padding(.vertical, SessionSpacing.sm)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(BrandColor.strawberry.opacity(0.5), lineWidth: 1))
+            .padding(SessionSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityLabel(Text(SessionHUDCopy.paused.localized))
     }
 }

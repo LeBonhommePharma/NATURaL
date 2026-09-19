@@ -86,5 +86,18 @@
 		<string>it</string>
 		<string>pt</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>NATURaL TV pairing</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>natural-tv</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+		</dict>
+	</array>
 </dict>
 </plist>

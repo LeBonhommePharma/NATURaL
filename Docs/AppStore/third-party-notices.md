@@ -1,29 +1,18 @@
-# Third-party dependency notices (submission prep)
+# Third-party dependency notices
 
-Scope at this moment: iOS/iPadOS/watchOS app bundle target graph as configured in
-`NATURaL.xcodeproj` (Swift target dependencies and Xcode remote package references).
+Reviewed 19 September 2026 against Xcode `Package.resolved`, local checkouts at those exact revisions, and their package manifests. Resolved packages are not all necessarily linked into the shipped binary.
 
-## In-repo and SDK dependencies
+| Package | Version / revision | Submission-path use | Exact license copy |
+| --- | --- | --- | --- |
+| CareKit | 4.1.0 / `348a5efbd10cb79d92c760c8023156015558b06b` | iOS links `CareKitStore`; remote open-source dependency, not an Apple system framework | [CareKit license](licenses/CareKit-LICENSE.txt) |
+| swift-async-algorithms | 1.0.1 / `6ae9a051f76b81cc668305ceed5b0e0a7fd93d20` | Transitive `CareKitStore` dependency | [Swift Async Algorithms license](licenses/swift-async-algorithms-LICENSE.txt) |
+| swift-collections | 1.4.1 / `6675bc0ff86e61436e615df6fc5174e043e57924` | `AsyncAlgorithms` uses `OrderedCollections` and `DequeModule` | [Swift Collections license](licenses/swift-collections-LICENSE.txt) |
+| FHIRModels | 0.5.0 / `861afd5816a98d38f86220eab2f812d76cad84a0` | Resolved by CareKit; used by `CareKitFHIR`, which the inspected app target does not link. Recheck if target graph changes | [FHIRModels license](licenses/FHIRModels-LICENSE.txt) |
 
-- **CareKit** (remote Swift Package):
-  - Source: `https://github.com/carekit-apple/CareKit.git`
-  - Requirement: up to next major, minimum 4.1.0
-  - License: BSD-style terms matching the upstream header text in
-    `https://raw.githubusercontent.com/carekit-apple/CareKit/main/LICENSE`.
+The [license manifest](licenses/manifest.json) records SHA-256 digests of exact upstream license files. Swift Async Algorithms and Swift Collections include Apache 2.0 and Swift runtime-exception terms; retain the complete files. CareKit carries its own redistribution conditions. Do not replace these texts with generic Apple SDK attribution or a link to a moving branch.
 
-- **Apple system frameworks** (HealthKit, MusicKit, CareKitStore overlays, SwiftUI,
-  SwiftData, WatchKit, AVFoundation, etc.):
-  - Provided under Apple platform SDK terms.
+Apple platform frameworks (HealthKit, MusicKit, SwiftUI, SwiftData, WatchKit, AVFoundation, Foundation Models, etc.) fall under their SDK agreements. Local `BonhommeCore` is repository code. `BonhommeAccel` is opt-in and absent from the default dependency graph; enabling it requires a fresh inventory.
 
-- **No additional remote runtime dependencies** are declared in the default
-  submission path. Local `BonhommeAccel` remains opt-in and is currently not part of
-  the default Swift package dependency graph used for Swift package tests.
+The app now has `Bonhomme/Resources/Acknowledgements.txt` and an About navigation entry containing the linked CareKit, Swift Async Algorithms and Swift Collections license texts. FHIRModels remains inventoried above as a resolved but unlinked package. Confirm the acknowledgements resource and accessible screen in the signed archive; source wiring alone is not an archive receipt.
 
-## Notes for App Privacy/attribution
-
-- Required-reason API manifests were verified with
-  `python3 scripts/validate-submission.py` and declare no tracking and no
-  collected data types. Paste **Data Not Collected** in App Store Connect; see
-  `Docs/AppStore/app-store-connect.md`.
-- Keep this notice file with your release artifacts and confirm the exact license text
-  in App Store Connect as part of the final App Privacy/legal review.
+Attribution and App Privacy are separate checks. See [app-store-connect.md](app-store-connect.md) and [privacy-dataflow-review.md](privacy-dataflow-review.md).

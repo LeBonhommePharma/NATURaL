@@ -2,10 +2,11 @@ import SwiftUI
 import BonhommeCore
 
 /// Compact workout session UI for Apple Watch.
-/// Uses a vertical paging TabView (watchOS 10+) with three pages:
+/// Uses a vertical paging TabView (watchOS 10+) with four pages:
 /// 1. Current pose + countdown
 /// 2. Heart rate + SCI focus score
 /// 3. Session progress + controls
+/// 4. Scrollable per-pose illustration and instructions
 struct WatchSessionView: View {
     @Environment(WatchWorkoutManager.self) private var manager
     @Environment(WatchConnectivityBridge.self) private var connectivity
@@ -35,11 +36,14 @@ struct WatchSessionView: View {
             controlsTab
                 .tag(2)
                 .accessibilityLabel(Text(LocalizedString(en: "Controls", fr: "Commandes").localized))
+            guideTab
+                .tag(3)
+                .accessibilityLabel(Text(LocalizedString(en: "Pose guide", fr: "Guide de la posture").localized))
         }
         .tabViewStyle(.verticalPage)
         .containerBackground(SessionPalette.sessionBackground.gradient, for: .tabView)
         .navigationBarBackButtonHidden(manager.isRecording)
-        .focusable()
+        .focusable(selectedTab != 3)
         .digitalCrownRotation(
             $crownRotationalDelta,
             from: -20,
@@ -49,9 +53,12 @@ struct WatchSessionView: View {
             isContinuous: true,
             isHapticFeedbackEnabled: true
         )
+        .onChange(of: selectedTab) { _, tab in
+            if tab == 3 { crownTickTask?.cancel() }
+        }
         .onChange(of: crownRotationalDelta) { oldValue, newValue in
             let delta = newValue - oldValue
-            guard manager.isRecording, !manager.isPaused, !manager.isEnding, abs(delta) > 1e-6 else { return }
+            guard selectedTab != 3, manager.isRecording, !manager.isPaused, !manager.isEnding, abs(delta) > 1e-6 else { return }
             Task {
                 // Apply β immediately for responsive dial feel. Not shown on the HUD.
                 _ = await PharmaControlSessionManager.shared.applyCrownDelta(delta)
@@ -100,6 +107,43 @@ struct WatchSessionView: View {
                 handleWorkoutComplete()
             }
         }
+    }
+
+    // MARK: - Persistent guide
+
+    private var guideTab: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: SessionSpacing.md) {
+                if let pose = guidePose {
+                    Text(pose.name.localized).font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    MotionCoachView(pose: pose, phase: guidePhase,
+                                    cornerRadius: 16,
+                                    poseElapsed: max(0, pose.durationSeconds - manager.poseTimeRemaining),
+                                    isPaused: manager.isPaused || selectedTab != 3 || manager.isEnding)
+                        .frame(height: 210)
+                    PoseGuideDetails(pose: pose)
+                } else {
+                    Text(LocalizedString(en: "Your pose guide appears during the session.",
+                                         fr: "Le guide des postures apparaît pendant la séance.").localized)
+                        .font(.body)
+                }
+            }
+            .padding(.horizontal, SessionSpacing.xs)
+        }
+    }
+
+    private var guidePose: Pose? {
+        switch manager.phase {
+        case .active(let index): return plan.poses[safe: index]
+        case .transition(let next, _): return plan.poses[safe: next]
+        default: return nil
+        }
+    }
+
+    private var guidePhase: MotionCoachPhase {
+        if case .transition = manager.phase { return .transition }
+        return .active
     }
 
     // MARK: - Tab 1: Pose + Countdown
@@ -167,6 +211,12 @@ struct WatchSessionView: View {
             SessionCountdownNumeral(remaining: manager.poseTimeRemaining, tint: .white)
 
             SessionGlanceStrip(metrics: watchHUDMetrics)
+            Button { selectedTab = 3 } label: {
+                Label(LocalizedString(en: "Pose guide", fr: "Guide de la posture").localized,
+                      systemImage: "figure.yoga")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
         }
     }
 

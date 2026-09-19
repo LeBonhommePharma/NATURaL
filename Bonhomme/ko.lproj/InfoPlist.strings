@@ -1,0 +1,8 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSMotionUsageDescription" = "NATURaL은 AirPods의 동작 정보를 사용해 의자 요가 중 공간 음향을 머리 방향에 맞춥니다. 동작 정보는 이 기기에만 저장됩니다.";
+"NSCameraUsageDescription" = "NATURaL은 선택적으로 사용하는 기기 내 AR 자세 안내를 위해 카메라를 사용합니다. 영상은 이 기기에서 처리되며 절대 업로드되지 않습니다.";
+"NSAppleMusicUsageDescription" = "NATURaL은 의자 요가 중 적응형 음악을 재생하고 바이오피드백에 따라 템포와 음악의 활력을 조절합니다.";
+"NSHealthShareUsageDescription" = "NATURaL은 심박수, 심박 변이도, 수면 및 활동 데이터를 읽어 섀넌 붕괴 지수를 계산하고 세션을 실시간으로 조절합니다. 명시적으로 동의한 경우에만 건강 앱에 연결한 임상 약물 기록도 읽어 직접 입력한 처방 정보의 관리를 돕습니다. 동의 없이 읽지 않으며 의료 조언을 제공하지 않습니다.";
+"NSHealthUpdateUsageDescription" = "NATURaL은 완료한 요가 세션을 운동 및 마음 챙기기 세션으로 저장해 건강 및 피트니스 앱에 표시합니다.";
+"NSHealthClinicalHealthRecordsShareUsageDescription" = "명시적으로 동의하면 NATURaL은 건강 앱에 연결한 의료기관에서 약물 기록을 가져와 알림과 CareKit 작업을 관리합니다. 이는 사용자가 관리하는 데이터이며 의료 조언이 아닙니다. 모든 처방은 의료 전문가와 확인하세요. NATURaL은 약국 계정에 로그인하거나 약국 웹사이트의 내용을 수집하지 않습니다.";
+"NSLocalNetworkUsageDescription" = "NATURaL은 로컬 네트워크와 Bonjour를 사용해 운동 화면을 Apple TV로 전송합니다.";

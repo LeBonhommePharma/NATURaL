@@ -1,0 +1,30 @@
+[
+  {
+    "package": "CareKit",
+    "version": "4.1.0",
+    "revision": "348a5efbd10cb79d92c760c8023156015558b06b",
+    "license_file": "CareKit-LICENSE.txt",
+    "sha256": "d34fc4bdb49ce29fb945f0492933f5643f39817bbc41c10836abd4efadf2bec0"
+  },
+  {
+    "package": "FHIRModels",
+    "version": "0.5.0",
+    "revision": "861afd5816a98d38f86220eab2f812d76cad84a0",
+    "license_file": "FHIRModels-LICENSE.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "package": "swift-async-algorithms",
+    "version": "1.0.1",
+    "revision": "6ae9a051f76b81cc668305ceed5b0e0a7fd93d20",
+    "license_file": "swift-async-algorithms-LICENSE.txt",
+    "sha256": "770af8291f708538d8ff885a0bbc4e045cd700531741c4f99528d435c14d7f55"
+  },
+  {
+    "package": "swift-collections",
+    "version": "1.4.1",
+    "revision": "6675bc0ff86e61436e615df6fc5174e043e57924",
+    "license_file": "swift-collections-LICENSE.txt",
+    "sha256": "770af8291f708538d8ff885a0bbc4e045cd700531741c4f99528d435c14d7f55"
+  }
+]

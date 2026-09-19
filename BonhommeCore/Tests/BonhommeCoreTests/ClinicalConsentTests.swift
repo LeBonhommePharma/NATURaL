@@ -99,4 +99,63 @@ final class ClinicalConsentTests: XCTestCase {
         XCTAssertTrue(entry.auditString.contains("consent.clinicalReadBlocked"))
         XCTAssertTrue(entry.auditString.contains("no_consent"))
     }
+
+    func testAccessRequiresCurrentConsentAndRejectsRevokedResult() throws {
+        XCTAssertNil(store.beginAccess())
+        store.grant()
+        let access = try XCTUnwrap(store.beginAccess())
+        XCTAssertNoThrow(try store.validateAccess(access))
+        store.revoke()
+        XCTAssertThrowsError(try store.validateAccess(access)) { error in
+            XCTAssertTrue(error is CancellationError)
+        }
+    }
+
+    func testRegrantCannotReviveWorkFromPreviousGrantEvenAtSameTimestamp() throws {
+        let time = Date(timeIntervalSince1970: 1_700_000_000)
+        store.grant(at: time)
+        let oldAccess = try XCTUnwrap(store.beginAccess())
+        store.revoke(at: time)
+        store.grant(at: time)
+        XCTAssertTrue(store.hasValidClinicalConsent)
+        XCTAssertThrowsError(try store.validateAccess(oldAccess))
+        XCTAssertNoThrow(try store.validateAccess(XCTUnwrap(store.beginAccess())))
+    }
+
+    func testResetInvalidatesPendingAccess() throws {
+        store.grant()
+        let access = try XCTUnwrap(store.beginAccess())
+        store.reset()
+        XCTAssertThrowsError(try store.validateAccess(access))
+    }
+
+    func testAccessDetectsPolicyChangeWrittenOutsideStore() throws {
+        store.grant()
+        let access = try XCTUnwrap(store.beginAccess())
+        let stale = ClinicalConsent(isGranted: true, grantedAt: Date(), policyVersion: "0.9")
+        defaults.set(try JSONEncoder().encode(stale), forKey: "natural.clinicalConsent.v1")
+        XCTAssertThrowsError(try store.validateAccess(access))
+    }
+
+    func testCancelledWorkCannotUseOtherwiseValidConsent() async throws {
+        let consentStore = try XCTUnwrap(store)
+        consentStore.grant()
+        let access = try XCTUnwrap(consentStore.beginAccess())
+        let task = Task { () -> Bool in
+            // A deterministic cancelled task models a result arriving after its
+            // initiating UI task was cancelled, without racing sleeps or timers.
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                try consentStore.validateAccess(access)
+                return false
+            } catch is CancellationError {
+                return true
+            } catch {
+                return false
+            }
+        }
+        let rejected = await task.value
+        XCTAssertTrue(rejected)
+        XCTAssertTrue(consentStore.hasValidClinicalConsent)
+    }
 }

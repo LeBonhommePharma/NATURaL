@@ -14,6 +14,7 @@ final class AirPlaySecondScreenManager: ObservableObject {
     private var observation: NSObjectProtocol?
 
     func startDetecting() {
+        guard observation == nil else { return }
         routeDetector.isRouteDetectionEnabled = true
         routesAvailable = routeDetector.multipleRoutesDetected
 

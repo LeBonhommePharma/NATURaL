@@ -12,6 +12,7 @@ final class AirPlayFallbackUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-natural.didFinishWelcome", "YES"]
         app.launch()
@@ -23,18 +24,28 @@ final class AirPlayFallbackUITests: XCTestCase {
 
     // MARK: - TV Connection UI
 
+    private func revealTVCard() {
+        let content = app.scrollViews["home.content"]
+        XCTAssertTrue(content.waitForExistence(timeout: 8))
+        for _ in 0..<8 where !app.staticTexts["TV Display"].isHittable { content.swipeUp() }
+    }
+
     func testTVSectionShowsOnHomeScreen() {
-        for _ in 0..<8 where !app.staticTexts["TV Display"].isHittable { app.swipeUp() }
+        revealTVCard()
         let tvEN = app.staticTexts["TV Display"]
         let tvFR = app.staticTexts["Affichage TV"]
         XCTAssertTrue(tvEN.exists || tvFR.exists)
     }
 
     func testTVConnectionPromptDescribesFeature() {
-        for _ in 0..<8 where !app.staticTexts["TV Display"].isHittable { app.swipeUp() }
+        revealTVCard()
         let promptEN = app.staticTexts["Connect during a workout to display poses on your TV"]
         let promptFR = app.staticTexts["Connectez-vous pendant un entraînement pour afficher les postures sur votre télé"]
         XCTAssertTrue(promptEN.exists || promptFR.exists)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Home TV guidance"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     // MARK: - External Display Simulation

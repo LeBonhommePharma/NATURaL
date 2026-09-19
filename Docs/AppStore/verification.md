@@ -1,4 +1,50 @@
-# Release preparation evidence — 12 September 2026
+# Current release verification — 19 September 2026
+
+## Latest completed integration evidence
+
+Expanded [CI 35472257889](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35472257889) for PR head `ccfe781` (tested merge `90a8765f61e64aa96dc054471c425a50774925fd`) passed **613 core tests**, all contracts/assets, all four platform Release builds, and iPhone 17 Pro Max / iOS 26.5 journeys (**21 app tests, 9 UI tests passed; the iPad-only test was skipped**). Native PNG review confirms corrected dark bloom selection, mint-button contrast, multiline largest-text entry, and the separate guide viewport/footer. These are Debug QA captures, not a finalized App Store screenshot set.
+
+The new iPad Pro 13-inch (M5) / iOS 26.5 lane found **three UI failures** despite its 21 hosted app tests passing: two TV-card assertions (the iPad home omitted the card) and onboarding disappearing when rotating before completion. The follow-up adds iPad TV/prescription entries and makes onboarding durable root content until Continue. Tests keep the same requirements, explicitly reset orientation between cases, and wait for landscape layout. This follow-up requires its own green run; the failed expanded run is not a release pass.
+
+[PR #39](https://github.com/LeBonhommePharma/NATURaL/pull/39), commit `c216e666186be35bd446d512aba6bc17211dbb49`, passed all six jobs in [CI 35470772237](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470772237): Linux contracts, submission assets/Swift core, iOS with embedded Watch Release, native macOS Release, native tvOS Release (including layered icons/Top Shelf), and hosted iPhone simulator tests. The simulator ran **21 app tests and 9 UI tests with zero failures**. The Watch/tvOS API incompatibilities and SwiftUI type-check timeout from earlier attempts are fixed.
+
+This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. Current iPad runtime coverage is historical until the new two-device CI matrix completes.
+
+The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (8), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
+
+## TV relay and tvOS preparation — integration `057b5aa`
+
+The native tvOS app is now explicitly in the requested submission scope, alongside iOS/iPadOS/watchOS and macOS. AirPlay/HDMI remains a separate system-managed output path. The evidence below predates the next full CI run and does not establish a shipping television binary.
+
+- Replaced automatic first-result Bonjour connection and plaintext TCP transport with explicit television selection and an ephemeral random 256-bit pairing credential. The TV generates a QR invitation/manual key only after its Pair action; it expires after five minutes and is never persisted or included in Bonjour advertisement data. The phone integration requires the user's sharing toggle and confirmation before pairing.
+- Security uses the OS Network/Security TLS-PSK APIs and AES-GCM cipher suite following [Apple's peer-to-peer sample](https://developer.apple.com/documentation/network/building-a-custom-peer-to-peer-protocol). Actual macOS loopback sockets transmitted a test byte with matching keys and rejected a different random key. No application health data was used in that check.
+- `TVRelayPairing` typechecked against the installed Network/Security SDK. Actual client, coordinator and listener sources typechecked on macOS with the actual relay helper module and a small display-payload stub. This does **not** typecheck the final iOS/tvOS SwiftUI application or exercise Bonjour on physical devices.
+- Twenty-four standalone assertions passed against actual pairing, session/sequence/freshness, bounded-buffer and framing helpers using a stub display payload. Seven XCTest cases were added for full-package CI. One pending replacement plus one in-flight frame bounds stream memory; generation tokens isolate old send/receive callbacks; malformed/wrong-session messages and stale/end/disconnect paths clear the receiver.
+- Added the shared `BonhommeTV` scheme and unsigned tvOS Release CI job. `PLATFORM=tvos` produces a separate local archive and checks the Apple TV bundle identifier, device family/platform, local-network declarations, compiled asset presence, privacy manifest, symbols and signing team. Nineteen archive-fixture tests now pass, including five tvOS cases. Scheme XML, shell syntax and changed Swift syntax checks pass locally.
+- Standalone TV sessions and the phone URL/consent producer are implemented. Approved ivory/midnight icons are installed; TV has real transparent foreground/opaque background stacks and both Top Shelf formats. All 20 asset tests, 19 archive tests, 7 permission-localization tests and 8 contracts pass locally.
+- Integration [CI 35470234784](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470234784) passed core XCTest/assets/Linux but exposed three SDK boundaries: Watch `DisclosureGroup`, a cipher-suite raw type difference, and an unconditional tvOS HealthKit import. Fixes must pass a subsequent exact-revision run.
+- Real tvOS SDK compilation, layered icon/top-shelf compilation, AirPlay mirroring, HDMI output, Siri Remote/VoiceOver behavior, network interruption recovery, signed archive validation and App Store/TestFlight acceptance remain release gates. Synthetic archive fixtures and the loopback TLS check do not satisfy those gates.
+
+## Other current verification
+
+Current baseline: `main` at `3fa2c61`; Cursor’s work is already merged. Review branch: `codex/app-store-native-refinement-20260919`. Historical results below predate current source and do not prove this revision.
+
+- LP confirmed Xcode is uninstalled. `xcodebuild -version` fails because the active developer directory is Command Line Tools; a full Swift package test also fails at asset compilation (`actool` requires Xcode). No Xcode/simulator downloads are being made.
+- Source preflight including native Mac passes (`python3 scripts/validate-submission.py --include-macos`).
+- Website language routing passes. Eight Python product contracts pass. Twelve archive-validator fixture tests passed before additional acknowledgment checks; the latest CI run is authoritative for the final count.
+- Swift parser checks pass for changed source. This is syntax checking, not SDK typechecking or application execution.
+- Shared HUD numerical smoke checks exercise the actual formatter source with minimal wire stubs: 37 assertions passed. Consent smoke checks compile the actual Foundation consent source; grant/revoke/regrant/reset/cancellation cases pass. Neither substitutes for the full app tests.
+- Mac artwork export adds approximately 2.4 MB, reusing the approved bloom. No user files were deleted. Disk check showed 31 GiB available; available space can change.
+- Useful unmerged Cursor commit `b07a56c` was inspected and its Watch/Vision changes applied as patches; shared HUD/contract changes are incorporated alongside the crash fixes. Already merged branches were not reapplied.
+- First full remote run at `7ae2c93`: [CI 35469012431](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35469012431). Native Mac Release build, iOS + embedded Watch Release build, Swift core tests, assets and Linux contracts passed. Hosted simulator test compilation failed because the test target minimum was iOS 17 while the app required iOS 18. The test targets were aligned in `51f9252`; [CI 35469339246](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35469339246) passed all five jobs, including 14 hosted app tests and 9 UI tests with zero failures.
+- Added 110 localized permission purpose strings across 11 languages (33 files); source validation and seven localization gate regressions pass. Actual localized system-sheet rendering remains unverified.
+- Guided-session timing now uses a monotonic clock, pauses after long scheduling gaps, handles fractional/zero transitions and releases cancelled timers. Standalone exact-controller smoke: 32 assertions passed; new XCTest cases await the final CI run.
+- Design reference rendered in the in-app browser at narrow/wide CSS viewports (355/1164px): no horizontal overflow or broken artwork observed; sample-state and pause controls verified. This remains a reference, not native app screenshots.
+- Native layouts, HealthKit/CareKit behavior, physical-device coverage, final screenshots, distribution signing and App Store Connect remain unverified for this revision. No app was uploaded or submitted.
+
+---
+
+# Historical release preparation evidence — 12 September 2026
 
 This record separates repository verification from App Store approval. No archive has been uploaded to Apple, and no App Review submission has been made.
 

@@ -87,6 +87,9 @@ struct HomeView: View {
                             storageStatusCard
                         }
 
+                        prescriptionsEntryCard
+                        tvStatusSection
+
                         VStack(spacing: SessionSpacing.md) {
                             Image(systemName: "figure.yoga")
                                 .font(.largeTitle)
@@ -102,6 +105,7 @@ struct HomeView: View {
                         .padding(.bottom, SessionSpacing.xl)
                     }
                 }
+                .accessibilityIdentifier("home.content")
             }
             }
             .id(selectedStyle)
@@ -180,6 +184,7 @@ struct HomeView: View {
             }
             .padding(.vertical)
         }
+        .accessibilityIdentifier("home.content")
         .task { await loadCareKitPrescriptions() }
     }
 
@@ -319,6 +324,7 @@ struct HomeView: View {
                 .scaledToFit()
                 .frame(maxWidth: .infinity)
                 .frame(height: compact ? 190 : 155)
+                .environment(\.colorScheme, .dark)
                 .accessibilityHidden(true)
             Text(LocalizedString(en: "Come back to yourself.", fr: "Revenez à vous.").localized)
                 .font(.largeTitle.bold())

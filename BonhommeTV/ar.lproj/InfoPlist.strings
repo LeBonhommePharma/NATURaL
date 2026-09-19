@@ -1,0 +1,2 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSLocalNetworkUsageDescription" = "يتلقى NATURaL TV بيانات عرض التمرين من التطبيق المصاحب على iPhone عبر Bonjour.";

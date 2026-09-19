@@ -1,11 +1,5 @@
 import SwiftUI
 
-public enum MotionCoachPhase: Sendable {
-    case preview
-    case active
-    case transition
-}
-
 private enum Proportion {
     static let pelvisYOffset: CGFloat = 0.10
     static let torsoLength: CGFloat = 0.30
@@ -40,9 +34,7 @@ private enum Proportion {
 /// `2 · breathPeriod`, so the front/back swap completes once per pair of
 /// breaths and doesn't clash with the per-breath angular arm swing).
 ///
-/// Must be driven from absolute time `t` (not an accumulator) so views
-/// that mount late, pause, or re-render at different rates still agree
-/// on which side is forward.
+/// Driven by the pause-aware playback clock; ghost layers use deliberate offsets.
 private let defaultArmSwingPeriod: Double = 6.0
 
 private func skelPoint(from origin: CGPoint, length: CGFloat, angle: Double) -> CGPoint {
@@ -57,7 +49,7 @@ private func clamp01(_ v: Double) -> Double {
     max(0, min(1, v))
 }
 
-private struct SkeletonPose {
+struct SkeletonPose {
     let pelvis: CGPoint
     let neck: CGPoint
     let spineMid: CGPoint
@@ -138,13 +130,12 @@ private struct SkeletonPose {
         tertWave = sin(c - 1.8)
         tertWaveRight = sin(c - 2.0)
 
-        // Absolute-time driver — keeps front/back arm sort stable across
-        // view remounts, pauses, and ghost/reflection renders offset by a lag.
+        // Pause-aware time driver; a zero oscillation blend also fixes depth order.
         // `armSwingPeriod` is typically `2 · breathPeriod` so the front/back
         // depth swap cycles once per pair of breaths, staying musically in
         // phase with breathing without clashing with the per-breath angular
         // arm swing driven by `sin(c)` above.
-        let depthCycle = sin(2.0 * .pi * t / armSwingPeriod)
+        let depthCycle = sin(2.0 * .pi * t / armSwingPeriod) * oscAmp
         armDepthPhase = depthCycle * 0.5 + 0.5
 
         let lateralSway = kinematics.sideLean * phaseState.poseBlend
@@ -157,15 +148,15 @@ private struct SkeletonPose {
 
         let core = Self.computeCore(pelvis: pelvis, size: size, torsoTilt: torsoTilt,
                                      spineCurvature: kinematics.spineArch * phaseState.poseBlend,
-                                     headTilt: kinematics.headTilt * phaseState.poseBlend * headOsc,
-                                     secWave: secWave, tertWave: tertWave, cycle: c)
+                                     headTilt: kinematics.headTilt * phaseState.poseBlend,
+                                     secWave: secWave * oscAmp * torsoOsc, tertWave: tertWave * oscAmp * headOsc, cycle: c)
         spineMid = core.spineMid
         neck = core.neck
         headRadius = core.headRadius
         headCenter = core.headCenter
 
         let girdle = Self.computeGirdle(neck: neck, pelvis: pelvis, size: size,
-                                          torsoTilt: torsoTilt, cycle: c)
+                                          torsoTilt: torsoTilt, cycle: c, oscillation: oscAmp)
         leftShoulder = girdle.leftShoulder
         rightShoulder = girdle.rightShoulder
         leftHip = girdle.leftHip
@@ -312,9 +303,9 @@ private struct SkeletonPose {
 
     private static func computeGirdle(
         neck: CGPoint, pelvis: CGPoint, size: CGFloat,
-        torsoTilt: Double, cycle: Double
+        torsoTilt: Double, cycle: Double, oscillation: Double
     ) -> GirdleData {
-        let breathExp = CGFloat(1.0 + 0.06 * (0.5 + 0.5 * sin(cycle)))
+        let breathExp = CGFloat(1.0 + 0.06 * (0.5 + 0.5 * sin(cycle)) * oscillation)
         let shoulderHW = size * Proportion.shoulderHalfWidth * breathExp
         let hipHW = size * Proportion.hipHalfWidth
         let axis = torsoTilt
@@ -399,7 +390,7 @@ private struct SkeletonPose {
 
         let downAngle = Double.pi / 2.0 + torsoTilt
         let kneeFlex = profile.kneeFlexRadians
-            + profile.kneeFlexVarianceRadians * (0.5 + 0.5 * sin(cycle + .pi / 2.0))
+            + profile.kneeFlexVarianceRadians * (0.5 + 0.5 * sin(cycle + .pi / 2.0)) * oscAmp
 
         let leftThighOff = lerpAngle(0, kinematics.leftThighOffset, blend)
         let rightThighOff = lerpAngle(0, kinematics.rightThighOffset, blend)
@@ -407,15 +398,15 @@ private struct SkeletonPose {
         let rightSpread = lerpAngle(0, kinematics.rightKneeSpread, blend)
 
         let leftKnee = skelPoint(from: leftHip, length: upperLegLen,
-                                   angle: downAngle + leftThighOff - kneeDrift - leftSpread + secWave * 0.04)
+                                   angle: downAngle + leftThighOff - kneeDrift - leftSpread + secWave * 0.04 * oscAmp)
         let rightKnee = skelPoint(from: rightHip, length: upperLegLen,
-                                    angle: downAngle + rightThighOff + kneeDrift + rightSpread - secWaveRight * 0.04)
+                                    angle: downAngle + rightThighOff + kneeDrift + rightSpread - secWaveRight * 0.04 * oscAmp)
         let leftShinOff = lerpAngle(0, kinematics.leftShinOffset, blend)
         let rightShinOff = lerpAngle(0, kinematics.rightShinOffset, blend)
         let leftFoot = skelPoint(from: leftKnee, length: lowerLegLen,
-                                   angle: downAngle - kneeFlex * 0.35 + leftShinOff + tertWave * 0.03)
+                                   angle: downAngle - kneeFlex * 0.35 + leftShinOff + tertWave * 0.03 * oscAmp)
         let rightFoot = skelPoint(from: rightKnee, length: lowerLegLen,
-                                    angle: downAngle + kneeFlex * 0.35 + rightShinOff - tertWaveRight * 0.03)
+                                    angle: downAngle + kneeFlex * 0.35 + rightShinOff - tertWaveRight * 0.03 * oscAmp)
 
         return LegData(leftKnee: leftKnee, rightKnee: rightKnee,
                        leftFoot: leftFoot, rightFoot: rightFoot)
@@ -427,19 +418,24 @@ public struct MotionCoachView: View {
     public var phase: MotionCoachPhase
     public var cornerRadius: CGFloat
     public var poseElapsed: TimeInterval
+    public var isPaused: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var playback = MotionCoachPlaybackClock()
 
     public init(
         pose: Pose,
         phase: MotionCoachPhase = .active,
         cornerRadius: CGFloat = 28,
-        poseElapsed: TimeInterval = 0
+        poseElapsed: TimeInterval = 0,
+        isPaused: Bool = false
     ) {
         self.pose = pose
         self.phase = phase
         self.cornerRadius = cornerRadius
         self.poseElapsed = poseElapsed
+        self.isPaused = isPaused
     }
 
     public var body: some View {
@@ -454,9 +450,9 @@ public struct MotionCoachView: View {
 
         TimelineView(.animation(
             minimumInterval: reduceMotion ? SessionMotion.timelineInterval(true) : (1.0 / 60.0),
-            paused: SessionMotion.timelinePaused(reduceMotion)
+            paused: SessionMotion.timelinePaused(reduceMotion) || isPaused || scenePhase != .active
         )) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
+            let t = reduceMotion ? 0 : playback.time(at: context.date)
             let breathAngle = t * (.pi * 2.0) / profile.breathPeriod
             let sinBreath = reduceMotion ? 0.0 : sin(breathAngle)
             let wave  = sinBreath
@@ -468,7 +464,7 @@ public struct MotionCoachView: View {
             let s = normPhase
             let smooth = s * s * s * (s * (s * 6.0 - 15.0) + 10.0)
 
-            let phaseState = AnimationPhaseState.compute(
+            let phaseState = reduceMotion ? AnimationPhaseState.still : AnimationPhaseState.compute(
                 elapsed: poseElapsed,
                 duration: pose.durationSeconds,
                 phase: phase
@@ -556,7 +552,7 @@ public struct MotionCoachView: View {
                             )
                         }
 
-                        let (offX, offY, rot) = profile.limbOffset(smooth: smooth, wave: wave)
+                        let (offX, offY, rot) = reduceMotion ? (CGFloat.zero, CGFloat.zero, 0.0) : profile.limbOffset(smooth: smooth, wave: wave)
                         StickFigureKinematicsView(
                             pose: pose,
                             phase: phase,
@@ -569,9 +565,10 @@ public struct MotionCoachView: View {
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.35), radius: 3)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.20), radius: 12)
                             .shadow(color: Color(hue: profile.accentHue, saturation: 0.72, brightness: 0.98).opacity(0.08), radius: 28)
-                            .scaleEffect(1.0 + pulse * profile.scaleAmplitude)
-                            .rotationEffect(.degrees(rot))
-                            .offset(x: offX, y: offY)
+                            .scaleEffect(1.0 + pulse * profile.scaleAmplitude * phaseState.oscillationBlend * kinematics.holdOscillationScale)
+                            .rotationEffect(.degrees(rot * phaseState.oscillationBlend * kinematics.holdOscillationScale))
+                            .offset(x: offX * phaseState.oscillationBlend * kinematics.holdOscillationScale,
+                                    y: offY * phaseState.oscillationBlend * kinematics.holdOscillationScale)
                             .position(x: cx, y: cy)
 
                         if !reduceMotion {
@@ -630,9 +627,10 @@ public struct MotionCoachView: View {
                             )
                             .frame(width: 7 + CGFloat(pulse) * 3, height: 7 + CGFloat(pulse) * 3)
                         Text(profile.cue)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.caption.weight(.medium))
                             .foregroundStyle(.white.opacity(0.88))
-                            .lineLimit(1)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -645,9 +643,18 @@ public struct MotionCoachView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(LocalizedString(
-            en: "Animated visual guidance for \(pose.name.localized)",
-            fr: "Guidage visuel anim\u{00e9} pour \(pose.name.localized)"
+            en: "Illustrated pose guide: \(pose.name.localized)",
+            fr: "Guide illustré : \(pose.name.localized)"
         ).localized))
+        .accessibilityValue(Text(([pose.description.localized] + pose.kinematics.setupSteps.map { $0.localized } + [pose.breathingPattern.localized]).filter { !$0.isEmpty }.joined(separator: ". ")))
+        .onAppear { updatePlayback() }
+        .onChange(of: isPaused) { _, _ in updatePlayback() }
+        .onChange(of: scenePhase) { _, _ in updatePlayback() }
+        .onChange(of: reduceMotion) { _, _ in updatePlayback() }
+    }
+
+    private func updatePlayback() {
+        playback.setPaused(isPaused || reduceMotion || scenePhase != .active, at: Date())
     }
 
     // MARK: - Goal silhouette (Phase 4)
@@ -682,38 +689,22 @@ public struct MotionCoachView: View {
         accentHue: Double
     ) -> some View {
         if phaseState.phase == .setup || (phaseState.phase == .hold && phaseState.progress < 0.15) {
-            let stepAlpha = phaseState.phase == .setup ? 1.0 : 1.0 - (phaseState.progress / 0.15)
+            // Pausing can freeze the hold transition near zero opacity. Keep the
+            // current instruction readable while the user studies the pose.
+            let stepAlpha = isPaused || phaseState.phase == .setup
+                ? 1.0 : 1.0 - (phaseState.progress / 0.15)
             let currentStep = min(Int(phaseState.progress * Double(steps.count)), steps.count - 1)
 
-            ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
-                let yOffset = size * 0.08 * CGFloat(i)
-                let isActive = i == currentStep
-                let rowAlpha = stepAlpha * (isActive ? 1.0 : 0.4)
-
-                HStack(spacing: 6) {
-                    Text("\(i + 1)")
-                        .font(.system(size: isActive ? 14 : 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            isActive
-                            ? Color(hue: accentHue, saturation: 0.8, brightness: 1.0)
-                            : .white.opacity(0.5)
-                        )
-                        .frame(width: 22, height: 22)
-
-                    Text(step.localized)
-                        .font(.system(size: isActive ? 14 : 12, weight: isActive ? .semibold : .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(rowAlpha))
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(.black.opacity(isActive ? 0.45 : 0.20))
-                )
-                .offset(y: -size * 0.35 + yOffset)
-                .opacity(rowAlpha)
-            }
+            Text("\(currentStep + 1). \(steps[currentStep].localized)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(10)
+                .frame(maxWidth: size * 0.85)
+                .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 12))
+                .position(x: cx, y: max(36, cy - size * 0.34))
+                .opacity(stepAlpha)
         }
     }
 
@@ -793,7 +784,7 @@ public struct MotionCoachView: View {
         smooth: Double, wave: Double,
         size: CGFloat, cx: CGFloat, cy: CGFloat
     ) -> some View {
-        let (offX, offY, rot) = profile.limbOffset(smooth: smooth, wave: wave)
+        let (offX, offY, rot) = reduceMotion ? (CGFloat.zero, CGFloat.zero, 0.0) : profile.limbOffset(smooth: smooth, wave: wave)
         StickFigureKinematicsView(pose: pose, phase: phase, smooth: smooth, time: 0,
                                    phaseState: phaseState, kinematics: kinematics, detail: .simplified)
             .frame(width: size * Proportion.groundReflectionWidth, height: size * Proportion.groundReflectionHeight)
@@ -1406,7 +1397,7 @@ private struct StickFigureKinematicsView: View {
     }
 }
 
-private struct StickFigureMotionProfile {
+struct StickFigureMotionProfile {
     let torsoTiltRadians: Double
     let verticalBob: Double
     let lateralSwayAmplitude: Double

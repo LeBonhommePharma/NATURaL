@@ -360,7 +360,7 @@ final class InsightEngine: ObservableObject {
         #if canImport(FoundationModels)
         do {
             let session = makeSession(instructions: Self.sciExplainInstructions)
-            let pct = score.map { "\(Int((min(1, max(0, $0)) * 100).rounded()))%" } ?? "unavailable"
+            let pct = score.flatMap { $0.isFinite ? "\(SessionHUDMetrics(sciScore: $0).sciPercentText)%" : nil } ?? "unavailable"
             let mode = plainLanguage ? "plain language for a first-time user" : "concise technical language"
             let prompt = """
                 Explain the Shannon Collapse Index (SCI) in \(mode).
@@ -407,23 +407,28 @@ final class InsightEngine: ObservableObject {
         Never invent data. Prefer the user's language when specified; otherwise English.
         When drug–HRV entropy (ΔH), docking entropy (ΔS_config), or cross-domain correlation
         data is provided, weave it in as observational wellness context only — not clinical claims.
+        HRV entropy is an observational signal, not a measure of receptor binding or a drug effect.
+        Docking calculations, reference profiles and HRV measurements are distinct data sources.
+        Do not claim that co-occurrence, a threshold crossing or a correlation validates one from another.
         All data is processed on-device; do not mention cloud services or external servers.
         """
 
     private static let poseCoachInstructions = """
         You are a chair yoga instructor for the NATURaL app.
         Produce a single brief guidance cue (1–2 short sentences, max ~40 words).
-        Adapt to the practitioner's biofeedback (SCI focus, heart rate, trends).
+        Adapt to the practitioner's biofeedback (experimental SCI, heart rate, trends).
         If recent dose / drug–HRV context is provided, adapt tone gently (calm or steady)
         without naming diagnoses or giving medication advice.
         Be warm, specific, and actionable. No medical advice or diagnoses.
+        Never infer drug effects, autonomic mechanism or receptor binding from HRV.
         Prefer the language indicated in the prompt (English or French).
         Do not use markdown, bullet lists, or quotation marks around the whole cue.
         """
 
     private static let sciExplainInstructions = """
         You explain the Shannon Collapse Index (SCI) for NATURaL chair yoga.
-        SCI is Shannon entropy of heart-rate variability on this device. Not medical advice.
+        SCI is an experimental indicator derived from heart-rate variability entropy on this device.
+        It does not measure concentration, medication effects or molecular binding. Not medical advice.
         Two short sentences maximum. Never invent numbers. Never mention cloud or servers.
         If a template is provided, stay consistent with its facts.
         """
@@ -454,7 +459,7 @@ final class InsightEngine: ObservableObject {
         if let hrv = insights[.heartRateVariability] {
             let scoreText = hrv.score.map { String(format: "%.0f%%", $0 * 100) } ?? "unavailable"
             sections.append(
-                "SCI / HRV Focus Score: \(scoreText), trend: \(hrv.trend.rawValue), "
+                "Experimental SCI / HRV entropy indicator: \(scoreText), trend: \(hrv.trend.rawValue), "
                 + "status: \(hrv.status.rawValue). \(hrv.summary.en)"
             )
         }
@@ -478,7 +483,7 @@ final class InsightEngine: ObservableObject {
         if let docking = insights[.molecularDocking] {
             let scoreText = docking.score.map { String(format: "%.0f%%", $0 * 100) } ?? "unavailable"
             sections.append(
-                "Molecular Docking Entropy (FlexAID ΔS_config): binding signal = \(scoreText), "
+                "Imported Molecular Docking Entropy (FlexAID ΔS_config): analysis score = \(scoreText), "
                 + "trend: \(docking.trend.rawValue), "
                 + "status: \(docking.status.rawValue). \(docking.summary.en)"
             )
@@ -513,13 +518,13 @@ final class InsightEngine: ObservableObject {
         prompt += "Standard cue: \(pose.voiceCueText.en)\n"
         prompt += "Breathing: \(pose.breathingPattern.en)\n"
 
-        if let hr = heartRate {
-            prompt += "Current heart rate: \(Int(hr)) BPM\n"
+        if let hr = heartRate, hr.isFinite, hr > 0 {
+            prompt += "Current heart rate: \(String(format: "%.0f", hr)) BPM\n"
         }
 
         if let hrv = insights[.heartRateVariability] {
             let scoreText = hrv.score.map { String(format: "%.0f", $0 * 100) } ?? "unknown"
-            prompt += "SCI focus score: \(scoreText)%, trend: \(hrv.trend.rawValue), status: \(hrv.status.rawValue)\n"
+            prompt += "experimental SCI score: \(scoreText)%, trend: \(hrv.trend.rawValue), status: \(hrv.status.rawValue)\n"
         }
 
         if let med = insights[.medication] {
@@ -535,7 +540,7 @@ final class InsightEngine: ObservableObject {
             prompt += "Recent drug–HRV context: \(drug.summary.en)\n"
             prompt += "Response direction: \(drug.responseDirection.rawValue)\n"
             if drug.bindingDetected {
-                prompt += "Adapt cue gently for post-dose autonomic shift (no medical advice).\n"
+                prompt += "Adapt cue gently to the observed entropy change; do not infer a drug effect or autonomic mechanism.\n"
             }
         }
 
@@ -601,12 +606,11 @@ final class InsightEngine: ObservableObject {
         section += "(\(drug.doseEvent.doseValue) \(drug.doseEvent.doseUnit))\n"
         section += "Peak ΔH = \(delta) bits at +\(peak) min post-dose "
         section += "(effect size \(effect)%). "
-        section += "Binding detected: \(drug.bindingDetected). "
+        section += "Experimental entropy-change threshold exceeded: \(drug.bindingDetected). This is not evidence of receptor binding or medication causality. "
         section += "Direction: \(drug.responseDirection.rawValue).\n"
         section += "Summary: \(drug.summary.en)"
         if let match = drug.profileMatch {
-            let conf = String(format: "%.0f", match.confidence * 100)
-            section += "\nPK profile match: \(match.profile.name.en) (\(conf)% confidence)."
+            section += "\nHeuristic PK profile match: \(match.profile.name.en). This score is not a calibrated probability or confirmation of a drug effect."
         }
         return section
     }
@@ -616,7 +620,7 @@ final class InsightEngine: ObservableObject {
         let r = String(format: "%.3f", validation.pearsonR)
         let p = String(format: "%.4f", validation.pValue)
         let r2 = String(format: "%.3f", validation.rSquared)
-        var section = "Cross-domain validation (molecular |ΔS_config| ↔ physiological |ΔH_hrv|):\n"
+        var section = "Exploratory association (molecular |ΔS_config| ↔ physiological |ΔH_hrv|):\n"
         section += "n=\(validation.n), Pearson r=\(r), R²=\(r2), p=\(p), "
         section += "significant=\(validation.isSignificant).\n"
         section += validation.summary.en
@@ -637,7 +641,7 @@ final class InsightEngine: ObservableObject {
         section += "In-vivo |ΔH_hrv| peak = \(String(format: "%.2f", abs(drug.peakDeltaH))) bits "
         section += "at +\(String(format: "%.0f", drug.peakTimeMinutes)) min.\n"
         if let profile = bindingProfile {
-            section += "Reference |ΔS_config| ≈ \(String(format: "%.2f", abs(profile.expectedDeltaSBits))) bits "
+            section += "Unverified catalog estimate |ΔS_config| ≈ \(String(format: "%.2f", abs(profile.expectedDeltaSBits))) bits "
             section += "(-TΔS ≈ \(String(format: "%.1f", profile.expectedEntropyPenaltyKcal)) kcal/mol).\n"
         }
         if let docking, docking.score != nil {
@@ -681,13 +685,13 @@ final class InsightEngine: ObservableObject {
            let medScore = insights[.medication]?.score {
             if hrvScore > 0.7 && medScore > 0.8 {
                 parts.append(LocalizedString(
-                    en: "Your focus and adherence are both strong — keep it up!",
-                    fr: "Votre concentration et votre adhérence sont toutes deux excellentes — continuez!"
+                    en: "Your experimental SCI and logged adherence are both higher. These are separate indicators, not evidence of a medication effect.",
+                    fr: "Votre SCI expérimental et votre observance consignée sont plus élevés. Ce sont des indicateurs distincts, sans démontrer un effet médicamenteux."
                 ).localized)
             } else if hrvScore < 0.3 && medScore < 0.5 {
                 parts.append(LocalizedString(
-                    en: "Consider reviewing your medication schedule and trying a breathing exercise.",
-                    fr: "Pensez à revoir votre horaire de médicaments et à essayer un exercice de respiration."
+                    en: "Your experimental SCI and logged adherence are lower. Check whether your dose log is complete; SCI does not indicate whether a medication schedule should change.",
+                    fr: "Votre SCI expérimental et votre observance consignée sont plus bas. Vérifiez si le journal des prises est complet ; le SCI ne permet pas de décider d’un changement d’horaire médicamenteux."
                 ).localized)
             }
         }
@@ -715,7 +719,7 @@ final class InsightEngine: ObservableObject {
         let fallback = base.isEmpty ? pose.breathingPattern.localized : base
         guard !fallback.isEmpty else { return pose.description.localized }
 
-        let sci = insights[.heartRateVariability]?.score
+        let sci = insights[.heartRateVariability]?.score.flatMap { $0.isFinite ? $0 : nil }
         let trend = insights[.heartRateVariability]?.trend
 
         // Prefer gentle drug–HRV adaptation when a significant post-dose response exists.
@@ -725,24 +729,24 @@ final class InsightEngine: ObservableObject {
 
         if let sci, sci < 0.35 {
             let tip = LocalizedString(
-                en: "Soften your breath — focus is low (\(Int(sci * 100))% SCI).",
-                fr: "Adoucissez le souffle — concentration basse (\(Int(sci * 100)) % SCI)."
+                en: "Breathe comfortably — the experimental SCI is low (\(SessionHUDMetrics(sciScore: sci).sciPercentText)% SCI).",
+                fr: "Respirez confortablement — le SCI expérimental est bas (\(SessionHUDMetrics(sciScore: sci).sciPercentText) % SCI)."
             ).localized
             return "\(fallback) \(tip)"
         }
 
         if let sci, sci > 0.75, trend == .improving {
             let tip = LocalizedString(
-                en: "Strong focus (\(Int(sci * 100))% SCI) — hold with ease.",
-                fr: "Belle concentration (\(Int(sci * 100)) % SCI) — maintenez avec aisance."
+                en: "Experimental SCI is higher (\(SessionHUDMetrics(sciScore: sci).sciPercentText)% SCI) — hold with ease.",
+                fr: "Le SCI expérimental est plus élevé (\(SessionHUDMetrics(sciScore: sci).sciPercentText) % SCI) — maintenez avec aisance."
             ).localized
             return "\(fallback) \(tip)"
         }
 
-        if let hr = heartRate, hr > 120 {
+        if let hr = heartRate, hr.isFinite, hr > 120 {
             let tip = LocalizedString(
-                en: "Heart rate is elevated (\(Int(hr)) BPM) — ease intensity if needed.",
-                fr: "Fréquence élevée (\(Int(hr)) BPM) — allégez si besoin."
+                en: "Heart rate is elevated (\(String(format: "%.0f", hr)) BPM) — ease intensity if needed.",
+                fr: "Fréquence élevée (\(String(format: "%.0f", hr)) BPM) — allégez si besoin."
             ).localized
             return "\(fallback) \(tip)"
         }
@@ -781,8 +785,8 @@ final class InsightEngine: ObservableObject {
         if let hrvInsight = insights[.heartRateVariability], let score = hrvInsight.score, score.isFinite {
             let pct = SessionHUDMetrics(sciScore: score).sciPercentText
             parts.append(LocalizedString(
-                en: "Focus coherence reached \(pct)% — \(hrvInsight.trend == .improving ? "an improving trend" : "keep practicing deep breathing").",
-                fr: "La cohérence de concentration a atteint \(pct) % — \(hrvInsight.trend == .improving ? "une tendance à la hausse" : "continuez à pratiquer la respiration profonde")."
+                en: "The experimental SCI was \(pct)%. It describes an HRV entropy pattern, not measured concentration or relaxation.",
+                fr: "Le SCI expérimental était de \(pct) %. Il décrit un motif d’entropie VFC, sans mesurer la concentration ou la relaxation."
             ).localized)
         }
 
@@ -824,13 +828,13 @@ final class InsightEngine: ObservableObject {
             switch drug.responseDirection {
             case .sympathomimeticCollapse:
                 text += " " + LocalizedString(
-                    en: "HRV entropy collapsed about \(peak) min after \(name) — consistent with a sympathomimetic-style profile (observational only).",
-                    fr: "L'entropie VFC s'est effondrée environ \(peak) min après \(name) — cohérent avec un profil de type sympathomimétique (observation seulement)."
+                    en: "HRV entropy decreased about \(peak) min after the logged dose of \(name). Timing alone does not establish a medication effect or receptor binding.",
+                    fr: "L'entropie VFC a diminué environ \(peak) min après la prise consignée de \(name). La chronologie seule ne démontre ni effet médicamenteux ni liaison aux récepteurs."
                 ).localized
             case .parasympathomimeticExpansion:
                 text += " " + LocalizedString(
-                    en: "HRV entropy expanded about \(peak) min after \(name) — consistent with a parasympathomimetic / vagotonic-style profile (observational only).",
-                    fr: "L'entropie VFC s'est élargie environ \(peak) min après \(name) — cohérent avec un profil de type parasympathomimétique / vagotonique (observation seulement)."
+                    en: "HRV entropy increased about \(peak) min after the logged dose of \(name). Timing alone does not establish a medication effect or receptor binding.",
+                    fr: "L'entropie VFC a augmenté environ \(peak) min après la prise consignée de \(name). La chronologie seule ne démontre ni effet médicamenteux ni liaison aux récepteurs."
                 ).localized
             case .noSignificantChange:
                 break
@@ -849,7 +853,7 @@ final class InsightEngine: ObservableObject {
 
         // Prefer rich single-substance language when DrugResponseResult is present.
         if let drug {
-            let hrvPct = hrvScore.map { Int($0 * 100) }
+            let hrvPct = hrvScore.flatMap { $0.isFinite ? SessionHUDMetrics(sciScore: $0).sciPercentText : nil }
             let delta = String(format: "%+.2f", drug.peakDeltaH)
             let peak = String(format: "%.0f", drug.peakTimeMinutes)
             let name = drug.doseEvent.name
@@ -857,15 +861,15 @@ final class InsightEngine: ObservableObject {
             if let docking, let dockingScore = docking.score, dockingScore > 0.3 {
                 let focus = hrvPct.map { "\($0)%" } ?? "n/a"
                 return LocalizedString(
-                    en: "Molecular binding entropy for \(name) aligns with post-dose HRV ΔH \(delta) bits at +\(peak) min (SCI focus \(focus)).",
-                    fr: "L'entropie de liaison moléculaire pour \(name) s'aligne avec ΔH VFC \(delta) bits à +\(peak) min (focus SCI \(focus))."
+                    en: "Imported docking data is available separately from the HRV change after \(name): ΔH \(delta) bits at +\(peak) min (SCI \(focus)). These observations do not establish molecular binding in the body.",
+                    fr: "Des données d'amarrage importées sont disponibles séparément du changement VFC après \(name) : ΔH \(delta) bits à +\(peak) min (SCI \(focus)). Ces observations ne démontrent pas de liaison moléculaire dans l'organisme."
                 ).localized
             }
 
             if drug.bindingDetected, let hrvPct {
                 return LocalizedString(
-                    en: "Post-dose HRV entropy shift (ΔH \(delta) bits at +\(peak) min) co-occurs with current SCI focus \(hrvPct)%.",
-                    fr: "Le changement d'entropie VFC post-dose (ΔH \(delta) bits à +\(peak) min) coïncide avec un focus SCI de \(hrvPct) %."
+                    en: "Post-dose HRV entropy shift (ΔH \(delta) bits at +\(peak) min) co-occurs with current experimental SCI \(hrvPct)%.",
+                    fr: "Le changement d'entropie VFC post-dose (ΔH \(delta) bits à +\(peak) min) coïncide avec un SCI expérimental de \(hrvPct) %."
                 ).localized
             }
 
@@ -873,8 +877,8 @@ final class InsightEngine: ObservableObject {
             if let profile = BindingEntropyProfile.profile(for: drug.doseEvent.medicationId) {
                 let ds = String(format: "%.2f", abs(profile.expectedDeltaSBits))
                 return LocalizedString(
-                    en: "Reference |ΔS_config| ≈ \(ds) bits for \(name) vs observed |ΔH_hrv| \(String(format: "%.2f", abs(drug.peakDeltaH))) bits.",
-                    fr: "|ΔS_config| de référence ≈ \(ds) bits pour \(name) vs |ΔH_hrv| observé \(String(format: "%.2f", abs(drug.peakDeltaH))) bits."
+                    en: "Unverified catalog estimate |ΔS_config| ≈ \(ds) bits for \(name) vs observed |ΔH_hrv| \(String(format: "%.2f", abs(drug.peakDeltaH))) bits.",
+                    fr: "Estimation non vérifiée du catalogue |ΔS_config| ≈ \(ds) bits pour \(name) vs |ΔH_hrv| observé \(String(format: "%.2f", abs(drug.peakDeltaH))) bits."
                 ).localized
             }
 
@@ -882,11 +886,11 @@ final class InsightEngine: ObservableObject {
         }
 
         // Fallback: docking score alone still mentions HRV coherence (legacy path).
-        if let dockingScore = docking?.score, dockingScore > 0.3, let hrvScore {
-            let hrvPct = Int(hrvScore * 100)
+        if let dockingScore = docking?.score, dockingScore > 0.3, let hrvScore, hrvScore.isFinite {
+            let hrvPct = SessionHUDMetrics(sciScore: hrvScore).sciPercentText
             return LocalizedString(
-                en: "Molecular binding entropy detected — correlating with HRV coherence (\(hrvPct)%).",
-                fr: "Entropie de liaison moléculaire détectée — corrélation avec la cohérence VFC (\(hrvPct) %)."
+                en: "Imported docking data and an SCI value of \(hrvPct)% are available. Their coexistence does not establish a correlation or measure molecular binding in the body.",
+                fr: "Des données d'amarrage importées et un SCI de \(hrvPct) % sont disponibles. Leur coexistence ne démontre ni corrélation ni liaison moléculaire dans l'organisme."
             ).localized
         }
 
@@ -903,13 +907,13 @@ final class InsightEngine: ObservableObject {
         switch drug.responseDirection {
         case .sympathomimeticCollapse:
             return LocalizedString(
-                en: "Stay soft and steady — autonomic focus may be shifting after your recent dose.",
-                fr: "Restez souple et stable — le focus autonome peut évoluer après votre dose récente."
+                en: "Stay soft and steady. An HRV entropy change was observed after your logged dose; its cause is unknown.",
+                fr: "Restez souple et stable. Un changement d’entropie VFC a été observé après votre prise consignée ; sa cause est inconnue."
             ).localized
         case .parasympathomimeticExpansion:
             return LocalizedString(
-                en: "Lean into the calm — your recent dose aligns with a relaxed HRV pattern.",
-                fr: "Accueillez le calme — votre dose récente s'aligne avec un motif VFC détendu."
+                en: "Breathe comfortably. HRV entropy increased after your logged dose; this does not measure calm or establish a medication effect.",
+                fr: "Respirez confortablement. L’entropie VFC a augmenté après votre prise consignée ; cela ne mesure pas le calme et ne démontre pas un effet médicamenteux."
             ).localized
         case .noSignificantChange:
             return nil

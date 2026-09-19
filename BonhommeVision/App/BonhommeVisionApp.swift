@@ -6,20 +6,21 @@ import BonhommeCore
 /// with 3D pose visualization using RealityKit.
 @main
 struct BonhommeVisionApp: App {
-    @State private var selectedPlan: WorkoutPlan?
+    @State private var viewModel: SpatialWorkoutViewModel?
     @State private var isImmersiveSpaceOpen = false
 
     var body: some Scene {
         WindowGroup {
             SpatialPoseView(
-                selectedPlan: $selectedPlan,
+                viewModel: $viewModel,
                 isImmersiveSpaceOpen: $isImmersiveSpaceOpen
             )
         }
         .windowStyle(.automatic)
 
         ImmersiveSpace(id: "poseSpace") {
-            ImmersivePoseSpace(selectedPlan: selectedPlan)
+            ImmersivePoseSpace(viewModel: viewModel)
+                .onDisappear { isImmersiveSpaceOpen = false }
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }

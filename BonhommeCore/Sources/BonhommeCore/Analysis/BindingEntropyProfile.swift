@@ -1,20 +1,12 @@
 import Foundation
 
-/// Known configurational entropy values for substances, sourced from
-/// published computational chemistry data and FlexAID∆S docking simulations.
+/// Bundled configurational-entropy catalog inputs for exploratory comparisons.
 ///
-/// Each entry provides the expected ΔS_config (in bits) and -TΔS (kcal/mol)
-/// for a given substance binding to its primary pharmacological target.
-///
-/// These serve as:
-/// 1. Ground truth for validating FlexAIDdSAnalyzer computations
-/// 2. Cross-reference data for CrossDomainValidator (correlating with in vivo ΔH_hrv)
-/// 3. Reference database for substances where docking has not been performed locally
-///
-/// The fundamental relationship:
-///   More rotatable bonds → larger |ΔS_config| → larger entropy penalty
-///   Rigid molecules (fused rings, planar structures) → minimal penalty
-///   Flexible chains → substantial penalty
+/// Entries mix literature pointers, structural heuristics, and internal-run labels.
+/// The catalog does not include per-value experimental records or reproducible run
+/// receipts. Treat the numeric values as unverified estimates, not ground truth,
+/// measured binding entropy, or independent validation of physiological signals.
+/// The bits describe a molecular configurational model, not cardiac RR entropy.
 public struct BindingEntropyProfile: Sendable {
     /// Substance ID matching PharmacokineticProfile.substanceId.
     public let substanceId: String
@@ -28,7 +20,7 @@ public struct BindingEntropyProfile: Sendable {
     /// Expected -TΔS at 298K in kcal/mol (positive = entropy penalty).
     public let expectedEntropyPenaltyKcal: Double
 
-    /// Published reference or computational source for these values.
+    /// Legacy source note; it is not a verified citation for the exact numeric value.
     public let reference: String
 
     public init(
@@ -50,9 +42,9 @@ public struct BindingEntropyProfile: Sendable {
 
 extension BindingEntropyProfile {
 
-    /// All known binding entropy profiles.
+    /// Bundled profiles whose exact values still require source-data validation.
     ///
-    /// Values derived from:
+    /// Legacy bibliography and heuristic notes (not per-entry provenance):
     /// - Chang & Gilson, JACS 2004 (mining minima approach)
     /// - Mobley & Gilson, Ann Rev Biophys 2017 (free energy calculation review)
     /// - Ruvinsky, J Comput Chem 2007 (configurational entropy estimation)
