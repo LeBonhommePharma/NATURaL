@@ -689,7 +689,10 @@ public struct MotionCoachView: View {
         accentHue: Double
     ) -> some View {
         if phaseState.phase == .setup || (phaseState.phase == .hold && phaseState.progress < 0.15) {
-            let stepAlpha = phaseState.phase == .setup ? 1.0 : 1.0 - (phaseState.progress / 0.15)
+            // Pausing can freeze the hold transition near zero opacity. Keep the
+            // current instruction readable while the user studies the pose.
+            let stepAlpha = isPaused || phaseState.phase == .setup
+                ? 1.0 : 1.0 - (phaseState.progress / 0.15)
             let currentStep = min(Int(phaseState.progress * Double(steps.count)), steps.count - 1)
 
             Text("\(currentStep + 1). \(steps[currentStep].localized)")

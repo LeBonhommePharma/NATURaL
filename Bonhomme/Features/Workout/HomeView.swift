@@ -319,6 +319,7 @@ struct HomeView: View {
                 .scaledToFit()
                 .frame(maxWidth: .infinity)
                 .frame(height: compact ? 190 : 155)
+                .environment(\.colorScheme, .dark)
                 .accessibilityHidden(true)
             Text(LocalizedString(en: "Come back to yourself.", fr: "Revenez à vous.").localized)
                 .font(.largeTitle.bold())

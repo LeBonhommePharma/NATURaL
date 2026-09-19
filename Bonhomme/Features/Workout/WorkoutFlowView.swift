@@ -43,6 +43,7 @@ private struct WorkoutSessionView: View {
     @State private var viewModel: WorkoutFlowViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Shared app state — used to mark any live workout as presenting so scene-active
     /// auto-load cannot re-enter and spawn a second session from 5s persist state.
@@ -125,10 +126,7 @@ private struct WorkoutSessionView: View {
     }
 
     private var lifecycleContent: some View {
-        sessionCanvas
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            phoneSessionChrome
-        }
+        sessionLayout
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
         .statusBarHidden()
@@ -152,6 +150,20 @@ private struct WorkoutSessionView: View {
                 crossDomain: appState.medicationTracker.latestCrossDomainValidation
             )
         }
+    }
+
+    /// Reserve actual layout space for the controls. An inset on the enclosing
+    /// ZStack allowed its GeometryReader/ScrollView to paint below the HUD.
+    private var sessionLayout: some View {
+        VStack(spacing: 0) {
+            sessionCanvas
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+            phoneSessionChrome
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
+        }
+        .background(BrandColor.bg.ignoresSafeArea())
     }
 
     private var sessionCanvas: some View {
@@ -252,10 +264,7 @@ private struct WorkoutSessionView: View {
         if showsSessionControls {
             VStack(spacing: SessionSpacing.xs) {
                 if showsLiveHUD {
-                    SessionHUDBar(metrics: viewModel.sessionHUDMetrics)
-                        .padding(.horizontal, SessionSpacing.md)
-                        .popoverTip(SessionTips.sci)
-                        .popoverTip(SessionTips.airPods)
+                    phoneHUD
                 }
                 SessionControlBar(
                     isPaused: viewModel.isPaused,
@@ -273,7 +282,21 @@ private struct WorkoutSessionView: View {
 
     private var showsLiveHUD: Bool {
         guard case .active = viewModel.phase else { return false }
-        return !usesRegularSessionLayout
+        return !usesRegularSessionLayout && !usesInlineHUD
+    }
+
+    /// Large text and short landscape windows keep metrics in the scroll flow,
+    /// leaving only essential controls pinned rather than consuming the viewport.
+    private var usesInlineHUD: Bool {
+        dynamicTypeSize.isAccessibilitySize || verticalSizeClass == .compact
+    }
+
+    private var phoneHUD: some View {
+        SessionHUDBar(metrics: viewModel.sessionHUDMetrics)
+            .accessibilityIdentifier("session.hud")
+            .padding(.horizontal, SessionSpacing.md)
+            .popoverTip(SessionTips.sci)
+            .popoverTip(SessionTips.airPods)
     }
 
     /// Breath ring during active / transition / countdown (not ready or summary).
@@ -295,6 +318,8 @@ private struct WorkoutSessionView: View {
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
             .scrollIndicators(.hidden)
+            .clipped()
+            .accessibilityIdentifier("session.content")
         }
     }
 
@@ -319,9 +344,11 @@ private struct WorkoutSessionView: View {
                 Text(viewModel.plan.name.localized)
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(BrandColor.fg)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("\(viewModel.plan.poseCount) \(LocalizedString(en: "poses", fr: "postures").localized) · \(formattedDuration(viewModel.plan.totalDuration))")
                     .font(.title3)
                     .foregroundStyle(BrandColor.fg.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
                 if !viewModel.plan.description.localized.isEmpty {
                     Text(viewModel.plan.description.localized)
                         .font(.body)
@@ -425,7 +452,7 @@ private struct WorkoutSessionView: View {
 
             if let firstPose = viewModel.plan.poses.first {
                 PoseCoachStage(pose: firstPose, phase: .preview)
-                    .frame(maxHeight: 280)
+                    .frame(height: dynamicTypeSize.isAccessibilitySize ? 220 : 280)
                     .padding(.horizontal, SessionSpacing.lg)
                     .popoverTip(SessionTips.arCoach)
             } else {
@@ -440,11 +467,15 @@ private struct WorkoutSessionView: View {
                 .font(.title.weight(.bold))
                 .foregroundStyle(BrandColor.fg)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, SessionSpacing.md)
 
             Text("\(viewModel.plan.poseCount) \(LocalizedString(en: "poses", fr: "postures").localized) · \(formattedDuration(viewModel.plan.totalDuration))")
                 .font(.body)
                 .foregroundStyle(BrandColor.fg.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, SessionSpacing.md)
 
             Spacer(minLength: SessionSpacing.md)
 
@@ -500,6 +531,10 @@ private struct WorkoutSessionView: View {
                     .padding(.horizontal, SessionSpacing.lg)
                     .padding(.top, SessionSpacing.sm)
                     .animation(SessionMotion.animation(reduceMotion: reduceMotion, duration: 0.35), value: viewModel.currentVoiceCue)
+            }
+
+            if usesInlineHUD {
+                phoneHUD.padding(.top, SessionSpacing.md)
             }
 
             PoseGuideDetails(pose: pose).padding(SessionSpacing.lg)

@@ -29,7 +29,6 @@ jobs:
     env:
       PLATFORM: ${{ inputs.platform }}
       BUILD_NUMBER: ${{ inputs.build_number }}
-      SIGNING_XCCONFIG: ${{ runner.temp }}/natural-signing/signing.xcconfig
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -64,6 +63,7 @@ jobs:
       - name: Create and verify the distribution archive
         run: |
           set -euo pipefail
+          export SIGNING_XCCONFIG="$RUNNER_TEMP/natural-signing/signing.xcconfig"
           python3 scripts/cloud_signing.py verify-settings
           bash scripts/archive-app-store.sh
           case "$PLATFORM" in

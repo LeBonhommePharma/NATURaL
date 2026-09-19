@@ -353,6 +353,9 @@ private struct WelcomeView: View {
                     Button(action: continueToApp) {
                         Text(LocalizedString(en: "Find my first session", fr: "Trouver ma première séance").localized)
                             .font(.headline)
+                            .foregroundStyle(SessionPalette.onAccent)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
                     }
                     .sessionProminentButtonStyle()
@@ -364,6 +367,9 @@ private struct WelcomeView: View {
             .foregroundStyle(BrandColor.fg)
             .background(BrandColor.bg)
         }
+        // This introduction uses the fixed midnight palette, including its artwork
+        // and system sheet chrome, regardless of the surrounding home appearance.
+        .preferredColorScheme(.dark)
     }
 }
 

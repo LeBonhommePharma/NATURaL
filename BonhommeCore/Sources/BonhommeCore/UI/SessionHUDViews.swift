@@ -500,6 +500,9 @@ public struct SessionBeginButton: View {
         Button(action: action) {
             Text(SessionHUDCopy.beginSession.localized)
                 .font(.headline)
+                .foregroundStyle(SessionPalette.onAccent)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
         }
         .sessionProminentButtonStyle()

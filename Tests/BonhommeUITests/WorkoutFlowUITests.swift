@@ -33,6 +33,7 @@ final class WorkoutFlowUITests: XCTestCase {
         let continueButton = app.descendants(matching: .any)["welcome.continue"]
         let timeout: TimeInterval = name.contains("LargestText") ? 20 : 12
         XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
+        capture("Welcome overview")
         for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
         XCTAssertTrue(continueButton.isHittable)
         let welcome = XCTAttachment(screenshot: app.screenshot())
@@ -147,6 +148,10 @@ final class WorkoutFlowUITests: XCTestCase {
         let pause = app.buttons["session.pauseResume"]
         pause.tap()
         XCTAssertTrue(pause.label.contains("Resume"))
+        let content = app.scrollViews["session.content"]
+        XCTAssertTrue(content.exists)
+        XCTAssertLessThanOrEqual(content.frame.maxY, pause.frame.minY + 1,
+                                 "Pinned controls must not cover the guide viewport")
         let preview = XCTAttachment(screenshot: app.screenshot())
         preview.name = "Paused guided session"
         preview.lifetime = .keepAlways
