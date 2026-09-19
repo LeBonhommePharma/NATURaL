@@ -38,14 +38,18 @@ final class MedicationTracker: ObservableObject {
     /// user-connected health institution in the Health app.
     ///
     /// Never invents pharmacy credentials. Returns without reading if consent is missing.
-    func fetchClinicalMedications(consentStore: ConsentStore = .shared) async throws {
-        guard consentStore.hasValidClinicalConsent else {
+    func fetchClinicalMedications(
+        consentStore: ConsentStore = .shared,
+        accessToken: ConsentStore.AccessToken? = nil
+    ) async throws {
+        guard let access = accessToken ?? consentStore.beginAccess() else {
             consentStore.appendAudit(ConsentAuditEntry(
                 action: .clinicalReadBlocked,
                 detail: "MedicationTracker.fetchClinicalMedications no_consent"
             ))
             return
         }
+        try consentStore.validateAccess(access)
 
         guard HKHealthStore.isHealthDataAvailable() else { return }
 
@@ -70,6 +74,7 @@ final class MedicationTracker: ObservableObject {
         )
 
         let records = try await descriptor.result(for: healthStore)
+        try consentStore.validateAccess(access)
 
         // Parse clinical records into medication profiles
         for clinicalRecord in records {
@@ -147,9 +152,8 @@ final class MedicationTracker: ObservableObject {
     /// the dose, then computes ΔH = H_post - H_pre at multiple time windows.
     /// Optionally matches against a known pharmacokinetic profile.
     ///
-    /// This is the real-world validation of FlexAID∆S: the same Shannon entropy
-    /// engine that detects molecular binding in silico detects drug-receptor
-    /// binding in vivo via HRV entropy collapse/expansion.
+    /// This measures a temporal association in HRV. It does not measure receptor
+    /// binding, establish a medication effect, or validate molecular predictions.
     func analyzeDrugResponse(
         doseSignal: MedicationSignal,
         profile: PharmacokineticProfile? = nil
@@ -379,8 +383,8 @@ struct MedicationProfile: Identifiable, Sendable, Equatable {
         guard let doseValue else {
             return doseUnit?.isEmpty == false ? (doseUnit ?? "") : "—"
         }
-        let intDose = Int(doseValue)
-        let doseStr = doseValue == Double(intDose) ? "\(intDose)" : String(format: "%.1f", doseValue)
+        guard doseValue.isFinite, doseValue >= 0 else { return "—" }
+        let doseStr = Int(exactly: doseValue).map(String.init) ?? String(doseValue)
         let unit = doseUnit ?? ""
         return unit.isEmpty ? doseStr : "\(doseStr) \(unit)"
     }

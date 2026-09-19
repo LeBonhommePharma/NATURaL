@@ -90,7 +90,6 @@ struct PokeDrugSubstanceInsightView: View {
     }
 
     private var matchLabel: String {
-        let pct = Int((match.confidence * 100).rounded())
         let kind: String
         switch match.matchKind {
         case .substanceId:
@@ -102,7 +101,7 @@ struct PokeDrugSubstanceInsightView: View {
         case .tokenOverlap:
             kind = LocalizedString(en: "Token match", fr: "Jetons").localized
         }
-        return "\(kind) · \(pct)%"
+        return kind
     }
 
     // MARK: - Species
@@ -162,7 +161,7 @@ struct PokeDrugSubstanceInsightView: View {
 
     private func statsRow(_ stats: PokeDrugStats) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedString(en: "Base stats", fr: "Stats de base").localized)
+            Text(LocalizedString(en: "Illustrative ratings", fr: "Évaluations illustratives").localized)
                 .font(.system(size: 13, weight: .medium))
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 statCell("HP", stats.hp)
@@ -215,7 +214,7 @@ struct PokeDrugSubstanceInsightView: View {
                     HStack {
                         typeChip(target)
                         Spacer()
-                        Text(effectiveness.starRating)
+                        Text("\(effectiveness.rawValue) / 4")
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
                             .foregroundStyle(effectivenessColor(effectiveness))
                     }
@@ -223,14 +222,14 @@ struct PokeDrugSubstanceInsightView: View {
             }
 
             Text(LocalizedString(
-                en: "Matchups reflect structural complementarity (published Ki / crystal data), not clinical recommendations.",
-                fr: "Les affrontements reflètent la complémentarité structurelle (Ki / structures publiées), pas des recommandations cliniques."
+                en: "These are hand-authored scaffold categories, not measurements of this substance’s affinity, efficacy, or safety. A low rating does not establish absence of binding.",
+                fr: "Ces catégories de structures sont définies manuellement, sans mesurer l’affinité, l’efficacité ou la sécurité de cette substance. Un score faible ne démontre pas une absence de liaison."
             ).localized)
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
         } header: {
             Label(
-                LocalizedString(en: "Type Matchup", fr: "Affrontement de types").localized,
+                LocalizedString(en: "Illustrative scaffold ratings", fr: "Évaluations illustratives des structures").localized,
                 systemImage: "arrow.left.arrow.right"
             )
         }
@@ -257,7 +256,7 @@ struct PokeDrugSubstanceInsightView: View {
             }
 
             LabeledContent(
-                LocalizedString(en: "Expected ΔH", fr: "ΔH attendu").localized
+                LocalizedString(en: "Model ΔH range", fr: "Plage ΔH du modèle").localized
             ) {
                 Text(String(
                     format: "%+.2f … %+.2f bits",
@@ -297,14 +296,14 @@ struct PokeDrugSubstanceInsightView: View {
             }
 
             Text(LocalizedString(
-                en: "DrugResponseAnalyzer compares post-dose HRV entropy to this profile after you log a dose during a session — not from the prescription list alone.",
-                fr: "DrugResponseAnalyzer compare l'entropie HRV post-dose à ce profil après un enregistrement de dose en séance — pas à partir de la seule liste d'ordonnances."
+                en: "These catalog timings and entropy ranges are model inputs, not your measured response or validated personal predictions. Dose, route, formulation, and individual factors can change timing. A logged dose alone does not establish a drug effect.",
+                fr: "Ces durées et plages d’entropie du catalogue sont des entrées de modèle, pas votre réponse mesurée ni des prédictions personnelles validées. La dose, la voie, la formulation et les facteurs individuels peuvent modifier les durées. Une prise consignée ne démontre pas un effet médicamenteux."
             ).localized)
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
         } header: {
             Label(
-                LocalizedString(en: "Drug Response", fr: "Réponse médicamenteuse").localized,
+                LocalizedString(en: "Catalog model inputs", fr: "Entrées du modèle du catalogue").localized,
                 systemImage: "waveform.path.ecg"
             )
         }
@@ -313,9 +312,9 @@ struct PokeDrugSubstanceInsightView: View {
     private func mechanismLabel(_ m: AutonomicMechanism) -> String {
         switch m {
         case .sympathomimetic:
-            return LocalizedString(en: "Sympathomimetic (collapse)", fr: "Sympathomimétique (collapse)").localized
+            return LocalizedString(en: "Sympathomimetic", fr: "Sympathomimétique").localized
         case .parasympathomimetic:
-            return LocalizedString(en: "Parasympathomimetic (expansion)", fr: "Parasympathomimétique (expansion)").localized
+            return LocalizedString(en: "Parasympathomimetic", fr: "Parasympathomimétique").localized
         case .mixed:
             return LocalizedString(en: "Mixed / biphasic", fr: "Mixte / biphasique").localized
         case .unknown:
@@ -328,7 +327,7 @@ struct PokeDrugSubstanceInsightView: View {
     private func bindingEntropySection(_ binding: BindingEntropyProfile) -> some View {
         Section {
             LabeledContent(
-                LocalizedString(en: "ΔS_config", fr: "ΔS_config").localized
+                LocalizedString(en: "Catalog ΔS_config estimate", fr: "Estimation ΔS_config du catalogue").localized
             ) {
                 Text(String(format: "%+.2f bits", binding.expectedDeltaSBits))
                     .font(.system(.body, design: .monospaced))
@@ -336,7 +335,7 @@ struct PokeDrugSubstanceInsightView: View {
             }
 
             LabeledContent(
-                LocalizedString(en: "−TΔS (298 K)", fr: "−TΔS (298 K)").localized
+                LocalizedString(en: "Catalog −TΔS estimate (298 K)", fr: "Estimation −TΔS du catalogue (298 K)").localized
             ) {
                 Text(String(format: "%.2f kcal/mol", binding.expectedEntropyPenaltyKcal))
                     .font(.system(.body, design: .monospaced))
@@ -350,6 +349,13 @@ struct PokeDrugSubstanceInsightView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Text(LocalizedString(
+                en: "Unverified catalog estimate. The source note below does not establish the exact value or a measured result for this substance.",
+                fr: "Estimation du catalogue non vérifiée. La note source ci-dessous ne démontre ni cette valeur exacte ni une mesure pour cette substance."
+            ).localized)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
             Text(binding.reference)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -358,8 +364,8 @@ struct PokeDrugSubstanceInsightView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label(
                     LocalizedString(
-                        en: "Cross-domain hint",
-                        fr: "Indice interdomaines"
+                        en: "Research hypothesis",
+                        fr: "Hypothèse de recherche"
                     ).localized,
                     systemImage: "arrow.triangle.branch"
                 )
@@ -380,11 +386,9 @@ struct PokeDrugSubstanceInsightView: View {
     }
 
     private func crossDomainHint(_ binding: BindingEntropyProfile) -> String {
-        let ds = String(format: "%.1f", abs(binding.expectedDeltaSBits))
-        let penalty = String(format: "%.1f", binding.expectedEntropyPenaltyKcal)
         return LocalizedString(
-            en: "Molecular |ΔS_config| ≈ \(ds) bits (−TΔS ≈ \(penalty) kcal/mol). Larger configurational penalties are hypothesized to pair with larger |ΔH_hrv| collapses/expansions when CrossDomainValidator has ≥5 paired observations (p < 0.05).",
-            fr: "|ΔS_config| moléculaire ≈ \(ds) bits (−TΔS ≈ \(penalty) kcal/mol). Les pénalités conformationnelles plus grandes devraient corréler avec de plus grands |ΔH_hrv| lorsque CrossDomainValidator dispose de ≥5 paires (p < 0,05)."
+            en: "Molecular configurational entropy and HRV entropy describe different distributions. Their association is an exploratory hypothesis; shared units, five pairs, or a small p-value do not validate a drug effect or receptor binding. This page shows catalog inputs, not a paired analysis of your measurements.",
+            fr: "L’entropie conformationnelle moléculaire et l’entropie VFC décrivent des distributions différentes. Leur association est une hypothèse exploratoire ; des unités communes, cinq paires ou une petite valeur p ne valident ni un effet médicamenteux ni une liaison aux récepteurs. Cette page présente le catalogue, pas une analyse appariée de vos mesures."
         ).localized
     }
 

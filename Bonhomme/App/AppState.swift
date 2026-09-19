@@ -8,6 +8,8 @@ final class AppState {
     /// True while any workout UI (new or restored) is on-screen.
     /// Guards scenePhase.active re-detect so mid-session 5s persist does not spawn a second auto-load.
     var isWorkoutActive = false
+    var showsTVDisplay = false
+    var pendingTVInvitation: URL?
     var healthKitAuthorized = false
 
     /// Set when a killed-app workout state is detected and auto-loaded on launch/active.

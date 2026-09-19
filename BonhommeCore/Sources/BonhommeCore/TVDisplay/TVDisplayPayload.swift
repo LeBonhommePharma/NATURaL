@@ -131,6 +131,8 @@ public struct TVDisplayPayload: Codable, Sendable {
     public var isGrounding: Bool?
     /// Whether adaptive music is playing on the companion.
     public var isMusicPlaying: Bool?
+    /// Transition previews the next pose without claiming an active hold.
+    public var isTransition: Bool?
 
     public init(
         currentPose: Pose,
@@ -143,7 +145,8 @@ public struct TVDisplayPayload: Codable, Sendable {
         sequenceTotal: Int,
         tempoBPM: Double? = nil,
         isGrounding: Bool? = nil,
-        isMusicPlaying: Bool? = nil
+        isMusicPlaying: Bool? = nil,
+        isTransition: Bool? = nil
     ) {
         self.currentPose = currentPose
         self.poseTimeRemaining = poseTimeRemaining
@@ -157,6 +160,7 @@ public struct TVDisplayPayload: Codable, Sendable {
         self.tempoBPM = tempoBPM
         self.isGrounding = isGrounding
         self.isMusicPlaying = isMusicPlaying
+        self.isTransition = isTransition
     }
 
     public var hudMetrics: SessionHUDMetrics {

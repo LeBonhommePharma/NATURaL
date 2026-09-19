@@ -3,106 +3,127 @@ import Combine
 import Network
 import BonhommeCore
 
-/// Handles the NWConnection from the iOS side to the tvOS companion app.
-/// Used as a focused connection helper (reconnect + framed send).
-/// Prefer `TVDisplayCoordinator` for full discovery + AirPlay fallback.
-///
-/// This is a thin wrapper that provides connection state observation
-/// and handles reconnection attempts when the connection drops.
+/// One explicitly paired TLS connection. Never discovers or selects a television.
 @MainActor
 final class NativeCompanionClient: ObservableObject {
-    @Published var isConnected = false
-
+    @Published private(set) var isConnected = false
+    @Published private(set) var isConnecting = false
+    var stateChanged: (() -> Void)?
+    var becameReady: (() -> Void)?
     private var connection: NWConnection?
-    private var lastEndpoint: NWEndpoint?
-    private let encoder = JSONEncoder()
-    private var reconnectTask: Task<Void, Never>?
-    /// Bumps on disconnect/connect so stale state handlers are ignored.
+    private var endpoint: NWEndpoint?
+    private var pairing: TVRelayPairing?
     private var generation = 0
-    private var isConnecting = false
+    private var retryCount = 0
+    private var retryTask: Task<Void, Never>?
+    private var deadlineTask: Task<Void, Never>?
+    private var buffer = TVRelayLatestFrameBuffer()
+    private var closing = false
 
-    func connect(to endpoint: NWEndpoint) {
-        lastEndpoint = endpoint
-        reconnectTask?.cancel()
-        generation += 1
-        let generation = self.generation
-        isConnecting = true
-
-        connection?.cancel()
-        let conn = NWConnection(to: endpoint, using: .tcp)
-
-        conn.stateUpdateHandler = { [weak self] state in
-            Task { @MainActor in
-                guard let self, generation == self.generation else { return }
-                switch state {
-                case .ready:
-                    self.isConnecting = false
-                    self.isConnected = true
-                    self.connection = conn
-                    self.reconnectTask?.cancel()
-                    self.reconnectTask = nil
-                case .failed:
-                    self.isConnecting = false
-                    self.isConnected = false
-                    self.connection = nil
-                    self.scheduleReconnect(to: endpoint)
-                case .cancelled:
-                    self.isConnecting = false
-                    self.isConnected = false
-                    self.connection = nil
-                default:
-                    break
-                }
-            }
-        }
-
-        conn.start(queue: .main)
-        // Assign only after start; readiness still gated by isConnected for send().
-        connection = conn
+    func connect(to endpoint: NWEndpoint, pairing: TVRelayPairing) {
+        disconnect()
+        self.endpoint = endpoint; self.pairing = pairing; retryCount = 0
+        beginAttempt()
     }
 
     func disconnect() {
-        reconnectTask?.cancel()
-        reconnectTask = nil
         generation += 1
-        isConnecting = false
-        connection?.cancel()
-        connection = nil
-        lastEndpoint = nil
-        isConnected = false
+        retryTask?.cancel(); retryTask = nil
+        deadlineTask?.cancel(); deadlineTask = nil
+        connection?.stateUpdateHandler = nil
+        connection?.cancel(); connection = nil
+        endpoint = nil; pairing = nil; closing = false
+        buffer.reset(); isConnected = false; isConnecting = false
+        stateChanged?()
     }
 
-    func send(payload: TVDisplayPayload) {
-        guard let connection, isConnected,
-              let data = try? encoder.encode(payload),
-              let frame = TVRelayFraming.encodeLengthPrefixed(data) else { return }
-
-        connection.send(content: frame, completion: .contentProcessed { [weak self] error in
-            if error != nil {
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.isConnected = false
-                    self.connection = nil
-                    if let endpoint = self.lastEndpoint {
-                        self.scheduleReconnect(to: endpoint)
-                    }
+    private func beginAttempt() {
+        guard let endpoint, let pairing, !closing else { return }
+        generation += 1
+        let token = generation
+        connection?.cancel(); buffer.reset()
+        let connection = NWConnection(to: endpoint, using: pairing.parameters())
+        self.connection = connection
+        isConnecting = true; isConnected = false; stateChanged?()
+        connection.stateUpdateHandler = { [weak self, weak connection] state in
+            Task { @MainActor in
+                guard let self, let connection, self.generation == token, self.connection === connection else { return }
+                switch state {
+                case .ready:
+                    self.deadlineTask?.cancel(); self.deadlineTask = nil
+                    self.isConnecting = false; self.isConnected = true; self.retryCount = 0
+                    self.stateChanged?(); self.becameReady?(); self.drain()
+                    self.monitorClosure(connection, generation: token)
+                case .failed, .cancelled: self.failed(generation: token)
+                default: break
                 }
             }
-        })
+        }
+        connection.start(queue: .main)
+        deadlineTask?.cancel()
+        deadlineTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            self?.failed(generation: token)
+        }
     }
 
-    /// Attempts reconnection with exponential backoff (2s, 4s, 8s).
-    private func scheduleReconnect(to endpoint: NWEndpoint) {
-        reconnectTask?.cancel()
-        reconnectTask = Task { [weak self] in
-            for delay in [2, 4, 8] {
-                try? await Task.sleep(for: .seconds(delay))
-                guard let self, !Task.isCancelled else { return }
-                guard !self.isConnected, !self.isConnecting else { return }
-                self.connect(to: endpoint)
-                try? await Task.sleep(for: .seconds(2))
-                if self.isConnected { return }
-            }
+    private func monitorClosure(_ connection: NWConnection, generation: Int) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1) { [weak self] _, _, _, _ in
+            Task { @MainActor in self?.failed(generation: generation) }
         }
+    }
+
+    private func failed(generation token: Int) {
+        guard token == generation else { return }
+        generation += 1
+        connection?.stateUpdateHandler = nil; connection?.cancel(); connection = nil
+        deadlineTask?.cancel(); deadlineTask = nil
+        buffer.reset(); isConnected = false; isConnecting = false; stateChanged?()
+        guard !closing, endpoint != nil, pairing != nil, retryCount < 3 else { return }
+        let delay = [2, 4, 8][retryCount]
+        retryCount += 1
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+            guard !Task.isCancelled else { return }
+            self?.beginAttempt()
+        }
+    }
+
+    func send(_ message: TVRelayMessage) {
+        guard isConnected, !closing, let data = try? JSONEncoder().encode(message),
+              let frame = TVRelayFraming.encodeLengthPrefixed(data) else { return }
+        buffer.offer(frame); drain()
+    }
+
+    /// Deliver end after the in-flight state, with a short bounded flush deadline.
+    func finish(with message: TVRelayMessage) {
+        guard isConnected else { disconnect(); return }
+        send(message)
+        closing = true
+        retryTask?.cancel()
+        let token = generation
+        deadlineTask?.cancel()
+        deadlineTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            guard let self, self.generation == token else { return }
+            self.disconnect()
+        }
+    }
+
+    private func drain() {
+        guard isConnected, let connection else { return }
+        guard let frame = buffer.takeNext() else {
+            if closing && !buffer.isSending { disconnect() }
+            return
+        }
+        let token = generation
+        connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                if error != nil { self.failed(generation: token); return }
+                self.buffer.completed(); self.drain()
+            }
+        })
     }
 }

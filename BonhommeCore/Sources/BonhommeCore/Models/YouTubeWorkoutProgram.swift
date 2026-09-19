@@ -1,6 +1,8 @@
 // BonhommeCore/Sources/BonhommeCore/Models/YouTubeWorkoutProgram.swift
 import Foundation
+#if canImport(HealthKit)
 import HealthKit
+#endif
 
 // MARK: - ProgramPhase
 
@@ -58,6 +60,9 @@ public struct ProgramPhase: Codable, Sendable, Identifiable {
     }
 }
 
+// HealthKit-backed video programs are consumed only by the iOS workout flow.
+// Keep ProgramPhase portable; tvOS has no HealthKit framework.
+#if canImport(HealthKit)
 // MARK: - YouTubeWorkoutProgram
 
 public struct YouTubeWorkoutProgram: Codable, Sendable, Identifiable {
@@ -155,3 +160,5 @@ public struct YouTubeProgramCatalog {
         )
     ]
 }
+
+#endif

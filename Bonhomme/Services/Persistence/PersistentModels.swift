@@ -228,9 +228,9 @@ final class MedicationSchedule {
 
     /// Human-readable dose string (e.g., "100 mg").
     var formattedDose: String {
-        let intDose = Int(doseValue)
-        let doseStr = doseValue == Double(intDose) ? "\(intDose)" : String(format: "%.1f", doseValue)
-        return "\(doseStr) \(doseUnit)"
+        guard doseValue.isFinite, doseValue >= 0 else { return "—" }
+        let doseStr = Int(exactly: doseValue).map(String.init) ?? String(doseValue)
+        return doseUnit.isEmpty ? doseStr : "\(doseStr) \(doseUnit)"
     }
 
     /// Human-readable schedule (e.g., "8:00 AM, 8:00 PM").

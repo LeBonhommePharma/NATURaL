@@ -69,3 +69,6 @@ Thumbs.db
 pbcopy
 session-*.md
 /tmp/
+
+# Local Python verifier bytecode
+__pycache__/

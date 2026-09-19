@@ -1,0 +1,3 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSHealthShareUsageDescription" = "NATURaL 在椅子瑜伽期间读取心率，在您的手腕设备上计算实时生物反馈。";
+"NSHealthUpdateUsageDescription" = "NATURaL 将椅子瑜伽训练保存到 Apple“健康”。";

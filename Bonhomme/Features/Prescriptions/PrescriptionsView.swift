@@ -24,6 +24,7 @@ struct PrescriptionsView: View {
     @State private var manualUnit = "mg"
     @State private var manualHour = 8
     @State private var manualPharmacyNotes = ""
+    @State private var manualSaveError: String?
 
     private var service: MedicationPrescriptionService {
         appState.prescriptionService
@@ -434,6 +435,7 @@ struct PrescriptionsView: View {
             }
 
             Button {
+                manualSaveError = nil
                 showingManualEntry = true
             } label: {
                 Label(
@@ -697,6 +699,20 @@ struct PrescriptionsView: View {
     private var manualEntrySheet: some View {
         NavigationStack {
             Form {
+                if let manualSaveError {
+                    Section {
+                        Label(manualSaveError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(BrandColor.firetruck)
+                            .accessibilityIdentifier("medication.manualSaveError")
+                    } header: {
+                        Text(LocalizedString(en: "Not saved", fr: "Non enregistré").localized)
+                    } footer: {
+                        Text(LocalizedString(
+                            en: "Your entries are still here. Resolve the problem and tap Save to retry.",
+                            fr: "Votre saisie est conservée. Résolvez le problème, puis touchez Enregistrer pour réessayer."
+                        ).localized)
+                    }
+                }
                 Section {
                     TextField(
                         LocalizedString(en: "Medication name", fr: "Nom du médicament").localized,
@@ -764,15 +780,35 @@ struct PrescriptionsView: View {
     }
 
     private func saveManual() {
-        let dose = Double(manualDose.replacingOccurrences(of: ",", with: ".")) ?? 0
-        _ = service.addManualMedication(
-            name: manualName.trimmingCharacters(in: .whitespacesAndNewlines),
-            doseValue: dose,
-            doseUnit: manualUnit.trimmingCharacters(in: .whitespacesAndNewlines),
-            scheduledHours: [manualHour],
-            pharmacyNotes: manualPharmacyNotes.isEmpty ? nil : manualPharmacyNotes,
-            modelContext: modelContext
-        )
+        let enteredDose = manualDose.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let dose = enteredDose.isEmpty ? 0 : Double(enteredDose.replacingOccurrences(of: ",", with: ".")),
+              dose.isFinite, dose >= 0 else {
+            manualSaveError = LocalizedString(
+                en: "Enter a valid, non-negative dose, or leave it blank if unknown.",
+                fr: "Saisissez une dose valide et non négative, ou laissez ce champ vide si elle est inconnue."
+            ).localized
+            return
+        }
+        do {
+            _ = try service.addManualMedication(
+                name: manualName.trimmingCharacters(in: .whitespacesAndNewlines),
+                doseValue: dose,
+                doseUnit: manualUnit.trimmingCharacters(in: .whitespacesAndNewlines),
+                scheduledHours: [manualHour],
+                pharmacyNotes: manualPharmacyNotes.isEmpty ? nil : manualPharmacyNotes,
+                modelContext: modelContext
+            )
+        } catch is CancellationError {
+            manualSaveError = LocalizedString(
+                en: "Medication data access is no longer enabled. Close this form and enable access before saving.",
+                fr: "L'accès aux données de médicaments n'est plus activé. Fermez ce formulaire et activez l'accès avant d'enregistrer."
+            ).localized
+            return
+        } catch {
+            manualSaveError = error.localizedDescription
+            return
+        }
+        manualSaveError = nil
         manualName = ""
         manualDose = ""
         manualUnit = "mg"

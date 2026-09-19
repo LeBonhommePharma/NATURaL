@@ -8,6 +8,7 @@ struct BonhommeMacApp: App {
             MacRootView()
         }
         .windowStyle(.automatic)
+        .windowResizability(.contentMinSize)
         .defaultSize(width: 780, height: 560)
         .commands {
             CommandGroup(replacing: .newItem) { }

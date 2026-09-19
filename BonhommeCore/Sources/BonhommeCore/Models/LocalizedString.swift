@@ -46,14 +46,15 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     }
 
     /// Returns the appropriate translation for the current locale.
-    /// Falls back to English if the locale's language is not supported or translation is empty.
+    /// Missing inline translations use the bundled supplemental catalog, then English.
     public var localized: String {
         let lang = LocalizedString.preferredLanguage(in: Locale.preferredLanguages)
         return value(for: lang)
     }
 
     /// Explicitly resolve for a given language code.
-    /// Falls back to English if the translation for the requested language is empty.
+    /// Explicit inline translations take precedence; missing entries use the exact
+    /// English key in the bundled catalog, then fall back to English.
     public func value(for languageCode: String) -> String {
         let languageCode = Self.normalizedLanguage(languageCode)
         let resolved: String
@@ -70,7 +71,7 @@ public struct LocalizedString: Codable, Sendable, Hashable {
         case languageCode == "pt": resolved = pt
         default: resolved = en
         }
-        return resolved.isEmpty ? en : resolved
+        return resolved.isEmpty ? SupplementalLocalization.value(for: en, language: languageCode) ?? en : resolved
     }
 }
 
@@ -125,6 +126,41 @@ public struct LocalizedStringArray: Codable, Sendable, Hashable {
         case languageCode == "pt": resolved = pt
         default: resolved = en
         }
-        return resolved.isEmpty ? en : resolved
+        guard resolved.isEmpty else { return resolved }
+        return en.map { SupplementalLocalization.value(for: $0, language: languageCode) ?? $0 }
     }
 }
+
+
+/// Exact-key, offline fallback only. No interpolation, network translation or
+/// mutation of Codable fields: saved and relayed content retains its original bytes.
+enum SupplementalLocalization {
+    static let resourceNames = ["SupplementalNavigation", "SupplementalGuidance", "SupplementalTV"]
+    static let catalog: [String: [String: String]] = {
+        #if SWIFT_PACKAGE
+        let bundle = Bundle.module
+        #else
+        let bundle = Bundle(for: SupplementalLocalizationBundle.self)
+        #endif
+        var result: [String: [String: String]] = [:]
+        for name in resourceNames {
+            guard let url = bundle.url(forResource: name, withExtension: "json"),
+                  let data = try? Data(contentsOf: url),
+                  let entries = try? JSONDecoder().decode([String: [String: String]].self, from: data) else { continue }
+            for (english, translations) in entries where !english.isEmpty && result[english] == nil {
+                result[english] = translations
+            }
+        }
+        return result
+    }()
+
+    static func value(for english: String, language: String) -> String? {
+        guard language != "en", LocalizedString.supportedLanguages.contains(language),
+              let value = catalog[english]?[language], !value.isEmpty else { return nil }
+        return value
+    }
+}
+
+#if !SWIFT_PACKAGE
+private final class SupplementalLocalizationBundle: NSObject {}
+#endif

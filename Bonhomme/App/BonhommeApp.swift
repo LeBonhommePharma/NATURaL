@@ -6,6 +6,8 @@ import BonhommeCore
 @main
 struct BonhommeApp: App {
     @State private var appState = AppState()
+    @AppStorage("natural.didFinishWelcome") private var didFinishWelcome = false
+    @State private var completedWelcomeThisLaunch = false
     @Environment(\.scenePhase) private var scenePhase
 
     /// Stored once at app launch — must NOT be a computed property.
@@ -19,8 +21,35 @@ struct BonhommeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // First use is a durable scene state, not a sheet owned by Home's
+            // adaptive navigation hierarchy. Rotation and split-view rebuilding
+            // must not dismiss it or count as completion.
+            Group {
+                if hasCompletedWelcome {
+                    ContentView()
+                } else {
+                    WelcomeView {
+                        // Explicit completion also takes effect immediately when
+                        // preferences are overridden or cannot persist this launch.
+                        completedWelcomeThisLaunch = true
+                        didFinishWelcome = true
+                    }
+                }
+            }
                 .environment(appState)
+                .onOpenURL { url in
+                    guard (try? TVRelayPairing(url: url)) != nil else { return }
+                    appState.pendingTVInvitation = url
+                    appState.showsTVDisplay = true
+                }
+                .sheet(isPresented: Binding(
+                    get: { hasCompletedWelcome && appState.showsTVDisplay },
+                    set: { appState.showsTVDisplay = $0 }
+                ), onDismiss: {
+                    appState.pendingTVInvitation = nil
+                }) {
+                    TVConnectionSheet(invitationURL: appState.pendingTVInvitation)
+                }
                 .onChange(of: scenePhase) { oldPhase, newPhase in
                     handleScenePhaseChange(from: oldPhase, to: newPhase)
                 }
@@ -40,6 +69,10 @@ struct BonhommeApp: App {
                 }
         }
         .modelContainer(persistentContainer)
+    }
+
+    private var hasCompletedWelcome: Bool {
+        didFinishWelcome || completedWelcomeThisLaunch
     }
 
     /// Handles scene phase transitions for state persistence.
@@ -85,8 +118,6 @@ struct ContentView: View {
     @State private var navigateToIntentPlan = false
     @State private var initializationError: Error?
     @State private var showDebugDashboard = false
-    @AppStorage("natural.didFinishWelcome") private var didFinishWelcome = false
-    @State private var showingWelcome = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -166,14 +197,6 @@ struct ContentView: View {
             .task {
                 // Perform async initialization checks
                 await performInitializationChecks()
-            }
-            .onAppear { showingWelcome = !didFinishWelcome }
-            .sheet(isPresented: $showingWelcome) {
-                WelcomeView {
-                    didFinishWelcome = true
-                    showingWelcome = false
-                }
-                .interactiveDismissDisabled()
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 StorageStatusBanner(status: appState.persistenceSync)
@@ -343,6 +366,9 @@ private struct WelcomeView: View {
                     Button(action: continueToApp) {
                         Text(LocalizedString(en: "Find my first session", fr: "Trouver ma première séance").localized)
                             .font(.headline)
+                            .foregroundStyle(SessionPalette.onAccent)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, minHeight: SessionSpacing.phoneControlHeight)
                     }
                     .sessionProminentButtonStyle()
@@ -354,6 +380,9 @@ private struct WelcomeView: View {
             .foregroundStyle(BrandColor.fg)
             .background(BrandColor.bg)
         }
+        // This introduction uses the fixed midnight palette, including its artwork
+        // and navigation chrome, regardless of the surrounding home appearance.
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -402,6 +431,18 @@ struct AppInformationView: View {
             Section(LocalizedString(en: "Understanding biofeedback", fr: "Comprendre la rétroaction").localized) {
                 Text(LocalizedString(en: "Shannon entropy describes variation in a sampled signal. Signal quality, movement, breathing and sampling affect it. A change is not proof of relaxation, treatment response, or molecular binding. These experimental indicators support exploration, not clinical decisions.", fr: "L’entropie de Shannon décrit la variation d’un signal échantillonné. La qualité du signal, le mouvement, la respiration et l’échantillonnage l’influencent. Un changement ne prouve pas une relaxation, une réponse au traitement ou une liaison moléculaire. Ces indicateurs expérimentaux servent à l’exploration, pas aux décisions cliniques.").localized)
             }
+            Section(LocalizedString(en: "Acknowledgements", fr: "Remerciements").localized) {
+                NavigationLink(LocalizedString(en: "Open-source licenses", fr: "Licences open source").localized) {
+                    ScrollView {
+                        Text(acknowledgements)
+                            .font(.footnote)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .navigationTitle(LocalizedString(en: "Licenses", fr: "Licences").localized)
+                }
+            }
             Section(LocalizedString(en: "Contact", fr: "Contact").localized) {
                 Link(LocalizedString(en: "Support & help", fr: "Aide et assistance").localized, destination: URL(string: "https://thebonhomme.com/NATURaL/support/")!)
                 Link("lp@thebonhomme.com", destination: URL(string: "mailto:lp@thebonhomme.com")!)
@@ -411,6 +452,14 @@ struct AppInformationView: View {
         }
         .navigationTitle(LocalizedString(en: "About & Privacy", fr: "À propos et confidentialité").localized)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var acknowledgements: String {
+        guard let url = Bundle.main.url(forResource: "Acknowledgements", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return LocalizedString(en: "Licenses are unavailable. Please contact support.", fr: "Les licences sont indisponibles. Contactez l’assistance.").localized
+        }
+        return text
     }
 
     @MainActor private func connectHealth() async {

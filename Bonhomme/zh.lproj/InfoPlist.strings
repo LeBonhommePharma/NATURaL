@@ -1,0 +1,8 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSMotionUsageDescription" = "NATURaL 使用 AirPods 的运动数据，让椅子瑜伽期间的空间音频与头部方向保持一致。运动数据仅保留在此设备上。";
+"NSCameraUsageDescription" = "NATURaL 使用相机提供可选的设备端增强现实姿势指导。视频仅在此设备上处理，绝不会上传。";
+"NSAppleMusicUsageDescription" = "NATURaL 在椅子瑜伽期间播放自适应音乐，根据您的生物反馈调整节奏和音乐的活跃程度。";
+"NSHealthShareUsageDescription" = "NATURaL 读取心率、心率变异性、睡眠和活动数据，计算香农坍缩指数并实时调整练习。只有在您明确同意后，NATURaL 才可能读取您在“健康”中关联的临床用药记录，以帮助管理您自行输入的处方信息。未经同意不会读取，也不会提供医疗建议。";
+"NSHealthUpdateUsageDescription" = "NATURaL 将已完成的瑜伽练习保存为体能训练和正念练习，使其显示在“健康”和“健身”中。";
+"NSHealthClinicalHealthRecordsShareUsageDescription" = "在您明确同意后，NATURaL 从您在“健康”中关联的医疗机构导入用药记录，以管理提醒和 CareKit 任务。这些数据由您自行管理，并非医疗建议。请与医护人员确认所有处方。NATURaL 不会登录药房账户，也不会抓取药房网站的内容。";
+"NSLocalNetworkUsageDescription" = "NATURaL 使用本地网络通过 Bonjour 将训练画面传输到 Apple TV。";

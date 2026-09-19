@@ -1,8 +1,8 @@
 import SwiftUI
 import BonhommeCore
 
-/// Spatial ornament: live SCI / progress / elapsed using the same HUD metrics
-/// as iPhone, iPad, Watch, and TV. No HealthKit on visionOS.
+/// Spatial ornament: actual session progress and elapsed time. Vision has no
+/// health-data source; SCI remains explicitly unavailable.
 struct SpatialBiofeedbackView: View {
     let viewModel: SpatialWorkoutViewModel
 
@@ -20,6 +20,11 @@ struct SpatialBiofeedbackView: View {
                 systemImage: metrics.entropyState.symbolName,
                 tint: SessionPalette.entropy(metrics.entropyState)
             )
+
+            Text(LocalizedString(en: "Health data unavailable on this device",
+                                 fr: "Données de santé indisponibles sur cet appareil").localized)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             Divider()
                 .overlay(BrandColor.hairline)

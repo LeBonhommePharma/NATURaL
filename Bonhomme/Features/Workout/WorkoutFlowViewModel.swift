@@ -413,15 +413,30 @@ final class WorkoutFlowViewModel {
     /// Builds a TVDisplayPayload from current state for TV relay.
     /// HRV-only refresh (not `analyzeAll`) + wire-stripped biofeedback (nil HR/SCI OK).
     func buildTVPayload() -> TVDisplayPayload? {
-        guard let pose = currentPose else { return nil }
+        let pose: Pose
+        let remaining: TimeInterval
+        let duration: TimeInterval
+        let index: Int
+        let transitioning: Bool
+        switch phase {
+        case .active(let poseIndex):
+            guard let value = plan.poses[safe: poseIndex] else { return nil }
+            pose = value; remaining = poseTimeRemaining; duration = pose.durationSeconds
+            index = poseIndex; transitioning = false
+        case .transition(let nextIndex, let seconds):
+            guard let value = plan.poses[safe: nextIndex] else { return nil }
+            pose = value; remaining = TimeInterval(seconds); duration = plan.transitionSeconds
+            index = nextIndex; transitioning = true
+        default: return nil
+        }
 
         // Display path: refresh HRV only; avoid full multi-analyzer analyzeAll every tick.
         let insights = feedbackEngine.refreshHRVAndSnapshot()
         // includeInsights defaults false — keeps Bonjour frame under TVRelayFraming.maxPayloadBytes.
         return TVDisplayPayload(
             currentPose: pose,
-            poseTimeRemaining: poseTimeRemaining,
-            totalPoseTime: pose.durationSeconds,
+            poseTimeRemaining: max(0, remaining),
+            totalPoseTime: max(0, duration),
             biofeedback: BiofeedbackSnapshot(
                 heartRate: recorder.currentHeartRate,
                 activeCalories: recorder.activeCalories,
@@ -429,11 +444,12 @@ final class WorkoutFlowViewModel {
             ),
             sessionElapsed: elapsedTime,
             isPaused: isPaused,
-            sequenceIndex: currentPoseIndex,
+            sequenceIndex: index,
             sequenceTotal: plan.poseCount,
             tempoBPM: beatBPM > 0 ? beatBPM : plan.style.nominalBPM,
             isGrounding: isGrounding,
-            isMusicPlaying: musicService.isPlaying
+            isMusicPlaying: musicService.isPlaying,
+            isTransition: transitioning
         )
     }
 

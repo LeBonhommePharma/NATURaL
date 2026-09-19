@@ -137,13 +137,17 @@ public struct SessionHUDMetrics: Sendable, Equatable {
     }
 
     public var heartRateText: String {
-        guard let heartRate, heartRate.isFinite, heartRate > 0 else { return "—" }
-        return "\(Int(heartRate.rounded()))"
+        Self.positiveRateText(heartRate)
     }
 
     public var tempoText: String {
-        guard let tempoBPM, tempoBPM.isFinite, tempoBPM > 0 else { return "—" }
-        return "\(Int(tempoBPM.rounded()))"
+        Self.positiveRateText(tempoBPM)
+    }
+
+    private static func positiveRateText(_ rate: Double?) -> String {
+        guard let rate, rate.isFinite, rate > 0,
+              let rounded = Int(exactly: rate.rounded()), rounded > 0 else { return "—" }
+        return "\(rounded)"
     }
 
     public var elapsedText: String {
@@ -151,14 +155,19 @@ public struct SessionHUDMetrics: Sendable, Equatable {
     }
 
     public var poseProgressText: String {
-        guard poseCount > 0 else { return "—" }
-        let display = min(poseCount, max(1, poseIndex + 1))
+        guard let display = displayedPoseNumber else { return "—" }
         return "\(display)/\(poseCount)"
     }
 
     public var poseProgressFraction: Double? {
+        guard let display = displayedPoseNumber else { return nil }
+        return Double(display) / Double(poseCount)
+    }
+
+    private var displayedPoseNumber: Int? {
         guard poseCount > 0 else { return nil }
-        return min(1, max(0, Double(poseIndex + 1) / Double(poseCount)))
+        // Bound the zero-based index before adding, including malformed wire values.
+        return min(poseCount - 1, max(0, poseIndex)) + 1
     }
 
     public var accessibilitySummary: String {
@@ -170,16 +179,18 @@ public struct SessionHUDMetrics: Sendable, Equatable {
     }
 
     public static func formatElapsed(_ elapsed: TimeInterval) -> String {
-        let total = max(0, Int(elapsed))
+        guard elapsed.isFinite,
+              let total = Int(exactly: max(0, elapsed).rounded(.towardZero)) else { return "—" }
         let minutes = total / 60
         let seconds = total % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        return "\(minutes):" + String(format: "%02d", seconds)
     }
 
     public static func formatCountdown(_ remaining: TimeInterval) -> String {
-        let seconds = max(0, Int(remaining.rounded()))
+        guard remaining.isFinite,
+              let seconds = Int(exactly: max(0, remaining).rounded()) else { return "—" }
         if seconds >= 60 {
-            return String(format: "%d:%02d", seconds / 60, seconds % 60)
+            return "\(seconds / 60):" + String(format: "%02d", seconds % 60)
         }
         return "\(seconds)"
     }

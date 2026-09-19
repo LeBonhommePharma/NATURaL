@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Release journeys: fresh launch, free session entry and local-data navigation.
 final class WorkoutFlowUITests: XCTestCase {
@@ -6,6 +7,9 @@ final class WorkoutFlowUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // A failed XCTest assertion can abort before a previous test's Swift defer.
+        // Establish orientation explicitly for each independent journey.
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
                                "-natural.didFinishWelcome", "NO",
@@ -32,6 +36,7 @@ final class WorkoutFlowUITests: XCTestCase {
         let continueButton = app.descendants(matching: .any)["welcome.continue"]
         let timeout: TimeInterval = name.contains("LargestText") ? 20 : 12
         XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
+        capture("Welcome overview")
         for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
         XCTAssertTrue(continueButton.isHittable)
         let welcome = XCTAttachment(screenshot: app.screenshot())
@@ -52,6 +57,45 @@ final class WorkoutFlowUITests: XCTestCase {
         begin.tap()
     }
 
+    private func capture(_ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testIPadLandscapeKeepsGuideAndControlsReachable() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad landscape journey")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let landscape = XCTNSPredicateExpectation(
+            predicate: NSPredicate { [application = self.app] _, _ in
+                guard let application else { return false }
+                return application.frame.width > application.frame.height
+            }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 8), .completed)
+        finishWelcome()
+        let start = app.buttons["home.start"]
+        for _ in 0..<8 where !start.isHittable { app.swipeUp() }
+        XCTAssertTrue(start.isHittable)
+        start.tap()
+        startSessionFromReady()
+        XCTAssertTrue(app.staticTexts["session.pose.name"].waitForExistence(timeout: 15))
+        app.tap()
+        let pause = app.buttons["session.pauseResume"]
+        XCTAssertTrue(pause.isHittable)
+        pause.tap()
+        XCTAssertTrue(pause.label.contains("Resume"))
+        capture("iPad landscape paused guide")
+        let end = app.buttons["session.end"]
+        XCTAssertTrue(end.isHittable)
+        end.tap()
+        XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
+        capture("iPad landscape summary")
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
+    }
+
     func testWelcomeLeadsToFreeSession() {
         finishWelcome()
         let start = app.buttons["home.start"]
@@ -64,6 +108,7 @@ final class WorkoutFlowUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["Begin Session"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Subscribe"].exists)
+        capture("Session preparation")
     }
 
     func testLargestTextKeepsWelcomeAndSessionEntryReachable() {
@@ -112,6 +157,10 @@ final class WorkoutFlowUITests: XCTestCase {
         let pause = app.buttons["session.pauseResume"]
         pause.tap()
         XCTAssertTrue(pause.label.contains("Resume"))
+        let content = app.scrollViews["session.content"]
+        XCTAssertTrue(content.exists)
+        XCTAssertLessThanOrEqual(content.frame.maxY, pause.frame.minY + 1,
+                                 "Pinned controls must not cover the guide viewport")
         let preview = XCTAttachment(screenshot: app.screenshot())
         preview.name = "Paused guided session"
         preview.lifetime = .keepAlways

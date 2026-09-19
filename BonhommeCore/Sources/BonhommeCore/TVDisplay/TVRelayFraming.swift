@@ -14,7 +14,7 @@ public enum TVRelayFraming {
 
     /// Builds a length-prefixed frame. Returns `nil` if body exceeds `maxPayloadBytes`.
     public static func encodeLengthPrefixed(_ body: Data) -> Data? {
-        guard body.count <= maxPayloadBytes else { return nil }
+        guard !body.isEmpty, body.count <= maxPayloadBytes else { return nil }
         var length = UInt32(body.count).bigEndian
         var frame = Data(bytes: &length, count: 4)
         frame.append(body)
@@ -25,7 +25,8 @@ public enum TVRelayFraming {
     /// Returns `nil` if header size is wrong, length is zero, or exceeds `maxPayloadBytes`.
     public static func decodeBodyLength(fromHeader header: Data) -> Int? {
         guard header.count == 4 else { return nil }
-        let length = header.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        // Data slices do not guarantee UInt32 alignment.
+        let length = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
         guard length > 0, length <= UInt32(maxPayloadBytes) else { return nil }
         return Int(length)
     }

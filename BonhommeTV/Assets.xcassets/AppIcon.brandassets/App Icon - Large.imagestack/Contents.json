@@ -1,0 +1,14 @@
+{
+  "info" : {
+    "author" : "com.natural.BonhommeTV",
+    "version" : 1
+  },
+  "layers" : [
+    {
+      "filename" : "Foreground.imagestacklayer"
+    },
+    {
+      "filename" : "Background.imagestacklayer"
+    }
+  ]
+}

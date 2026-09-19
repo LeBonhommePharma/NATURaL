@@ -1,0 +1,3 @@
+/* Localized Apple permission purposes. Keep meaning aligned with Info.plist. */
+"NSHealthShareUsageDescription" = "يقرأ NATURaL معدل نبض القلب أثناء يوغا الكرسي لحساب التغذية الراجعة الحيوية في الوقت الفعلي على معصمك.";
+"NSHealthUpdateUsageDescription" = "يحفظ NATURaL جلسات تمارين يوغا الكرسي في تطبيق صحتي من Apple.";

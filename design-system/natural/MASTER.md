@@ -12,7 +12,7 @@
 **Category:** Chair yoga, breath, Shannon Collapse Index (SCI)
 **Design Dials:** Variance 3/10 (Centered / Minimal) | Motion 3/10 (Subtle) | Density 4/10 (Spacious session, not a dashboard)
 **Stack:** SwiftUI. SF Pro maps the Lora/Raleway wellness pairing. Metrics use SF Mono (`SessionType.metric`).
-**Shipping OS:** iPhone, iPad, watchOS companion, tvOS companion, visionOS. Do not invent other store products. `BonhommeMac` is an in-repo canvas, not an App Store listing.
+**Design coverage:** iPhone, iPad, watchOS, macOS, tvOS and visionOS. iPhone/iPad/Watch and the existing native Mac target are in App Store preparation at LP’s request (19 September 2026). tvOS is also explicitly in the App Store release scope, including pairing, large-screen kinematics/HUD, icons, packaging and device validation. Vision retains its companion design; its distribution readiness is tracked separately. Native Mac is guided movement without a live Health feed.
 
 ---
 
@@ -36,7 +36,9 @@
 | Apo baseline | `#DCDCE4` | `BrandColor.magnesium` | Unknown / waiting |
 | Vibrational | `#00A2FF` | `BrandColor.aqua` | AirPods / music |
 
-**Color Notes:** Midnight plum + jewel bloom. Gold is allowed as thermodynamic chrome. Do not restyle NATURaL as Exergy (usage tracker) or a generic spa app.
+**Approved icon direction (19 September 2026):** Preserve the jewel bloom. Light appearance uses warm ivory `#F3EFE7`; dark appearance uses website midnight indigo `#08091A` with a subtle violet lift to soften the contrast. Approved exports and the original are retained in `assets/approved/`. iOS supports system dark icon appearance; legacy macOS/watchOS catalogs use the ivory default. Layered tvOS/visionOS delivery is tracked separately.
+
+**Color Notes:** Midnight indigo + jewel bloom. Gold is allowed as thermodynamic chrome. Do not restyle NATURaL as Exergy (usage tracker) or a generic spa app.
 
 Light appearance twins live in `BrandColors.xcassets`. **Session HUD always reads the sRGB values above** so SCI / ΔH / ΔG stay identical across themes.
 
@@ -116,7 +118,7 @@ Pause overlay: ultra-thin material, `allowsHitTesting(false)` so controls stay t
 - ❌ Medical diagnosis copy from SCI
 - ❌ Paywalls / `SubscriptionStoreView`
 - ❌ CloudKit / iCloud KVS for health records
-- ❌ Inventing macOS / Android / web App Store targets
+- ❌ Inventing Android / web App Store targets or claiming unvalidated Apple targets are ready
 
 ---
 
