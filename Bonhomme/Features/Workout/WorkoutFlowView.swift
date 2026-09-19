@@ -57,6 +57,104 @@ private struct WorkoutSessionView: View {
     }
 
     var body: some View {
+        notificationContent
+        .alert(
+            SessionHUDCopy.explainSCI.localized,
+            isPresented: Binding(
+                get: { sciExplainText != nil },
+                set: { if !$0 { sciExplainText = nil } }
+            )
+        ) {
+            Button(LocalizedString(en: "OK", fr: "OK").localized, role: .cancel) {
+                sciExplainText = nil
+            }
+        } message: {
+            Text(sciExplainText ?? "")
+        }
+    }
+
+    // Separate opaque view boundaries keep the phase canvas and lifecycle
+    // modifiers tractable for the SwiftUI type checker on every build mode.
+    private var notificationContent: some View {
+        televisionContent
+        .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
+            viewModel.persistState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentPauseWorkout)) { _ in
+            viewModel.pause()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentResumeWorkout)) { _ in
+            viewModel.resume()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentEndWorkout)) { _ in
+            viewModel.stop()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentLogPose)) { _ in
+            viewModel.logCurrentPoseFromIntent()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .intentExplainSCI)) { _ in
+            Task { await presentSCIExplanation() }
+        }
+    }
+
+    private var televisionContent: some View {
+        lifecycleContent
+        .task {
+            while !Task.isCancelled {
+                publishTVState()
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
+        .onChange(of: viewModel.phase) { _, _ in publishTVState() }
+        .onChange(of: viewModel.isPaused) { _, _ in publishTVState() }
+        .onChange(of: tvDisplay.displayEnabled) { _, _ in publishTVState() }
+        .onChange(of: scenePhase) { _, _ in publishTVState() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { appState.showsTVDisplay = true } label: {
+                    Label(LocalizedString(en: "TV display", fr: "Affichage TV").localized,
+                          systemImage: tvDisplay.displayEnabled ? "tv.fill" : "tv")
+                }.accessibilityIdentifier("session.tvDisplay")
+            }
+        }
+        .onDisappear {
+            tvDisplay.stopTVDiscovery()
+            if viewModel.phase != .ready && viewModel.phase != .complete { viewModel.stop() }
+            appState.noteWorkoutDismissed()
+        }
+    }
+
+    private var lifecycleContent: some View {
+        sessionCanvas
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            phoneSessionChrome
+        }
+        .preferredColorScheme(.dark)
+        .navigationBarBackButtonHidden()
+        .statusBarHidden()
+        .onAppear {
+            // All entry paths (catalog start, banner, auto-restore navigation) mark active
+            // so BonhommeApp scenePhase.active does not re-run detect→auto-load mid-session.
+            appState.noteWorkoutPresented()
+            // Wire drug-response / cross-domain context into InsightEngine (pose/session narratives).
+            // Non-blocking — does not start or delay the pose timer.
+            viewModel.syncPharmaContext(
+                drugResponse: appState.medicationTracker.latestDrugResponse,
+                crossDomain: appState.medicationTracker.latestCrossDomainValidation
+            )
+            if viewModel.isRestoredSession {
+                viewModel.resumeRestoredSession()
+            }
+        }
+        .onChange(of: appState.medicationTracker.latestDrugResponse?.doseEvent.timestamp) { _, _ in
+            viewModel.syncPharmaContext(
+                drugResponse: appState.medicationTracker.latestDrugResponse,
+                crossDomain: appState.medicationTracker.latestCrossDomainValidation
+            )
+        }
+    }
+
+    private var sessionCanvas: some View {
         ZStack {
             BrandColor.bg.ignoresSafeArea()
 
@@ -120,86 +218,6 @@ private struct WorkoutSessionView: View {
             if viewModel.isPaused && showsSessionControls {
                 SessionPausedOverlay()
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            phoneSessionChrome
-        }
-        .preferredColorScheme(.dark)
-        .navigationBarBackButtonHidden()
-        .statusBarHidden()
-        .onAppear {
-            // All entry paths (catalog start, banner, auto-restore navigation) mark active
-            // so BonhommeApp scenePhase.active does not re-run detect→auto-load mid-session.
-            appState.noteWorkoutPresented()
-            // Wire drug-response / cross-domain context into InsightEngine (pose/session narratives).
-            // Non-blocking — does not start or delay the pose timer.
-            viewModel.syncPharmaContext(
-                drugResponse: appState.medicationTracker.latestDrugResponse,
-                crossDomain: appState.medicationTracker.latestCrossDomainValidation
-            )
-            if viewModel.isRestoredSession {
-                viewModel.resumeRestoredSession()
-            }
-        }
-        .onChange(of: appState.medicationTracker.latestDrugResponse?.doseEvent.timestamp) { _, _ in
-            viewModel.syncPharmaContext(
-                drugResponse: appState.medicationTracker.latestDrugResponse,
-                crossDomain: appState.medicationTracker.latestCrossDomainValidation
-            )
-        }
-        .task {
-            while !Task.isCancelled {
-                publishTVState()
-                do { try await Task.sleep(for: .seconds(1)) } catch { return }
-            }
-        }
-        .onChange(of: viewModel.phase) { _, _ in publishTVState() }
-        .onChange(of: viewModel.isPaused) { _, _ in publishTVState() }
-        .onChange(of: tvDisplay.displayEnabled) { _, _ in publishTVState() }
-        .onChange(of: scenePhase) { _, _ in publishTVState() }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { appState.showsTVDisplay = true } label: {
-                    Label(LocalizedString(en: "TV display", fr: "Affichage TV").localized,
-                          systemImage: tvDisplay.displayEnabled ? "tv.fill" : "tv")
-                }.accessibilityIdentifier("session.tvDisplay")
-            }
-        }
-        .onDisappear {
-            tvDisplay.stopTVDiscovery()
-            if viewModel.phase != .ready && viewModel.phase != .complete { viewModel.stop() }
-            appState.noteWorkoutDismissed()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .workoutShouldPersistState)) { _ in
-            viewModel.persistState()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .intentPauseWorkout)) { _ in
-            viewModel.pause()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .intentResumeWorkout)) { _ in
-            viewModel.resume()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .intentEndWorkout)) { _ in
-            viewModel.stop()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .intentLogPose)) { _ in
-            viewModel.logCurrentPoseFromIntent()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .intentExplainSCI)) { _ in
-            Task { await presentSCIExplanation() }
-        }
-        .alert(
-            SessionHUDCopy.explainSCI.localized,
-            isPresented: Binding(
-                get: { sciExplainText != nil },
-                set: { if !$0 { sciExplainText = nil } }
-            )
-        ) {
-            Button(LocalizedString(en: "OK", fr: "OK").localized, role: .cancel) {
-                sciExplainText = nil
-            }
-        } message: {
-            Text(sciExplainText ?? "")
         }
     }
 
