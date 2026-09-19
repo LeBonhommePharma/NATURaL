@@ -25,6 +25,12 @@ final class SessionPaletteTests: XCTestCase {
         XCTAssertEqual(SessionPalette.HeartRateBand.resolve(170), .denature)
     }
 
+    func testInvalidHeartRateHasUnknownColor() {
+        for value in [Double.nan, .infinity, -.infinity, .greatestFiniteMagnitude, 0, -1, 0.1] {
+            XCTAssertEqual(SessionPalette.HeartRateBand.resolve(value), .apo)
+        }
+    }
+
     func testSCIColorsBindToBrandTokens() {
         XCTAssertEqual(SessionPalette.sci(nil), BrandColor.magnesium)
         XCTAssertEqual(SessionPalette.sci(0.1), BrandColor.firetruck)

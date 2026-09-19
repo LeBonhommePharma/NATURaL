@@ -12,7 +12,7 @@
 **Category:** Chair yoga, breath, Shannon Collapse Index (SCI)
 **Design Dials:** Variance 3/10 (Centered / Minimal) | Motion 3/10 (Subtle) | Density 4/10 (Spacious session, not a dashboard)
 **Stack:** SwiftUI. SF Pro maps the Lora/Raleway wellness pairing. Metrics use SF Mono (`SessionType.metric`).
-**Shipping OS:** iPhone, iPad, watchOS companion, tvOS companion, visionOS. Do not invent other store products. `BonhommeMac` is an in-repo canvas, not an App Store listing.
+**Design coverage:** iPhone, iPad, watchOS, macOS, tvOS and visionOS. iPhone/iPad/Watch and the existing native Mac target are in App Store preparation at LP’s request (19 September 2026). TV and Vision retain their existing companion designs; their distribution readiness is tracked separately. Native Mac is guided movement without a live Health feed.
 
 ---
 
@@ -116,7 +116,7 @@ Pause overlay: ultra-thin material, `allowsHitTesting(false)` so controls stay t
 - ❌ Medical diagnosis copy from SCI
 - ❌ Paywalls / `SubscriptionStoreView`
 - ❌ CloudKit / iCloud KVS for health records
-- ❌ Inventing macOS / Android / web App Store targets
+- ❌ Inventing Android / web App Store targets or claiming unvalidated Apple targets are ready
 
 ---
 

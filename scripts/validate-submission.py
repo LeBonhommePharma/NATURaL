@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Offline release configuration checks. Does not claim signing or App Review approval."""
 from pathlib import Path
+import argparse
 import json
 import plistlib
 import struct
 import subprocess
+from submission_assets import validate_acknowledgements, validate_mac_icon_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--include-macos', action='store_true', help='Also require native Mac App Store packaging')
+args = parser.parse_args()
 
 def require(condition, message):
     if not condition:
@@ -25,6 +30,14 @@ def resolved_path(ref):
         path = resolved_path(parents[ref]) / path
     return path
 targets = {v['name']: v for v in objects.values() if v.get('isa') == 'PBXNativeTarget'}
+ios_products = {objects[p]['productName'] for p in targets['Bonhomme'].get('packageProductDependencies', [])}
+require(ios_products == {'BonhommeCore', 'CareKitStore'}, 'Linked products changed: review dependency acknowledgements before release')
+ios_resources = [objects[f]['fileRef'] for p in targets['Bonhomme']['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
+require(any(resolved_path(r) == Path('Bonhomme/Resources/Acknowledgements.txt') for r in ios_resources), 'iOS acknowledgements must be included in Copy Bundle Resources')
+try:
+    validate_acknowledgements(ROOT / 'Bonhomme/Resources/Acknowledgements.txt')
+except (ValueError, OSError) as error:
+    raise SystemExit('FAIL: ' + str(error))
 for name, platform in [('Bonhomme', 'ios'), ('BonhommeWatch', 'watchos')]:
     target = targets[name]
     resources = [objects[p] for p in target['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase']
@@ -65,6 +78,41 @@ require(phone.get('NSSupportsLiveActivities') is True, 'Live Activities declarat
 watch_id = next(k for k,v in objects.items() if v is targets['BonhommeWatch'])
 require(any(objects[d].get('target') == watch_id for d in targets['Bonhomme']['dependencies']), 'Watch target dependency missing')
 require(any(objects[p].get('name') == 'Embed Watch Content' for p in targets['Bonhomme']['buildPhases']), 'Watch is not embedded')
+def embedded_product(target_name, product_name, destination, path=''):
+    target = targets[target_name]
+    return any(
+        phase.get('isa') == 'PBXCopyFilesBuildPhase'
+        and str(phase.get('dstSubfolderSpec')) == destination
+        and phase.get('dstPath', '') == path
+        and any(objects[objects[f]['fileRef']].get('path') == product_name for f in phase.get('files', []))
+        for phase in (objects[p] for p in target['buildPhases'])
+    )
+
+require(embedded_product('Bonhomme', 'BonhommeWatch.app', '16', '$(CONTENTS_FOLDER_PATH)/Watch'), 'Watch product must be embedded in the app Watch directory')
+for extension in ('NATURaLWidgets', 'NATURaLLiveActivity'):
+    require(embedded_product('Bonhomme', extension + '.appex', '13'), extension + ' must be embedded in PlugIns (dstSubfolderSpec 13)')
+    extension_id = next(k for k, v in objects.items() if v is targets[extension])
+    require(any(objects[d].get('target') == extension_id for d in targets['Bonhomme']['dependencies']), extension + ' target dependency missing')
+    resource_refs = [objects[f]['fileRef'] for p in targets[extension]['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
+    require(any(objects[r].get('path') == 'PrivacyInfo.xcprivacy' for r in resource_refs), extension + ' privacy manifest not bundled')
+    for ref in resource_refs:
+        require((ROOT / resolved_path(ref)).exists(), extension + ' resource path: ' + str(resolved_path(ref)))
+release_versions = set()
+for name in ('Bonhomme', 'BonhommeWatch', 'NATURaLWidgets', 'NATURaLLiveActivity'):
+    target = targets[name]
+    configurations = {objects[c]['name']: objects[c]['buildSettings'] for c in objects[target['buildConfigurationList']]['buildConfigurations']}
+    release = configurations['Release']
+    release_versions.add(release.get('MARKETING_VERSION'))
+    require('DEBUG' not in release.get('SWIFT_ACTIVE_COMPILATION_CONDITIONS', '').split(), name + ' Release enables debug code')
+    require(release.get('DEBUG_INFORMATION_FORMAT') == 'dwarf-with-dsym', name + ' Release must generate crash symbol files')
+    info = plistlib.loads((ROOT / release['INFOPLIST_FILE']).read_bytes())
+    require(info.get('CFBundleVersion') == '$(CURRENT_PROJECT_VERSION)', name + ' build number must use archive override')
+    require(info.get('CFBundleShortVersionString') == '$(MARKETING_VERSION)', name + ' version must use build setting')
+    if name != 'Bonhomme':
+        require(release.get('SKIP_INSTALL') == 'YES', name + ' must not create a separate archive product')
+    else:
+        require(set(release.get('TARGETED_DEVICE_FAMILY', '').split(',')) == {'1', '2'}, 'Release must support iPhone and iPad')
+require(len(release_versions) == 1 and None not in release_versions, 'Embedded app/extension marketing versions must match')
 for path in (ROOT / 'Bonhomme').rglob('*.swift'):
     require('PaywallView' not in path.read_text() and 'SubscriptionStoreView' not in path.read_text(), 'Purchase barrier in ' + str(path))
 persistence = (ROOT / 'Bonhomme/Services/Persistence/PersistentModels.swift').read_text()
@@ -118,5 +166,28 @@ for name, iconset, size in (
     info = plistlib.loads((ROOT / name / 'Info.plist').read_bytes())
     require(info.get('ITSAppUsesNonExemptEncryption') is False, name + ' export compliance missing')
     require(info.get('CFBundleDisplayName') == 'NATURaL', name + ' display name')
-print('PASS: icon format and wiring, API manifests, Watch embedding, free access, on-device privacy.')
+if args.include_macos:
+    try:
+        validate_mac_icon_catalog(ROOT / 'BonhommeMac/Assets.xcassets/AppIcon.appiconset')
+    except (ValueError, OSError) as error:
+        raise SystemExit('FAIL: ' + str(error))
+    require('BonhommeMac' in targets, 'native macOS target missing')
+    mac = targets['BonhommeMac']
+    resources = [objects[objects[f]['fileRef']].get('path') for p in mac['buildPhases'] if objects[p]['isa'] == 'PBXResourcesBuildPhase' for f in objects[p]['files']]
+    require('Assets.xcassets' in resources and 'PrivacyInfo.xcprivacy' in resources, 'Mac icon catalog and privacy manifest must be bundled')
+    for p in mac['buildPhases']:
+        if objects[p]['isa'] == 'PBXResourcesBuildPhase':
+            for f in objects[p]['files']:
+                ref = objects[f]['fileRef']
+                require((ROOT / resolved_path(ref)).exists(), 'Mac resource missing: ' + str(resolved_path(ref)))
+    manifest = plistlib.loads((ROOT / 'BonhommeMac/PrivacyInfo.xcprivacy').read_bytes())
+    require(manifest.get('NSPrivacyTracking') is False and manifest.get('NSPrivacyCollectedDataTypes') == [], 'Mac privacy declaration mismatch')
+    for c in objects[mac['buildConfigurationList']]['buildConfigurations']:
+        settings = objects[c]['buildSettings']
+        require(settings.get('ASSETCATALOG_COMPILER_APPICON_NAME') == 'AppIcon', 'Mac app icon selection missing')
+        entitlements = plistlib.loads((ROOT / settings['CODE_SIGN_ENTITLEMENTS']).read_bytes())
+        require(entitlements.get('com.apple.security.app-sandbox') is True, 'Mac App Store requires App Sandbox')
+    info = plistlib.loads((ROOT / 'BonhommeMac/Info.plist').read_bytes())
+    require(info.get('ITSAppUsesNonExemptEncryption') is False, 'Mac export compliance declaration missing')
+print('PASS: source packaging configuration, icon format, privacy manifests, embedded products, free access, local storage.')
 print('Still required: signed archive validation, device testing, App Store Connect metadata.')

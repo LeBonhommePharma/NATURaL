@@ -92,4 +92,40 @@ final class SessionHUDMetricsTests: XCTestCase {
         XCTAssertEqual(last.poseProgressText, "5/5")
         XCTAssertEqual(last.poseProgressFraction ?? -1, 1, accuracy: 0.0001)
     }
+
+    func testInvalidRatesStayUnknownWithoutIntegerConversionTraps() {
+        for value in [Double.nan, .infinity, -.infinity, .greatestFiniteMagnitude, Double(Int.max), 0, -10, 0.1] {
+            let metrics = SessionHUDMetrics(heartRate: value, tempoBPM: value)
+            XCTAssertEqual(metrics.heartRateText, "—")
+            XCTAssertEqual(metrics.tempoText, "—")
+        }
+        XCTAssertEqual(SessionHUDMetrics(heartRate: 68.6, tempoBPM: 92.4).heartRateText, "69")
+        XCTAssertEqual(SessionHUDMetrics(tempoBPM: 92.4).tempoText, "92")
+    }
+
+    func testInvalidTimesStayUnknownWithoutIntegerConversionTraps() {
+        for value in [Double.nan, .infinity, -.infinity, .greatestFiniteMagnitude, Double(Int.max)] {
+            XCTAssertEqual(SessionHUDMetrics.formatElapsed(value), "—")
+            XCTAssertEqual(SessionHUDMetrics.formatCountdown(value), "—")
+        }
+        XCTAssertEqual(SessionHUDMetrics.formatElapsed(-1), "0:00")
+        XCTAssertEqual(SessionHUDMetrics.formatElapsed(125.9), "2:05")
+        XCTAssertEqual(SessionHUDMetrics.formatCountdown(59.6), "1:00")
+        // Minutes must not wrap through the 32-bit C %d formatter.
+        XCTAssertEqual(SessionHUDMetrics.formatElapsed(180_000_000_000), "3000000000:00")
+    }
+
+    func testMalformedPoseIndexIsClampedBeforeAddition() {
+        let afterEnd = SessionHUDMetrics(poseIndex: .max, poseCount: 5)
+        XCTAssertEqual(afterEnd.poseProgressText, "5/5")
+        XCTAssertEqual(afterEnd.poseProgressFraction, 1)
+        let beforeStart = SessionHUDMetrics(poseIndex: .min, poseCount: 5)
+        XCTAssertEqual(beforeStart.poseProgressText, "1/5")
+        XCTAssertEqual(beforeStart.poseProgressFraction ?? -1, 0.2, accuracy: 0.0001)
+        let unknown = SessionHUDMetrics(poseIndex: .max, poseCount: 0)
+        XCTAssertEqual(unknown.poseProgressText, "—")
+        XCTAssertNil(unknown.poseProgressFraction)
+        let maximum = SessionHUDMetrics(poseIndex: .max, poseCount: .max)
+        XCTAssertEqual(maximum.poseProgressFraction, 1)
+    }
 }

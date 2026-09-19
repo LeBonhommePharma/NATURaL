@@ -30,7 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify submission configuration
-        run: python3 scripts/validate-submission.py
+        run: python3 scripts/validate-submission.py --include-macos
+      - name: Archive validation regression tests
+        run: |
+          python3 scripts/test_archive_validation.py
+          python3 scripts/test_submission_assets.py
       - name: Verify website language routing
         run: node scripts/test-site-language.cjs
       - name: Product contracts (also run on Linux)
@@ -94,3 +98,21 @@ jobs:
           path: |
             simulator-tests.log
             build/ui-tests.xcresult
+
+  macos-build:
+    name: Native macOS release build
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native Mac app without distribution signing
+        run: |
+          set -o pipefail
+          xcodebuild build -project NATURaL.xcodeproj -scheme BonhommeMac \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath build/mac-ci CODE_SIGNING_ALLOWED=NO | tee macos-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-build-log
+          path: macos-build.log

@@ -1,89 +1,115 @@
 import SwiftUI
 import BonhommeCore
 
-/// Quiet single-window Mac session: pick a plan, run it, read SCI/HR/tempo.
-/// No sidebar, no dashboard — toolbar + one focus surface (macOS 27 kit, stripped).
+/// The Mac companion offers local guided movement; it has no live Health feed.
 struct MacRootView: View {
     @State private var selectedPlan: WorkoutPlan = PoseCatalog.beginnerFlow
     @State private var session: GuidedSessionController?
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let session, session.phase != .ready {
-                    MacSessionCanvas(session: session, onClose: closeSession)
-                } else {
-                    MacReadyCanvas(selectedPlan: $selectedPlan) {
-                        let controller = GuidedSessionController(plan: selectedPlan)
-                        session = controller
-                        controller.start()
+            ScrollView {
+                Group {
+                    if let session, session.phase != .ready {
+                        MacSessionCanvas(session: session, onClose: closeSession)
+                    } else {
+                        readyCanvas
                     }
                 }
+                .frame(maxWidth: 760)
+                .padding(SessionSpacing.lg)
+                .frame(maxWidth: .infinity)
             }
-            .frame(minWidth: 680, minHeight: 480)
             .background(BrandColor.bg)
+            .navigationTitle("NATURaL")
             .toolbarBackground(BrandColor.bgPanel, for: .automatic)
+            .safeAreaInset(edge: .bottom) { footer }
         }
+        .frame(minWidth: 480, minHeight: 420)
+        .onDisappear { closeSession() }
     }
 
-    private func closeSession() {
-        session?.reset()
-        session = nil
-    }
-}
-
-private struct MacReadyCanvas: View {
-    @Binding var selectedPlan: WorkoutPlan
-    var onBegin: () -> Void
-
-    var body: some View {
+    private var readyCanvas: some View {
         VStack(alignment: .leading, spacing: SessionSpacing.lg) {
-            Text("NATURaL")
-                .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(BrandColor.fg)
-            Text(LocalizedString(
-                en: "Chair yoga on your Mac. One plan, one session.",
-                fr: "Yoga sur chaise sur Mac. Un programme, une séance."
-            ).localized)
-            .font(.title3)
-            .foregroundStyle(BrandColor.magnesium)
-
-            Picker(LocalizedString(en: "Plan", fr: "Programme").localized, selection: $selectedPlan) {
-                ForEach(PoseCatalog.allPlans) { plan in
-                    Text(plan.name.localized).tag(plan)
+            HStack(alignment: .center, spacing: SessionSpacing.lg) {
+                Image("Bloom")
+                    .resizable().scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .clipShape(SessionRadius.cardShape())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: SessionSpacing.xs) {
+                    Text(copy("A little room to move.", "Un moment pour bouger."))
+                        .font(.largeTitle.weight(.semibold))
+                        .foregroundStyle(BrandColor.fg)
+                    Text(copy("Your chair. Your pace. A moment for yourself.", "Votre chaise. Votre rythme. Un moment pour vous."))
+                        .font(.body).foregroundStyle(BrandColor.magnesium)
                 }
             }
-            .pickerStyle(.menu)
-            .frame(maxWidth: 420)
-            .tint(SessionPalette.accent)
-
-            Text(selectedPlan.description.localized)
-                .font(.body)
-                .foregroundStyle(BrandColor.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 520, alignment: .leading)
-
-            Text("\(selectedPlan.poseCount) \(LocalizedString(en: "poses", fr: "postures").localized) · \(Int(selectedPlan.totalDuration) / 60) min")
-                .font(.subheadline)
-                .foregroundStyle(BrandColor.magnesium)
-
-            SessionBeginButton(action: onBegin)
+            VStack(alignment: .leading, spacing: SessionSpacing.md) {
+                Label(copy("Choose your session", "Choisissez votre séance"), systemImage: "leaf")
+                    .font(.headline).foregroundStyle(BrandColor.mint)
+                Picker(copy("Plan", "Programme"), selection: $selectedPlan) {
+                    ForEach(PoseCatalog.allPlans) { plan in
+                        Text(plan.name.localized).tag(plan)
+                    }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.large)
+                Text(selectedPlan.description.localized)
+                    .foregroundStyle(BrandColor.fg)
+                    .fixedSize(horizontal: false, vertical: true)
+                Label("\(selectedPlan.poseCount) \(copy("poses", "postures")) · \(Int(selectedPlan.totalDuration) / 60) min", systemImage: "clock")
+                    .font(.subheadline).foregroundStyle(BrandColor.magnesium)
+                SessionBeginButton {
+                    let controller = GuidedSessionController(plan: selectedPlan)
+                    session = controller
+                    controller.start()
+                }
                 .tint(SessionPalette.accent)
-                .frame(maxWidth: 280)
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(SessionSpacing.lg)
+            .background(BrandColor.bgPanel, in: SessionRadius.cardShape())
+            .overlay(SessionRadius.cardShape().strokeBorder(BrandColor.hairline))
 
-            Text(LocalizedString(
-                en: "Heart rate and SCI need an iPhone or Apple Watch with Health. This Mac window is the quiet session chrome.",
-                fr: "La fréquence cardiaque et le SCI nécessitent un iPhone ou une Apple Watch avec Santé. Cette fenêtre Mac est le chrome de séance."
-            ).localized)
-            .font(.caption)
-            .foregroundStyle(BrandColor.magnesium)
-            .frame(maxWidth: 520, alignment: .leading)
-            .padding(.top, SessionSpacing.xs)
+            DisclosureGroup(copy("Explore the poses", "Découvrir les postures")) {
+                VStack(alignment: .leading, spacing: SessionSpacing.md) {
+                    ForEach(Array(selectedPlan.poses.enumerated()), id: \.offset) { index, pose in
+                        HStack(alignment: .top, spacing: SessionSpacing.sm) {
+                            Text(String(index + 1)).font(.body.monospacedDigit())
+                                .foregroundStyle(BrandColor.mint).frame(width: 28)
+                            VStack(alignment: .leading, spacing: SessionSpacing.xxs) {
+                                Text(pose.name.localized).font(.headline)
+                                Text(pose.description.localized).font(.body)
+                                    .foregroundStyle(BrandColor.magnesium)
+                            }
+                        }
+                    }
+                }.padding(.top, SessionSpacing.md)
+            }
+            .foregroundStyle(BrandColor.fg)
+            .tint(BrandColor.mint)
+            Text(copy("Use a stable chair and move within a comfortable range. You can pause or finish whenever you need.", "Utilisez une chaise stable et bougez sans inconfort. Vous pouvez faire une pause ou terminer à tout moment."))
+                .font(.callout).foregroundStyle(BrandColor.magnesium)
+            Label(copy("Guided movement on Mac. Live Health measurements are available in the iPhone and Watch apps.", "Séances guidées sur Mac. Les mesures Santé en direct sont disponibles dans les apps iPhone et Watch."), systemImage: "heart.text.clipboard")
+                .font(.caption).foregroundStyle(BrandColor.fgMuted)
         }
-        .padding(SessionSpacing.xxl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(BrandColor.bg)
     }
+
+    private var footer: some View {
+        HStack(spacing: SessionSpacing.lg) {
+            Link(copy("Privacy", "Confidentialité"), destination: URL(string: "https://thebonhomme.com/NATURaL/privacy/")!)
+            Link(copy("Support", "Assistance"), destination: URL(string: "https://thebonhomme.com/NATURaL/support/")!)
+            Spacer()
+            Text(copy("All plans are free", "Tous les programmes sont gratuits"))
+                .foregroundStyle(BrandColor.fgMuted)
+        }
+        .font(.caption).tint(BrandColor.mint)
+        .padding(SessionSpacing.md)
+        .background(BrandColor.bgPanel)
+    }
+
+    private func closeSession() { session?.reset(); session = nil }
 }
 
 private struct MacSessionCanvas: View {
@@ -91,109 +117,94 @@ private struct MacSessionCanvas: View {
     var onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: SessionSpacing.xl) {
-            Spacer(minLength: SessionSpacing.md)
-
+        VStack(spacing: SessionSpacing.lg) {
+            Text(session.plan.name.localized)
+                .font(.headline).foregroundStyle(BrandColor.magnesium)
             switch session.phase {
             case .active:
-                if let pose = session.currentPose {
-                    active(pose)
-                }
+                if let pose = session.currentPose { active(pose) }
             case .transition(_, let seconds):
                 VStack(spacing: SessionSpacing.md) {
-                    Text(SessionHUDCopy.nextUp.localized)
-                        .font(.headline)
-                        .foregroundStyle(BrandColor.magnesium)
-                    if let pose = session.currentPose {
-                        SessionPoseHeader(pose: pose, prominence: .regular)
+                    Text(SessionHUDCopy.nextUp.localized).font(.headline)
+                    if let pose = session.upcomingPose {
+                        SessionPoseHeader(pose: pose)
                     }
                     SessionCountdownNumeral(remaining: TimeInterval(seconds), tint: SessionPalette.accent)
                 }
             case .complete:
-                VStack(spacing: SessionSpacing.md) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(BrandColor.mint)
-                    Text(LocalizedString(en: "Session complete", fr: "Séance terminée").localized)
-                        .font(.title.weight(.semibold))
-                        .foregroundStyle(BrandColor.fg)
-                    Button(LocalizedString(en: "Done", fr: "Terminé").localized, action: onClose)
-                        .sessionProminentButtonStyle()
-                        .tint(SessionPalette.accent)
-                        .keyboardShortcut(.defaultAction)
-                }
-            case .ready:
-                EmptyView()
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.largeTitle).foregroundStyle(BrandColor.mint)
+                    .accessibilityHidden(true)
+                Text(session.endedEarly ? copy("A moment well spent", "Un moment pour vous") : copy("Session complete", "Séance terminée"))
+                    .font(.title.weight(.semibold))
+                Text("\(session.posesCompletedCount) / \(session.plan.poseCount) \(copy("poses completed", "postures terminées")) · \(session.hudMetrics.elapsedText)")
+                    .foregroundStyle(BrandColor.magnesium)
+                Button(copy("Done", "Terminé"), action: onClose)
+                    .sessionProminentButtonStyle().tint(SessionPalette.accent)
+                    .keyboardShortcut(.defaultAction)
+            case .ready: EmptyView()
             }
-
-            Spacer(minLength: SessionSpacing.md)
-
-            if session.phase != .complete {
-                HStack(alignment: .bottom, spacing: SessionSpacing.xl) {
-                    CompactSCIMeter(
-                        score: session.hudMetrics.sciScore,
-                        trend: session.hudMetrics.sciTrend,
-                        size: 64,
-                        banded: false
-                    )
-                    SessionHeartRateReadout(bpm: session.hudMetrics.heartRate)
-                    VStack(alignment: .leading, spacing: SessionSpacing.xs) {
-                        SessionStatusChip(
-                            title: session.hudMetrics.entropyState.label.localized,
-                            systemImage: session.hudMetrics.entropyState.symbolName,
-                            tint: SessionPalette.entropy(session.hudMetrics.entropyState)
-                        )
-                        SessionStatusChip(
-                            title: "\(session.hudMetrics.tempoText) \(SessionHUDCopy.bpm.localized)",
-                            systemImage: "metronome",
-                            tint: SessionPalette.accent
-                        )
-                        Text(session.hudMetrics.poseProgressText)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(BrandColor.magnesium)
-                    }
-                    Spacer()
-                }
-                .padding(SessionSpacing.md)
-                .sessionGlassFill(in: SessionRadius.cardShape())
-            }
-        }
-        .padding(SessionSpacing.xl)
-        .background(BrandColor.bg)
-        .toolbar {
             if session.phase != .complete && session.phase != .ready {
-                ToolbarItemGroup(placement: .primaryAction) {
+                if session.isPaused {
+                    Label(copy("Paused · Take your time", "En pause · Prenez votre temps"), systemImage: "pause.circle.fill")
+                        .font(.headline).foregroundStyle(BrandColor.strawberry)
+                        .accessibilityIdentifier("session.paused")
+                }
+                HStack {
+                    Label(session.hudMetrics.elapsedText, systemImage: "clock")
+                    Spacer()
+                    Text("\(copy("Pose", "Posture")) \(session.hudMetrics.poseProgressText)")
+                }
+                .font(.body.monospacedDigit())
+                .padding(SessionSpacing.md)
+                .background(BrandColor.bgPanel, in: SessionRadius.cardShape())
+                HStack(spacing: SessionSpacing.md) {
                     Button {
                         if session.isPaused { session.resume() } else { session.pause() }
                     } label: {
-                        Label(
-                            session.isPaused ? SessionHUDCopy.resume.localized : SessionHUDCopy.pause.localized,
-                            systemImage: session.isPaused ? "play.fill" : "pause.fill"
-                        )
+                        Label(session.isPaused ? SessionHUDCopy.resume.localized : SessionHUDCopy.pause.localized,
+                              systemImage: session.isPaused ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity, minHeight: SessionSpacing.minTapTarget)
                     }
+                    .sessionProminentButtonStyle().tint(BrandColor.mint)
                     .keyboardShortcut(.space, modifiers: [])
-                    Button(role: .destructive) {
-                        session.stop()
-                    } label: {
+                    .accessibilityIdentifier("session.pauseResume")
+                    Button(role: .destructive) { session.stop() } label: {
                         Label(SessionHUDCopy.end.localized, systemImage: "stop.fill")
+                            .frame(minHeight: SessionSpacing.minTapTarget)
                     }
-                    .tint(BrandColor.strawberry)
+                    .buttonStyle(.bordered).tint(BrandColor.strawberry)
+                    .accessibilityIdentifier("session.end")
                 }
             }
         }
+        .foregroundStyle(BrandColor.fg)
+        .frame(maxWidth: .infinity)
     }
 
     private func active(_ pose: Pose) -> some View {
         VStack(spacing: SessionSpacing.md) {
             SessionPoseHeader(pose: pose, prominence: .large)
             SessionCountdownNumeral(remaining: session.poseTimeRemaining)
-            if !pose.voiceCueText.localized.isEmpty {
-                Text(pose.voiceCueText.localized)
-                    .font(.title3)
-                    .foregroundStyle(BrandColor.magnesium)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 560)
+            Text(pose.description.localized)
+                .font(.title3).multilineTextAlignment(.center)
+                .foregroundStyle(BrandColor.magnesium)
+                .fixedSize(horizontal: false, vertical: true)
+            if !pose.breathingPattern.localized.isEmpty {
+                Label(pose.breathingPattern.localized, systemImage: "wind")
+                    .foregroundStyle(BrandColor.mint)
+            }
+            if !pose.modifications.localized.isEmpty {
+                DisclosureGroup(copy("Make it comfortable", "Adaptez la posture")) {
+                    VStack(alignment: .leading, spacing: SessionSpacing.xs) {
+                        ForEach(pose.modifications.localized, id: \.self) { Text($0) }
+                    }.padding(.top, SessionSpacing.sm)
+                }.tint(BrandColor.mint)
             }
         }
     }
+}
+
+private func copy(_ en: String, _ fr: String) -> String {
+    LocalizedString(en: en, fr: fr).localized
 }

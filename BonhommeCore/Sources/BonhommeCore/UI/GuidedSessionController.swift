@@ -21,6 +21,12 @@ public final class GuidedSessionController {
     public private(set) var elapsedTime: TimeInterval = 0
     public private(set) var isPaused = false
     public private(set) var posesCompletedCount = 0
+    public private(set) var endedEarly = false
+
+    public var upcomingPose: Pose? {
+        guard case .transition(let next, _) = phase else { return nil }
+        return plan.poses[safe: next]
+    }
 
     public var currentPose: Pose? {
         switch phase {
@@ -64,6 +70,7 @@ public final class GuidedSessionController {
     public func start() {
         guard phase == .ready || phase == .complete else { return }
         posesCompletedCount = 0
+        endedEarly = false
         elapsedTime = 0
         isPaused = false
         elapsedAnchor = Date()
@@ -90,6 +97,9 @@ public final class GuidedSessionController {
     }
 
     public func stop() {
+        guard phase != .ready, phase != .complete else { return }
+        updateElapsed()
+        endedEarly = posesCompletedCount < plan.poseCount
         timerTask?.cancel()
         isPaused = false
         elapsedAnchor = nil
@@ -103,6 +113,7 @@ public final class GuidedSessionController {
         elapsedTime = 0
         posesCompletedCount = 0
         poseTimeRemaining = 0
+        endedEarly = false
         phase = .ready
     }
 
@@ -131,6 +142,7 @@ public final class GuidedSessionController {
             if next < plan.poses.count {
                 startTransition(to: next, remaining: Int(plan.transitionSeconds))
             } else {
+                elapsedAnchor = nil
                 phase = .complete
             }
         }

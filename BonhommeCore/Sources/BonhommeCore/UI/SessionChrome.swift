@@ -85,7 +85,8 @@ public enum SessionPalette {
         case apo, cryo, cold, physio, denature
 
         public static func resolve(_ bpm: Double?) -> HeartRateBand {
-            guard let bpm, bpm.isFinite else { return .apo }
+            guard let bpm, bpm.isFinite, bpm > 0,
+                  Int(exactly: bpm.rounded()).map({ $0 > 0 }) == true else { return .apo }
             switch bpm {
             case ..<100: return .cryo
             case 100..<130: return .cold
@@ -157,6 +158,12 @@ public extension InsightTrend {
 
 /// User-facing HUD strings. Full `LocalizedString` set so catalogs stay intact.
 public enum SessionHUDCopy {
+    public static let unavailable = LocalizedString(
+        en: "Unavailable", fr: "Indisponible", es: "No disponible",
+        ja: "利用できません", zh: "不可用", ko: "사용할 수 없음",
+        ru: "Недоступно", de: "Nicht verfügbar", ar: "غير متاح",
+        it: "Non disponibile", pt: "Indisponível"
+    )
     public static let focusIndex = LocalizedString(
         en: "Focus Index", fr: "Indice de concentration", es: "Índice de concentración",
         ja: "集中力指数", zh: "专注力指数", ko: "집중력 지수",

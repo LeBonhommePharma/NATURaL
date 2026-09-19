@@ -103,6 +103,10 @@
 		A170917E3F61000000000111 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000101 /* Assets.xcassets */; };
 		A170917E3F61000000000112 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A170917E3F61000000000102 /* PrivacyInfo.xcprivacy */; };
 		AD2026091200000000000001 /* Watch in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3B20A0CBCF41B50E61CA0C8A; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE2026091900000000000001 = {isa = PBXBuildFile; fileRef = AE2026091900000000000002; };
+		AE2026091900000000000003 = {isa = PBXBuildFile; fileRef = AE2026091900000000000004; };
+		AE2026091900000000000006 = {isa = PBXBuildFile; fileRef = AE2026091900000000000007; };
+		AE2026091900000000000008 = {isa = PBXBuildFile; fileRef = AE2026091900000000000009; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -141,7 +145,9 @@
 		1AAB605232D382A12169D41C /* Embed Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			dstPath = "";
-			dstSubfolder = PlugIns;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 13;
+			runOnlyForDeploymentPostprocessing = 0;
 			files = (
 				681122FD9CFB44DF7B145C3E /* NATURaLLiveActivity.appex in Embed Extensions */,
 				B4DAD494A9193918DFCB75A4 /* NATURaLWidgets.appex in Embed Extensions */,
@@ -262,6 +268,10 @@
 		A170917E3F61000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A170917E3F61000000000101 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A170917E3F61000000000102 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AE2026091900000000000002 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AE2026091900000000000004 = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AE2026091900000000000007 = {isa = PBXFileReference; lastKnownFileType = text; name = Acknowledgements.txt; path = Bonhomme/Resources/Acknowledgements.txt; sourceTree = SOURCE_ROOT; };
+		AE2026091900000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationPrescriptionServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -327,6 +337,8 @@
 				D63535DC8969E7F75F6A0099 /* App */,
 				405D230810B3C12B99387B03 /* Info.plist */,
 				EABF9CB9E1599CACD227B701 /* BonhommeMac.entitlements */,
+				AE2026091900000000000002,
+				AE2026091900000000000004,
 			);
 			path = BonhommeMac;
 			sourceTree = "<group>";
@@ -545,6 +557,7 @@
 			children = (
 				576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */,
 				493EF22F8480E0C004517FEF /* WorkoutFlowViewModelTests.swift */,
+				AE2026091900000000000009,
 			);
 			path = BonhommeTests;
 			sourceTree = "<group>";
@@ -886,6 +899,7 @@
 			buildPhases = (
 				8E0C0129EA48299E04954C85 /* Sources */,
 				A2A312F3D40B04A03AF61002 /* Frameworks */,
+				AE2026091900000000000005 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -967,12 +981,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA2026091200000000000000 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000000, AC2026091200000000000001, ); runOnlyForDeploymentPostprocessing = 0; };
+		AA2026091200000000000000 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000000, AC2026091200000000000001, AE2026091900000000000006, ); runOnlyForDeploymentPostprocessing = 0; };
 		AA2026091200000000000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000100, AC2026091200000000000101, ); runOnlyForDeploymentPostprocessing = 0; };
 		AA2026091200000000000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000200, ); runOnlyForDeploymentPostprocessing = 0; };
 		AA2026091200000000000300 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AC2026091200000000000300, ); runOnlyForDeploymentPostprocessing = 0; };
 		A170917E3F61000000000020 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A170917E3F61000000000011, A170917E3F61000000000012, ); runOnlyForDeploymentPostprocessing = 0; };
 		A170917E3F61000000000120 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A170917E3F61000000000111, A170917E3F61000000000112, ); runOnlyForDeploymentPostprocessing = 0; };
+		AE2026091900000000000005 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AE2026091900000000000001, AE2026091900000000000003, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -1004,6 +1019,7 @@
 			files = (
 				9D3E5EC185B3349F6332BB6C /* TVDisplayCoordinatorTests.swift in Sources */,
 				E9D90BC869E6D9EE781D3BA4 /* WorkoutFlowViewModelTests.swift in Sources */,
+				AE2026091900000000000008,
 			);
 		};
 		73DA79884C2D753985A58A57 /* Sources */ = {
@@ -1558,6 +1574,8 @@
 		A53B6A3BC27B446A15A6DE34 /* Debug configuration for PBXNativeTarget "BonhommeMac" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = BonhommeMac/BonhommeMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1581,6 +1599,8 @@
 		A1CCE46142E2C3849414B25E /* Release configuration for PBXNativeTarget "BonhommeMac" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = BonhommeMac/BonhommeMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = YES;
