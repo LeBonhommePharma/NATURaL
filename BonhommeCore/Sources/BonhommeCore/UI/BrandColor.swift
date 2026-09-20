@@ -13,8 +13,6 @@ public enum BrandPalette: Sendable {
     public static let aqua: UInt32 = 0x00A2FF
     public static let strawberry: UInt32 = 0xFF2F92
     public static let magnesium: UInt32 = 0xDCDCE4
-    /// Thermodynamic gold chrome — optional, never a SCI/CTA substitute.
-    public static let gold: UInt32 = 0xC4A359
 }
 
 public extension Color {

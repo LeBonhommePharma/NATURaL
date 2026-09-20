@@ -660,9 +660,19 @@ def test_brand_tokens_and_design_system() -> None:
     if "#0891B2" in master_text and "Brand override" not in master_text:
         fail("MASTER.md still uses generic spa teal as source of truth")
     # The tool's default wellness palette must never displace the FlexAIDdS v2 brand.
+    # Naming a token on the retired line is how a ban is recorded, so that line is
+    # excluded from the scan — a guard that forbids the name outright makes the ban
+    # undocumentable, and absence invites reinvention. Everything else is scanned.
+    retired_lines = [ln for ln in master_text.splitlines()
+                     if "Retired — do not reintroduce" in ln]
+    if not retired_lines:
+        fail("MASTER.md must carry a retired list naming the banned tokens")
+    body = "\n".join(ln for ln in master_text.splitlines() if ln not in retired_lines)
     for banned in ("--teal", "--gold", "--terra", "--coral", "--cyan"):
-        if banned in master_text:
+        if banned in body:
             fail(f"MASTER.md must not introduce the generic wellness token {banned}")
+        if banned not in " ".join(retired_lines):
+            fail(f"MASTER.md retired list must name {banned}")
     # Small text on the session surface must clear WCAG AA. White at 0.40 over #08091A
     # composites to #6B6B76 for 3.75:1; the breathing readout is 10pt, so the 3:1
     # large-text allowance does not apply. Brand tokens give 15.60:1 and 6.12:1.
@@ -706,12 +716,28 @@ def test_brand_tokens_and_design_system() -> None:
         "0x45E0A8",
         "0x8B5CF6",
         "0x08091A",
-        "0xC4A359",
         "Color(brandHex: BrandPalette.mint)",
         "Color(brandHex: BrandPalette.violet)",
     ):
         if needle not in brand:
             fail(f"BrandColor/BrandPalette missing {needle}")
+    # Gold #C4A359 is retired (20 September 2026). This loop used to PIN the value,
+    # which meant deleting the declaration would have silently removed the only
+    # thing naming it. Banning it instead: the value may appear in MASTER.md's
+    # retired list, so that it is recorded as forbidden rather than merely absent,
+    # and nowhere in shipping Swift. Docs prose is history, not an enforcement
+    # surface, so it is out of scope here.
+    for swift in ROOT.rglob("*.swift"):
+        if any(part in (".build", "build", ".git") for part in swift.parts):
+            continue
+        if "C4A359" in swift.read_text(encoding="utf-8", errors="replace"):
+            fail(f"retired gold #C4A359 reappeared in {swift.relative_to(ROOT)}")
+    master_md = (ROOT / "design-system/natural/MASTER.md").read_text(encoding="utf-8")
+    if "Retired — do not reintroduce" not in master_md:
+        fail("MASTER.md must keep a retired list so banned values are recorded, not just absent")
+    if "#C4A359" not in master_md:
+        fail("MASTER.md retired list must name gold #C4A359 explicitly")
+
     for page in ("ios.md", "ipad.md", "watchos.md", "tvos.md", "visionos.md"):
         if not (ROOT / "design-system/natural/pages" / page).is_file():
             fail(f"design-system page {page} missing")
