@@ -7,9 +7,12 @@ final class WorkoutFlowUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        // A failed XCTest assertion can abort before a previous test's Swift defer.
-        // Establish orientation explicitly for each independent journey.
-        XCUIDevice.shared.orientation = .portrait
+        // No orientation command here. Every journey below except the iPad
+        // landscape one reaches its targets by scrolling and asserting hittability,
+        // so it holds in either orientation; pinning bought nothing and added a
+        // flaky device command to six journeys. Only the landscape journey, which
+        // is actually testing landscape, commands the device — and it asserts the
+        // resulting layout rather than trusting the command.
         app = XCUIApplication()
         // A previous journey persists welcome completion, and the argument-domain
         // string "NO" is not a dependable Bool reset. Force onboarding explicitly.

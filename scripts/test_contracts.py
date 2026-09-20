@@ -307,6 +307,22 @@ def test_hud_honesty() -> None:
         fail("Live Activity must not invent pose total 1 when count is 0")
     if "poseProgressBar(" not in live:
         fail("Live Activity must omit determinate pose bar when total is unknown")
+    # Commanding device orientation is flaky in the simulator — it failed
+    # AirPlayFallbackUITests at CI 35486372872 with "Failed to set device
+    # orientation: Timed out waiting for confirmation", before any assertion ran.
+    # Only a journey that is actually testing landscape may command it, and it must
+    # then assert the resulting layout rather than trust the command. A defensive
+    # pin in setUp buys nothing and spreads that flake across every journey.
+    airplay = read("Tests/BonhommeUITests/AirPlayFallbackUITests.swift")
+    if "XCUIDevice.shared.orientation" in airplay:
+        fail("AirPlay journeys must not command device orientation; assert layout instead")
+    journeys_src = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
+    head = journeys_src.split("func test", 1)[0]
+    if "XCUIDevice.shared.orientation" in head:
+        fail("setUp must not pin device orientation; only the landscape journey may command it")
+    if "application.frame.width > application.frame.height" not in journeys_src:
+        fail("the landscape journey must assert the resulting layout, not trust the command")
+
     journeys = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
     if "app.terminate()" in journeys:
         fail("largest-text journey must not terminate+relaunch (welcome.continue flake)")

@@ -108,7 +108,14 @@ comparison, not here; this repo does not author values.
 
 ### Still open
 
-- `BrandColor.gold = 0xC4A359` — **zero call sites**, dead. Same off-palette brass
+- `BrandColor.gold = 0xC4A359` — **correction: not zero-reference.** My earlier
+  "zero call sites" was wrong; I had searched Swift product code only.
+  `scripts/test_contracts.py:693` asserts `"0xC4A359"` is present in
+  `BrandColor.swift`, inside the same loop that pins mint, violet and bg. No
+  *consumer* reads it — no symbol access, no string lookup, no colorset, no
+  reflection, no project reference — but removing it is a three-part change
+  (contract, declaration, MASTER.md lines 33 and 41), not a one-line delete.
+  Halted and reported rather than deleted, per instruction. Same off-palette brass
   as the site's `--hp-gold`. MASTER.md line 41 still permits it as thermodynamic
   chrome. Left untouched: it is `public` API on a package, and the handoff marked
   it LP's call. Recommendation: retire it and let ΔG chrome read tangerine
