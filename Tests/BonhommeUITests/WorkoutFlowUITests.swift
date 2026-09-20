@@ -11,8 +11,14 @@ final class WorkoutFlowUITests: XCTestCase {
         // Establish orientation explicitly for each independent journey.
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
+        // A previous journey persists welcome completion, and the argument-domain
+        // string "NO" is not a dependable Bool reset. Force onboarding explicitly,
+        // and terminate any inherited instance so this journey cannot attach to a
+        // still-running app that is already past the welcome screen.
+        app.terminate()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
                                "-natural.didFinishWelcome", "NO",
+                               "-natural.forceWelcome",
                                "-natural.motionCoachHeroDismissed", "NO"]
         // Apply Dynamic Type before the first launch. Terminate+relaunch on CI
         // can miss welcome.continue (PR journeys flake on b2cc3f8).
@@ -55,6 +61,14 @@ final class WorkoutFlowUITests: XCTestCase {
         }
         XCTAssertTrue(begin.isHittable, "Begin Session must be tappable without a camera/paywall overlay")
         begin.tap()
+        // The simulator occasionally synthesizes the tap without delivering it, leaving
+        // the ready screen up (CI 35473327818, iPhone). Re-issue once, then require the
+        // ready screen to actually dismiss so a genuine start failure still fails here.
+        if !begin.waitForNonExistence(timeout: 6) {
+            begin.tap()
+        }
+        XCTAssertTrue(begin.waitForNonExistence(timeout: 8),
+                      "Begin Session must start the session and leave the ready screen")
     }
 
     private func capture(_ name: String) {
