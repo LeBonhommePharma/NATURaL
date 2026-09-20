@@ -55,12 +55,12 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
 - [x] Review, commit and push the integration branch (`057b5aa` contains TV/kinematics/icon work).
 - [ ] Merge only after current-revision required checks pass and remaining review findings are resolved.
 - [x] Add 110 permission purpose strings across 11 supported languages and regression checks.
-- [ ] Complete missing app-content translations; OS language selection falls back to English where content is untranslated.
+- [ ] Complete missing app-content translations; OS language selection falls back to English where content is untranslated. **Gap now measured exactly: 870 unique English keys** (381 needing all nine gap languages, 489 needing it/pt only; ~9,570 translated values), broken down by source area in [localization-coverage.md](localization-coverage.md). Machine translation was evaluated and rejected — it would lower the fallback counters without any qualified speaker reading medication, dosage and consent copy. Open pending human translation.
 - [x] Execute iOS/Watch/Mac/TV Release builds and app tests at `c216e66`: all six jobs passed in CI `35470772237`, including 21 hosted app tests and 9 UI tests. Later changes require a fresh green run.
 - [x] Add manual hosted signing with isolated credentials and distribution-profile checks; see [cloud-signing.md](cloud-signing.md).
 - [ ] Configure the protected signing environment and run actual signed archives; offline fixtures do not establish working signing.
 - [x] Add exact-key supplemental translations for common navigation/guide/TV phrases and a reproducible fallback inventory.
-- [ ] Complete linguistic review and remaining untranslated static, interpolated and native SwiftUI copy; see [localization-coverage.md](localization-coverage.md).
+- [ ] Complete linguistic review and remaining untranslated static, interpolated and native SwiftUI copy; see [localization-coverage.md](localization-coverage.md). No box here may be checked on machine-drafted output.
 - [ ] Review final native rendering across sizes, accessibility and every supported language. HTML/design references are not runtime proof.
 - [ ] Validate TV/Vision layered icon delivery with their SDKs; flattened source assets are not enough to certify those store products.
 - [x] Audit reachable profile/insight claims, distinguish catalog estimates from actual docking, and prevent repeated doses inflating the substance denominator; see [scientific-claims-audit.md](scientific-claims-audit.md).
