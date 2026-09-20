@@ -73,12 +73,16 @@ final class WorkoutFlowUITests: XCTestCase {
         welcome.lifetime = .keepAlways
         add(welcome)
         continueButton.tap()
-        // The tap is occasionally synthesized but not delivered (CI 35482711331).
-        // Re-issue once, then still require Home so a real failure still fails.
-        if !home.waitForExistence(timeout: 8) {
+        // The tap is occasionally synthesized but not delivered (CI 35482711331),
+        // so it is re-issued once — but ONLY while welcome is still on screen.
+        // Re-tapping unconditionally is itself a bug: when the first tap landed and
+        // Home was merely slow to render, the button is already gone and the retry
+        // fails hard with "No matches found" (CI 35496458937, on a docs-only commit).
+        // Absence of the button means the tap worked; wait for Home rather than retry.
+        if !home.waitForExistence(timeout: 8), continueButton.exists {
             continueButton.tap()
         }
-        XCTAssertTrue(home.waitForExistence(timeout: 10),
+        XCTAssertTrue(home.waitForExistence(timeout: 12),
                       "Continue must leave welcome and show Home")
     }
 
