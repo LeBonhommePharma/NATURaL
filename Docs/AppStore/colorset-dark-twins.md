@@ -1,6 +1,6 @@
 # Dark-appearance colorset twins — consumer spec for NATURaL
 
-Status: **blocked on the design-system session** (`Derive universal design
+Status: **APPLIED 20 September 2026.** Consumed from the design-system session (`Derive universal design
 system`, `lebonhommepharma.github.io`). LP ruled on 20 September 2026 that the
 twins should exist and that `design-system/natural/MASTER.md` stands as written —
 softening the doc is off the table.
@@ -66,3 +66,53 @@ icons use `.primary` as a stopgap. See `verification.md`.
 2. Revisit light-surface brand usage, starting with the home style chrome.
 3. Add a contract asserting every colorset carries a dark `appearances` entry, so
    the gap cannot silently return.
+
+
+---
+
+## Applied — 20 September 2026
+
+Consumed from `lebonhommepharma.github.io`, branch `design-system/canonical-source`
+(`6724f5a`, `8b7a076`), per `design-system/HANDOFF-NATURAL.md`. Eleven colorsets
+taken verbatim; **no values authored here**. `BrandStateFailText` is new.
+
+The producer's guard passes against this catalog:
+
+```
+node design-system/check-colorsets.mjs --catalog …/BrandColors.xcassets
+→ colorsets: all 11 have a dark twin, every pair is a relighting,
+  every half clears AA.   (exit 0)
+```
+
+`test_contracts.py` now asserts independently that every colorset carries a dark
+twin and that the light value sits in `universal`, so a re-inversion fails the
+build. Verified non-tautological: stripping `BrandFg`'s twin fails with
+`BrandFg.colorset has no dark appearance twin`.
+
+### Reported back to the producer
+
+Two light halves are **marginally below** WCAG AA and are reported as passing
+because both the handoff table and `check-colorsets.mjs` round to two decimals
+before comparing:
+
+| colorset | light | reported | actual on `#F3EFE7` |
+|---|---|---|---|
+| `BrandFgMuted` | `#6B6A8D` | 4.5 / "ok" | **4.4976** |
+| `BrandStateFailText` | `#C8373E` | 4.5 / "ok" | **4.4970** |
+
+AA requires ≥ 4.5, so strictly both fail. The gap is a hair and far better than
+the inverted state it replaced, so the catalog was applied as-is rather than
+held — but `BrandFgMuted` is the muted *small-text* token, which is exactly where
+the threshold matters. The fix belongs upstream in the solver and the guard's
+comparison, not here; this repo does not author values.
+
+### Still open
+
+- `BrandColor.gold = 0xC4A359` — **zero call sites**, dead. Same off-palette brass
+  as the site's `--hp-gold`. MASTER.md line 41 still permits it as thermodynamic
+  chrome. Left untouched: it is `public` API on a package, and the handoff marked
+  it LP's call. Recommendation: retire it and let ΔG chrome read tangerine
+  `#FF9300` (8.86:1), which is what MASTER.md already assigns to ΔG.
+- Not compile-verified — `actool` is unavailable here (Command Line Tools only).
+  Structure parses and matches Xcode's output format, but that is not a build.
+  The "Make room and install Xcode" session may unblock a one-command check.
