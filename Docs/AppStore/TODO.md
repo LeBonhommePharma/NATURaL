@@ -153,6 +153,26 @@ them out of MASTER.md. The approved bloom was not touched.
       `test_contracts.py`. Decide with LP whether to ship, wire up, or remove;
       shipping unreachable third-party-video UI is worth a deliberate call before
       review. **Nothing deleted** — flagged only.
+- [x] Move the home style chrome onto brand tokens. The style cards and sidebar
+      icons derived colour from a generated hue ramp, producing chrome outside
+      `BrandColor` entirely: `#62D9D9` teal, `#62D96D` green, `#D98562` coral.
+      Across both ramps **13 of 26 generated colours** land in bands LP excluded.
+      Icons and card borders now use `BrandColor.fg` / `fgMuted`, which also
+      returns the page's colour budget to the featured card and the mint CTA.
+      `test_contracts.py` guarded `Color(red:` but not the hue form — that gap is
+      now closed and verified non-tautological.
+- [ ] **Decide the pose-illustration accent ramp with LP.** `Pose.accentHue`
+      still drives the MotionCoach illustration gradients from the same free HSB
+      generator, and its own source comments name the results: `spine` cyan-blue,
+      `shoulders` teal, `neck` cyan, `breathing` green, `core` orange, `back`
+      cyan (`#55F2F2` pure cyan, `#58F255` pure green). That is off-palette by
+      MASTER.md's quantity-bound rule. It is **not** changed here: the illustrated
+      pose stage is the app's signature visual, and restyling it is LP's call, not
+      a lint fix. Three options — give categories a brand-sanctioned sub-palette;
+      drop per-category colour and differentiate by form alone; or constrain the
+      ramp to the brand's blue→violet→magenta arc. Reassigning existing tokens
+      (mint/violet/aqua/tangerine) is **not** an option: MASTER.md binds them by
+      quantity and forbids reassignment.
 - [ ] Re-review hierarchy, spacing, motion and states on device once hardware QA
       is possible. Spacing already resolves to a clean 4/8/12/16/24/32/40/48 scale
       and `phoneControlHeight` is 52pt (above the 44pt minimum); motion is already

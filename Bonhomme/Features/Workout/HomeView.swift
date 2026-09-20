@@ -63,7 +63,7 @@ struct HomeView: View {
                             }
                         } icon: {
                             Image(systemName: style.symbolName)
-                                .foregroundStyle(Color(hue: style.accentHue, saturation: 0.55, brightness: 0.8))
+                                .foregroundStyle(BrandColor.fg)
                                 .symbolRenderingMode(.hierarchical)
                         }
                     }
@@ -379,12 +379,17 @@ struct HomeView: View {
 
     private func styleCard(style: YogaStyle) -> some View {
         let planCount = PoseCatalog.planCount(for: style)
-        let accentColor = Color(hue: style.accentHue, saturation: 0.55, brightness: 0.85)
 
+        // Style chrome stays monochrome on the brand foreground. The previous
+        // generated hue ramp produced off-palette chrome — #62D9D9 teal, #62D96D
+        // green, #D98562 coral — none of which are BrandColor tokens, and
+        // MASTER.md binds the palette by quantity so tokens are never reassigned.
+        // Spending no colour here also returns the page's colour budget to the
+        // featured card and the mint CTA, which is where the hierarchy belongs.
         return VStack(spacing: SessionSpacing.sm) {
             Image(systemName: style.symbolName)
                 .font(.title)
-                .foregroundStyle(accentColor)
+                .foregroundStyle(BrandColor.fg)
                 .symbolRenderingMode(.hierarchical)
                 .frame(minHeight: 36)
 
@@ -405,7 +410,7 @@ struct HomeView: View {
         .background(.thinMaterial, in: SessionRadius.cardShape())
         .overlay(
             SessionRadius.cardShape()
-                .strokeBorder(accentColor.opacity(0.28), lineWidth: 1)
+                .strokeBorder(BrandColor.fgMuted.opacity(0.28), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
     }

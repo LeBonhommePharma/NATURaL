@@ -494,6 +494,11 @@ def test_hud_honesty() -> None:
         fail("unknown SCI ring must be a dashed track, not a 0% fill")
     if "Color(red:" in home:
         fail("home coach chrome must use BrandColor tokens, not raw RGB")
+    # Color(hue:) slipped past the raw-RGB guard. A hue ramp over the yoga styles
+    # generated off-palette chrome — #62D9D9 teal, #62D96D green, #D98562 coral —
+    # none of them BrandColor tokens, while MASTER.md binds the palette by quantity.
+    if "Color(hue:" in home:
+        fail("home style chrome must use BrandColor tokens, not a generated hue ramp")
     if "BrandColor.mint" not in home:
         fail("home Begin CTA must use BrandColor.mint")
     if ".labelStyle(.titleAndIcon)" not in home:
