@@ -9,7 +9,15 @@ final class LocalizedStringTests: XCTestCase {
             XCTAssertNotNil(SupplementalLocalization.catalog[key], "Each supplemental resource must be bundled: \(key)")
         }
         for (english, translations) in SupplementalLocalization.catalog {
-            XCTAssertEqual(Set(translations.keys), Set(LocalizedString.supportedLanguages), english)
+            // Subset, not equality. The catalog deliberately retains all eleven
+            // languages so a deferred one can be restored by flipping
+            // supportedLanguages back; asserting equality would fail on that
+            // retention rather than on a real gap. What must hold is that every
+            // SUPPORTED language is covered — a catalog missing one still fails,
+            // and the message names it.
+            let missing = Set(LocalizedString.supportedLanguages).subtracting(translations.keys)
+            XCTAssertTrue(missing.isEmpty,
+                          "\(english): catalog is missing supported language(s) \(missing.sorted())")
             XCTAssertEqual(translations["en"], english)
             XCTAssertTrue(translations.values.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }, english)
         }
@@ -46,10 +54,20 @@ final class LocalizedStringTests: XCTestCase {
     func testArrayFallbackResolvesItemsWithoutReplacingExplicitArrays() {
         let items = LocalizedStringArray(en: ["Pose guide", "Unlisted movement", "Cancel"], fr: [],
                                          es: ["Custom translated list"])
-        XCTAssertEqual(items.value(for: "it-IT"), ["Guida alla posizione", "Unlisted movement", "Annulla"])
+        // (a) supplemental fills listed items individually, leaving unlisted ones in
+        // English — routed through French, which 1.0 actually ships.
+        XCTAssertEqual(items.value(for: "fr-CA"), ["Guide de la posture", "Unlisted movement", "Annuler"])
+        // (b) an explicit array still wins over the supplemental catalog.
         XCTAssertEqual(items.value(for: "es-MX"), ["Custom translated list"])
+        // (c) English and unknown languages resolve to the English array.
         XCTAssertEqual(items.value(for: "en-US"), items.en)
         XCTAssertEqual(items.value(for: "sv"), items.en)
+        // (d) A language deferred from 1.0 falls back to English rather than
+        // resolving partially. The previous version of this test asserted through
+        // it-IT that Italian resolved; that is now the stated contract's opposite,
+        // so it is asserted rather than implied. Italian is still in the catalog —
+        // it is unsupported, not absent.
+        XCTAssertEqual(items.value(for: "it-IT"), items.en)
         XCTAssertEqual(LocalizedStringArray(en: [], fr: []).value(for: "de"), [])
     }
 
