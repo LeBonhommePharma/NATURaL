@@ -12,6 +12,48 @@ Checklist legend:
 - `[ ]` **Unfinished or unverified**, including local product work, CI, portal and physical-device checks
 
 A reproduced failure documents a blocker; it does not satisfy its release gate.
+
+## In-repo status — 19 September 2026
+
+The repository-side work is complete and green. Every remaining `[ ]` in this
+file needs something this checkout cannot provide: Apple credentials, physical
+hardware, an App Store Connect session, a full Xcode install, or a qualified
+human reviewer. None of them can be closed by editing source here.
+
+**Green:** [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304)
+at `c235664` passed all seven jobs — 613 core tests, 9 product contracts, all
+submission-asset checks, four platform Release builds (iOS+watchOS, macOS, tvOS),
+and both simulator journey lanes (**21 app tests and 10 UI tests, zero failures,
+on each of iPhone 17 Pro Max and iPad Pro 13-inch M5, iOS 26.5**). Local gates:
+archive validation 19, submission assets 20, permission localizations 7, cloud
+signing 21, localization inventory 6, product contracts 9, website routing PASS,
+`validate-submission.py --include-macos` PASS.
+
+**Remaining gates, by what actually unblocks them:**
+
+| Gate | Blocked on | Items |
+| --- | --- | --- |
+| Distribution signing, Organizer validation, upload, TestFlight | Real Apple credentials + a full Xcode install | §0, §1, §8, tvOS archive |
+| Physical-device QA (iPhone, iPad, Watch, Apple TV, Mac) | Hardware | §4–§7, TV pairing/transport, pose safety |
+| App Store Connect record, metadata, privacy labels, age rating, pricing, export compliance | An App Store Connect session | §0, §2, §3 |
+| Final store screenshots at accepted dimensions | A final signed build on device/simulator | All platform screenshot items |
+| Layered icon acceptance (tvOS, visionOS) | `actool` / the platform SDKs, i.e. Xcode | Kinematics §, TV § |
+| In-app translation for nine languages | A qualified human translator per language | §2, localization § |
+| Per-value scientific provenance | Original experimental/source records held outside this repo | §3, claims § |
+
+Two things are explicitly **not** closed despite green CI, and are written up
+where they belong rather than ticked:
+
+1. The iPad landscape screenshots from the green run are not valid visual
+   evidence — they render 2064×2064 into a 2752×2064 frame. See
+   [verification.md](verification.md). The landscape journey's functional
+   assertions did pass.
+2. In-app translations were deliberately not machine-generated. The gap is
+   measured exactly (870 unique keys) in
+   [localization-coverage.md](localization-coverage.md); filling it with
+   unreviewed output would lower the fallback counters without any qualified
+   speaker having read medication, dosage or consent copy.
+
 `[ ]` items are unresolved blockers that still require additional work or external/portal actions.
 
 ## Submission matrix (current source; device gates pending)
