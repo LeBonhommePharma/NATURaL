@@ -71,6 +71,31 @@ Either way the consequence is the same and is recorded rather than assumed away:
 **these landscape PNGs do not establish iPad landscape rendering and must not be
 used as App Store screenshots.** The corresponding TODO items stay open.
 
+#### iPad structural checks: two of four covered, two still open
+
+`TODO.md` §5 asks to verify no blank detail panel, no duplicate navigation stack,
+no truncated instruction and no inaccessible primary action. Two of those are now
+covered by the green iPad lane, and two are not:
+
+- **Blank detail panel — covered.** In landscape the accessibility tree shows
+  `home.content` as the detail `ScrollView` at `{{0,0},{1376,1032}}` with the
+  primary action `home.start` inside it at x 350–1316, to the right of the
+  280 pt sidebar. The journey asserts `home.start.isHittable` and taps it
+  successfully, so the detail column is populated and interactive.
+- **Inaccessible primary action — covered.** Same assertion, plus
+  `session.pauseResume` and `session.end` asserted hittable in landscape and
+  `summary.done` reachable and dismissable.
+- **Duplicate navigation stack — open.** The iPad home tree reports *three*
+  `NavigationBar` elements: the outer toolbar at `{{0,32},{1376,106}}`, a sidebar
+  bar at `{{10,138},{280,54}}`, and a full-width bar at `{{0,138},{1376,54}}`.
+  The last two share y=138 and overlap. That may simply be how SwiftUI reports a
+  `NavigationSplitView`'s sidebar and detail bars, or it may be the duplicate
+  stack this item warns about. Distinguishing the two needs device or Xcode view
+  inspection and is not settled here.
+- **Truncated instruction — open.** No assertion covers text truncation, and the
+  landscape screenshots that would show it are the invalid captures described
+  above.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.

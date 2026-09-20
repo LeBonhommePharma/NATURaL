@@ -210,7 +210,7 @@ where they belong rather than ticked:
 - [x] Provide sidebar/catalog layout and scrolling session content.
 - [x] Verify the final session presentation fix: all six iPad UI regression tests passed.
 - [ ] Test portrait and landscape, split view, resizable windows, keyboard navigation and largest text, including session controls and summary dismissal.
-- [ ] Verify no blank detail panel, duplicate navigation stack, truncated instruction or inaccessible primary action.
+- [ ] Verify no blank detail panel, duplicate navigation stack, truncated instruction or inaccessible primary action. **Partially covered:** blank detail panel and inaccessible primary action are closed by the green iPad lane (detail `home.content` holds `home.start`, asserted hittable and tapped; session controls and `summary.done` hittable in landscape). **Still open:** the iPad home tree reports three `NavigationBar` elements with two overlapping at y=138 — normal split-view structure or a duplicate stack is undetermined without device/Xcode inspection — and nothing asserts text truncation. See [verification.md](verification.md).
 - [ ] Run a full session and local-history round trip on a physical iPad, with and without Health access.
 - [ ] Capture accepted iPad App Store screenshots from the final build. Do not stretch iPhone captures to fit.
 
