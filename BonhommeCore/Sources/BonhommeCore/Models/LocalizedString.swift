@@ -33,7 +33,17 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     }
 
     /// All supported language codes.
-    public static let supportedLanguages = ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]
+    /// Languages the shipping app actually resolves. Narrowed to en + fr for 1.0 on
+    /// 20 September 2026: the other nine were only 64.7% translated (13.3% for it/pt),
+    /// so a Spanish device rendered roughly two strings in three translated and the
+    /// rest English, interleaved mid-screen. `preferredLanguage` returns "en" for any
+    /// code absent here, so those users now get clean English instead.
+    ///
+    /// Nothing was deleted to achieve this. The inline translations, the supplemental
+    /// catalogs and every locale's InfoPlist.strings remain in the repo. Restoring a
+    /// language is this array, CFBundleLocalizations in Bonhomme + BonhommeWatch, and
+    /// the InfoPlist.strings variant-group children in project.pbxproj — no file moves.
+    public static let supportedLanguages = ["en", "fr"]
 
     /// Match the ordered OS language list, including regional and script variants.
     public static func preferredLanguage(in identifiers: [String]) -> String {

@@ -246,4 +246,34 @@ final class LocalizedStringTests: XCTestCase {
         XCTAssertTrue(arr.value(for: "en").isEmpty)
         XCTAssertTrue(arr.value(for: "fr").isEmpty)
     }
+
+    // MARK: - 1.0 locale narrowing (20 September 2026)
+
+    /// The nine deferred languages must resolve to clean English, not to a
+    /// partially translated screen. Before narrowing, es/ja/zh/ko/ru/de/ar were
+    /// 64.7% translated and it/pt 13.3%, so those devices rendered a mix.
+    func testDeferredLanguagesResolveToEnglishRatherThanPartialTranslation() {
+        let deferred = ["es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]
+        let sample = LocalizedString(
+            en: "Come back to yourself.", fr: "Revenez à vous.", es: "Vuelve a ti.",
+            ja: "自分に還る。", zh: "回到你自己。", ko: "나에게로 돌아오세요.",
+            ru: "Вернитесь к себе.", de: "Kommen Sie zu sich zurück.",
+            ar: "عُد إلى ذاتك.", it: "Torna a te stesso.", pt: "Volte para você.")
+        for code in deferred {
+            XCTAssertEqual(LocalizedString.preferredLanguage(in: ["\(code)-XX", code]), "en",
+                           "\(code) must resolve to en while it is deferred from 1.0")
+            XCTAssertFalse(LocalizedString.supportedLanguages.contains(code),
+                           "\(code) must not be advertised as supported while deferred")
+        }
+        // The inline translations are retained for the 1.1 restore, not deleted.
+        XCTAssertEqual(sample.value(for: "es"), "Vuelve a ti.")
+        XCTAssertEqual(sample.value(for: "ja"), "自分に還る。")
+    }
+
+    /// French must keep working, including the Canadian regional code the store uses.
+    func testFrenchIncludingCanadianRegionStillResolves() {
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["fr-CA", "fr"]), "fr")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["fr-FR"]), "fr")
+        XCTAssertEqual(LocalizedString.supportedLanguages, ["en", "fr"])
+    }
 }
