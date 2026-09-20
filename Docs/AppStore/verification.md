@@ -2,6 +2,30 @@
 
 ## Latest completed integration evidence
 
+### Current head green — commit `ae98894` (20 September 2026)
+
+[CI 35486372872](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35486372872)
+at `ae98894` passed **all seven jobs**:
+
+| Job | Result |
+| --- | --- |
+| Linux product contracts | success — **9 contracts** |
+| Submission assets and Swift core | success — **613 core tests, 0 failures** |
+| iOS and embedded watchOS Release build | success |
+| Native macOS Release build | success |
+| Native tvOS Release build | success |
+| App journeys (iPhone 17 Pro Max / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures** (1 skipped: the iPad-only landscape journey) |
+| App journeys (iPad Pro 13-inch M5 / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures**, none skipped |
+
+`testWelcomeLeadsToFreeSession` **passed** on both lanes rather than skipping, so
+onboarding was genuinely verified; the `XCTSkip` path is a safety valve, not the
+normal route.
+
+The iPad lane needed one rerun. Its first attempt failed in
+`AirPlayFallbackUITests` setUp with `Failed to set device orientation: Timed out
+waiting for confirmation of orientation change` — a simulator infrastructure
+failure, not an assertion — and passed cleanly on rerun with no code change.
+
 ### Two-device CI matrix green — commit `c235664` (19 September 2026)
 
 [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304)
