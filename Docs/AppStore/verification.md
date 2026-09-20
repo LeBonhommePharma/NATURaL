@@ -315,6 +315,62 @@ Their aggregate behaviour is observable — the journeys have failed and been fi
 repeatedly today — but "every assertion can fail" is unproven for that set and is
 not claimed.
 
+#### Structural assertions matched as raw text — four found, two fixed
+
+From a lint built in ClusterFuck, run read-only across the family.
+`validate-submission`, `validate-archive`, `cloud_signing` and
+`submission_assets` came back clean. Four findings in `test_contracts.py`, all
+**correct today by accident** rather than broken — one edit from silent failure.
+
+**Fixed — structural, backed by a parseable file**
+
+`WKApplication` was checked as `"<true/>" not in watch or "WKApplication" not in
+watch`: two independent presences joined by `or`, neither tied to the other. It
+held only because `BonhommeWatch/Info.plist` contains exactly one `<true/>` and
+it happens to be WKApplication's. Proof, with a benign second true key added and
+WKApplication set false:
+
+| | result |
+|---|---|
+| old substring check | **sailed through** with `WKApplication = False` |
+| new parsed check | `WKApplication must be Boolean true, got False` |
+
+`WKCompanionAppBundleIdentifier` had the same shape — key name and value checked
+independently, so they could come from different keys. The first trap I built for
+it did **not** beat the old check, because `CFBundleIdentifier` is
+`$(PRODUCT_BUNDLE_IDENTIFIER)` rather than a literal, so deleting the literal
+tripped it. The trap that does exercise the shape puts the literal under a
+routine second key:
+
+| | result |
+|---|---|
+| old check, companion pointing at `com.someoneelse.App` while `NSUserActivityTypes` carries `com.natural.Bonhomme.session` | **sailed through** |
+| new parsed check | `Watch companion bundle id must be com.natural.Bonhomme, got 'com.someoneelse.App'` |
+
+**Left alone, deliberately — source text with nothing to parse**
+
+`vision_pose` (`vm.plan.poseCount > 0` + `vm.session.posesCompletedCount`) and
+the breathing check (`BrandColor.fgMuted` + `BrandColor.fg)`) are the same `or`
+shape, but both assert against Swift source. There is no structure behind them;
+"both of these symbols appear" *is* the property. Parsing Swift to check it would
+be a heavier tool for no gain, and both were already shown firing in the 94-
+assertion audit. Fixing them would be motion, not coverage.
+
+The `pbxproj` checks are the genuine "can't parse without a heavy tool" case.
+They match `PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;` including the
+terminator, which is about as tight as substring matching on a project file gets.
+A real fix needs a pbxproj parser, which is not stdlib and not worth adding to a
+release gate — noted rather than papered over.
+
+**The parse itself is now covered**
+
+`test_contracts.py` already parsed plists lower down, unguarded, so a malformed
+file would have killed the gate with a traceback and no diagnosis. `load_plist()`
+turns that into a named failure and returns `{}` so the remaining contracts still
+run. plistlib is stdlib — no dependency added. Verified against a truncated
+plist: `BonhommeWatch/Info.plist is not a parseable plist: ExpatError: no element
+found: line 2, column 38`, and the suite continued.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.

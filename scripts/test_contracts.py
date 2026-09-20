@@ -28,6 +28,24 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+def load_plist(rel: str) -> dict:
+    """Parse a plist for a gate, turning breakage into a named failure.
+
+    plistlib is stdlib, so this adds no dependency — the file already parsed
+    plists further down. What it adds is coverage of the parse itself: an
+    unhandled exception in a release gate reports a failure with no diagnosis,
+    which is its own kind of unhelpful. On breakage this records why and returns
+    {} so the remaining contracts still run and still report.
+    """
+    try:
+        return plistlib.loads((ROOT / rel).read_bytes())
+    except FileNotFoundError:
+        fail(f"{rel} is missing")
+    except Exception as error:  # malformed XML, truncated file, wrong format
+        fail(f"{rel} is not a parseable plist: {type(error).__name__}: {error}")
+    return {}
+
+
 def png_ihdr(path: pathlib.Path) -> tuple[int, int, int, int, bool]:
     data = path.read_bytes()
     if data[:8] != b"\x89PNG\r\n\x1a\n":
@@ -598,7 +616,7 @@ def test_privacy_and_no_cloud() -> None:
         # false. Verified: flipping tracking to true left this suite green.
         # It matters because validate-submission.py only parses the manifests for
         # Bonhomme and BonhommeWatch, so for the other five this is the only guard.
-        manifest = plistlib.loads((ROOT / rel).read_bytes())
+        manifest = load_plist(rel)
         if manifest.get("NSPrivacyTracking") is not False:
             fail(f"{rel} must declare NSPrivacyTracking false, got {manifest.get('NSPrivacyTracking')!r}")
         if manifest.get("NSPrivacyTrackingDomains") != []:
@@ -635,11 +653,21 @@ def test_identity() -> None:
     ):
         if ident not in pbx:
             fail(f"pbxproj missing {ident}")
-    watch = read("BonhommeWatch/Info.plist")
-    if "<true/>" not in watch or "WKApplication" not in watch:
-        fail("WKApplication must stay Boolean true")
-    if "WKCompanionAppBundleIdentifier" not in watch or "com.natural.Bonhomme" not in watch:
-        fail("Watch companion bundle id missing")
+    # Parsed, not substring-matched. These asked whether the file contained
+    # "<true/>" and, separately, "WKApplication" — two independent presences
+    # joined by `or`, neither tied to the other. That was correct only by
+    # accident: BonhommeWatch/Info.plist happens to hold exactly one <true/> and
+    # it happens to be WKApplication's. Adding any second true key —
+    # UIRequiresFullScreen, WKWatchOnly, anything routine — would let
+    # WKApplication be false while the check sailed through. Same for the
+    # companion id, where the key name and the value were checked independently
+    # and could have come from different keys entirely.
+    watch_plist = load_plist("BonhommeWatch/Info.plist")
+    if watch_plist.get("WKApplication") is not True:
+        fail(f"WKApplication must be Boolean true, got {watch_plist.get('WKApplication')!r}")
+    if watch_plist.get("WKCompanionAppBundleIdentifier") != "com.natural.Bonhomme":
+        fail("Watch companion bundle id must be com.natural.Bonhomme, got "
+             f"{watch_plist.get('WKCompanionAppBundleIdentifier')!r}")
     if "authorizationStatus()" not in read(
         "Bonhomme/Services/Music/HeadphoneMotionActuator.swift"
     ):
@@ -659,7 +687,7 @@ def test_identity() -> None:
         "BonhommeTV/Info.plist",
         "BonhommeVision/Info.plist",
     ):
-        info = plistlib.loads((ROOT / rel).read_bytes())
+        info = load_plist(rel)
         if info.get("ITSAppUsesNonExemptEncryption") is not False:
             fail(f"{rel} must declare ITSAppUsesNonExemptEncryption false")
         if info.get("CFBundleDisplayName") != "NATURaL":
