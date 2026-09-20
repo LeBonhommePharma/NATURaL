@@ -113,6 +113,20 @@ comparison, not here; this repo does not author values.
   chrome. Left untouched: it is `public` API on a package, and the handoff marked
   it LP's call. Recommendation: retire it and let ΔG chrome read tangerine
   `#FF9300` (8.86:1), which is what MASTER.md already assigns to ΔG.
-- Not compile-verified — `actool` is unavailable here (Command Line Tools only).
-  Structure parses and matches Xcode's output format, but that is not a build.
-  The "Make room and install Xcode" session may unblock a one-command check.
+- ~~Not compile-verified.~~ **Now compile-verified — answering the handoff's open
+  question.** `actool` is still unavailable locally (Command Line Tools only), but
+  CI's Xcode 26.6 compiles this catalogue on every push. In
+  [CI 35492227384](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35492227384),
+  the tvOS job ran:
+
+  ```
+  actool …/BrandColors.xcassets --compile …/Release-appletvos
+        --notices --warnings --target-device tv --platform appletvos
+  ```
+
+  It emitted **no error, warning or notice**: the `com.apple.actool.compilation-results`
+  blocks list only output artifacts (`Assets.car`, `GeneratedAssetSymbols.*`), and
+  the build succeeded. The same catalogue also compiled clean in the iOS +
+  embedded watchOS and native macOS Release jobs. The eleven twinned colorsets are
+  therefore verified by Xcode's own compiler on four platforms, not just by
+  structural parsing.
