@@ -77,11 +77,12 @@ final class WorkoutFlowUITests: XCTestCase {
         add(attachment)
     }
 
-    /// Landscape captures from `app.screenshot()` render the portrait-width content
-    /// into a landscape-sized buffer and clip the overflow (CI 35480771304: 2064x2064
-    /// painted into 2752x2064, remainder pure black rather than BrandColor.bg). Attach
-    /// the display-level capture alongside it so the exported artifact shows which
-    /// path is faithful; whichever wins becomes the capture path for store assets.
+    /// Landscape must use the display-level capture. `app.screenshot()` writes the
+    /// portrait-width content into a landscape-sized buffer and clips the overflow:
+    /// CI 35481919944 exported 2064x2064 inside 2752x2064, losing the entire right
+    /// metrics rail. `XCUIScreen.main.screenshot()` returns the device-native 2064x2752
+    /// buffer with the full landscape UI intact; rotate +90 (expand) for a 2752x2064
+    /// landscape image. Store assets must come from this path, not from app.screenshot().
     private func captureScreen(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = "\(name) (screen)"
@@ -111,13 +112,11 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(pause.isHittable)
         pause.tap()
         XCTAssertTrue(pause.label.contains("Resume"))
-        capture("iPad landscape paused guide")
         captureScreen("iPad landscape paused guide")
         let end = app.buttons["session.end"]
         XCTAssertTrue(end.isHittable)
         end.tap()
         XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
-        capture("iPad landscape summary")
         captureScreen("iPad landscape summary")
         app.buttons["summary.done"].tap()
         XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))

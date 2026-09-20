@@ -39,37 +39,41 @@ countdown is only 3 s). It passed on rerun with functionally identical code.
 `startSessionFromReady` now re-issues the tap once and then requires the ready
 screen to dismiss, so a real start failure still fails the journey.
 
-#### iPad landscape captures are not valid visual evidence
+#### iPad landscape capture path — resolved, and the app is not letterboxed
 
-The iPad landscape journey's functional assertions passed: the app frame was
-landscape (`application.frame.width > application.frame.height` completed within
-its wait), the pause/resume and end controls were hittable, and the summary was
-reachable and dismissable. That is real evidence the landscape journey works.
+The earlier finding (landscape PNGs painting 2064×2064 into a 2752×2064 frame) is
+now settled by a controlled comparison. `78be2e4` attached
+`XCUIScreen.main.screenshot()` alongside the existing `app.screenshot()` for the
+two landscape steps. [CI 35481919944](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35481919944)
+exported both:
 
-The landscape **screenshots** are not. Measuring the rendered content box of
-every iPad capture in this run:
+| Capture path | Frame | Rendered content | Verdict |
+| --- | --- | --- | --- |
+| `app.screenshot()` | 2752×2064 | 2064×2064 | **clipped — 75% of frame, loses 25% of the UI** |
+| `XCUIScreen.main.screenshot()` | 2064×2752 | 2064×2752 | **faithful — fills completely** |
 
-| Capture | Frame | Rendered content |
-| --- | --- | --- |
-| Home, Welcome, Welcome overview, Session preparation, Paused guided session, Session entry at largest text, Home TV guidance | 2064×2752 | 2064×2752 — fills exactly |
-| **iPad landscape paused guide** | 2752×2064 | **2064×2064** |
-| **iPad landscape summary** | 2752×2064 | **2064×2064** |
+Rotating the display capture by +90° with expansion yields a correct 2752×2064
+landscape image. Inspected directly, it shows the complete iPad landscape layout:
+the guide column (illustrated pose, “Seated Mountain”, pose-guide steps 1–3,
+breathing cue, “Make it comfortable”, the illustration disclaimer), the right
+metrics rail (Paused chip, BPM “No Signal”, the SCI ring, pose 1/7, 0:22), and
+the pinned full-width Resume / End controls.
 
-Every portrait capture fills its frame. Both landscape captures paint a 2064-wide
-square into a 2752-wide frame and leave the remaining 688 px column pure black
-(`0,0,0`), which is distinct from the app background `#08091A`. The content width
-equals the device's *portrait* width, and its height is clipped at the frame
-height, with the content rotated 90° inside the buffer.
+Two conclusions follow, and the second retracts the earlier worry:
 
-The most likely cause is XCTest capturing in the native portrait orientation and
-writing into a landscape-sized buffer, clipping the overflow — a capture-path
-artifact rather than an app letterbox. That is a hypothesis, not a conclusion:
-distinguishing it from a genuine landscape letterbox needs Xcode or device QA,
-neither of which is available in this checkout.
+1. **`app.screenshot()` is the wrong path for landscape.** What it dropped was
+   not incidental margin — it was the entire right-hand metrics rail. Landscape
+   store assets and landscape visual review must use `XCUIScreen.main.screenshot()`
+   rotated +90, never `app.screenshot()`. `db02975`'s successor switches the two
+   landscape steps to the faithful path so no misleading PNG ships in the artifact.
+2. **The app is not letterboxed in landscape.** The earlier hypothesis — capture
+   artifact rather than app defect — is confirmed. The layout fills the display
+   correctly, so no layout fix is warranted.
 
-Either way the consequence is the same and is recorded rather than assumed away:
-**these landscape PNGs do not establish iPad landscape rendering and must not be
-used as App Store screenshots.** The corresponding TODO items stay open.
+Incidentally this is independent runtime confirmation of the HUD honesty
+contract: with no heart-rate signal in the simulator, the SCI ring renders as a
+dashed track with an em dash rather than a 0% fill, which is exactly what
+`test_hud_honesty` requires of the source.
 
 #### iPad structural checks: two of four covered, two still open
 

@@ -37,17 +37,20 @@ signing 21, localization inventory 6, product contracts 9, website routing PASS,
 | Physical-device QA (iPhone, iPad, Watch, Apple TV, Mac) | Hardware | §4–§7, TV pairing/transport, pose safety |
 | App Store Connect record, metadata, privacy labels, age rating, pricing, export compliance | An App Store Connect session | §0, §2, §3 |
 | Final store screenshots at accepted dimensions | A final signed build on device/simulator | All platform screenshot items |
-| Layered icon acceptance (tvOS, visionOS) | `actool` / the platform SDKs, i.e. Xcode | Kinematics §, TV § |
+| tvOS layered icon + Top Shelf **structure** | **Nothing — already validated automatically.** CI's Xcode 26.6 runs `actool --app-icon AppIcon --notices --warnings` against the real catalogue on every push, with zero diagnostics | — |
+| tvOS icon focus/parallax behaviour, and assets inside a signed bundle | Apple TV hardware + Organizer | TV § |
+| visionOS layered icon delivery | A visionOS build; there is **no** visionOS CI job today, so nothing validates it | Kinematics § |
 | In-app translation for nine languages | A qualified human translator per language | §2, localization § |
 | Per-value scientific provenance | Original experimental/source records held outside this repo | §3, claims § |
 
 Two things are explicitly **not** closed despite green CI, and are written up
 where they belong rather than ticked:
 
-1. The iPad landscape screenshots from the green run are not valid visual
-   evidence — they render 2064×2064 into a 2752×2064 frame. See
-   [verification.md](verification.md). The landscape journey's functional
-   assertions did pass.
+1. ~~The iPad landscape screenshots are not valid visual evidence.~~ **Resolved.**
+   A controlled comparison in CI 35481919944 showed `app.screenshot()` clips 25%
+   while `XCUIScreen.main.screenshot()` is faithful; the landscape layout renders
+   correctly and the app is not letterboxed. Landscape store assets must use the
+   display path rotated +90.
 2. In-app translations were deliberately not machine-generated. The gap is
    measured exactly (870 unique keys) in
    [localization-coverage.md](localization-coverage.md); filling it with
@@ -66,7 +69,7 @@ where they belong rather than ticked:
   - [ ] Capture App Store iPhone screenshots and finalize all App Store Connect privacy/age-rating/review fields.
 - **iPad / iPadOS**
   - [x] Responsive iPad session layout and larger-text journeys passed the historical 12 September run.
-  - [x] Re-run the current revision on iPad, including landscape guide and controls: the iPad Pro 13-inch (M5) / iOS 26.5 lane passed in [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304) (**21 app tests, 10 UI tests, 0 failures, none skipped**). Native screenshots are retained as the `native-screenshots-iPad` artifact, **but the two landscape PNGs are not valid visual evidence** — they render 2064×2064 into a 2752×2064 frame; see [verification.md](verification.md).
+  - [x] Re-run the current revision on iPad, including landscape guide and controls: the iPad Pro 13-inch (M5) / iOS 26.5 lane passed in [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304) (**21 app tests, 10 UI tests, 0 failures, none skipped**). Native screenshots are retained as the `native-screenshots-iPad` artifact. The landscape capture path is **settled**: `app.screenshot()` clipped 25% and dropped the whole metrics rail, `XCUIScreen.main.screenshot()` rotated +90 is faithful, and the landscape layout is confirmed correct and **not** letterboxed. See [verification.md](verification.md).
   - [ ] Validate portrait/landscape, split-view/resizable windows, and hardware permissions on physical iPad.
   - [ ] Capture final iPad screenshots at currently accepted App Store families.
 - **watchOS**
