@@ -14,8 +14,6 @@ final class AirPlayFallbackUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        // These journeys start past onboarding; drop any inherited instance first.
-        app.terminate()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-natural.didFinishWelcome", "YES"]
         app.launch()
     }

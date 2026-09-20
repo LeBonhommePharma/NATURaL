@@ -12,10 +12,9 @@ final class WorkoutFlowUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         // A previous journey persists welcome completion, and the argument-domain
-        // string "NO" is not a dependable Bool reset. Force onboarding explicitly,
-        // and terminate any inherited instance so this journey cannot attach to a
-        // still-running app that is already past the welcome screen.
-        app.terminate()
+        // string "NO" is not a dependable Bool reset. Force onboarding explicitly.
+        // Do NOT terminate+relaunch here: that is the known cause of the
+        // welcome.continue flake on b2cc3f8, and scripts/test_contracts.py enforces it.
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
                                "-natural.didFinishWelcome", "NO",
                                "-natural.forceWelcome",
