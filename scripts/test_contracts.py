@@ -591,13 +591,22 @@ def test_privacy_and_no_cloud() -> None:
         "NATURaLLiveActivity/PrivacyInfo.xcprivacy",
         "BonhommeCore/Sources/BonhommeCore/Resources/PrivacyInfo.xcprivacy",
     ):
-        text = read(rel)
-        if "<key>NSPrivacyTracking</key>" not in text or "<false/>" not in text:
-            fail(f"{rel} must set NSPrivacyTracking false")
-        tree = ET.parse(ROOT / rel)
-        keys = [el.text for el in tree.getroot().iter("key")]
-        if "NSPrivacyCollectedDataTypes" not in keys:
+        # Parsed, not substring-matched. The previous check asked whether the file
+        # contained "<key>NSPrivacyTracking</key>" and, separately, "<false/>"
+        # anywhere — two independent substrings that a manifest declaring
+        # NSPrivacyTracking=true still satisfies, as long as any other key is
+        # false. Verified: flipping tracking to true left this suite green.
+        # It matters because validate-submission.py only parses the manifests for
+        # Bonhomme and BonhommeWatch, so for the other five this is the only guard.
+        manifest = plistlib.loads((ROOT / rel).read_bytes())
+        if manifest.get("NSPrivacyTracking") is not False:
+            fail(f"{rel} must declare NSPrivacyTracking false, got {manifest.get('NSPrivacyTracking')!r}")
+        if manifest.get("NSPrivacyTrackingDomains") != []:
+            fail(f"{rel} must declare no tracking domains, got {manifest.get('NSPrivacyTrackingDomains')!r}")
+        if "NSPrivacyCollectedDataTypes" not in manifest:
             fail(f"{rel} missing collected data types key")
+        if manifest.get("NSPrivacyCollectedDataTypes") != []:
+            fail(f"{rel} declares collected data types; the App Privacy answers say none are collected")
     persistence = read("Bonhomme/Services/Persistence/PersistentModels.swift")
     if "cloudKitDatabase: .none" not in persistence:
         fail("health store must disable CloudKit")
