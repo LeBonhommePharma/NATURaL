@@ -221,6 +221,27 @@ One more caution from the same run: its first attempt failed wholesale with
 failures, not assertion failures, and the iPad lane passed cleanly on rerun.
 Read a red lane's first line before assuming it is a product regression.
 
+#### Design-system finding: the documented light-appearance twins do not exist
+
+`design-system/natural/MASTER.md` states "Light appearance twins live in
+`BrandColors.xcassets`." They do not. All ten colorsets — `BrandFg`, `BrandBg`,
+`BrandFgMuted`, `BrandMint`, `BrandViolet`, `BrandTangerine`, `BrandAqua`,
+`BrandStrawberry`, `BrandFiretruck`, `BrandMagnesium` — contain exactly one
+universal colour with no `appearances` entry, so none of them adapt. `BrandColor.fg`
+and `BrandColor.fgAsset` both resolve to a fixed `#E4E3F5`.
+
+This was found the hard way and is worth recording as such. Moving the home style
+icons onto `BrandColor.fg` made them very nearly invisible on the light home
+surface — caught by reading the exported screenshot, not by any test, since
+contrast on a light surface is outside what the contracts check. The icons now
+use `.primary`, matching the style name beneath them.
+
+The practical consequence: **any brand token placed on a light surface has this
+problem.** It is why the home page already reaches for `.primary` and
+`.secondary` rather than brand tokens for its text. Either add real dark twins to
+the colorsets, or amend MASTER.md to stop claiming adaptation the assets do not
+provide. That is LP's call; nothing here changes the palette values.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.

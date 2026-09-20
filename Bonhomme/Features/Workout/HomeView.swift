@@ -63,7 +63,7 @@ struct HomeView: View {
                             }
                         } icon: {
                             Image(systemName: style.symbolName)
-                                .foregroundStyle(BrandColor.fg)
+                                .foregroundStyle(.primary)
                                 .symbolRenderingMode(.hierarchical)
                         }
                     }
@@ -380,16 +380,20 @@ struct HomeView: View {
     private func styleCard(style: YogaStyle) -> some View {
         let planCount = PoseCatalog.planCount(for: style)
 
-        // Style chrome stays monochrome on the brand foreground. The previous
-        // generated hue ramp produced off-palette chrome — #62D9D9 teal, #62D96D
-        // green, #D98562 coral — none of which are BrandColor tokens, and
-        // MASTER.md binds the palette by quantity so tokens are never reassigned.
-        // Spending no colour here also returns the page's colour budget to the
-        // featured card and the mint CTA, which is where the hierarchy belongs.
+        // Style chrome stays monochrome. The previous generated hue ramp produced
+        // off-palette chrome — #62D9D9 teal, #62D96D green, #D98562 coral — none
+        // of which are BrandColor tokens, and MASTER.md binds the palette by
+        // quantity so tokens are never reassigned. Spending no colour here also
+        // returns the page's colour budget to the featured card and the mint CTA.
+        //
+        // Uses .primary, matching the style name below it, NOT BrandColor.fg:
+        // every colorset in BrandColors.xcassets is a single universal value with
+        // no dark twin, so BrandColor.fg is a fixed #E4E3F5 and renders nearly
+        // invisible on this light surface.
         return VStack(spacing: SessionSpacing.sm) {
             Image(systemName: style.symbolName)
                 .font(.title)
-                .foregroundStyle(BrandColor.fg)
+                .foregroundStyle(.primary)
                 .symbolRenderingMode(.hierarchical)
                 .frame(minHeight: 36)
 
@@ -410,7 +414,7 @@ struct HomeView: View {
         .background(.thinMaterial, in: SessionRadius.cardShape())
         .overlay(
             SessionRadius.cardShape()
-                .strokeBorder(BrandColor.fgMuted.opacity(0.28), lineWidth: 1)
+                .strokeBorder(.primary.opacity(0.12), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
     }
