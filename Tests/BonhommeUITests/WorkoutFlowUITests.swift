@@ -284,7 +284,11 @@ final class WorkoutFlowUITests: XCTestCase {
         }
         var samples: [Double] = []
         var calibrations: [Double] = []
-        let iterations = 8
+        // 16 samples cannot see an 8% event — the chance of observing zero failures
+        // is ~26%, so the first run's clean result was never decisive. 30 per lane
+        // (60 total) puts the chance of seeing none below 1% if the rate holds, which
+        // makes the tail either visible or genuinely absent.
+        let iterations = 30
         for i in 1...iterations {
             let start = app.buttons["home.start"]
             XCTAssertTrue(start.waitForExistence(timeout: 15), "iteration \(i): home must be reachable")
