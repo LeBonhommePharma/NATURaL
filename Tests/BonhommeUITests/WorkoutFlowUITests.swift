@@ -49,7 +49,15 @@ final class WorkoutFlowUITests: XCTestCase {
         welcome.lifetime = .keepAlways
         add(welcome)
         continueButton.tap()
-        XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 8))
+        // Same simulator input flakiness as the Begin tap: the event is synthesized but
+        // occasionally not delivered, leaving welcome on screen (CI 35482711331, iPhone).
+        // Re-issue once, then still require Home, so a genuine onboarding failure fails.
+        let home = app.buttons["home.about"]
+        if !home.waitForExistence(timeout: 8) {
+            continueButton.tap()
+        }
+        XCTAssertTrue(home.waitForExistence(timeout: 10),
+                      "Continue must leave welcome and show Home")
     }
 
     private func startSessionFromReady() {
