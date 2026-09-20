@@ -82,8 +82,14 @@ final class AirPlayFallbackUITests: XCTestCase {
         XCTAssertTrue(tvButton.waitForExistence(timeout: 15), "session must offer the TV sheet")
         tvButton.tap()
 
-        // Survives: sharing toggle, which AirPlay depends on.
-        XCTAssertTrue(app.switches["tv.shareSession"].waitForExistence(timeout: 8),
+        // Anchor first: every assertion below about something being ABSENT passes
+        // vacuously if the sheet never opened, so prove it did before trusting them.
+        XCTAssertTrue(app.navigationBars["TV display"].waitForExistence(timeout: 10),
+                      "the TV sheet must actually open, or the absence checks below prove nothing")
+        // Survives: sharing toggle, which AirPlay depends on. Queried type-agnostically
+        // — what matters is that the control is present, not which element type SwiftUI
+        // chose to render a Form Toggle as. Querying app.switches assumed that and failed.
+        XCTAssertTrue(app.descendants(matching: .any)["tv.shareSession"].exists,
                       "the sharing toggle must survive; AirPlay reads the same displayEnabled flag")
         // Survives: the AirPlay/HDMI row. Deferring the tvOS app must not touch it.
         XCTAssertTrue(app.descendants(matching: .any)["tv.externalDisplay"].exists,
