@@ -37,7 +37,7 @@ signing 21, localization inventory 6, product contracts 9, website routing PASS,
 all are decisions, not work.
 | Item | What it needs |
 |---|---|
-| Unreferenced YouTube flow (§UI craft) | A ship / wire-up / remove decision. Nothing consumes `YouTubeProgramPickerView`. |
+| ~~Unreferenced YouTube flow~~ **withdrawn** | Not a decision. All four files are `#if DEBUG` from line 2, so none ships. See §UI craft. |
 | Pose-illustration accent ramp (§UI craft) | LP picks one of three recorded options. |
 | Session-surface redundancies (§UI craft) | LP picks; each is a small change. |
 | `BrandColor.gold` retirement | Authorized, then halted: `test_contracts.py:693` asserts `0xC4A359` exists, so it is a three-part change (contract, declaration, MASTER.md 33/41), not a delete. |
@@ -56,10 +56,26 @@ Device QA across iPhone, iPad, paired Watch, Apple TV and Mac: permissions
 matrices, Health denied/revoked, haptics, Digital Crown, Siri Remote focus,
 AirPlay/HDMI, pairing expiry, backup exclusion on real files.
 
-**Waiting on App Store Connect (≈14).**
-App record, metadata, age rating, category/keywords, pricing, territories,
-export compliance, privacy labels, reviewer notes, submission, post-approval
-verification.
+**Waiting on App Store Connect — but the content is now drafted (≈14).**
+These were filed as blocked. Most were not waiting on Apple at all; they were
+waiting on someone to write the answers, which needs no certificate and no
+device. Drafted 20 September 2026:
+
+| Field | Drafted in | Derived from code? |
+|---|---|---|
+| App Privacy questionnaire | [privacy-labels-derivation.md](privacy-labels-derivation.md) | Yes — every answer cites file and line |
+| Age rating questionnaire | [review-answers-derivation.md](review-answers-derivation.md) | Yes, with where it is conservative |
+| Export compliance | [review-answers-derivation.md](review-answers-derivation.md) | Yes — cipher suite and TLS pinning cited |
+| Name, subtitle, promo, description, keywords | [metadata.md](metadata.md) | Pre-existing, EN + FR-CA |
+| What's New (1.0) | [metadata.md](metadata.md) | New, EN + FR-CA |
+| Screenshot plan per platform | [screenshot-plan.md](screenshot-plan.md) | New — screens, states, dimensions, capture path |
+
+What genuinely remains on Apple: creating the record, pasting these in, pricing
+and territory selection, and submission. **Eleven questions across those files are
+left unanswered** and listed under "Open — needs LP" — a backend that this repo
+cannot see, App Group scope, the stray `aps-environment` entitlement, clinical
+retention intent, whether Prescriptions ships enabled in 1.0, iPad/Mac listing
+scope, and localized screenshot scope. Each is an em dash, not a guess.
 
 **Waiting on a final signed build (≈8).**
 Every store screenshot slot. Downstream of signing, so not independently
@@ -193,20 +209,15 @@ them out of MASTER.md. The approved bloom was not touched.
       (white at 0.40 compositing to `#6B6B76`) at 10pt, where the 3:1 large-text
       allowance does not apply. Fixed to `BrandColor.fg` / `fgMuted` and guarded
       by `test_brand_tokens_and_design_system`, verified non-tautological.
-- [ ] **Unreferenced YouTube flow.** `YouTubeProgramPickerView` is referenced
-      nowhere in the app, so it and `YouTubeWorkoutScreen` are unreachable — yet
-      they hold 16 of the app's raw-system-colour uses and are guarded by
-      `test_contracts.py`. Decide with LP whether to ship, wire up, or remove;
-      shipping unreachable third-party-video UI is worth a deliberate call before
-      review. **Nothing deleted** — flagged only.
-- [x] Move the home style chrome onto brand tokens. The style cards and sidebar
-      icons derived colour from a generated hue ramp, producing chrome outside
-      `BrandColor` entirely: `#62D9D9` teal, `#62D96D` green, `#D98562` coral.
-      Across both ramps **13 of 26 generated colours** land in bands LP excluded.
-      Icons and card borders now use `BrandColor.fg` / `fgMuted`, which also
-      returns the page's colour budget to the featured card and the mint CTA.
-      `test_contracts.py` guarded `Color(red:` but not the hue form — that gap is
-      now closed and verified non-tautological.
+- [x] ~~Unreferenced YouTube flow.~~ **Finding withdrawn — it was wrong.** I
+      reported this as dead code shipping in the App Store build. It is not
+      shipped at all: `YouTubePlayerView.swift`, `YouTubeWorkoutScreen.swift`,
+      `YouTubeProgramPickerView.swift` and `YouTubeWorkoutViewModel.swift` each
+      open with `#if DEBUG` (or `#if DEBUG && canImport(UIKit)`) on line 2, so the
+      whole feature — including the `WKWebView` that loads `youtube.com` — is
+      compiled out of Release. `app-store-connect.md` already said this correctly
+      and I contradicted it. The 16 raw-system-colour uses I flagged are in
+      Debug-only development surface, which is the right place for them. No action.
 - [ ] **Decide the pose-illustration accent ramp with LP.** `Pose.accentHue`
       still drives the MotionCoach illustration gradients from the same free HSB
       generator, and its own source comments name the results: `spine` cyan-blue,

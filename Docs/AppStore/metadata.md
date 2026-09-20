@@ -40,6 +40,38 @@ NATURaL est une app de bien-être. Ses indicateurs expérimentaux d’entropie d
 
 Mots-clés : chaise,yoga,assis,respiration,mouvement,mobilité,bien-être,étirement
 
+## What's New (version text)
+
+Apple requires this field for every version, including 1.0. Written in the app's
+own register — short sentences, second person, no hype — matching the on-screen
+copy ("Come back to yourself.", "A little movement. A little more you.").
+
+**1.0 — English**
+
+```
+First release.
+
+A chair, a breath, and a few minutes that belong to you. Every session is
+available from the start. No account, no subscription, nothing to unlock.
+
+Your records stay on this device.
+```
+
+**1.0 — Français (Canada)**
+
+```
+Première version.
+
+Une chaise, un souffle, et quelques minutes qui vous appartiennent. Chaque
+séance est disponible dès le début. Aucun compte, aucun abonnement, rien à
+débloquer.
+
+Vos données restent sur cet appareil.
+```
+
+For later versions, keep the same register: say what changed and what it means
+for the practice, not what was refactored.
+
 ## App Review notes
 
 No account is required. On first launch, read the welcome screen and select “Find my first session”. Select “Begin a gentle session” to open the workout preparation screen. All sessions are available.
