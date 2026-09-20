@@ -96,6 +96,41 @@ covered by the green iPad lane, and two are not:
   landscape screenshots that would show it are the invalid captures described
   above.
 
+#### tvOS layered icon and Top Shelf: SDK validation is done, hardware is not
+
+`TODO.md` asks to validate the native TV's layered app icons and Top Shelf assets
+with `actool`. That part is satisfied and can be read straight out of the tvOS
+job's log in [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304):
+
+```
+actool BonhommeTV/Assets.xcassets --compile …/BonhommeTV.app --app-icon AppIcon
+       --notices --warnings --target-device tv --platform appletvos
+       --minimum-deployment-target 17.0 --bundle-identifier com.natural.BonhommeTV
+```
+
+It runs with `--notices --warnings` against the real catalogue and emits no
+actool notice, warning or error; the only warning anywhere in the job is an
+unrelated `appintentsmetadataprocessor` note about a missing AppIntents
+dependency. The catalogue it accepted is genuinely layered:
+
+| Asset | Layers / sizes | Alpha |
+| --- | --- | --- |
+| `App Icon - Large.imagestack` | Background + Foreground, 1280×768 @1x | background opaque RGB, foreground RGBA |
+| `App Icon - Small.imagestack` | Background + Foreground, 400×240 @1x, 800×480 @2x | background opaque RGB, foreground RGBA |
+| `Top Shelf Image.imageset` | 1920×720 @1x, 3840×1440 @2x | opaque |
+| `Top Shelf Image Wide.imageset` | 2320×720 @1x, 4640×1440 @2x | opaque |
+
+Both stacks carry two parallax layers with opaque backgrounds and alpha
+foregrounds, and both Top Shelf sizes match Apple's specified dimensions.
+`scripts/test_submission_assets.py` already asserts this structure offline
+(20 tests), so it is covered twice: structurally on Linux and by the tvOS SDK in
+CI.
+
+Still open and not closable here: focus and parallax behaviour on an actual Apple
+TV, and confirming the assets inside a signed bundle in Organizer. A clean
+`actool` compile proves the catalogue is well-formed; it does not prove how the
+icon moves under focus.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.
