@@ -245,4 +245,67 @@ final class WorkoutFlowUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["About & Privacy"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Choose Health permissions"].exists)
     }
+
+    // MARK: - Measurement only — not a release gate
+
+    /// Measures how long `session.pose.name` actually takes to appear, repeatedly,
+    /// to get a distribution rather than a pass/fail. Added to investigate the
+    /// ~8% flake on `testActivePoseCanPauseAndFinish` (2 failures in ~24 runs).
+    ///
+    /// This asserts almost nothing on purpose. It answers three questions the
+    /// existing artifacts cannot, because XCTest only attaches intermediate
+    /// snapshots on failure, so a passing run records nothing between the welcome
+    /// screenshot and the paused-session screenshot ~24s later:
+    ///
+    ///   1. What is the distribution on runs that pass? If it clusters near 15s the
+    ///      bar is not too tight — the app is nearly too slow and the failures are
+    ///      the tail of a distribution that was always dangerous.
+    ///   2. Is there a first-render cost paid once? Iteration 1 slow and 2..n fast
+    ///      is the cold-start signature.
+    ///   3. Does it drift upward across iterations, which would suggest accumulation
+    ///      rather than a fixed startup cost.
+    ///
+    /// Delete this once the question is answered; it is not a gate and must never
+    /// become one.
+    func testMeasureActivePoseRenderLatency() throws {
+        try finishWelcome()
+        var samples: [Double] = []
+        let iterations = 8
+        for i in 1...iterations {
+            let start = app.buttons["home.start"]
+            XCTAssertTrue(start.waitForExistence(timeout: 15), "iteration \(i): home must be reachable")
+            for _ in 0..<4 where !start.isHittable { app.swipeUp() }
+            start.tap()
+            startSessionFromReady()
+
+            // The measurement. Same element and the same generous ceiling the real
+            // journey uses, so a sample is comparable to a real wait.
+            let began = Date()
+            let appeared = app.staticTexts["session.pose.name"].waitForExistence(timeout: 30)
+            let waited = Date().timeIntervalSince(began)
+            samples.append(appeared ? waited : -1)
+
+            // Leave the session so the next iteration starts from home.
+            app.buttons["session.end"].tap()
+            if app.buttons["summary.done"].waitForExistence(timeout: 10) {
+                app.buttons["summary.done"].tap()
+            }
+            _ = app.buttons["home.about"].waitForExistence(timeout: 10)
+        }
+        let ok = samples.filter { $0 >= 0 }
+        let report = """
+        session.pose.name wait, \(iterations) iterations on \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")
+        samples (s): \(samples.map { String(format: "%.2f", $0) }.joined(separator: ", "))
+        n=\(ok.count)  min=\(String(format: "%.2f", ok.min() ?? -1))  max=\(String(format: "%.2f", ok.max() ?? -1))  \
+        mean=\(String(format: "%.2f", ok.isEmpty ? -1 : ok.reduce(0,+)/Double(ok.count)))
+        first=\(String(format: "%.2f", samples.first ?? -1))  rest_mean=\(String(format: "%.2f", ok.count > 1 ? ok.dropFirst().reduce(0,+)/Double(ok.count-1) : -1))
+        timeouts(>=30s): \(samples.filter { $0 < 0 }.count)
+        """
+        let attachment = XCTAttachment(string: report)
+        attachment.name = "poseName latency distribution"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        print("MEASUREMENT\n\(report)")
+        XCTAssertFalse(ok.isEmpty, "measurement produced no samples")
+    }
 }
