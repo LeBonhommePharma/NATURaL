@@ -638,6 +638,18 @@ def test_brand_tokens_and_design_system() -> None:
             fail(f"MASTER.md missing brand token {token}")
     if "#0891B2" in master_text and "Brand override" not in master_text:
         fail("MASTER.md still uses generic spa teal as source of truth")
+    # The tool's default wellness palette must never displace the FlexAIDdS v2 brand.
+    for banned in ("--teal", "--gold", "--terra", "--coral", "--cyan"):
+        if banned in master_text:
+            fail(f"MASTER.md must not introduce the generic wellness token {banned}")
+    # Small text on the session surface must clear WCAG AA. White at 0.40 over #08091A
+    # composites to #6B6B76 for 3.75:1; the breathing readout is 10pt, so the 3:1
+    # large-text allowance does not apply. Brand tokens give 15.60:1 and 6.12:1.
+    breathing = read("BonhommeCore/Sources/BonhommeCore/UI/BreathingGuideView.swift")
+    if ".white.opacity(0.4)" in breathing or ".white.opacity(0.40)" in breathing:
+        fail("breathing readout must not use 0.40 white (3.75:1, below WCAG AA at 10pt)")
+    if "BrandColor.fgMuted" not in breathing or "BrandColor.fg)" not in breathing:
+        fail("breathing guide labels must use BrandColor.fg / fgMuted, not raw white")
     brand = read("BonhommeCore/Sources/BonhommeCore/UI/BrandColor.swift")
     for needle in (
         "0x45E0A8",

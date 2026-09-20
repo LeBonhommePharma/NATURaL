@@ -130,6 +130,34 @@ where they belong rather than ticked:
 - [ ] Review the final tvOS listing, privacy and export-compliance answers against the signed native transport and runtime behavior.
 - [ ] Run `PLATFORM=tvos BUILD_NUMBER=<fresh-number> scripts/archive-app-store.sh` on the signing machine, complete Organizer validation, upload/process the build, test through TestFlight and obtain LP's release approval.
 
+## UI/UX craft pass — 20 September 2026
+
+Run against `design-system/natural/MASTER.md` (the `ui-ux-pro-max` persist from
+17 September) and that skill's native pre-delivery checklist. MASTER.md was
+**not** regenerated: `--persist` skips an existing file, and `--force` would have
+discarded LP's recorded brand override. Palette v2 stays canonical — the audit
+confirmed the generic wellness tokens (`--teal`, `--gold`, `--terra`, `--coral`,
+`--cyan`, yellow, salmon) appear nowhere in the app, and a contract now keeps
+them out of MASTER.md. The approved bloom was not touched.
+
+- [x] Audit small text on the session surface for WCAG AA. Computed composites
+      against `#08091A`: brand fg 15.60:1 and muted 6.12:1 (matching MASTER.md's
+      published figures), MotionCoach cue 15.42:1, MotionCoach step 20.57:1,
+      breathing label 11.09:1 — but the breathing **rate readout was 3.75:1**
+      (white at 0.40 compositing to `#6B6B76`) at 10pt, where the 3:1 large-text
+      allowance does not apply. Fixed to `BrandColor.fg` / `fgMuted` and guarded
+      by `test_brand_tokens_and_design_system`, verified non-tautological.
+- [ ] **Unreferenced YouTube flow.** `YouTubeProgramPickerView` is referenced
+      nowhere in the app, so it and `YouTubeWorkoutScreen` are unreachable — yet
+      they hold 16 of the app's raw-system-colour uses and are guarded by
+      `test_contracts.py`. Decide with LP whether to ship, wire up, or remove;
+      shipping unreachable third-party-video UI is worth a deliberate call before
+      review. **Nothing deleted** — flagged only.
+- [ ] Re-review hierarchy, spacing, motion and states on device once hardware QA
+      is possible. Spacing already resolves to a clean 4/8/12/16/24/32/40/48 scale
+      and `phoneControlHeight` is 52pt (above the 44pt minimum); motion is already
+      Reduce-Motion gated and contract-enforced. What remains needs eyes on glass.
+
 ## 0. External release blockers (must be completed before upload)
 
 - [ ] In Xcode / App Store Connect, complete Team membership usability, all bundle identifiers, App Group, entitlements mapping and distribution signing for `com.natural.Bonhomme` plus extensions.
