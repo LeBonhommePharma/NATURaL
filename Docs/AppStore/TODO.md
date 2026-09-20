@@ -184,6 +184,25 @@ them out of MASTER.md. The approved bloom was not touched.
       revisit light-surface brand usage (home style chrome currently uses
       `.primary` as a stopgap) and add a contract asserting every colorset has a
       dark twin.
+- [ ] **Session-surface redundancies — LP's taste call, evidence attached.**
+      Read from the exported paused-session frame in
+      [CI 35490123182](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35490123182),
+      not from code review, and confirmed persistent in source rather than
+      transient:
+      1. The breathing cue renders **twice** — once as the stage overlay in
+         `MotionCoachView` (gated on `phase == .active`, so persistent for the
+         whole pose) and again below the countdown in the scroll flow. Identical
+         text, ~80pt of vertical space, on the app's most-used screen.
+      2. **"Paused" appears twice** — the chip on the stage and the chip in the
+         HUD bar, simultaneously.
+      3. The HUD shows heart rate as an em dash while a gold "85 BPM" chip sits
+         beside it. If that chip is the music/grounding tempo rather than heart
+         rate, the shared "BPM" unit reads as a contradiction and wants
+         distinguishing.
+      Deliberately **not** changed here. The earlier fixes in this pass were
+      compliance defects with a right answer — off-palette generated chrome and a
+      3.75:1 contrast failure. Which of two valid cue placements to keep is taste,
+      on the signature surface, under contract, on a green branch. That is LP's.
 - [ ] Re-review hierarchy, spacing, motion and states on device once hardware QA
       is possible. Spacing already resolves to a clean 4/8/12/16/24/32/40/48 scale
       and `phoneControlHeight` is 52pt (above the 44pt minimum); motion is already
