@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import pathlib
 import plistlib
 import struct
@@ -502,6 +503,55 @@ def test_hud_honesty() -> None:
         fail("Watch home uses emoji chrome")
 
 
+def test_claim_honesty() -> None:
+    """Shipped copy must not assert clinical, physiological or binding claims.
+
+    The scientific-claims audit (Docs/AppStore/scientific-claims-audit.md) corrected
+    these surfaces once; this contract keeps them corrected. NATURaL ships as a
+    wellness app, so a pose cue may describe the movement but not promise a
+    physiological outcome, and an entropy indicator may never be presented as a
+    diagnosis, a verified medication effect or measured receptor binding.
+    """
+    # 1. Pose cues describe movement, not physiological outcomes.
+    claim = re.compile(
+        r'en: "[^"]*\b(improves?|reduces?|relieves?|prevents?|cures?|heals?|treats?)\b'
+        r'[^"]*\b(circulation|blood pressure|inflammation|anxiety|depression|arthritis|pain|immunity)\b'
+    )
+    catalog = read("BonhommeCore/Sources/BonhommeCore/Models/PoseCatalog.swift")
+    for hit in claim.findall(catalog):
+        fail(f"pose catalogue must not promise a physiological outcome: {' '.join(hit)}")
+
+    # 2. First-use and SCI explanations must keep their scope limits.
+    app = read("Bonhomme/App/BonhommeApp.swift")
+    for needle in (
+        "do not diagnose conditions or measure drug binding",
+        "not proof of relaxation, treatment response, or molecular binding",
+        "experimental indicators support exploration, not clinical decisions",
+    ):
+        if needle not in app:
+            fail(f"first-use/SCI copy must retain its scope limit: {needle}")
+    if "not a diagnosis" not in read("Bonhomme/Services/Siri/SessionTips.swift"):
+        fail("SCI tip must state it is not a diagnosis")
+
+    # 3. Dose-adjacent narratives must never imply causality or binding.
+    insight = read("Bonhomme/Services/HealthKit/InsightEngine.swift")
+    if insight.count("does not establish a medication effect or receptor binding") < 2:
+        fail("both dose-timing narratives must disclaim medication effect and binding")
+    if "not evidence of receptor binding or medication causality" not in insight:
+        fail("bindingDetected threshold must be disclaimed as not receptor binding")
+    if "Never provide medical advice or diagnoses." not in insight:
+        fail("on-device model prompt must forbid medical advice and diagnoses")
+    if "this does not measure calm or establish a medication effect" not in insight:
+        fail("entropy-increase narrative must not claim calm or medication effect")
+
+    # 4. Cross-domain page must stay exploratory.
+    poke = read("Bonhomme/Features/Prescriptions/PokeDrugSubstanceInsightView.swift")
+    for needle in ("exploratory hypothesis", "do not validate a drug effect or receptor binding",
+                   "catalog inputs, not a paired analysis"):
+        if needle not in poke:
+            fail(f"substance insight must stay exploratory: {needle}")
+
+
 def test_privacy_and_no_cloud() -> None:
     for rel in (
         "Bonhomme/PrivacyInfo.xcprivacy",
@@ -637,6 +687,7 @@ def main() -> int:
     test_circular_wrap_is_not_linear()
     test_sci_and_grounding_policy()
     test_hud_honesty()
+    test_claim_honesty()
     test_privacy_and_no_cloud()
     test_identity()
     test_brand_tokens_and_design_system()
@@ -646,7 +697,7 @@ def main() -> int:
         for item in FAILS:
             print(" -", item)
         return 1
-    print("OK 8 NATURaL contracts")
+    print("OK 9 NATURaL contracts")
     return 0
 
 

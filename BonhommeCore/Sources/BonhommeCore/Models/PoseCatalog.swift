@@ -1566,15 +1566,15 @@ public enum PoseCatalog {
         category: .balance,
         imageName: "pose.ankle.circles",
         voiceCueText: LocalizedString(
-            en: "Circle your ankle slowly. Keep the rest of your leg still. This improves circulation.",
-            fr: "Faites des cercles avec la cheville lentement. Gardez le reste de la jambe immobile. Cela améliore la circulation.",
-            es: "Haga círculos con el tobillo lentamente. Mantenga el resto de la pierna quieta. Esto mejora la circulación.",
-            ja: "足首をゆっくり回しましょう。脚の他の部分は動かさないでください。これは血行を改善します。",
-            zh: "缓慢转动脚踝。保持腿的其余部分不动。这有助于改善血液循环。",
-            ko: "발목을 천천히 돌리세요. 나머지 다리는 움직이지 마세요. 이것은 혈액순환을 개선합니다.",
-            ru: "Медленно вращайте голеностоп. Остальная часть ноги неподвижна. Это улучшает кровообращение.",
-            de: "Kreisen Sie den Knöchel langsam. Halten Sie den Rest des Beins still. Dies verbessert die Durchblutung.",
-            ar: "أدر كاحلك ببطء. أبقِ بقية ساقك ثابتة. هذا يحسّن الدورة الدموية."
+            en: "Circle your ankle slowly. Keep the rest of your leg still.",
+            fr: "Faites des cercles avec la cheville lentement. Gardez le reste de la jambe immobile.",
+            es: "Haga círculos con el tobillo lentamente. Mantenga el resto de la pierna quieta.",
+            ja: "足首をゆっくり回しましょう。脚の他の部分は動かさないでください。",
+            zh: "缓慢转动脚踝。保持腿的其余部分不动。",
+            ko: "발목을 천천히 돌리세요. 나머지 다리는 움직이지 마세요.",
+            ru: "Медленно вращайте голеностоп. Остальная часть ноги неподвижна.",
+            de: "Kreisen Sie den Knöchel langsam. Halten Sie den Rest des Beins still.",
+            ar: "أدر كاحلك ببطء. أبقِ بقية ساقك ثابتة."
         ),
         modifications: LocalizedStringArray(
             en: ["Keep the heel on the floor and just lift the toes to make circles"],
