@@ -133,17 +133,93 @@ caught in all seven.
 `NATURaLLiveActivity` carries no `NSPrivacyAccessedAPITypes`. That is correct,
 not an omission — it has zero `UserDefaults`/`@AppStorage` references.
 
-## Open — needs LP, deliberately unanswered
+## Traced 20 September 2026 — code half settled, intent half separated
 
-1. **Does any backend exist that this repo cannot see?** Everything above is
-   derived from this checkout. If a server, TestFlight-only build or future sync
-   exists, the answer changes. — 
-2. **Is the App Group container shared with anything beyond the widgets and Live
-   Activity?** `group.com.natural.Bonhomme` is declared in three targets'
-   entitlements; scope beyond this repo is unverifiable here. — 
-3. **`aps-environment = development` is in `Bonhomme.entitlements`.** No push
-   registration code was found. If push is intended for release, it needs a
-   privacy answer and the entitlement needs promoting to production; if not, it
-   should be removed. — 
-4. **Clinical records retention.** The app reads them under consent and stores
-   locally; whether LP intends any export path is not determinable from code. — 
+Three questions were previously filed whole as "needs LP". That was the wrong
+split: each has a code half that is derivable and an intent half that is not.
+Folding them together handed LP a vaguer question than necessary.
+
+### App Group scope — **not shared with any other app on this disk**
+
+Scanned every repo under `~/Projects` for an *entitlement* declaring
+`group.com.natural.Bonhomme`. Declarations exist in exactly two places:
+
+- `NATURaL/` — `Bonhomme`, `BonhommeWatch`, `NATURaLWidgets` (this app)
+- `FlexAIDdS/NATURaL/` — a **copy of this same app**, same bundle ids
+  (`com.natural.Bonhomme`, `.Widgets`, `.LiveActivity`, `BonhommeTV`), not a
+  separate product
+
+ClusterFuck uses a **different** group, `group.com.natural.BonhommeRemote`.
+Worth recording how that surfaced: an unterminated grep for
+`group.com.natural.Bonhomme` matched it, because NATURaL's group is a **prefix**
+of ClusterFuck's. The terminated search (`…Bonhomme<`) did not. That is the same
+name-versus-value failure this repo fixed in its guards today, reproduced in the
+search used to investigate it.
+
+**What this establishes:** the group is not shared with any other app in this
+family, and that is what was checked. **What it does not:** any app signed by the
+same team could declare the group without appearing on this disk. A negative
+across the repos present is not proof of global absence.
+
+*Still LP's:* whether any app outside this checkout is intended to share it. —
+
+### `aps-environment` — **vestigial, and it ships in Release**
+
+Exhaustive trace across every Swift file in every target. All eleven
+push-adjacent symbols return zero: `UNUserNotificationCenter`,
+`registerForRemoteNotifications`, `didRegisterForRemoteNotifications`,
+`UNNotificationRequest`, `PushKit`, `PKPushRegistry`,
+`UNUserNotificationCenterDelegate`, `remoteNotification`, `apns`,
+`UNAuthorizationOptions`, `UserNotifications`. No notification service or
+content extension in the project. No `remote-notification` background mode —
+the only background mode anywhere is the Watch's `workout-processing`.
+
+**The app contains no push code whatsoever.** The entitlement is vestigial.
+
+Second finding, on configurations: each entitlements file appears exactly twice
+in the pbxproj, once for Debug and once for Release, so there is a single file
+per target and **`aps-environment = development` ships in the Release build**.
+An App Store build carrying a `development` APNs entitlement is a signing
+mismatch worth removing before archive validation rather than discovering at
+upload.
+
+*Still LP's, and now a much smaller question:* remove the unused entitlement? He
+is no longer being asked whether he wants push. —
+
+### Clinical records export — **no path exists today**
+
+Enumerated every egress API in shipping Swift. Present: `ShareLink` (1),
+`GroupActivities`/`GroupSession`/`SharePlay` (12), `WCSession` (40),
+`sendMessage` (5), `updateApplicationContext` (2), `NWConnection` (8). Absent
+entirely: `UIActivityViewController`, `NSSharingService`, `UIPasteboard`,
+`NSPasteboard`, `fileExporter`, `URLSession`, `CKRecord`, `NSItemProvider`.
+
+Checked each for medication, dose, drug, substance, prescription and clinical
+content:
+
+- **Share card** — a rendered image; the only data fields are date and duration.
+- **TV relay payload** — no medication or clinical field of any kind.
+- **WCSession / SharePlay / relay call sites** — zero matches for any of the six
+  terms.
+
+**No route carries clinical or medication data off the device today.**
+
+**Coverage limit, stated rather than implied:** this searched 16 egress APIs and
+then six clinical terms at those call sites. Data passed under a neutral name —
+`payload`, `record` — whose contents happen to be clinical would not be caught by
+a term search. The negative is strong but is a term search, not a taint analysis.
+
+*Still LP's:* whether an export path is intended in future. The privacy answer
+describes the shipped binary, and today that binary has none. —
+
+## Open — needs LP
+
+1. **Does any backend exist outside this checkout?** The code half is settled:
+   this codebase contains no developer endpoint, no `URLSession`, no upload path
+   — the only internet reference is a `Link` the user taps. What cannot be
+   derived here is whether LP operates a server that a future build would talk
+   to. —
+2. **Export compliance route.** `false` is defensible on the plain reading; the
+   alternative is declaring encryption and claiming the exemption. Equivalent
+   outcome, his preference. —
+3. **Clinical records retention intent** — see above; no path exists today. —

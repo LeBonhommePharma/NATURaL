@@ -71,8 +71,7 @@ device. Drafted 20 September 2026:
 | Screenshot plan per platform | [screenshot-plan.md](screenshot-plan.md) | New — screens, states, dimensions, capture path |
 
 What genuinely remains on Apple: creating the record, pasting these in, pricing
-and territory selection, and submission. **Eleven questions across those files are
-left unanswered** and listed under "Open — needs LP" — a backend that this repo
+and territory selection, and submission. **Six questions are left unanswered** and listed under "Open — needs LP" — a backend that this repo
 cannot see, App Group scope, the stray `aps-environment` entitlement, clinical
 retention intent, whether Prescriptions ships enabled in 1.0, iPad/Mac listing
 scope, and localized screenshot scope. Each is an em dash, not a guess.
@@ -259,6 +258,15 @@ them out of MASTER.md. The approved bloom was not touched.
       compliance defects with a right answer — off-palette generated chrome and a
       3.75:1 contrast failure. Which of two valid cue placements to keep is taste,
       on the signature surface, under contract, on a green branch. That is LP's.
+- [ ] **Remove the vestigial `aps-environment` entitlement** (one-line, LP's call).
+      `Bonhomme.entitlements` declares `aps-environment = development`, but an
+      exhaustive trace found **zero** push code — all eleven push-adjacent
+      symbols absent, no notification extension, no `remote-notification`
+      background mode. Each entitlements file appears twice in the pbxproj, once
+      per configuration, so the `development` value **ships in Release**. An App
+      Store build carrying a development APNs entitlement is a signing mismatch
+      better removed before archive validation than discovered at upload. See
+      [privacy-labels-derivation.md](privacy-labels-derivation.md).
 - [ ] Re-review hierarchy, spacing, motion and states on device once hardware QA
       is possible. Spacing already resolves to a clean 4/8/12/16/24/32/40/48 scale
       and `phoneControlHeight` is 52pt (above the 44pt minimum); motion is already
