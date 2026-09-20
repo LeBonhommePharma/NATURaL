@@ -77,6 +77,18 @@ final class WorkoutFlowUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Landscape captures from `app.screenshot()` render the portrait-width content
+    /// into a landscape-sized buffer and clip the overflow (CI 35480771304: 2064x2064
+    /// painted into 2752x2064, remainder pure black rather than BrandColor.bg). Attach
+    /// the display-level capture alongside it so the exported artifact shows which
+    /// path is faithful; whichever wins becomes the capture path for store assets.
+    private func captureScreen(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "\(name) (screen)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     func testIPadLandscapeKeepsGuideAndControlsReachable() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad landscape journey")
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -100,11 +112,13 @@ final class WorkoutFlowUITests: XCTestCase {
         pause.tap()
         XCTAssertTrue(pause.label.contains("Resume"))
         capture("iPad landscape paused guide")
+        captureScreen("iPad landscape paused guide")
         let end = app.buttons["session.end"]
         XCTAssertTrue(end.isHittable)
         end.tap()
         XCTAssertTrue(app.buttons["summary.done"].waitForExistence(timeout: 8))
         capture("iPad landscape summary")
+        captureScreen("iPad landscape summary")
         app.buttons["summary.done"].tap()
         XCTAssertTrue(app.buttons["home.about"].waitForExistence(timeout: 5))
     }
