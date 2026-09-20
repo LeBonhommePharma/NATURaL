@@ -238,9 +238,24 @@ use `.primary`, matching the style name beneath them.
 
 The practical consequence: **any brand token placed on a light surface has this
 problem.** It is why the home page already reaches for `.primary` and
-`.secondary` rather than brand tokens for its text. Either add real dark twins to
-the colorsets, or amend MASTER.md to stop claiming adaptation the assets do not
-provide. That is LP's call; nothing here changes the palette values.
+`.secondary` rather than brand tokens for its text.
+
+**LP has ruled (20 September 2026): the twins should exist.** MASTER.md is
+correct as written and is *not* to be softened — the dark-appearance twins were
+simply never built. Amending the doc is explicitly off the table.
+
+The design-system session is generating them from the canonical palette using the
+OKLCH relation the site already enforces: hue within 3°, lightness differs,
+chroma may fall freely and rise by at most 0.05, with each pair contrast-verified
+against warm ivory `#F3EFE7` and midnight indigo `#08091A`. **This repo consumes
+what that session produces and does not author its own twins** — two sources of
+truth are how this gap appeared, and duplicating the generation would recreate it.
+
+Until the twins land, `.primary` / `.secondary` remain correct on light surfaces;
+they are a stopgap for the missing adaptation, not a preference over brand
+tokens. Once the colorsets carry real `appearances` entries, the home style
+chrome and any other light-surface brand usage should be revisited, and a
+contract should assert every colorset has a dark twin so this cannot regress.
 
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,

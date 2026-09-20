@@ -173,6 +173,17 @@ them out of MASTER.md. The approved bloom was not touched.
       ramp to the brand's blue→violet→magenta arc. Reassigning existing tokens
       (mint/violet/aqua/tangerine) is **not** an option: MASTER.md binds them by
       quantity and forbids reassignment.
+- [ ] **Consume the generated dark-appearance colorsets** (blocked on the
+      design-system session). All ten `BrandColors.xcassets` colorsets currently
+      hold a single universal value with no `appearances` entry, so nothing
+      adapts. LP ruled on 20 September that the twins should exist and MASTER.md
+      stands as written. They are being generated from the canonical palette via
+      the site's OKLCH relation — hue within 3°, lightness differs, chroma free to
+      fall and up to +0.05 — each pair contrast-verified against `#F3EFE7` and
+      `#08091A`. **Do not author twins here**; consume that output. On arrival:
+      revisit light-surface brand usage (home style chrome currently uses
+      `.primary` as a stopgap) and add a contract asserting every colorset has a
+      dark twin.
 - [ ] Re-review hierarchy, spacing, motion and states on device once hardware QA
       is possible. Spacing already resolves to a clean 4/8/12/16/24/32/40/48 scale
       and `phoneControlHeight` is 52pt (above the 44pt minimum); motion is already
