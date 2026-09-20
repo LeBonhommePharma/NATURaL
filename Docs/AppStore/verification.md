@@ -315,6 +315,24 @@ Their aggregate behaviour is observable — the journeys have failed and been fi
 repeatedly today — but "every assertion can fail" is unproven for that set and is
 not claimed.
 
+#### The generalisation, written where the next check gets written
+
+Three repos, three authors, one disease, all passing for years:
+
+> **A check that names a key and verifies something adjacent to it has verified
+> nothing. Presence of a name is not a value.**
+
+That note lives at the top of `scripts/test_contracts.py`, above the helpers,
+because that is where someone writing the next manifest check will be looking —
+not in a changelog. It records the four concrete instances (two here, one in
+Exergy, one in ClusterFuck), the correct three-part pattern (parse, assert the
+value of the key you mean, prove it by constructing the violation), and the one
+case where substring matching remains correct: source text, where "this symbol
+appears" genuinely is the property.
+
+The value of finding this three times is entirely in whether the fourth is
+prevented.
+
 #### Structural assertions matched as raw text — four found, two fixed
 
 From a lint built in ClusterFuck, run read-only across the family.

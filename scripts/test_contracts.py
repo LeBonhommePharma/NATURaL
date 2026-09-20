@@ -20,6 +20,54 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 FAILS: list[str] = []
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# READ THIS BEFORE WRITING A CHECK AGAINST A PLIST, ENTITLEMENT OR MANIFEST
+#
+#   A check that names a key and verifies something adjacent to it has
+#   verified nothing. Presence of a name is not a value.
+#
+# On 20 September 2026 this exact failure was found three times in one day, in
+# three repos, by three different authors, all passing for years:
+#
+#   NATURaL   `"<key>NSPrivacyTracking</key>" in text and "<false/>" in text`
+#             Two independent substrings. A manifest declaring tracking TRUE
+#             satisfied both, as long as any other key was false. This was the
+#             ONLY guard for five of seven manifests, because
+#             validate-submission.py parses manifests inside its
+#             Bonhomme/BonhommeWatch loop only.
+#
+#   NATURaL   `"<true/>" in watch and "WKApplication" in watch`
+#             Held only because the file happened to contain exactly one
+#             <true/>. Any routine second true key — UIRequiresFullScreen,
+#             WKWatchOnly — and WKApplication could be false undetected.
+#
+#   Exergy    A release gate passed a manifest declaring tracking ON and data
+#             collection present, with a green check over it, because it
+#             verified that a <false/> existed somewhere rather than the value
+#             of the key it named.
+#
+#   ClusterFuck  Two gates passed an unsandboxed Mac build, because an
+#             entitlement was verified by the presence of its key's NAME.
+#             Its plist held three <false/> entries, so the check was already
+#             broken rather than merely fragile.
+#
+# The correct pattern, all three parts:
+#
+#   1. PARSE. Use load_plist() below — plistlib is stdlib, and it turns a
+#      malformed file into a named failure instead of a traceback.
+#   2. ASSERT THE VALUE OF THE KEY YOU MEAN. `d.get("K") is not True` — not
+#      `"K" in text`, not `"<true/>" in text`, and never the two joined by
+#      `or`, which is the shape every case above shared.
+#   3. PROVE IT. Construct the violation the check claims to prevent, watch it
+#      fail naming the right key, restore. A check that has only ever been
+#      seen green is indistinguishable from one that cannot fail.
+#
+# Substring matching is still correct for SOURCE text, where "this symbol
+# appears" is genuinely the property — see the Swift checks below. It is wrong
+# for anything with a parser.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 def fail(msg: str) -> None:
     FAILS.append(msg)
 
