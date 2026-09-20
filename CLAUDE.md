@@ -10,6 +10,15 @@ Zero external Swift dependencies. Proprietary codebase.
 
 ## Sibling Repository: FlexAIDdS
 
+> **Known duplicate — do not reconcile.** As of 20 September 2026 a full copy of
+> this app exists at `/Users/lp.more/Projects/FlexAIDdS/NATURaL/`, carrying the
+> **same bundle identifiers** (`com.natural.Bonhomme`, `.Widgets`,
+> `.LiveActivity`, `com.natural.BonhommeTV`) and the same App Group
+> (`group.com.natural.Bonhomme`). A grep for any NATURaL bundle id or that App
+> Group across `~/Projects` therefore returns two hits, and the second one is
+> this copy — not a second product and not a mystery. It is with LP for a
+> decision; **do not edit it, and do not attempt to harmonise the two.**
+
 [FlexAIDdS](https://github.com/LeBonhommePharma/FlexAIDdS) (`/Users/lp.more/Documents/PhD/Programs/FlexAIDdS`) is the companion entropy-driven molecular docking engine. NATURaL has **no runtime dependency** on FlexAIDdS — instead it reimplements the core Shannon entropy mathematics in Swift and accepts docking results as user-provided data. The relationship is:
 
 - **Shared math**: `EntropyCalculator.shannonEntropy()` (HRV) and `.circularShannonEntropy()` (torsional angles) use the identical Shannon formula as FlexAIDdS's `StatMechEngine` and `ShannonThermoStack`
