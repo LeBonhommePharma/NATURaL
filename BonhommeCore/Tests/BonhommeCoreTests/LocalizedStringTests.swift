@@ -89,7 +89,13 @@ final class LocalizedStringTests: XCTestCase {
         let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(text)) as? [String: String])
         XCTAssertEqual(fields["de"], "")
         XCTAssertEqual(fields["fr"], "Texte choisi")
-        XCTAssertEqual(Set(fields.keys), Set(LocalizedString.supportedLanguages))
+        // The wire format keeps all eleven language fields regardless of which are
+        // supported — that retention is what lets a deferred language be restored
+        // without touching saved or relayed data. This test's subject is Codable
+        // preservation, so it asserts the struct's own fields rather than borrowing
+        // supportedLanguages, which the 1.0 narrowing deliberately decoupled from it.
+        XCTAssertEqual(Set(fields.keys),
+                       ["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"])
         XCTAssertEqual(try JSONDecoder().decode(LocalizedString.self, from: original), text)
 
         let array = LocalizedStringArray(en: ["Pose guide"], fr: [])
