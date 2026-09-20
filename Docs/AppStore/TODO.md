@@ -296,7 +296,7 @@ them out of MASTER.md. The approved bloom was not touched.
 - [x] Configure the main app as `com.natural.Bonhomme`.
 - [x] Configure and embed Watch companion `com.natural.Bonhomme.watchkitapp` with the correct companion identifier and Boolean `WKApplication`.
 - [x] Retain extension identifiers `com.natural.Bonhomme.Widgets` and `com.natural.Bonhomme.LiveActivity`.
-- [ ] In Xcode → Settings → Accounts, confirm the renewed membership and the selected team are usable. An existing development certificate labeled `lmorency@me.com` does not by itself establish distribution readiness.
+- [ ] **Create a Distribution certificate.** Resolved 20 September 2026: `lmorency@me.com` and `lp@thebonhomme.com` are aliases on the **same** Apple ID, with membership under `lp@thebonhomme.com` — there is no second account and no team mismatch to untangle. What remains is unchanged in substance: `security find-identity -v -p codesigning` lists exactly one identity, `Apple Development: lmorency@me.com (Q64R7Z4MS5)`, and a **Development** certificate is not a **Distribution** one. No distribution identity has ever existed on this machine. Confirm the membership is active on team `ZJLX84G8QV`, then create the distribution certificate and profiles.
 - [ ] Register/verify every bundle identifier and App Group `group.com.natural.Bonhomme` under that team.
 - [ ] Verify HealthKit, clinical records if retained, background delivery, App Groups, Siri and all other shipped entitlements on the corresponding profiles. CloudKit and iCloud KVS are not shipped.
 - [ ] Provision distribution signing for the app, Watch and extensions; verify the archive uses the intended team.
