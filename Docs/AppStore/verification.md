@@ -135,6 +135,32 @@ TV, and confirming the assets inside a signed bundle in Organizer. A clean
 `actool` compile proves the catalogue is well-formed; it does not prove how the
 icon moves under focus.
 
+#### Known issue: the simulator journey lanes are flaky
+
+This is recorded as open, not fixed. Across four runs of the two-device matrix,
+**two of eight lane-runs failed**, each in a different test, all in the
+first-launch or tap-delivery path:
+
+| Run | Lane | Result | Failure |
+| --- | --- | --- | --- |
+| 35480771304 | iPhone / iPad | pass / pass | — |
+| 35481919944 | iPhone / iPad | pass / pass | — |
+| 35482711331 | iPhone | **fail** | `testActivePoseCanPauseAndFinish` — Continue tapped, Home absent after 8s |
+| 35483231295 | iPad | **fail** | `testWelcomeLeadsToFreeSession` — `welcome.continue` absent after 12s |
+
+Two mitigations are in place, both written so a genuine defect still fails:
+`startSessionFromReady` and `finishWelcome` each re-issue their tap once and then
+*require* the destination, and the first-launch gate is now 25s (30s for the
+largest-text path), since a cold launch is app start plus SwiftData container
+bootstrap plus first render on a shared runner.
+
+Neither is a proven fix. Duration is not a clean load proxy because
+`continueAfterFailure = false` aborts the suite on failure, and the one long
+sample (the iPad lane at 527s against a ~360s baseline) is suggestive but not
+conclusive. Treat a single green matrix as necessary, not sufficient, and expect
+occasional reruns until this is understood. It does not block submission work,
+but it should not be called resolved.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.

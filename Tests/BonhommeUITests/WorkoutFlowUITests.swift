@@ -39,7 +39,11 @@ final class WorkoutFlowUITests: XCTestCase {
 
     private func finishWelcome() {
         let continueButton = app.descendants(matching: .any)["welcome.continue"]
-        let timeout: TimeInterval = name.contains("LargestText") ? 20 : 12
+        // Cold launch here is app start + SwiftData ModelContainer bootstrap + first
+        // SwiftUI render, on a shared runner. 12s was marginal: CI 35483231295's iPad
+        // lane missed it while its UI suite ran 527s against a ~360s baseline. The
+        // LargestText path already allowed 20s; use 25s as the first-launch gate.
+        let timeout: TimeInterval = name.contains("LargestText") ? 30 : 25
         XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
         capture("Welcome overview")
         for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
