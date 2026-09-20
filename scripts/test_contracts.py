@@ -716,6 +716,40 @@ def test_identity() -> None:
     if watch_plist.get("WKCompanionAppBundleIdentifier") != "com.natural.Bonhomme":
         fail("Watch companion bundle id must be com.natural.Bonhomme, got "
              f"{watch_plist.get('WKCompanionAppBundleIdentifier')!r}")
+    # The Apple TV app is deferred from 1.0, so the phone must not offer a pairing
+    # flow that tells the user to open an app they cannot install. AirPlay and HDMI
+    # are unaffected and must keep working — they render TVDisplayView from the
+    # phone and need no tvOS app.
+    pairing_src = read("BonhommeCore/Sources/BonhommeCore/TVDisplay/TVRelayPairing.swift")
+    if "appleTVAppIsPublished" not in pairing_src:
+        fail("TVRelayPairing must declare appleTVAppIsPublished; it is the 1.1 restore switch")
+    tv_sheet = read("Bonhomme/Features/Workout/WorkoutFlowView.swift")
+    GATE = "if TVRelayPairing.appleTVAppIsPublished {"
+    AIRPLAY = 'Section(copy("AirPlay or a cable"'
+    # Identifiers are compared including their closing quote. Bare substrings are how
+    # a rename slips through: "tv.shareSession" is contained in "tv.shareSessionMOVED",
+    # so the unquoted form passes while the identifier the test queries is gone.
+    def ident(name: str) -> str:
+        return f'.accessibilityIdentifier("{name}")'
+    if GATE not in tv_sheet or AIRPLAY not in tv_sheet:
+        # Fail with a diagnosis rather than letting the split below raise. An
+        # unhandled exception in a gate is a failure with no explanation.
+        fail("TV sheet must keep the appleTVAppIsPublished gate and the AirPlay section")
+    else:
+        gated = tv_sheet.split(GATE, 1)[1].split(AIRPLAY, 1)[0]
+        ungated = tv_sheet.split(GATE, 1)[0]
+        for needle in (ident("tv.pairingKey"), ident("tv.confirmPairing"), '"NATURaL on Apple TV"'):
+            if needle not in gated:
+                fail(f"{needle} must sit inside the appleTVAppIsPublished gate, not outside it")
+        # Must stay OUTSIDE: the toggle drives displayEnabled, which the AirPlay path
+        # also reads, so sweeping it into the gate would break AirPlay silently.
+        if ident("tv.shareSession") not in ungated:
+            fail("the sharing toggle must stay outside the gate; AirPlay reads the same displayEnabled")
+        if ident("tv.externalDisplay") not in tv_sheet:
+            fail("the AirPlay row needs tv.externalDisplay so its survival is assertable")
+        if ident("tv.externalDisplay") in gated:
+            fail("the AirPlay row must not be inside the gate")
+
     if "authorizationStatus()" not in read(
         "Bonhomme/Services/Music/HeadphoneMotionActuator.swift"
     ):
