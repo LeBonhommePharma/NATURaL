@@ -2,15 +2,89 @@
 
 ## Latest completed integration evidence
 
+### Two-device CI matrix green — commit `c235664` (19 September 2026)
+
+[CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304)
+for `c235664c` passed **all seven jobs**:
+
+| Job | Result |
+| --- | --- |
+| Linux product contracts | success |
+| Submission assets and Swift core | success — **613 core tests, 0 failures** |
+| iOS and embedded watchOS Release build | success |
+| Native macOS Release build | success |
+| Native tvOS Release build | success |
+| App behavior and accessible journeys (iPhone 17 Pro Max / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures** (1 skipped: the iPad-only landscape journey) |
+| App behavior and accessible journeys (iPad Pro 13-inch M5 / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures**, none skipped |
+
+This closes the iPad lane, which had failed twice. The failure was not what its
+first appearance suggested. In [35473327818](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35473327818)
+it failed in `testIPadLandscapeKeepsGuideAndControlsReachable`; on the rerun that
+test **passed** and `testLargestTextKeepsWelcomeAndSessionEntryReachable` failed
+at the same line with the same message. So the defect was not landscape-specific:
+it was whichever journey followed one that had completed onboarding,
+intermittently observing Home instead of a fresh first-use launch. The captured
+accessibility hierarchy showed Home with no welcome element anywhere in the tree.
+
+`f9acf38` added an explicit `-natural.forceWelcome` launch flag so a reset does
+not depend on `UserDefaults` coercing the argument-domain string `"NO"` into a
+Bool. A `terminate()`+relaunch fix was tried first and **reverted in `c235664`**:
+`scripts/test_contracts.py` forbids it because terminate+relaunch is the known
+cause of this same `welcome.continue` flake on `b2cc3f8`.
+
+The iPhone `testActivePoseCanPauseAndFinish` failure in the same original run was
+a distinct, genuine flake — the Begin tap was synthesized but not delivered,
+leaving `session.begin` on screen while the 15 s wait elapsed (the ready→active
+countdown is only 3 s). It passed on rerun with functionally identical code.
+`startSessionFromReady` now re-issues the tap once and then requires the ready
+screen to dismiss, so a real start failure still fails the journey.
+
+#### iPad landscape captures are not valid visual evidence
+
+The iPad landscape journey's functional assertions passed: the app frame was
+landscape (`application.frame.width > application.frame.height` completed within
+its wait), the pause/resume and end controls were hittable, and the summary was
+reachable and dismissable. That is real evidence the landscape journey works.
+
+The landscape **screenshots** are not. Measuring the rendered content box of
+every iPad capture in this run:
+
+| Capture | Frame | Rendered content |
+| --- | --- | --- |
+| Home, Welcome, Welcome overview, Session preparation, Paused guided session, Session entry at largest text, Home TV guidance | 2064×2752 | 2064×2752 — fills exactly |
+| **iPad landscape paused guide** | 2752×2064 | **2064×2064** |
+| **iPad landscape summary** | 2752×2064 | **2064×2064** |
+
+Every portrait capture fills its frame. Both landscape captures paint a 2064-wide
+square into a 2752-wide frame and leave the remaining 688 px column pure black
+(`0,0,0`), which is distinct from the app background `#08091A`. The content width
+equals the device's *portrait* width, and its height is clipped at the frame
+height, with the content rotated 90° inside the buffer.
+
+The most likely cause is XCTest capturing in the native portrait orientation and
+writing into a landscape-sized buffer, clipping the overflow — a capture-path
+artifact rather than an app letterbox. That is a hypothesis, not a conclusion:
+distinguishing it from a genuine landscape letterbox needs Xcode or device QA,
+neither of which is available in this checkout.
+
+Either way the consequence is the same and is recorded rather than assumed away:
+**these landscape PNGs do not establish iPad landscape rendering and must not be
+used as App Store screenshots.** The corresponding TODO items stay open.
+
+Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
+not validate distribution signing, physical sensors, TV focus/parallax,
+AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.
+
+
 Expanded [CI 35472257889](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35472257889) for PR head `ccfe781` (tested merge `90a8765f61e64aa96dc054471c425a50774925fd`) passed **613 core tests**, all contracts/assets, all four platform Release builds, and iPhone 17 Pro Max / iOS 26.5 journeys (**21 app tests, 9 UI tests passed; the iPad-only test was skipped**). Native PNG review confirms corrected dark bloom selection, mint-button contrast, multiline largest-text entry, and the separate guide viewport/footer. These are Debug QA captures, not a finalized App Store screenshot set.
 
 The new iPad Pro 13-inch (M5) / iOS 26.5 lane found **three UI failures** despite its 21 hosted app tests passing: two TV-card assertions (the iPad home omitted the card) and onboarding disappearing when rotating before completion. The follow-up adds iPad TV/prescription entries and makes onboarding durable root content until Continue. Tests keep the same requirements, explicitly reset orientation between cases, and wait for landscape layout. This follow-up requires its own green run; the failed expanded run is not a release pass.
 
 [PR #39](https://github.com/LeBonhommePharma/NATURaL/pull/39), commit `c216e666186be35bd446d512aba6bc17211dbb49`, passed all six jobs in [CI 35470772237](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470772237): Linux contracts, submission assets/Swift core, iOS with embedded Watch Release, native macOS Release, native tvOS Release (including layered icons/Top Shelf), and hosted iPhone simulator tests. The simulator ran **21 app tests and 9 UI tests with zero failures**. The Watch/tvOS API incompatibilities and SwiftUI type-check timeout from earlier attempts are fixed.
 
-This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. Current iPad runtime coverage is historical until the new two-device CI matrix completes.
+This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. The two-device CI matrix has since completed green at `c235664` (see above); iPad runtime coverage is no longer historical, though it remains simulator evidence.
 
-The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (8), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
+The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (9, including the new test_claim_honesty), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
 
 ## TV relay and tvOS preparation — integration `057b5aa`
 

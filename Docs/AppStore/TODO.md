@@ -24,7 +24,7 @@ A reproduced failure documents a blocker; it does not satisfy its release gate.
   - [ ] Capture App Store iPhone screenshots and finalize all App Store Connect privacy/age-rating/review fields.
 - **iPad / iPadOS**
   - [x] Responsive iPad session layout and larger-text journeys passed the historical 12 September run.
-  - [ ] Re-run the current revision on iPad, including landscape guide and controls; retain native screenshots.
+  - [x] Re-run the current revision on iPad, including landscape guide and controls: the iPad Pro 13-inch (M5) / iOS 26.5 lane passed in [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304) (**21 app tests, 10 UI tests, 0 failures, none skipped**). Native screenshots are retained as the `native-screenshots-iPad` artifact, **but the two landscape PNGs are not valid visual evidence** — they render 2064×2064 into a 2752×2064 frame; see [verification.md](verification.md).
   - [ ] Validate portrait/landscape, split-view/resizable windows, and hardware permissions on physical iPad.
   - [ ] Capture final iPad screenshots at currently accepted App Store families.
 - **watchOS**
