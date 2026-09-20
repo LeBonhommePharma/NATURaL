@@ -29,6 +29,52 @@ archive validation 19, submission assets 20, permission localizations 7, cloud
 signing 21, localization inventory 6, product contracts 9, website routing PASS,
 `validate-submission.py --include-macos` PASS.
 
+### Merge readiness for PR #39 — waiting on Apple vs waiting on us
+
+76 unchecked / 79 checked as of 20 September 2026. The split LP will ask for:
+
+**Waiting on nothing — we could finish these today (4).** None blocks the merge;
+all are decisions, not work.
+| Item | What it needs |
+|---|---|
+| Unreferenced YouTube flow (§UI craft) | A ship / wire-up / remove decision. Nothing consumes `YouTubeProgramPickerView`. |
+| Pose-illustration accent ramp (§UI craft) | LP picks one of three recorded options. |
+| Session-surface redundancies (§UI craft) | LP picks; each is a small change. |
+| `BrandColor.gold` retirement | Authorized, then halted: `test_contracts.py:693` asserts `0xC4A359` exists, so it is a three-part change (contract, declaration, MASTER.md 33/41), not a delete. |
+
+**Waiting on a human, not on Apple (3).**
+Translations for nine languages (870 keys), linguistic review, and per-value
+scientific provenance — the last needs original source records held outside this
+repo. No Apple dependency; none blocks the merge.
+
+**Waiting on Apple credentials + a full Xcode (≈20).**
+Distribution signing, provisioning, Organizer validation and **Validate App**,
+archive creation, upload, TestFlight. This Mac has Command Line Tools only.
+
+**Waiting on physical hardware (≈25).**
+Device QA across iPhone, iPad, paired Watch, Apple TV and Mac: permissions
+matrices, Health denied/revoked, haptics, Digital Crown, Siri Remote focus,
+AirPlay/HDMI, pairing expiry, backup exclusion on real files.
+
+**Waiting on App Store Connect (≈14).**
+App record, metadata, age rating, category/keywords, pricing, territories,
+export compliance, privacy labels, reviewer notes, submission, post-approval
+verification.
+
+**Waiting on a final signed build (≈8).**
+Every store screenshot slot. Downstream of signing, so not independently
+actionable.
+
+**Out of scope for this release.** visionOS layered icon delivery — there is no
+visionOS scheme or CI job, and MASTER.md tracks Vision's distribution readiness
+separately.
+
+**Merge read:** nothing in the repo blocks merging. Required checks pass on the
+current revision, which is the stated precondition on the merge line below.
+Everything else is external, and merging does not make any of it worse —
+submission remains gated regardless. The four "waiting on nothing" rows are LP
+decisions that can land before or after the merge.
+
 **Remaining gates, by what actually unblocks them:**
 
 | Gate | Blocked on | Items |
@@ -173,8 +219,7 @@ them out of MASTER.md. The approved bloom was not touched.
       ramp to the brand's blue→violet→magenta arc. Reassigning existing tokens
       (mint/violet/aqua/tangerine) is **not** an option: MASTER.md binds them by
       quantity and forbids reassignment.
-- [ ] **Consume the generated dark-appearance colorsets** (blocked on the
-      design-system session). All ten `BrandColors.xcassets` colorsets currently
+- [x] **Consumed the generated dark-appearance colorsets** (applied 20 September 2026). All ten `BrandColors.xcassets` colorsets currently
       hold a single universal value with no `appearances` entry, so nothing
       adapts. LP ruled on 20 September that the twins should exist and MASTER.md
       stands as written. They are being generated from the canonical palette via
