@@ -145,10 +145,16 @@ def test_shannon_formula() -> None:
 
 
 def test_circular_wrap_is_not_linear() -> None:
+    # Both values below are exactly computable, so they are asserted exactly.
+    # These were one-sided threshold checks (>= 2.0 here, < 4.75 below) with 100%
+    # and 5% slack against values that are exactly 1.0 and 5.0. A kernel scaled by
+    # 1.0001 passed every one of them; margins that wide absorb the very drift the
+    # check exists to catch.
     clustered = [179.0] * 100 + [-179.0] * 100
     circ = circular_shannon(clustered)
-    if circ >= 2.0:
-        fail(f"±179° circular entropy should be low, got {circ}")
+    # Two equally-populated bins → exactly 1 bit.
+    if abs(circ - 1.0) > 1e-9:
+        fail(f"±179° clusters must be exactly 1 bit (two equal bins), got {circ}")
     pair = [180.0] * 80 + [-180.0] * 80
     folded = circular_shannon(pair, fold_cut=True)
     unfolded = circular_shannon(pair, fold_cut=False)
@@ -159,9 +165,11 @@ def test_circular_wrap_is_not_linear() -> None:
     src = read("BonhommeCore/Sources/BonhommeCore/Analysis/EntropyCalculator.swift")
     if "if a == 180.0 { a = -180.0 }" not in src:
         fail("Swift circular cut must fold +180 onto -180")
+    # 512 angles spread evenly over 32 bins → 16 per bin → exactly log2(32) = 5.
     uniform = [-180.0 + 360.0 * i / 512.0 for i in range(512)]
-    if circular_shannon(uniform) < math.log2(32) * 0.95:
-        fail("uniform circular angles must approach max entropy")
+    uniform_h = circular_shannon(uniform)
+    if abs(uniform_h - math.log2(32)) > 1e-9:
+        fail(f"uniform circular angles must be exactly log2(32) bits, got {uniform_h}")
 
 
 def test_sci_and_grounding_policy() -> None:

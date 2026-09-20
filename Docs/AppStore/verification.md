@@ -257,6 +257,64 @@ tokens. Once the colorsets carry real `appearances` entries, the home style
 chrome and any other light-surface brand usage should be revisited, and a
 contract should assert every colorset has a dark twin so this cannot regress.
 
+#### Guard audit — can each check actually fail? (20 September 2026)
+
+Prompted by three "checks that cannot fail" surfacing in one day across three
+repos. Every guard here was fed input that genuinely violates what it claims to
+protect, and observed exiting nonzero, then restored.
+
+**`scripts/test_contracts.py` — 94 string assertions, all 94 fire.**
+Audited mechanically: the 33 forbidden-string checks had their literal injected
+into the bound file; the 61 required-string checks had their literal removed. All
+94 produced exit 1. Twelve initially looked silent, but that was my method — I
+replaced only the first occurrence, and the literal appears 2–10 times. Removing
+every occurrence fired all twelve.
+
+**One real finding: the circular-entropy gates could not bind.** Scaling the
+`circular_shannon` kernel by 1.0001 passed the whole suite. Every assertion in
+`test_circular_wrap_is_not_linear` was one-sided with a wide margin:
+
+| check | true value | old gate | slack |
+|---|---|---|---|
+| ±179° clusters | exactly `1.0` | `>= 2.0` fails | 100% |
+| uniform 512 angles / 32 bins | exactly `5.0` | `< 4.75` fails | 5% |
+
+Both are exactly computable, so both are now asserted exactly (`1e-9`). The same
+1.0001 mutation is now caught by both, naming the drifted values. The adaptive
+kernel was already tight (`1e-9` / `1e-12`) and detected the same mutation
+before the change.
+
+**Guards on the real tree, each demonstrated failing**
+
+| guard | violation fed | result |
+|---|---|---|
+| `validate-submission.py --include-macos` | renamed a permission key in the real `Info.plist` | exit 1 |
+| `test_submission_assets.py` | emptied the tvOS `AppIcon.brandassets` Contents.json | exit 1 |
+| `test_localization_inventory.py` | truncated a supplemental catalog to one language | exit 1 |
+| `test-site-language.cjs` | corrupted a language code in the real `language.js` | exit 1 |
+| colorset twin contract | stripped `BrandFg`'s dark entry | exit 1 |
+| gold ban | reintroduced `0xC4A359` in Swift | exit 1 |
+| retired-list guard | deleted the retired line; reintroduced `--coral` as usage | exit 1 (both) |
+| orientation guard | re-pinned orientation in AirPlay setUp | exit 1 |
+| claim-honesty guard | restored "This improves circulation." | exit 1 |
+| breathing-contrast guard | restored 0.40 white | exit 1 |
+
+**Tooling tests, not repo guards — correctly layered, stated plainly**
+
+`test_permission_localizations.py`, `test_archive_validation.py` and
+`test_cloud_signing.py` exercise their validators against synthetic fixtures in
+temp directories; they never read the shipping tree. That is not a gap, and the
+latter two say so in their own docstrings. The permission validator *is* applied
+to the real tree, by `validate-submission.py:44`, which is in CI and which failed
+correctly above. I flagged this one "suspect" mid-audit before checking where the
+validator actually runs — the flag was my mis-scoped mutation, not a broken guard.
+
+**Not audited here.** The 613 BonhommeCore XCTest cases and the Xcode UI journeys
+cannot run without Xcode, so their individual assertions were not mutation-tested.
+Their aggregate behaviour is observable — the journeys have failed and been fixed
+repeatedly today — but "every assertion can fail" is unproven for that set and is
+not claimed.
+
 Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
 not validate distribution signing, physical sensors, TV focus/parallax,
 AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.
