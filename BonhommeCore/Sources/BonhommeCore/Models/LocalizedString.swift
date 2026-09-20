@@ -43,6 +43,18 @@ public struct LocalizedString: Codable, Sendable, Hashable {
     /// catalogs and every locale's InfoPlist.strings remain in the repo. Restoring a
     /// language is this array, CFBundleLocalizations in Bonhomme + BonhommeWatch, and
     /// the InfoPlist.strings variant-group children in project.pbxproj — no file moves.
+    ///
+    /// The restore is also free on the **data** side, which is a property of the wire
+    /// format rather than an accident. `LocalizedString` keeps all eleven language
+    /// fields whatever `supportedLanguages` says, so a deferred language encodes as an
+    /// empty string rather than being dropped: saved sessions, relayed payloads and
+    /// anything already on disk survive the narrowing untouched, and restoring a
+    /// language needs no migration and recovers nothing. Verified against the real
+    /// encoder — eleven keys present, deferred fields empty, arrays identical — and
+    /// asserted by `testSupplementalLookupPreservesCodableFieldsAndEquality`, which
+    /// checks the struct's own fields rather than borrowing this list. The two were
+    /// equal before 1.0 and are deliberately decoupled now; a test comparing them was
+    /// relying on a coincidence.
     public static let supportedLanguages = ["en", "fr"]
 
     /// Match the ordered OS language list, including regional and script variants.
