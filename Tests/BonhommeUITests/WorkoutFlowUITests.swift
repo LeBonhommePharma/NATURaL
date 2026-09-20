@@ -37,14 +37,25 @@ final class WorkoutFlowUITests: XCTestCase {
         }
     }
 
-    private func finishWelcome() {
+    /// Most journeys only need to *get past* onboarding; they do not care whether this
+    /// particular launch showed it. XCUITest can hand a journey the previous test's
+    /// process, already past welcome — CI 35484287585's iPad lane captured exactly that,
+    /// with Home on screen and no welcome element anywhere despite -natural.forceWelcome
+    /// (the flag cannot help: the state lives in the reused process). Treat an
+    /// already-past-onboarding instance as satisfied, and let only the dedicated
+    /// onboarding journey require the welcome screen itself.
+    private func finishWelcome(requireWelcome: Bool = false) {
         let continueButton = app.descendants(matching: .any)["welcome.continue"]
-        // Cold launch here is app start + SwiftData ModelContainer bootstrap + first
-        // SwiftUI render, on a shared runner. 12s was marginal: CI 35483231295's iPad
-        // lane missed it while its UI suite ran 527s against a ~360s baseline. The
-        // LargestText path already allowed 20s; use 25s as the first-launch gate.
+        let home = app.buttons["home.about"]
+        // Cold launch is app start + SwiftData ModelContainer bootstrap + first render.
         let timeout: TimeInterval = name.contains("LargestText") ? 30 : 25
-        XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
+        guard continueButton.waitForExistence(timeout: timeout) else {
+            XCTAssertFalse(requireWelcome,
+                           "Welcome must launch without a crash or permissions gate")
+            XCTAssertTrue(home.waitForExistence(timeout: 10),
+                          "Without welcome the journey must already be past onboarding, not stuck")
+            return
+        }
         capture("Welcome overview")
         for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
         XCTAssertTrue(continueButton.isHittable)
@@ -53,10 +64,8 @@ final class WorkoutFlowUITests: XCTestCase {
         welcome.lifetime = .keepAlways
         add(welcome)
         continueButton.tap()
-        // Same simulator input flakiness as the Begin tap: the event is synthesized but
-        // occasionally not delivered, leaving welcome on screen (CI 35482711331, iPhone).
-        // Re-issue once, then still require Home, so a genuine onboarding failure fails.
-        let home = app.buttons["home.about"]
+        // The tap is occasionally synthesized but not delivered (CI 35482711331).
+        // Re-issue once, then still require Home so a real failure still fails.
         if !home.waitForExistence(timeout: 8) {
             continueButton.tap()
         }
@@ -135,7 +144,7 @@ final class WorkoutFlowUITests: XCTestCase {
     }
 
     func testWelcomeLeadsToFreeSession() {
-        finishWelcome()
+        finishWelcome(requireWelcome: true)
         let start = app.buttons["home.start"]
         for _ in 0..<4 where !start.isHittable { app.swipeUp() }
         XCTAssertTrue(start.isHittable)
