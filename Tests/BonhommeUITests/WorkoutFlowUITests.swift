@@ -269,7 +269,21 @@ final class WorkoutFlowUITests: XCTestCase {
     /// become one.
     func testMeasureActivePoseRenderLatency() throws {
         try finishWelcome()
+        // Fixed CPU work, timed. This is the contention control: it measures how
+        // fast THIS runner is right now, so a long wait can be attributed to a slow
+        // machine or to the app. Journey durations today spanned 39.9s to 154.0s
+        // across 26 lane-runs — nearly 4x — which is runner variance, not app
+        // variance, and would otherwise be indistinguishable from render latency.
+        func calibrationSeconds() -> Double {
+            let began = Date()
+            var acc = 0.0
+            for i in 1...2_000_000 { acc += (Double(i) * 1.0000001).squareRoot() }
+            let elapsed = Date().timeIntervalSince(began)
+            XCTAssertGreaterThan(acc, 0)  // keep the compiler from eliding the loop
+            return elapsed
+        }
         var samples: [Double] = []
+        var calibrations: [Double] = []
         let iterations = 8
         for i in 1...iterations {
             let start = app.buttons["home.start"]
@@ -280,10 +294,12 @@ final class WorkoutFlowUITests: XCTestCase {
 
             // The measurement. Same element and the same generous ceiling the real
             // journey uses, so a sample is comparable to a real wait.
+            let calib = calibrationSeconds()
             let began = Date()
             let appeared = app.staticTexts["session.pose.name"].waitForExistence(timeout: 30)
             let waited = Date().timeIntervalSince(began)
             samples.append(appeared ? waited : -1)
+            calibrations.append(calib)
 
             // Leave the session so the next iteration starts from home.
             app.buttons["session.end"].tap()
@@ -300,6 +316,10 @@ final class WorkoutFlowUITests: XCTestCase {
         mean=\(String(format: "%.2f", ok.isEmpty ? -1 : ok.reduce(0,+)/Double(ok.count)))
         first=\(String(format: "%.2f", samples.first ?? -1))  rest_mean=\(String(format: "%.2f", ok.count > 1 ? ok.dropFirst().reduce(0,+)/Double(ok.count-1) : -1))
         timeouts(>=30s): \(samples.filter { $0 < 0 }.count)
+        calibration (s, fixed CPU work): \(calibrations.map { String(format: "%.3f", $0) }.joined(separator: ", "))
+        calib min=\(String(format: "%.3f", calibrations.min() ?? -1))  max=\(String(format: "%.3f", calibrations.max() ?? -1))  \
+        spread=\(String(format: "%.2fx", (calibrations.max() ?? 1) / max(calibrations.min() ?? 1, 0.0001)))
+        paired (wait_s, calib_s): \(zip(samples, calibrations).map { "(\(String(format: "%.2f", $0.0)), \(String(format: "%.3f", $0.1)))" }.joined(separator: " "))
         """
         let attachment = XCTAttachment(string: report)
         attachment.name = "poseName latency distribution"
