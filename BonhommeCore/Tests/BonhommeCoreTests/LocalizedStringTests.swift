@@ -31,14 +31,22 @@ final class LocalizedStringTests: XCTestCase {
         let guide = LocalizedString(en: "Pose guide", fr: "Texte choisi", es: "Texto explícito")
         XCTAssertEqual(guide.value(for: "fr-CA"), "Texte choisi")
         XCTAssertEqual(guide.value(for: "ES_mx"), "Texto explícito")
-        XCTAssertEqual(guide.value(for: "ja-JP"), "ポーズガイド")
-        XCTAssertEqual(guide.value(for: "zh-Hant-TW"), "体式指南")
-        XCTAssertEqual(guide.value(for: "pt-BR"), "Guia da postura")
-        XCTAssertEqual(guide.value(for: "it-IT"), "Guida alla posizione")
+        // Supplemental lookup is gated on supportedLanguages, so the nine languages
+        // deferred from 1.0 resolve to English. The catalog still contains them —
+        // they are unsupported, not absent — so restoring one needs no catalog
+        // change. Resolution itself is still asserted, through a shipping language.
+        XCTAssertEqual(LocalizedString(en: "Pose guide", fr: "").value(for: "fr-CA"),
+                       "Guide de la posture")
+        XCTAssertEqual(guide.value(for: "ja-JP"), "Pose guide")
+        XCTAssertEqual(guide.value(for: "zh-Hant-TW"), "Pose guide")
+        XCTAssertEqual(guide.value(for: "pt-BR"), "Pose guide")
+        XCTAssertEqual(guide.value(for: "it-IT"), "Pose guide")
         XCTAssertEqual(guide.value(for: "en-US"), "Pose guide")
         XCTAssertEqual(guide.value(for: "sv-SE"), "Pose guide")
+        // A deferred language in the OS list is skipped, so English is selected.
         let osLanguage = LocalizedString.preferredLanguage(in: ["sv-SE", "ko-KR", "en-US"])
-        XCTAssertEqual(guide.value(for: osLanguage), "자세 가이드")
+        XCTAssertEqual(osLanguage, "en")
+        XCTAssertEqual(guide.value(for: osLanguage), "Pose guide")
     }
 
     func testMissingKeysAndRuntimeTextRemainEnglishWithoutPartialReplacement() {
@@ -74,7 +82,10 @@ final class LocalizedStringTests: XCTestCase {
     func testSupplementalLookupPreservesCodableFieldsAndEquality() throws {
         let text = LocalizedString(en: "Pose guide", fr: "Texte choisi")
         let original = try JSONEncoder().encode(text)
-        XCTAssertEqual(text.value(for: "de"), "Posenanleitung")
+        // German is deferred, so supplemental lookup returns English. The Codable
+        // assertions below are this test's subject and are unchanged.
+        XCTAssertEqual(text.value(for: "de"), "Pose guide")
+        XCTAssertEqual(text.value(for: "fr"), "Texte choisi")
         let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(text)) as? [String: String])
         XCTAssertEqual(fields["de"], "")
         XCTAssertEqual(fields["fr"], "Texte choisi")
@@ -92,9 +103,11 @@ final class LocalizedStringTests: XCTestCase {
 
     func testOSLanguagePreferenceMatching() {
         XCTAssertEqual(LocalizedString.preferredLanguage(in: ["sv-SE", "FR_ca", "en-US"]), "fr")
-        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["pt-BR", "en"]), "pt")
-        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["zh-Hant-TW"]), "zh")
-        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["ar-SA"]), "ar")
+        // Region and script normalisation is unchanged; what changed is which
+        // normalised codes survive the supportedLanguages filter.
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["pt-BR", "en"]), "en")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["zh-Hant-TW"]), "en")
+        XCTAssertEqual(LocalizedString.preferredLanguage(in: ["ar-SA"]), "en")
         XCTAssertEqual(LocalizedString.preferredLanguage(in: ["french", "sv"]), "en")
         XCTAssertEqual(LocalizedString.preferredLanguage(in: []), "en")
         XCTAssertEqual(LocalizedString(en: "Hello", fr: "Bonjour").value(for: "FR_ca"), "Bonjour")
@@ -163,18 +176,15 @@ final class LocalizedStringTests: XCTestCase {
     }
 
     func testSupportedLanguages() {
-        XCTAssertEqual(LocalizedString.supportedLanguages.count, 11)
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("en"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("fr"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("es"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("ja"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("zh"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("ko"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("ru"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("de"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("ar"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("it"))
-        XCTAssertTrue(LocalizedString.supportedLanguages.contains("pt"))
+        // 1.0 ships exactly en + fr. This is the assertion that changes when a
+        // language is restored — alongside CFBundleLocalizations and the
+        // InfoPlist.strings variant-group children. See the doc comment on
+        // LocalizedString.supportedLanguages.
+        XCTAssertEqual(LocalizedString.supportedLanguages, ["en", "fr"])
+        for deferred in ["es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"] {
+            XCTAssertFalse(LocalizedString.supportedLanguages.contains(deferred),
+                           "\(deferred) is deferred from 1.0 and must not be advertised")
+        }
     }
 
     func testLocalizedStringHashableConformance() {
