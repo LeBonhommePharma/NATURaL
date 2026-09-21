@@ -187,7 +187,8 @@ for name, iconset, size in (
     require(extra_manifest.get('NSPrivacyTracking') is False, str(extra) + ' must declare no tracking')
     require(extra_manifest.get('NSPrivacyCollectedDataTypes') == [], str(extra) + ' must declare no collected data types')
     info = plistlib.loads((ROOT / name / 'Info.plist').read_bytes())
-    require(info.get('ITSAppUsesNonExemptEncryption') is False, name + ' export compliance missing')
+    require(info.get('ITSAppUsesNonExemptEncryption') is False,
+            name + ' export compliance missing — determination: Docs/AppStore/review-answers-derivation.md')
     require(info.get('CFBundleDisplayName') == 'NATURaL', name + ' display name')
 # Hosted tests import the app module and cannot target an older iOS version.
 app_configs = {objects[c]['name']: objects[c]['buildSettings'] for c in objects[targets['Bonhomme']['buildConfigurationList']]['buildConfigurations']}
@@ -221,6 +222,7 @@ if args.include_macos:
         entitlements = plistlib.loads((ROOT / settings['CODE_SIGN_ENTITLEMENTS']).read_bytes())
         require(entitlements.get('com.apple.security.app-sandbox') is True, 'Mac App Store requires App Sandbox')
     info = plistlib.loads((ROOT / 'BonhommeMac/Info.plist').read_bytes())
-    require(info.get('ITSAppUsesNonExemptEncryption') is False, 'Mac export compliance declaration missing')
+    require(info.get('ITSAppUsesNonExemptEncryption') is False,
+            'Mac export compliance declaration missing — determination: Docs/AppStore/review-answers-derivation.md')
 print('PASS: source packaging configuration, icon format, privacy manifests, embedded products, free access, local storage.')
 print('Still required: signed archive validation, device testing, App Store Connect metadata.')
