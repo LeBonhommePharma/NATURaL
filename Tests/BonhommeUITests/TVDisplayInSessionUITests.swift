@@ -72,8 +72,14 @@ final class TVDisplayInSessionUITests: XCTestCase {
         finishWelcome()
         app.buttons["home.start"].tap()
         startSessionFromReady()
-        XCTAssertTrue(app.staticTexts["session.pose.name"].waitForExistence(timeout: 15),
-                      "Session must reach an active pose before the toolbar is exercised")
+        // Wait on session chrome, not on the pose title. session.pose.name is a text
+        // node inside a continuously re-rendering pose view; on the iPad lane it can
+        // lag past the point where the session is genuinely up, which failed this
+        // precondition while every sibling journey on that same lane passed.
+        // session.pauseResume is the running-session HUD control and is the stabler
+        // signal that a session is actually live.
+        XCTAssertTrue(app.buttons["session.pauseResume"].waitForExistence(timeout: 30),
+                      "Session must be running before the toolbar is exercised")
         app.tap() // Dispatch any pending system permission alert to the monitor.
 
         let tvButton = app.buttons["session.tvDisplay"]
