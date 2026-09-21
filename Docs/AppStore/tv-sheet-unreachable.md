@@ -40,9 +40,24 @@ running it. Those are separate claims and only the second is proof.
 
 PR #41 adds absence assertions against this same sheet — that Apple-pairing
 controls are hidden while the AirPlay row and sharing toggle remain. Those
-assertions are only meaningful if the sheet opens. It does not, so they pass by
-asserting the absence of controls in a sheet that never appeared. That is
-vacuous rather than green. **#41 needs re-examining before it merges.**
+assertions are only meaningful if the sheet opens.
+
+> **Corrected 21 September 2026.** The sentence that stood here said those
+> assertions "pass by asserting the absence of controls in a sheet that never
+> appeared … vacuous rather than green." **That was wrong.** They do not pass.
+> #41's author had already guarded against exactly that vacuity with a positive
+> presence assertion, and that guard is what fails:
+>
+> ```
+> AirPlayFallbackUITests testTVSheetHidesApplePairingButKeepsAirPlayAndSharingToggle :
+> XCTAssertTrue failed - the TV sheet must actually open, or the absence checks below prove nothing
+> ```
+>
+> (CI 35542112178, both lanes.) So #41 is red *because of this bug*, not
+> silently green despite it. The practical consequence is the opposite of what
+> was recorded: #41 is blocked by this bug rather than hiding it, and fixing the
+> presentation is what unblocks it. The fix is PR #49, which turns that guard
+> green; #41's absence assertions then become meaningful for the first time.
 
 ## Why this is a document and not a test
 
