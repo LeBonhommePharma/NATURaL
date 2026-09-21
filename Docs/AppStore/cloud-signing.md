@@ -8,6 +8,16 @@ The workflow is implemented and its offline policy tests pass. **It has not crea
 
 Use Apple Developer team **ZJLX84G8QV**, belonging to the confirmed membership. No App Store Connect API key, Apple ID password, or app-specific password is required for this path. Provisioning is manual, and the workflow never enables `-allowProvisioningUpdates`.
 
+> **Standing instruction from LP (20 September 2026), verbatim:** *“aBout the certificate,
+> use the most recent ones always.”* Where this machine offers a choice between valid
+> identities of the same kind, take the newest. It currently holds two
+> `Apple Development` identities — `lmorency@me.com (Q64R7Z4MS5)` and
+> `Louis-Philippe Morency (Q64R7Z4MS5)` — which is exactly the case this rule settles.
+> It does **not** override certificate *kind*: a newer Development or Developer ID
+> certificate never substitutes for an Apple Distribution one. Note the team split —
+> Development identities are on `Q64R7Z4MS5`, distribution identities
+> (`Apple Distribution` and `Developer ID Application`) on `ZJLX84G8QV`.
+
 1. Create or obtain an exportable **Apple Distribution** certificate and its private key for iOS/watchOS/tvOS. For the native Mac app, use an Apple Distribution or Mac App Distribution (`3rd Party Mac Developer Application`) identity accepted by the corresponding Mac App Store profile. A Developer ID certificate is not a Mac App Store distribution identity. Do not revoke an existing certificate just to make room without checking its users.
 2. Xcode is not required on this Mac to create the certificate request: use Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority. Submit the CSR through Apple Developer Certificates, download the issued certificate, and import it into the same keychain. Export the certificate **with its matching private key** as a password-protected `.p12`. An existing cloud-managed signing certificate has no exportable private key; this workflow needs an exportable identity.
 3. Register the explicit App IDs below. Match their capabilities to the checked-in entitlement files: the phone currently requires HealthKit/background delivery/health records, App Groups, Siri and push; Watch requires HealthKit/background delivery and App Groups; Widgets requires App Groups. The group is `group.com.natural.Bonhomme`. Review any entitlement changes before generating new profiles.

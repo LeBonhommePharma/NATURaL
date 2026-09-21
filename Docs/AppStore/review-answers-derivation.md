@@ -74,6 +74,21 @@ stricter than necessary costs nothing, while an understated one is a review
 finding. App Store Connect derives the numeric rating from the answers — none is
 asserted here.
 
-**Needs LP:** whether Prescriptions ships enabled by default in 1.0 at all. If it
-is gated or removed for launch, both "Yes" answers become "None" and the rating
-drops. That is a product decision, not a code fact. —
+**RESOLVED 20 September 2026 — Prescriptions ships enabled.** LP, verbatim:
+*“Questions yes to Prescriptions and age rating to all”*. He has accepted the age
+rating that follows from the feature shipping.
+
+This changes the *standing* of the two “Yes” answers above without changing their
+text, and the distinction matters if a reviewer asks. They were written as the
+stricter of two defensible readings — “we chose the safer answer.” They are now
+simply **the correct answers**: the Prescriptions feature, the medication
+schedules, the clinical-record import and the pharmacology reference text are all
+reachable in the shipped 1.0 build, so Medical/Treatment Information and the
+substance reference are present as a matter of fact, not of caution. The
+paragraph above about being one step stricter than necessary no longer describes
+why these answers are what they are; it is retained only as the record of how they
+were originally derived.
+
+App Store Connect still derives the numeric rating from the answers. No numeric
+rating is asserted here — LP accepted whatever it yields, not a specific number.
+

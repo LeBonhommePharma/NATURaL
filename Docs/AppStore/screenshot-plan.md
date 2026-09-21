@@ -28,7 +28,9 @@ number presented as a measurement. Rationale in
 [scientific-claims-audit.md](scientific-claims-audit.md) — a store screenshot is
 a claim.
 
-## iPad — required if the app is offered on iPad
+## iPad — REQUIRED (critical path)
+
+LP scoped 1.0 to “all possible platforms”, resolved as the four verifiable ones: iPhone, iPad, Apple Watch, Mac. iPad is therefore not conditional, and this set plus native iPad device QA is on the critical path rather than a nice-to-have.
 
 13" (2064×2752 portrait, 2752×2064 landscape).
 
@@ -55,7 +57,9 @@ If heart rate is unavailable the HUD shows an em dash — that is correct behavi
 and is contract-enforced, but it makes a poor screenshot. Capture with a real
 signal.
 
-## Apple TV — required for the tvOS listing
+## Appendix: Apple TV — DEFERRED, not part of 1.0
+
+tvOS is deferred (PR #41 gates the Apple TV pairing UI behind `TVRelayPairing.appleTVAppIsPublished = false`). Capture nothing here for the 1.0 submission. Retained verbatim so the set does not have to be re-derived when tvOS is picked up.
 
 **1920×1080 or 3840×2160, no alpha.**
 
@@ -66,7 +70,9 @@ signal.
 | 3 | Pose transition | Next-pose state |
 | 4 | Pairing | **Never capture a live pairing secret** — use an expired or placeholder code |
 
-## Mac — required if the native Mac app is submitted
+## Mac — REQUIRED (critical path)
+
+Same scope decision as iPad: the native Mac app ships in 1.0, so this set plus Mac device QA is on the critical path.
 
 1280×800 / 1440×900 / 2560×1600 / 2880×1800.
 
@@ -84,8 +90,7 @@ App previews (video). Not required for 1.0 and not planned here.
 
 ## Open — needs LP
 
-1. Is the app offered on iPad as a separate listing, or iPhone-only? Changes
-   whether the iPad set is required. — 
-2. Is the native Mac app submitted for 1.0, or deferred? — 
+1. ~~Is the app offered on iPad?~~ **Answered:** yes — iPad ships in 1.0, iPad set required.
+2. ~~Is the native Mac app submitted for 1.0?~~ **Answered:** yes — submitted, Mac set required.
 3. Localized screenshots — capture in English only, or also French Canadian?
    Localized sets multiply every row above. — 

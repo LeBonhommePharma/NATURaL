@@ -10,14 +10,37 @@ Zero external Swift dependencies. Proprietary codebase.
 
 ## Sibling Repository: FlexAIDdS
 
-> **Known duplicate — do not reconcile.** As of 20 September 2026 a full copy of
-> this app exists at `/Users/lp.more/Projects/FlexAIDdS/NATURaL/`, carrying the
-> **same bundle identifiers** (`com.natural.Bonhomme`, `.Widgets`,
-> `.LiveActivity`, `com.natural.BonhommeTV`) and the same App Group
-> (`group.com.natural.Bonhomme`). A grep for any NATURaL bundle id or that App
-> Group across `~/Projects` therefore returns two hits, and the second one is
-> this copy — not a second product and not a mystery. It is with LP for a
-> decision; **do not edit it, and do not attempt to harmonise the two.**
+>  **Name collision — two distinct things are called NATURaL.** Verified read-only
+> on 20 September 2026. Do not edit anything under `~/Projects/FlexAIDdS`.
+>
+> 1. **`~/Projects/FlexAIDdS/LIB/NATURaL/`** is *science*, and it is the original
+>    use of the name: **N**ative **A**ssembly of **T**ranscriptionally /
+>    **T**ranslationally **U**nified **R**eceptor **a**nd **L**igand. C++ headers
+>    (`NATURaLDualAssembly.h`, `PoseLocalThermoRewrite.h`,
+>    `PoseHelixThermoRewrite.h`), documented in `docs/DUAL_ASSEMBLY_COTRANSLATIONAL.md`,
+>    which itself distinguishes a 2014 `NATURAL` (…RNA And Ligand) from the 2026
+>    `NATURaL`. It declares **no** bundle identifiers and has nothing to do with this app.
+>
+> 2. **`~/Projects/FlexAIDdS/NATURaL/`** is *this app* — a stale working copy of it.
+>    Its own `.git` points at the **same** remote as this repository
+>    (`github.com/LeBonhommePharma/NATURaL.git`), on branch `PokéDrug`, HEAD
+>    `e3bed67` dated 2026-04-25. It contains `NATURaL.xcodeproj`, `Bonhomme/`,
+>    `BonhommeWatch/`, `POKEDRUG_PLAN.md` — the chair-yoga app, not a docking
+>    project. It is excluded from the FlexAIDdS repository through
+>    `.git/info/exclude` (`/NATURaL/`) and is tracked by zero files there, so it is
+>    a nested checkout sitting in that tree, **not** content of that project.
+>
+> **This corrects an earlier note here that called item 2 a "known duplicate" and
+> told readers not to investigate.** It is a months-old checkout of this same
+> repository, which is why a grep for `com.natural.Bonhomme`, `.Widgets`,
+> `.LiveActivity`, `com.natural.BonhommeTV` or the App Group
+> `group.com.natural.Bonhomme` across `~/Projects` returns two hits. The second hit
+> is the April snapshot of *this* app; it is not a second product, not a fork, and
+> not the molecular project. Its disposition is LP's call — still do not edit it.
+>
+> Note also that this file's reference below to the engine at
+> `~/Documents/PhD/Programs/FlexAIDdS` is a **second** checkout of FlexAIDdS;
+> `~/Projects/FlexAIDdS` is the one inspected above.
 
 [FlexAIDdS](https://github.com/LeBonhommePharma/FlexAIDdS) (`/Users/lp.more/Documents/PhD/Programs/FlexAIDdS`) is the companion entropy-driven molecular docking engine. NATURaL has **no runtime dependency** on FlexAIDdS — instead it reimplements the core Shannon entropy mathematics in Swift and accepts docking results as user-provided data. The relationship is:
 

@@ -71,10 +71,15 @@ device. Drafted 20 September 2026:
 | Screenshot plan per platform | [screenshot-plan.md](screenshot-plan.md) | New — screens, states, dimensions, capture path |
 
 What genuinely remains on Apple: creating the record, pasting these in, pricing
-and territory selection, and submission. **Six questions are left unanswered** and listed under "Open — needs LP" — a backend that this repo
-cannot see, App Group scope, the stray `aps-environment` entitlement, clinical
-retention intent, whether Prescriptions ships enabled in 1.0, iPad/Mac listing
-scope, and localized screenshot scope. Each is an em dash, not a guess.
+and territory selection, and submission. **Four questions are left unanswered** (down from six; LP answered two on 20 September 2026 and a third scope question resolved into two answered ones). Closed: the **backend** — LP: *“backend is on device”*, which settles the only half this repo could not see and makes **Data Not Collected** accurate rather than merely defensible; **whether Prescriptions ships enabled in 1.0** — LP: yes, with the resulting age rating accepted; and **iPad/Mac listing scope** — both ship, so both screenshot sets and both device-QA passes are critical path.
+
+Still open, each still an em dash rather than a guess:
+1. App Group scope — whether anything outside this app is ever intended to read it.
+2. The stray `aps-environment = development` entitlement shipping in Release — removal is a one-line change and LP's call.
+3. Clinical-records retention intent — no export path exists today; the question is future intent.
+4. Export-compliance route — `false` on the plain reading, or declare encryption and claim the exemption. Equivalent outcome, his preference.
+
+A fifth, **localized screenshot scope** (English only, or also French Canadian), sits in [screenshot-plan.md](screenshot-plan.md) and multiplies every capture row rather than changing any answer, so it is tracked there rather than counted here.
 
 **Waiting on a final signed build (≈8).**
 Every store screenshot slot. Downstream of signing, so not independently
@@ -145,7 +150,7 @@ where they belong rather than ticked:
   - [ ] Verify actual paired iPhone/iPad → Apple TV sessions, interruptions, screen privacy, Siri Remote focus and VoiceOver on hardware.
   - [ ] Capture actual Apple TV screenshots and complete the tvOS review/TestFlight gates below.
 
-**Current environment:** Xcode is uninstalled (confirmed by LP). Command Line Tools cannot compile asset catalogs or run Apple-platform tests. Keep this Mac lightweight; run builds on the existing GitHub macOS runners. Local source/contract/archive-fixture checks pass, but do not prove a device build. Distribution signing and App Store Connect completion remain open.
+**Current environment:** Xcode 27.2 (`27B5019j`) is installed at `/Applications/Xcode-beta.app`, `xcode-select -p` points to it, and `cd BonhommeCore && swift test` now runs locally (613 tests, 0 failures). This supersedes the earlier “Xcode is uninstalled” note and the workarounds built around it: package tests and simulator `xcodebuild test` runs no longer have to be discovered through CI. Installed simulators do not include `iPhone 17 Pro`; `iPhone Air` (OS 27.2) is a valid destination. A beta Xcode is not automatically accepted for production uploads, so the SDK-acceptance item below stays open.
 
 ## Current review and integration — 19 September 2026
 
@@ -296,7 +301,9 @@ them out of MASTER.md. The approved bloom was not touched.
 - [x] Configure the main app as `com.natural.Bonhomme`.
 - [x] Configure and embed Watch companion `com.natural.Bonhomme.watchkitapp` with the correct companion identifier and Boolean `WKApplication`.
 - [x] Retain extension identifiers `com.natural.Bonhomme.Widgets` and `com.natural.Bonhomme.LiveActivity`.
-- [ ] **Create a Distribution certificate.** Resolved 20 September 2026: `lmorency@me.com` and `lp@thebonhomme.com` are aliases on the **same** Apple ID, with membership under `lp@thebonhomme.com` — there is no second account and no team mismatch to untangle. What remains is unchanged in substance: `security find-identity -v -p codesigning` lists exactly one identity, `Apple Development: lmorency@me.com (Q64R7Z4MS5)`, and a **Development** certificate is not a **Distribution** one. No distribution identity has ever existed on this machine. Confirm the membership is active on team `ZJLX84G8QV`, then create the distribution certificate and profiles.
+- [x] **Distribution certificate exists.** Re-checked 20 September 2026: `security find-identity -v -p codesigning` now lists four valid identities, including `Apple Distribution: Louis-Philippe Morency (ZJLX84G8QV)` and `Developer ID Application: Louis-Philippe Morency (ZJLX84G8QV)`. This supersedes the earlier entry that recorded only a Development certificate. Note the **team split**: both Development certificates are on `Q64R7Z4MS5`, while both distribution identities are on `ZJLX84G8QV`. A build configured against the wrong one of those two teams surfaces as “no profile matches” rather than as a missing certificate, so check the team before chasing a profile. Presence of an identity is not a working signing configuration — profiles and an actual signed archive remain open below.
+- [ ] **Signing-verification coverage caveat.** The repository’s certificate-type verification lives on the hosted path (`scripts/cloud_signing.py:156-157`), not on `scripts/archive-app-store.sh`. Archiving locally therefore gets no automated check that the identity is a distribution one; that assurance has to come from Organizer or from routing the archive through the hosted path.
+
 - [ ] Register/verify every bundle identifier and App Group `group.com.natural.Bonhomme` under that team.
 - [ ] Verify HealthKit, clinical records if retained, background delivery, App Groups, Siri and all other shipped entitlements on the corresponding profiles. CloudKit and iCloud KVS are not shipped.
 - [ ] Provision distribution signing for the app, Watch and extensions; verify the archive uses the intended team.

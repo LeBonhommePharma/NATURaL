@@ -214,11 +214,14 @@ describes the shipped binary, and today that binary has none. —
 
 ## Open — needs LP
 
-1. **Does any backend exist outside this checkout?** The code half is settled:
-   this codebase contains no developer endpoint, no `URLSession`, no upload path
-   — the only internet reference is a `Link` the user taps. What cannot be
-   derived here is whether LP operates a server that a future build would talk
-   to. —
+1. ~~**Does any backend exist outside this checkout?**~~ **CLOSED 20 September 2026.**
+   LP, verbatim: *“backend is on device”*. That was the only half not derivable from
+   the code; the code half was already settled — no developer endpoint, no `URLSession`,
+   no upload path, the only internet reference a `Link` the user taps. With his answer as
+   the source for the half the repository cannot show, **Data Not Collected** is no longer
+   merely defensible: it is an accurate description of the shipped binary. Source of record:
+   LP, relayed 20 September 2026 — not inferred from code, because code cannot prove the
+   absence of a server it was never told about.
 2. **Export compliance route.** `false` is defensible on the plain reading; the
    alternative is declaring encryption and claiming the exemption. Equivalent
    outcome, his preference. —
