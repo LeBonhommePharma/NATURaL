@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -82,7 +82,7 @@ let package = Package(
             dependencies: coreDependencies,
             path: "Sources/BonhommeCore",
             resources: [.process("Resources")],
-            swiftSettings: coreSwiftSettings,
+            swiftSettings: coreSwiftSettings + [.swiftLanguageMode(.v6)],
             linkerSettings: coreLinkerSettings
         ),
         // Path A tests — always depend only on BonhommeCore. When Package.swift is
@@ -90,7 +90,8 @@ let package = Package(
         .testTarget(
             name: "BonhommeCoreTests",
             dependencies: ["BonhommeCore"],
-            path: "Tests/BonhommeCoreTests"
+            path: "Tests/BonhommeCoreTests",
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]
 )

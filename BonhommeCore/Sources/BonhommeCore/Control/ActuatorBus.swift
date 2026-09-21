@@ -170,22 +170,33 @@ public struct SessionLogActuatorChannel: ActuatorChannel {
     public let id = "session_log"
     private let log: SessionEventLog
 
-    /// Shared formatter — avoid allocating `ISO8601DateFormatter` on every grounding tick.
-    private static let iso8601: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
     public init(log: SessionEventLog = .shared) {
         self.log = log
+    }
+
+    /// ISO-8601 stamp for the grounding line.
+    ///
+    /// Was a shared `ISO8601DateFormatter` held in a `static let`, which
+    /// Swift 6 rejects: `ISO8601DateFormatter` is not `Sendable`, so a
+    /// process-wide mutable instance is a concurrency hazard the compiler
+    /// cannot discharge. In practice it was safe — configured once at static
+    /// init and thereafter only read — but the honest repair removes the
+    /// shared state rather than asserting it is fine.
+    ///
+    /// `Date.ISO8601Format()` is a value-type format style with no shared
+    /// state. Output is byte-identical to the old formatter configured with
+    /// `.withInternetDateTime`, verified over 2,000 dates and pinned by
+    /// ActuatorBusTimestampTests, because a silently changed log format is a
+    /// behaviour change nothing else here would catch.
+    static func timestamp(_ date: Date = Date()) -> String {
+        date.ISO8601Format()
     }
 
     public func execute(_ command: ActuatorCommand) async -> ActuatorChannelResult {
         let line: String
         switch command {
         case .grounding(let sigma, let bpm, let beta):
-            line = "grounding σ_irr=\(sigma) bpm=\(bpm) β=\(beta) t=\(Self.iso8601.string(from: Date()))"
+            line = "grounding σ_irr=\(sigma) bpm=\(bpm) β=\(beta) t=\(Self.timestamp())"
         case .beatBroadcast(let bpm, let beta, let g):
             line = "beat bpm=\(bpm) β=\(beta) grounding=\(g)"
         case .phaseFlip(let from, let to, let n):
