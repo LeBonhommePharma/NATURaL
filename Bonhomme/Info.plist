@@ -34,6 +34,14 @@
 	<string>NATURaL reads heart rate, HRV, sleep, and activity data to compute your Shannon Collapse Index and adapt your session in real time. With your explicit consent, NATURaL may also read medication clinical records you connected in the Health app to help you manage user-entered prescriptions — never without your opt-in, and never as medical advice.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>NATURaL saves completed yoga sessions as workouts and mindful sessions so they appear in the Health and Fitness apps.</string>
+	<!-- Deliberately retained for 1.0 although clinical medication records are gated
+	     off (HealthKitManager.clinicalMedicationRecordsEnabled = false) and the
+	     health-records entitlement has been removed. The feature returns in 1.1+ as a
+	     coded-vocabulary source for the medication picker, and this string is the copy
+	     that will be shown then. An unused usage description is never presented to the
+	     user and is not a review problem; the reverse — using a capability without
+	     declaring it — is. Rationale and target state:
+	     Docs/AppStore/clinical-records-cut-from-1-0.md -->
 	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
 	<string>With your explicit opt-in, NATURaL imports medication records from institutions you connected in the Health app so you can manage reminders and CareKit tasks. This is user-managed data, not medical advice. Confirm all prescriptions with your clinician. NATURaL does not log into pharmacies or scrape pharmacy websites.</string>
 	<key>NSBonjourServices</key>

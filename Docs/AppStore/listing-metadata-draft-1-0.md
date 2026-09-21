@@ -31,10 +31,32 @@ Proposed answers: **Data Not Collected**; tracking **No**
 (`NSPrivacyTracking = false`, no ATT, no IDFA, no `AppTrackingTransparency`
 import); no data linked to identity, because nothing is transmitted.
 
-> **Assumption, flagged rather than buried:** this treats LAN transmission to the
-> user's own Apple TV as not-collection. That is the standard reading, and there
-> is no developer access to the data, but it is a judgement and LP should know it
-> was made.
+### Determination: LAN transmission to the user's own Apple TV is not collection
+
+**Decided: LP, 21 September 2026 (Montreal local).** This is settled, not an open
+assumption, and should not be re-derived.
+
+The TV relay carries heart rate, HRV and SCI (`TVDisplayPayload.swift`) over a
+local-network TLS-PSK channel (`TVRelayPairing.swift`). That is **not** collection
+under Apple's definition, for four reasons:
+
+1. **The Apple TV is the user's own device.** The data moves between two pieces of
+   hardware the user owns, on their own network.
+2. **There is no developer-operated endpoint.** Verified from source: no
+   `URLSession`, no `URLRequest`, no server of any kind in shipping code.
+3. **Nothing is retained.** The payload drives a live display; it is not persisted
+   off the originating device.
+4. **It is structurally identical to WatchConnectivity**, which carries the same
+   class of data between the user's iPhone and Apple Watch and is not treated as
+   collection by anyone, including Apple's own guidance.
+
+Neither the developer nor any partner can access the data at any point in that
+path. **Nutrition label answer: Data Not Collected.**
+
+*Provenance, stated to the same standard as the export-compliance determination:
+this is LP's determination of 21 September 2026. It has not been reviewed by
+counsel. It is a documented engineering-and-owner judgement, not a legal
+clearance.*
 
 ## Age rating
 
