@@ -334,23 +334,45 @@ public enum PoseCategory: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Accent color tint for this category.
+    /// Accent hue for this category, constrained to the brand's blue → violet →
+    /// magenta arc.
+    ///
+    /// The previous values came from a free HSB generator and landed off-palette:
+    /// `breathing` at 0.33 was pure green `#58F255`, `back` and `neck` were pure
+    /// cyan `#55F2F2`, and `core`/`chest`/`inversion` were orange-to-red. MASTER.md
+    /// retires `--green`, `--cyan`, `--coral` and any yellow or salmon outright, so
+    /// those hues could not stay regardless of how the ramp was rebuilt.
+    ///
+    /// LP chose constraining the ramp over the two alternatives (a per-category
+    /// sub-palette, or dropping colour and differentiating by form alone). The arc
+    /// runs between three canonical tokens, converted from their hex to HSB hue:
+    /// `BrandColor.aqua` `#00A2FF` = 0.5608, through `BrandColor.violet` `#8B5CF6`
+    /// = 0.7175, to `BrandColor.strawberry` `#FF2F92` = 0.9207.
+    ///
+    /// The 14 categories are ranked by their previous hue and spread evenly across
+    /// that arc, so relative ordering is preserved and the mapping is reversible
+    /// from this comment alone. Spacing is 0.0277 (≈10°) per step, which keeps
+    /// adjacent categories distinguishable inside a 129° arc.
+    ///
+    /// Presentation only. No token is reassigned — MASTER.md binds
+    /// mint/violet/aqua/tangerine by quantity and forbids reassignment — and no
+    /// category semantics, ordering or identity changes.
     public var accentHue: Double {
         switch self {
-        case .spine:       return 0.52   // cyan-blue
-        case .hips:        return 0.75   // purple
-        case .shoulders:   return 0.58   // teal
-        case .neck:        return 0.45   // cyan
-        case .fullBody:    return 0.55   // blue-cyan
-        case .breathing:   return 0.33   // green
-        case .balance:     return 0.65   // indigo
-        case .core:        return 0.08   // orange
-        case .arms:        return 0.60   // blue
-        case .legs:        return 0.70   // violet
-        case .chest:       return 0.10   // red-orange
-        case .back:        return 0.50   // cyan
-        case .relaxation:  return 0.80   // lavender
-        case .inversion:   return 0.15   // red
+        case .core:        return 0.5608  // arc start — aqua #00A2FF
+        case .chest:       return 0.5885
+        case .inversion:   return 0.6162
+        case .breathing:   return 0.6438
+        case .neck:        return 0.6715
+        case .back:        return 0.6992
+        case .spine:       return 0.7269  // ≈ violet #8B5CF6 (0.7175)
+        case .fullBody:    return 0.7546
+        case .shoulders:   return 0.7823
+        case .arms:        return 0.8099
+        case .balance:     return 0.8376
+        case .legs:        return 0.8653
+        case .hips:        return 0.8930
+        case .relaxation:  return 0.9207  // arc end — strawberry #FF2F92
         }
     }
 }
