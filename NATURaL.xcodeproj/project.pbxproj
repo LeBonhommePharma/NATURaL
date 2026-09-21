@@ -59,6 +59,7 @@
 		99BFB4BF56E1EF22A984A770 /* NATURaLWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033531C731694ED3620B940C /* NATURaLWidgetsBundle.swift */; };
 		9AB4E4180C83DA08F3B16FDC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2075AB31C0DF70BDF50F297 /* HomeView.swift */; };
 		9B3B0CE83F8AD03C5D933F74 /* AirPlayFallbackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */; };
+		7A1C4E900000000000000001 /* TVDisplayInSessionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C4E900000000000000002 /* TVDisplayInSessionUITests.swift */; };
 		9D3E5EC185B3349F6332BB6C /* TVDisplayCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 576757E618EA7061972DA59C /* TVDisplayCoordinatorTests.swift */; };
 		9ECCE4C9BF90CD4E29BDD293 /* TVRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7EA9136C4131977C6C8296 /* TVRootView.swift */; };
 		A1550E8D236FC77DA5874888 /* ResearchKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF106DA006A649B22762CE8 /* ResearchKitBridge.swift */; };
@@ -249,6 +250,7 @@
 		B9F474ADF119BE0A9A27DC5B /* YogaTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YogaTaskBuilder.swift; sourceTree = "<group>"; };
 		BA6CDDF58A764BEDF0BF4AB5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlayFallbackUITests.swift; sourceTree = "<group>"; };
+		7A1C4E900000000000000002 /* TVDisplayInSessionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayInSessionUITests.swift; sourceTree = "<group>"; };
 		C2075AB31C0DF70BDF50F297 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		C2AD88A7A8CA619E175EFD11 /* WatchWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutManager.swift; sourceTree = "<group>"; };
 		C77F1417FDEA535CCFB59899 /* PersistentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistentModels.swift; sourceTree = "<group>"; };
@@ -634,6 +636,7 @@
 			isa = PBXGroup;
 			children = (
 				C0D9C2DCD9B00FA7ACB0AF84 /* AirPlayFallbackUITests.swift */,
+				7A1C4E900000000000000002 /* TVDisplayInSessionUITests.swift */,
 				243A016A66558286AE3E69C4 /* WorkoutFlowUITests.swift */,
 			);
 			path = BonhommeUITests;
@@ -1132,6 +1135,7 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				9B3B0CE83F8AD03C5D933F74 /* AirPlayFallbackUITests.swift in Sources */,
+				7A1C4E900000000000000001 /* TVDisplayInSessionUITests.swift in Sources */,
 				3E20844C3B7C73D4A4684AD0 /* WorkoutFlowUITests.swift in Sources */,
 			);
 		};
