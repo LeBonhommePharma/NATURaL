@@ -92,5 +92,12 @@ App previews (video). Not required for 1.0 and not planned here.
 
 1. ~~Is the app offered on iPad?~~ **Answered:** yes — iPad ships in 1.0, iPad set required.
 2. ~~Is the native Mac app submitted for 1.0?~~ **Answered:** yes — submitted, Mac set required.
-3. Localized screenshots — capture in English only, or also French Canadian?
-   Localized sets multiply every row above. — 
+3. ~~Localized screenshots — English only, or also French Canadian?~~ **Answered
+   20 September 2026: English and French Canadian, both.** This follows from the
+   1.0 locale scope rather than being a separate preference — the build ships `en`
+   and `fr` only (`LocalizedString.supportedLanguages`), so those are exactly the
+   two sets that can be captured honestly. Every table above is therefore captured
+   **twice**: once per locale, per platform. Budget accordingly — this doubles the
+   capture count for iPhone, iPad, Apple Watch and Mac.
+
+No open questions remain in this document.

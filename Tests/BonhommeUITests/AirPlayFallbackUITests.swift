@@ -65,4 +65,82 @@ final class AirPlayFallbackUITests: XCTestCase {
         // Verify the app doesn't crash on launch (baseline stability test)
         XCTAssertTrue(app.staticTexts["NATURaL"].waitForExistence(timeout: 5))
     }
+
+
+    // MARK: - Diagnostic — records an answer, is not a gate
+
+    /// DIAGNOSTIC. Answers one question by demonstration rather than by reading
+    /// the view hierarchy: during an ACTIVE session, does tapping the toolbar TV
+    /// button actually surface the TV sheet?
+    ///
+    /// Why it is in doubt. The sheet is declared as `.sheet` on the root `Group`
+    /// in `BonhommeApp.swift:45`, bound to `appState.showsTVDisplay`. The session
+    /// is presented as `.fullScreenCover` from `HomeView.swift:23` and
+    /// `StyleDetailView.swift:38`. The button at `WorkoutFlowView.swift:115` sets
+    /// that flag from *inside* the cover. If SwiftUI will not present the root's
+    /// sheet while a descendant's full-screen cover is up, the share-to-TV flow is
+    /// unreachable exactly when a user would want it.
+    ///
+    /// The stake beyond this branch: the tvOS gating work adds absence assertions
+    /// against this same sheet. Those assertions are only meaningful if the sheet
+    /// opens. If it does not, they pass by asserting the absence of controls in a
+    /// sheet that never appeared — which is vacuous, not green.
+    ///
+    /// This records the current behaviour either way. It is not an endorsement of
+    /// what it finds and must be rewritten into a real gate once the disposition
+    /// is decided.
+    func testDiagnosticDoesTheTVSheetOpenDuringAnActiveSession() throws {
+        // setUpWithError already launches past onboarding.
+        let start = app.buttons["home.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 20), "home must be reachable")
+        for _ in 0..<8 where !start.isHittable { app.swipeUp() }
+        start.tap()
+
+        let begin = app.buttons["Begin Session"]
+        XCTAssertTrue(begin.waitForExistence(timeout: 10), "ready screen must offer Begin Session")
+        for _ in 0..<8 where !begin.isHittable { app.swipeUp() }
+        begin.tap()
+        if !begin.waitForNonExistence(timeout: 6) { begin.tap() }
+        XCTAssertTrue(begin.waitForNonExistence(timeout: 10),
+                      "Begin Session must start the session and leave the ready screen")
+
+        // Anchor on the session actually being up. Without this, a failure below
+        // could not distinguish "the sheet will not open" from "we never got into
+        // a session at all" — the same conflation that made the old pose-name wait
+        // untrustworthy.
+        let pause = app.buttons["session.pauseResume"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 20),
+                      "the session must be active before the TV button means anything")
+
+        let tvButton = app.buttons["session.tvDisplay"]
+        XCTAssertTrue(tvButton.waitForExistence(timeout: 10),
+                      "the toolbar TV button must exist inside the session")
+        tvButton.tap()
+
+        let opened = app.navigationBars["TV display"].waitForExistence(timeout: 10)
+        let toggleVisible = app.switches["tv.shareSession"].exists
+        let report = """
+        TV sheet reachability from an ACTIVE session
+        navigationBar "TV display" appeared:  \(opened)
+        switch tv.shareSession visible:       \(toggleVisible)
+        session still present (pauseResume):  \(pause.exists)
+        """
+        let text = XCTAttachment(string: report)
+        text.name = "TV sheet reachability"
+        text.lifetime = .keepAlways
+        add(text)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "After tapping session.tvDisplay"
+        shot.lifetime = .keepAlways
+        add(shot)
+        print("DIAGNOSTIC\n\(report)")
+
+        XCTAssertTrue(opened, """
+        PRODUCT BUG, not a test failure: tapping session.tvDisplay during an active \
+        session did not surface the TV sheet within 10s. The sheet is attached to the \
+        root Group (BonhommeApp.swift:45) while the session is a fullScreenCover \
+        (HomeView.swift:23), so the share-to-TV flow would be unreachable from inside \
+        a session — which is the only place it is offered.
+        """)
+    }
 }
