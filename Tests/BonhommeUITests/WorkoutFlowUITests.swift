@@ -34,8 +34,21 @@ final class WorkoutFlowUITests: XCTestCase {
 
     private func finishWelcome() {
         let continueButton = app.descendants(matching: .any)["welcome.continue"]
-        let timeout: TimeInterval = name.contains("LargestText") ? 20 : 12
-        XCTAssertTrue(continueButton.waitForExistence(timeout: timeout), "Welcome must launch without a crash or permissions gate")
+        // Cold launch on the CI runners is app start + SwiftData ModelContainer
+        // bootstrap + first render, and 12s has proven too tight on the iPad lane.
+        // The same assertion has failed five times on commits that do not touch
+        // onboarding — including main itself at 9f0c2ba, a CI-only change:
+        //   35484287585, 35548371584, 35550522865 (main), 35563283752, 35629979796
+        //
+        // This widens the wait; it does not weaken the check. What the assertion
+        // exists to catch — a crash, or a permissions gate swallowing first launch —
+        // is binary: an app in either state never shows welcome.continue at any
+        // timeout. Waiting longer removes a false failure mode without removing any
+        // true one. The old message named causes it could not actually distinguish
+        // from a slow launch, so it is corrected too.
+        let timeout: TimeInterval = name.contains("LargestText") ? 40 : 30
+        XCTAssertTrue(continueButton.waitForExistence(timeout: timeout),
+                      "Welcome must appear: the app must launch without crashing and without stalling at a permissions gate")
         capture("Welcome overview")
         for _ in 0..<8 where !continueButton.isHittable { app.swipeUp() }
         XCTAssertTrue(continueButton.isHittable)
