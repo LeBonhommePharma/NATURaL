@@ -10,8 +10,28 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Keyed on the BRANCH, not github.ref. github.ref differs by event for the same
+  # branch - refs/heads/<branch> on push, refs/pull/<n>/merge on pull_request - so
+  # the two events never shared a group and neither superseded the other. Every
+  # push to a branch with an open PR queued two identical runs against the same
+  # macOS pool. Observed on swift6/bonhommecore-iso8601: runs 35548371584 (push)
+  # and 35548374143 (pull_request), same SHA 5a4b0570, created 3 seconds apart.
+  #
+  # github.head_ref is set only for pull_request and is the SOURCE branch;
+  # github.ref_name is the branch (or tag) otherwise. Together they resolve to the
+  # same value for both events on a given branch, so the two now share a group.
+  #
+  # A concurrency block with the wrong key is worse than no block: it presents as
+  # handled while providing nothing.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
+  #
+  # EXPECTED, NOT A FAILURE: because the two events now share a group, a routine
+  # push to a branch with an open PR will leave one run concluded as `cancelled`.
+  # GitHub notifies on cancelled runs, so this looks like a failing build in email
+  # and in the app. It is not. `cancelled` and `failure` are different conclusions
+  # and only `failure` means something is wrong - check the conclusion field rather
+  # than the notification. A superseded run being cancelled is this block working.
 
 jobs:
   contracts:

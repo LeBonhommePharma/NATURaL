@@ -5,40 +5,123 @@ Where code does not settle a question it is left unanswered with an em dash.
 
 ## Export compliance
 
-### What the app actually encrypts
+### Determination
 
-One encryption path ships. `BonhommeCore/.../TVDisplay/TVRelayPairing.swift`:
+**Decided 20 September 2026. `ITSAppUsesNonExemptEncryption = false`; the
+exemption is claimed.** This is no longer an open question and should not be
+re-derived from scratch.
+
+The reasoning, stated plainly: Apple's TLS stack performs all of the
+cryptography. The app supplies key material to that stack but implements no
+cipher and bundles no cryptographic library.
+`TLS_PSK_WITH_AES_128_GCM_SHA256` is an OS-provided ciphersuite reached through
+Network.framework. Supplying a pre-shared key is *using* Apple's implementation,
+not adding to it, and the exemption does not turn on whether the key material
+arrived from a certificate chain or from a QR code.
+
+**Provenance — read this before relying on the determination.** It is LP's own
+determination, made on 20 September 2026 (Montreal local time). It has **not**
+been reviewed by counsel and has **not** been submitted to BIS. No outside
+opinion was obtained. Treat it as a documented engineering-and-owner judgement,
+which is what it is, and not as a legal clearance.
+
+### The artefact this determination covers
+
+The scope is one code path, and the determination extends no further than it.
+`BonhommeCore/Sources/BonhommeCore/TVDisplay/TVRelayPairing.swift`:
 
 | Line | Fact |
 |---|---|
-| `:17` | `SecRandomCopyBytes(kSecRandomDefault, …)` generates the ephemeral pairing key |
+| `:17` | `SecRandomCopyBytes(kSecRandomDefault, …)` generates the ephemeral pairing key — a random number generator, not encryption |
+| `:70` | `sec_protocol_options_add_pre_shared_key(…)` — the call site the determination is about |
 | `:71-72` | `sec_protocol_options_append_tls_ciphersuite(…, TLS_PSK_WITH_AES_128_GCM_SHA256)` |
 | `:73-74` | min **and** max TLS version both pinned to `.TLSv12` |
 
-So: AES-128-GCM under TLS 1.2 with a pre-shared key, entirely through Apple's
-Network/Security frameworks. There is no custom cipher, no bundled crypto
-library, and no proprietary protocol. The key is random per pairing and never
-persisted off device.
+The secret is 32 bytes, generated per pairing, distributed **out of band** by
+on-screen QR or manual code, and never advertised over Bonjour or persisted.
+The channel carries session telemetry — heart rate, SCI and pose state — to the
+TV display over local-network peer-to-peer.
 
-### Current declaration
+**This code is present in the shipped binary.** `nm -u` against the 1.0 (1)
+archive resolves `_sec_protocol_options_add_pre_shared_key` and
+`_sec_protocol_options_append_tls_ciphersuite` in `Bonhomme.app/Bonhomme`.
+PR #41 hides the TV pairing *user interface* while the tvOS app is unpublished;
+that is a UI change and does not remove the code. A future reader must not
+conclude from the hidden UI that the encryption path is absent from the build.
 
-`ITSAppUsesNonExemptEncryption = false` in all five Info.plists (`Bonhomme`,
-`BonhommeWatch`, `BonhommeMac`, `BonhommeTV`, `BonhommeVision`).
+### Audit evidence — what was searched for and not found
 
-### Assessment
+The negative results are the substance of the determination. If a reviewer asks
+what was checked, this is the list. Searched across the app target, both
+appexes (`NATURaLLiveActivity`, `NATURaLWidgets`) and the watch app:
 
-**`false` is defensible and is what I would keep.** The app uses encryption, but
-only encryption provided by the operating system, which is the standard
-exemption. Nothing here implements or bundles cryptography.
+| Searched for | Result |
+|---|---|
+| `import CryptoKit`, `import CommonCrypto`, `CommonCrypto.h` | none |
+| `CC_SHA*`, `CCCrypt`, `CCHmac`, `CCKeyDerivationPBKDF`, `CCCryptorCreate` | none |
+| `SecKeyCreateEncryptedData`, `SecKeyCreateDecryptedData`, `SecEncryptTransform`, `SecDecryptTransform` | none |
+| Third-party crypto: OpenSSL, BoringSSL, libsodium, CryptoSwift, RNCryptor, Themis, sqlcipher, swift-crypto | none |
+| Hand-rolled cipher, KDF, or "encrypt before writing" path | none |
+| CocoaPods / Carthage manifests | none present; SPM only |
 
-**Where I am being conservative, and where LP should confirm:** the app supplies
-its *own* key material to Apple's TLS rather than relying on certificate-based
-HTTPS. That is still Apple's implementation doing the cryptography, so the
-exemption holds on the plain reading — but it is the one detail a reviewer could
-ask about, and it is worth a deliberate confirmation rather than inheriting the
-`false` by default. If LP prefers the cautious route, the alternative is to
-declare encryption and claim the "only exempt encryption" exemption, which
-reaches the same outcome with a questionnaire step. —
+Resolved SPM dependencies are CareKit, FHIRModels, swift-async-algorithms and
+swift-collections. None is a cryptographic library.
+
+Two findings are encryption-adjacent and are **exempt** on their own terms:
+Keychain is not used at all, and data at rest relies on iOS Data Protection
+(`FileProtectionType.completeUntilFirstUserAuthentication`,
+`Bonhomme/Services/Persistence/PersistentModels.swift`), which is OS-provided.
+
+### What would re-open this determination
+
+The determination is inherited by future builds only while the facts above hold.
+Any of the following invalidates it, and the audit must be re-run rather than the
+`false` inherited:
+
+- Adding any cryptographic dependency to `Package.swift` or the Xcode project.
+- Introducing `CryptoKit`, `CommonCrypto`, or Security-framework encryption APIs
+  beyond Keychain storage and random-number generation.
+- Any hand-rolled cipher, key-derivation function, or proprietary protocol.
+- Changing what `TVRelayPairing` carries, or how its key is derived or exchanged.
+- Widening the relay beyond local-network pairing — for example relaying through
+  a server, or making the channel reachable off the local network.
+
+### What the enforcement scripts do and do not cover
+
+`scripts/test_contracts.py` and `scripts/validate-submission.py` both assert that
+`ITSAppUsesNonExemptEncryption` is `false` in the shipped plists. That is all
+they do. **Neither script audits source for cryptography.** A green contract run
+proves the declaration is still present and still `false`; it proves nothing
+about whether the code behind it still qualifies. Do not read a passing test as
+a fresh audit.
+
+### Reporting obligation
+
+Under a `false` declaration the exemption is claimed and no annual
+self-classification report to BIS is owed. A future reader should not go looking
+for a filing that was never required. This follows from the determination above
+and carries the same caveat: it is LP's judgement, not counsel's.
+
+### Original derivation, retained as record
+
+The paragraph below is how the question was first worked through, when it was
+still open. It is kept because it shows the reasoning, not because it is still
+the operative statement — the determination above is. It ended by asking LP to
+confirm the one detail it was uneasy about; that confirmation is what the
+determination records.
+
+> **`false` is defensible and is what I would keep.** The app uses encryption, but
+> only encryption provided by the operating system, which is the standard
+> exemption. Nothing here implements or bundles cryptography.
+>
+> **Where I am being conservative, and where LP should confirm:** the app supplies
+> its *own* key material to Apple's TLS rather than relying on certificate-based
+> HTTPS. That is still Apple's implementation doing the cryptography, so the
+> exemption holds on the plain reading — but it is the one detail a reviewer could
+> ask about, and it is worth a deliberate confirmation rather than inheriting the
+> `false` by default. If LP prefers the cautious route, the alternative is to
+> declare encryption and claim the "only exempt encryption" exemption, which
+> reaches the same outcome with a questionnaire step.
 
 ## Age rating
 
