@@ -121,6 +121,10 @@ private struct WorkoutSessionView: View {
         .onDisappear {
             tvDisplay.stopTVDiscovery()
             if viewModel.phase != .ready && viewModel.phase != .complete { viewModel.stop() }
+            // Clear before noteWorkoutDismissed(): that call re-enables the root
+            // presenter, and a flag left set would surface the sheet over Home
+            // immediately after the session closes.
+            appState.showsTVDisplay = false
             appState.noteWorkoutDismissed()
         }
     }
@@ -130,6 +134,22 @@ private struct WorkoutSessionView: View {
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden()
         .statusBarHidden()
+        // Share-to-TV is offered only from the session toolbar, but the sheet that
+        // serves it was anchored on the app root (BonhommeApp.swift), above the
+        // .fullScreenCover this session runs in. A sheet anchored above an active
+        // cover never presents, so the feature was unreachable from the one place
+        // that offers it. Present it from inside the cover instead.
+        //
+        // The root presenter stands down while a workout is on screen, so exactly
+        // one presenter is bound to appState.showsTVDisplay at any time.
+        .sheet(isPresented: Binding(
+            get: { appState.showsTVDisplay },
+            set: { appState.showsTVDisplay = $0 }
+        ), onDismiss: {
+            appState.pendingTVInvitation = nil
+        }) {
+            TVConnectionSheet(invitationURL: appState.pendingTVInvitation)
+        }
         .onAppear {
             // All entry paths (catalog start, banner, auto-restore navigation) mark active
             // so BonhommeApp scenePhase.active does not re-run detect→auto-load mid-session.
