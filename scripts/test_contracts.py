@@ -23,6 +23,24 @@ def fail(msg: str) -> None:
     FAILS.append(msg)
 
 
+def load_plist(rel: str) -> dict:
+    """Parse a plist for a gate, turning breakage into a named failure.
+
+    plistlib is stdlib, so this adds no dependency. What it adds is coverage of
+    the parse itself: a file this cannot read is a failure, never a skip, because
+    a gate that silently passes what it could not read is the same bug it is
+    replacing. On breakage this records why and returns {} — and {} then fails
+    every value assertion below it, so an unreadable manifest cannot reach green.
+    """
+    try:
+        return plistlib.loads((ROOT / rel).read_bytes())
+    except FileNotFoundError:
+        fail(f"{rel} is missing")
+    except Exception as error:  # malformed XML, truncated file, wrong format
+        fail(f"{rel} is not a parseable plist: {type(error).__name__}: {error}")
+    return {}
+
+
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
@@ -511,14 +529,27 @@ def test_privacy_and_no_cloud() -> None:
         "NATURaLWidgets/PrivacyInfo.xcprivacy",
         "NATURaLLiveActivity/PrivacyInfo.xcprivacy",
         "BonhommeCore/Sources/BonhommeCore/Resources/PrivacyInfo.xcprivacy",
+        # Eighth manifest. It was in neither this loop nor validate-submission's
+        # per-target loop; only a single combined Mac assertion covered it, and
+        # that one does not check tracking domains. A guard cannot fail for what
+        # it does not look at.
+        "BonhommeMac/PrivacyInfo.xcprivacy",
     ):
-        text = read(rel)
-        if "<key>NSPrivacyTracking</key>" not in text or "<false/>" not in text:
-            fail(f"{rel} must set NSPrivacyTracking false")
-        tree = ET.parse(ROOT / rel)
-        keys = [el.text for el in tree.getroot().iter("key")]
-        if "NSPrivacyCollectedDataTypes" not in keys:
+        # Parsed, not substring-matched. The previous check asked whether the
+        # file contained "<key>NSPrivacyTracking</key>" and, separately,
+        # "<false/>" — two independent substrings that a manifest declaring
+        # NSPrivacyTracking=true still satisfies, as long as any other key
+        # anywhere in the file is false. It reported green while measuring
+        # nothing about the key/value relationship it named.
+        manifest = load_plist(rel)
+        if manifest.get("NSPrivacyTracking") is not False:
+            fail(f"{rel} must declare NSPrivacyTracking false, got {manifest.get('NSPrivacyTracking')!r}")
+        if manifest.get("NSPrivacyTrackingDomains") != []:
+            fail(f"{rel} must declare no tracking domains, got {manifest.get('NSPrivacyTrackingDomains')!r}")
+        if "NSPrivacyCollectedDataTypes" not in manifest:
             fail(f"{rel} missing collected data types key")
+        if manifest.get("NSPrivacyCollectedDataTypes") != []:
+            fail(f"{rel} declares collected data types; the App Privacy answers say none are collected")
     persistence = read("Bonhomme/Services/Persistence/PersistentModels.swift")
     if "cloudKitDatabase: .none" not in persistence:
         fail("health store must disable CloudKit")
