@@ -5,6 +5,26 @@ import Security
 /// Ephemeral, high-entropy credential carried only by the on-screen QR/manual code.
 /// Never advertise the key through Bonjour or persist it in preferences/logs.
 public struct TVRelayPairing: Sendable {
+    /// Whether the dedicated Apple TV app is published on the App Store.
+    ///
+    /// **False for 1.0.** `BonhommeTV` is deferred because it has only ever run in a
+    /// simulator — its focus behaviour, Siri Remote handling, parallax and this
+    /// TLS-PSK pairing transport have never been exercised on real hardware.
+    ///
+    /// **To restore it in 1.1, set this to `true`.** That is the whole switch; it
+    /// re-shows the "NATURaL on Apple TV" pairing section in the phone's TV sheet.
+    /// Deferring the app is otherwise a submission decision, not a code change — the
+    /// target, scheme, icons and CI job all stay live so it cannot rot.
+    ///
+    /// This is deliberately **not** `#if os(tvOS)` or a compile flag. The section is
+    /// not unavailable on iOS; it is unavailable because a product is not on the
+    /// store. Encoding a store decision as a platform capability would be false.
+    ///
+    /// AirPlay and HDMI are unaffected and must keep working: they render
+    /// `TVDisplayView` from the phone via `ExternalDisplaySceneDelegate` and need no
+    /// tvOS app at all.
+    public static let appleTVAppIsPublished = false
+
     public static let serviceType = "_bonhomme._tcp"
     public static let lifetime: TimeInterval = 300
     public let id: UUID

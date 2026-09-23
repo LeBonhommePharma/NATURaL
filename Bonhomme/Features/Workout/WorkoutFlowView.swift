@@ -622,57 +622,63 @@ struct TVConnectionSheet: View {
                               "L’affichage s’efface à la fin de la séance, lorsque l’app quitte le premier plan ou si la connexion n’est plus à jour. Gardez l’app ouverte pendant la séance."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Section(copy("NATURaL on Apple TV", "NATURaL sur Apple TV")) {
-                    if coordinator.nativeConnected {
-                        Label(copy("Connected securely", "Connexion sécurisée"), systemImage: "checkmark.shield")
-                        Button(TVRelayCopy.disconnect.localized) { coordinator.disconnectNativeTV() }
-                    } else {
-                        Text(copy("Open NATURaL on Apple TV and choose Pair iPhone or iPad. Scan its QR code using Camera, or choose the TV here and enter its key.",
-                                  "Ouvrez NATURaL sur Apple TV et choisissez Jumeler un iPhone ou iPad. Scannez le code QR avec Appareil photo ou choisissez le téléviseur ici et saisissez sa clé."))
-                        if coordinator.discoveryUnavailable {
-                            Text(TVRelayCopy.unavailable.localized).foregroundStyle(.secondary)
-                            Text(copy("Allow Local Network in Settings → Apps → NATURaL. Both devices must use the same local network.",
-                                      "Autorisez Réseau local dans Réglages → Apps → NATURaL. Les appareils doivent utiliser le même réseau local."))
-                                .font(.footnote)
-                        }
-                        Picker(copy("Television", "Téléviseur"), selection: $selectedTV) {
-                            Text(copy("Choose a TV", "Choisir un téléviseur")).tag(nil as UUID?)
-                            ForEach(coordinator.discoveredTVs) { tv in
-                                Text(tv.name).tag(Optional(tv.id))
+                // Hidden while the Apple TV app is unpublished: this section tells the
+                // user to "Open NATURaL on Apple TV", which they cannot install. AirPlay
+                // and HDMI below are unaffected and must keep working.
+                if TVRelayPairing.appleTVAppIsPublished {
+                    Section(copy("NATURaL on Apple TV", "NATURaL sur Apple TV")) {
+                        if coordinator.nativeConnected {
+                            Label(copy("Connected securely", "Connexion sécurisée"), systemImage: "checkmark.shield")
+                            Button(TVRelayCopy.disconnect.localized) { coordinator.disconnectNativeTV() }
+                        } else {
+                            Text(copy("Open NATURaL on Apple TV and choose Pair iPhone or iPad. Scan its QR code using Camera, or choose the TV here and enter its key.",
+                                      "Ouvrez NATURaL sur Apple TV et choisissez Jumeler un iPhone ou iPad. Scannez le code QR avec Appareil photo ou choisissez le téléviseur ici et saisissez sa clé."))
+                            if coordinator.discoveryUnavailable {
+                                Text(TVRelayCopy.unavailable.localized).foregroundStyle(.secondary)
+                                Text(copy("Allow Local Network in Settings → Apps → NATURaL. Both devices must use the same local network.",
+                                          "Autorisez Réseau local dans Réglages → Apps → NATURaL. Les appareils doivent utiliser le même réseau local."))
+                                    .font(.footnote)
                             }
-                        }
-                        SecureField(copy("Pairing key", "Clé de jumelage"), text: $pairingKey)
-                            .textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .accessibilityIdentifier("tv.pairingKey")
-                        if coordinator.discoveredTVs.isEmpty {
-                            Label(copy("Looking for a pairing invitation…", "Recherche d’une invitation de jumelage…"), systemImage: "antenna.radiowaves.left.and.right")
-                                .foregroundStyle(.secondary)
-                        }
-                        Button {
-                            guard let selectedTV else { return }
-                            do {
-                                try coordinator.pair(with: selectedTV, key: pairingKey)
-                                attemptedPairing = true
-                                errorMessage = nil
-                            } catch {
-                                errorMessage = copy("Could not pair. Check the selected TV and its current key, then try again.",
-                                                    "Jumelage impossible. Vérifiez le téléviseur et sa clé actuelle, puis réessayez.")
+                            Picker(copy("Television", "Téléviseur"), selection: $selectedTV) {
+                                Text(copy("Choose a TV", "Choisir un téléviseur")).tag(nil as UUID?)
+                                ForEach(coordinator.discoveredTVs) { tv in
+                                    Text(tv.name).tag(Optional(tv.id))
+                                }
                             }
-                        } label: {
-                            HStack {
-                                Text(copy("Confirm and connect", "Confirmer et connecter"))
-                                if coordinator.nativeConnecting { ProgressView() }
+                            SecureField(copy("Pairing key", "Clé de jumelage"), text: $pairingKey)
+                                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                .accessibilityIdentifier("tv.pairingKey")
+                            if coordinator.discoveredTVs.isEmpty {
+                                Label(copy("Looking for a pairing invitation…", "Recherche d’une invitation de jumelage…"), systemImage: "antenna.radiowaves.left.and.right")
+                                    .foregroundStyle(.secondary)
                             }
+                            Button {
+                                guard let selectedTV else { return }
+                                do {
+                                    try coordinator.pair(with: selectedTV, key: pairingKey)
+                                    attemptedPairing = true
+                                    errorMessage = nil
+                                } catch {
+                                    errorMessage = copy("Could not pair. Check the selected TV and its current key, then try again.",
+                                                        "Jumelage impossible. Vérifiez le téléviseur et sa clé actuelle, puis réessayez.")
+                                }
+                            } label: {
+                                HStack {
+                                    Text(copy("Confirm and connect", "Confirmer et connecter"))
+                                    if coordinator.nativeConnecting { ProgressView() }
+                                }
+                            }
+                            .disabled(!coordinator.displayEnabled || selectedTV == nil || pairingKey.count != 43 || coordinator.nativeConnecting)
+                            .accessibilityIdentifier("tv.confirmPairing")
+                            if let errorMessage { Text(errorMessage).foregroundStyle(.secondary) }
                         }
-                        .disabled(!coordinator.displayEnabled || selectedTV == nil || pairingKey.count != 43 || coordinator.nativeConnecting)
-                        .accessibilityIdentifier("tv.confirmPairing")
-                        if let errorMessage { Text(errorMessage).foregroundStyle(.secondary) }
                     }
                 }
                 Section(copy("AirPlay or a cable", "AirPlay ou un câble")) {
                     Label(coordinator.externalDisplayConnected
                           ? copy("External display connected", "Écran externe connecté")
                           : copy("No external display connected", "Aucun écran externe connecté"), systemImage: "tv")
+                        .accessibilityIdentifier("tv.externalDisplay")
                     Text(copy("For AirPlay, open Control Center → Screen Mirroring and choose your television. For a wired display, connect a compatible HDMI adapter. Enable sharing above to show the dedicated guide when iOS provides a second screen.",
                               "Pour AirPlay, ouvrez Centre de contrôle → Recopie de l’écran et choisissez votre téléviseur. Pour un écran filaire, utilisez un adaptateur HDMI compatible. Activez le partage ci-dessus pour afficher le guide lorsque iOS fournit un second écran."))
                     Text(copy("Some receivers mirror the whole phone screen instead. Silence notifications and keep the workout open. The phone remains your controller if a TV connection fails.",
@@ -693,7 +699,10 @@ struct TVConnectionSheet: View {
             }
         }
         .onChange(of: coordinator.nativeConnecting) { old, connecting in
-            if old && !connecting && attemptedPairing && !coordinator.nativeConnected {
+            // Also gated: this names the Apple TV app, and sits outside both sections,
+            // so a section-level edit alone would leave it behind as an orphan.
+            if TVRelayPairing.appleTVAppIsPublished,
+               old && !connecting && attemptedPairing && !coordinator.nativeConnected {
                 errorMessage = copy("The connection did not complete. Keep NATURaL open on the TV and try a new invitation.",
                                     "La connexion n’a pas abouti. Gardez NATURaL ouvert sur le téléviseur et essayez une nouvelle invitation.")
             }

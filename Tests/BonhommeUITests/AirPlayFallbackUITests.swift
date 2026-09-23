@@ -65,4 +65,46 @@ final class AirPlayFallbackUITests: XCTestCase {
         // Verify the app doesn't crash on launch (baseline stability test)
         XCTAssertTrue(app.staticTexts["NATURaL"].waitForExistence(timeout: 5))
     }
+
+    // MARK: - Apple TV app deferred from 1.0 (20 September 2026)
+
+    /// The pairing section must be gone, and — the assertion that actually protects
+    /// something — the sharing toggle and the AirPlay row must survive. The toggle
+    /// governs `coordinator.displayEnabled`, which the AirPlay path also reads, so
+    /// hiding it along with the section would break AirPlay while an absence-only
+    /// test still passed.
+    func testTVSheetHidesApplePairingButKeepsAirPlayAndSharingToggle() throws {
+        for _ in 0..<8 where !app.staticTexts["TV Display"].isHittable {
+            app.scrollViews["home.content"].swipeUp()
+        }
+        app.buttons["home.start"].tap()
+        let tvButton = app.buttons["session.tvDisplay"]
+        XCTAssertTrue(tvButton.waitForExistence(timeout: 15), "session must offer the TV sheet")
+        tvButton.tap()
+
+        // Anchor first: every assertion below about something being ABSENT passes
+        // vacuously if the sheet never opened, so prove it did before trusting them.
+        XCTAssertTrue(app.navigationBars["TV display"].waitForExistence(timeout: 10),
+                      "the TV sheet must actually open, or the absence checks below prove nothing")
+        // Survives: sharing toggle, which AirPlay depends on. Queried type-agnostically
+        // — what matters is that the control is present, not which element type SwiftUI
+        // chose to render a Form Toggle as. Querying app.switches assumed that and failed.
+        XCTAssertTrue(app.descendants(matching: .any)["tv.shareSession"].exists,
+                      "the sharing toggle must survive; AirPlay reads the same displayEnabled flag")
+        // Survives: the AirPlay/HDMI row. Deferring the tvOS app must not touch it.
+        XCTAssertTrue(app.descendants(matching: .any)["tv.externalDisplay"].exists,
+                      "the AirPlay/HDMI row must survive the tvOS deferral")
+        // Gone: everything that tells the user to open an app they cannot install.
+        XCTAssertFalse(app.secureTextFields["tv.pairingKey"].exists,
+                       "pairing key field must be hidden while the Apple TV app is unpublished")
+        XCTAssertFalse(app.buttons["tv.confirmPairing"].exists,
+                       "pairing confirmation must be hidden while the Apple TV app is unpublished")
+        XCTAssertFalse(app.staticTexts["NATURaL on Apple TV"].exists,
+                       "the pairing section header must be hidden")
+
+        let sheet = XCTAttachment(screenshot: app.screenshot())
+        sheet.name = "TV sheet with Apple TV app deferred"
+        sheet.lifetime = .keepAlways
+        add(sheet)
+    }
 }
