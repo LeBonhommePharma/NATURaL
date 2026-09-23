@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import pathlib
 import plistlib
 import struct
@@ -19,12 +20,78 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 FAILS: list[str] = []
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# READ THIS BEFORE WRITING A CHECK AGAINST A PLIST, ENTITLEMENT OR MANIFEST
+#
+#   A check that names a key and verifies something adjacent to it has
+#   verified nothing. Presence of a name is not a value.
+#
+# On 20 September 2026 this exact failure was found three times in one day, in
+# three repos, by three different authors, all passing for years:
+#
+#   NATURaL   `"<key>NSPrivacyTracking</key>" in text and "<false/>" in text`
+#             Two independent substrings. A manifest declaring tracking TRUE
+#             satisfied both, as long as any other key was false. This was the
+#             ONLY guard for five of seven manifests, because
+#             validate-submission.py parses manifests inside its
+#             Bonhomme/BonhommeWatch loop only.
+#
+#   NATURaL   `"<true/>" in watch and "WKApplication" in watch`
+#             Held only because the file happened to contain exactly one
+#             <true/>. Any routine second true key — UIRequiresFullScreen,
+#             WKWatchOnly — and WKApplication could be false undetected.
+#
+#   Exergy    A release gate passed a manifest declaring tracking ON and data
+#             collection present, with a green check over it, because it
+#             verified that a <false/> existed somewhere rather than the value
+#             of the key it named.
+#
+#   ClusterFuck  Two gates passed an unsandboxed Mac build, because an
+#             entitlement was verified by the presence of its key's NAME.
+#             Its plist held three <false/> entries, so the check was already
+#             broken rather than merely fragile.
+#
+# The correct pattern, all three parts:
+#
+#   1. PARSE. Use load_plist() below — plistlib is stdlib, and it turns a
+#      malformed file into a named failure instead of a traceback.
+#   2. ASSERT THE VALUE OF THE KEY YOU MEAN. `d.get("K") is not True` — not
+#      `"K" in text`, not `"<true/>" in text`, and never the two joined by
+#      `or`, which is the shape every case above shared.
+#   3. PROVE IT. Construct the violation the check claims to prevent, watch it
+#      fail naming the right key, restore. A check that has only ever been
+#      seen green is indistinguishable from one that cannot fail.
+#
+# Substring matching is still correct for SOURCE text, where "this symbol
+# appears" is genuinely the property — see the Swift checks below. It is wrong
+# for anything with a parser.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 def fail(msg: str) -> None:
     FAILS.append(msg)
 
 
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def load_plist(rel: str) -> dict:
+    """Parse a plist for a gate, turning breakage into a named failure.
+
+    plistlib is stdlib, so this adds no dependency — the file already parsed
+    plists further down. What it adds is coverage of the parse itself: an
+    unhandled exception in a release gate reports a failure with no diagnosis,
+    which is its own kind of unhelpful. On breakage this records why and returns
+    {} so the remaining contracts still run and still report.
+    """
+    try:
+        return plistlib.loads((ROOT / rel).read_bytes())
+    except FileNotFoundError:
+        fail(f"{rel} is missing")
+    except Exception as error:  # malformed XML, truncated file, wrong format
+        fail(f"{rel} is not a parseable plist: {type(error).__name__}: {error}")
+    return {}
 
 
 def png_ihdr(path: pathlib.Path) -> tuple[int, int, int, int, bool]:
@@ -144,10 +211,16 @@ def test_shannon_formula() -> None:
 
 
 def test_circular_wrap_is_not_linear() -> None:
+    # Both values below are exactly computable, so they are asserted exactly.
+    # These were one-sided threshold checks (>= 2.0 here, < 4.75 below) with 100%
+    # and 5% slack against values that are exactly 1.0 and 5.0. A kernel scaled by
+    # 1.0001 passed every one of them; margins that wide absorb the very drift the
+    # check exists to catch.
     clustered = [179.0] * 100 + [-179.0] * 100
     circ = circular_shannon(clustered)
-    if circ >= 2.0:
-        fail(f"±179° circular entropy should be low, got {circ}")
+    # Two equally-populated bins → exactly 1 bit.
+    if abs(circ - 1.0) > 1e-9:
+        fail(f"±179° clusters must be exactly 1 bit (two equal bins), got {circ}")
     pair = [180.0] * 80 + [-180.0] * 80
     folded = circular_shannon(pair, fold_cut=True)
     unfolded = circular_shannon(pair, fold_cut=False)
@@ -158,9 +231,11 @@ def test_circular_wrap_is_not_linear() -> None:
     src = read("BonhommeCore/Sources/BonhommeCore/Analysis/EntropyCalculator.swift")
     if "if a == 180.0 { a = -180.0 }" not in src:
         fail("Swift circular cut must fold +180 onto -180")
+    # 512 angles spread evenly over 32 bins → 16 per bin → exactly log2(32) = 5.
     uniform = [-180.0 + 360.0 * i / 512.0 for i in range(512)]
-    if circular_shannon(uniform) < math.log2(32) * 0.95:
-        fail("uniform circular angles must approach max entropy")
+    uniform_h = circular_shannon(uniform)
+    if abs(uniform_h - math.log2(32)) > 1e-9:
+        fail(f"uniform circular angles must be exactly log2(32) bits, got {uniform_h}")
 
 
 def test_sci_and_grounding_policy() -> None:
@@ -306,6 +381,22 @@ def test_hud_honesty() -> None:
         fail("Live Activity must not invent pose total 1 when count is 0")
     if "poseProgressBar(" not in live:
         fail("Live Activity must omit determinate pose bar when total is unknown")
+    # Commanding device orientation is flaky in the simulator — it failed
+    # AirPlayFallbackUITests at CI 35486372872 with "Failed to set device
+    # orientation: Timed out waiting for confirmation", before any assertion ran.
+    # Only a journey that is actually testing landscape may command it, and it must
+    # then assert the resulting layout rather than trust the command. A defensive
+    # pin in setUp buys nothing and spreads that flake across every journey.
+    airplay = read("Tests/BonhommeUITests/AirPlayFallbackUITests.swift")
+    if "XCUIDevice.shared.orientation" in airplay:
+        fail("AirPlay journeys must not command device orientation; assert layout instead")
+    journeys_src = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
+    head = journeys_src.split("func test", 1)[0]
+    if "XCUIDevice.shared.orientation" in head:
+        fail("setUp must not pin device orientation; only the landscape journey may command it")
+    if "application.frame.width > application.frame.height" not in journeys_src:
+        fail("the landscape journey must assert the resulting layout, not trust the command")
+
     journeys = read("Tests/BonhommeUITests/WorkoutFlowUITests.swift")
     if "app.terminate()" in journeys:
         fail("largest-text journey must not terminate+relaunch (welcome.continue flake)")
@@ -493,6 +584,11 @@ def test_hud_honesty() -> None:
         fail("unknown SCI ring must be a dashed track, not a 0% fill")
     if "Color(red:" in home:
         fail("home coach chrome must use BrandColor tokens, not raw RGB")
+    # Color(hue:) slipped past the raw-RGB guard. A hue ramp over the yoga styles
+    # generated off-palette chrome — #62D9D9 teal, #62D96D green, #D98562 coral —
+    # none of them BrandColor tokens, while MASTER.md binds the palette by quantity.
+    if "Color(hue:" in home:
+        fail("home style chrome must use BrandColor tokens, not a generated hue ramp")
     if "BrandColor.mint" not in home:
         fail("home Begin CTA must use BrandColor.mint")
     if ".labelStyle(.titleAndIcon)" not in home:
@@ -500,6 +596,55 @@ def test_hud_honesty() -> None:
     watch = read("BonhommeWatch/App/WatchHomeView.swift")
     if any(ch in watch for ch in ("🎨", "🔥", "✨", "⚙️")):
         fail("Watch home uses emoji chrome")
+
+
+def test_claim_honesty() -> None:
+    """Shipped copy must not assert clinical, physiological or binding claims.
+
+    The scientific-claims audit (Docs/AppStore/scientific-claims-audit.md) corrected
+    these surfaces once; this contract keeps them corrected. NATURaL ships as a
+    wellness app, so a pose cue may describe the movement but not promise a
+    physiological outcome, and an entropy indicator may never be presented as a
+    diagnosis, a verified medication effect or measured receptor binding.
+    """
+    # 1. Pose cues describe movement, not physiological outcomes.
+    claim = re.compile(
+        r'en: "[^"]*\b(improves?|reduces?|relieves?|prevents?|cures?|heals?|treats?)\b'
+        r'[^"]*\b(circulation|blood pressure|inflammation|anxiety|depression|arthritis|pain|immunity)\b'
+    )
+    catalog = read("BonhommeCore/Sources/BonhommeCore/Models/PoseCatalog.swift")
+    for hit in claim.findall(catalog):
+        fail(f"pose catalogue must not promise a physiological outcome: {' '.join(hit)}")
+
+    # 2. First-use and SCI explanations must keep their scope limits.
+    app = read("Bonhomme/App/BonhommeApp.swift")
+    for needle in (
+        "do not diagnose conditions or measure drug binding",
+        "not proof of relaxation, treatment response, or molecular binding",
+        "experimental indicators support exploration, not clinical decisions",
+    ):
+        if needle not in app:
+            fail(f"first-use/SCI copy must retain its scope limit: {needle}")
+    if "not a diagnosis" not in read("Bonhomme/Services/Siri/SessionTips.swift"):
+        fail("SCI tip must state it is not a diagnosis")
+
+    # 3. Dose-adjacent narratives must never imply causality or binding.
+    insight = read("Bonhomme/Services/HealthKit/InsightEngine.swift")
+    if insight.count("does not establish a medication effect or receptor binding") < 2:
+        fail("both dose-timing narratives must disclaim medication effect and binding")
+    if "not evidence of receptor binding or medication causality" not in insight:
+        fail("bindingDetected threshold must be disclaimed as not receptor binding")
+    if "Never provide medical advice or diagnoses." not in insight:
+        fail("on-device model prompt must forbid medical advice and diagnoses")
+    if "this does not measure calm or establish a medication effect" not in insight:
+        fail("entropy-increase narrative must not claim calm or medication effect")
+
+    # 4. Cross-domain page must stay exploratory.
+    poke = read("Bonhomme/Features/Prescriptions/PokeDrugSubstanceInsightView.swift")
+    for needle in ("exploratory hypothesis", "do not validate a drug effect or receptor binding",
+                   "catalog inputs, not a paired analysis"):
+        if needle not in poke:
+            fail(f"substance insight must stay exploratory: {needle}")
 
 
 def test_privacy_and_no_cloud() -> None:
@@ -512,13 +657,22 @@ def test_privacy_and_no_cloud() -> None:
         "NATURaLLiveActivity/PrivacyInfo.xcprivacy",
         "BonhommeCore/Sources/BonhommeCore/Resources/PrivacyInfo.xcprivacy",
     ):
-        text = read(rel)
-        if "<key>NSPrivacyTracking</key>" not in text or "<false/>" not in text:
-            fail(f"{rel} must set NSPrivacyTracking false")
-        tree = ET.parse(ROOT / rel)
-        keys = [el.text for el in tree.getroot().iter("key")]
-        if "NSPrivacyCollectedDataTypes" not in keys:
+        # Parsed, not substring-matched. The previous check asked whether the file
+        # contained "<key>NSPrivacyTracking</key>" and, separately, "<false/>"
+        # anywhere — two independent substrings that a manifest declaring
+        # NSPrivacyTracking=true still satisfies, as long as any other key is
+        # false. Verified: flipping tracking to true left this suite green.
+        # It matters because validate-submission.py only parses the manifests for
+        # Bonhomme and BonhommeWatch, so for the other five this is the only guard.
+        manifest = load_plist(rel)
+        if manifest.get("NSPrivacyTracking") is not False:
+            fail(f"{rel} must declare NSPrivacyTracking false, got {manifest.get('NSPrivacyTracking')!r}")
+        if manifest.get("NSPrivacyTrackingDomains") != []:
+            fail(f"{rel} must declare no tracking domains, got {manifest.get('NSPrivacyTrackingDomains')!r}")
+        if "NSPrivacyCollectedDataTypes" not in manifest:
             fail(f"{rel} missing collected data types key")
+        if manifest.get("NSPrivacyCollectedDataTypes") != []:
+            fail(f"{rel} declares collected data types; the App Privacy answers say none are collected")
     persistence = read("Bonhomme/Services/Persistence/PersistentModels.swift")
     if "cloudKitDatabase: .none" not in persistence:
         fail("health store must disable CloudKit")
@@ -547,11 +701,21 @@ def test_identity() -> None:
     ):
         if ident not in pbx:
             fail(f"pbxproj missing {ident}")
-    watch = read("BonhommeWatch/Info.plist")
-    if "<true/>" not in watch or "WKApplication" not in watch:
-        fail("WKApplication must stay Boolean true")
-    if "WKCompanionAppBundleIdentifier" not in watch or "com.natural.Bonhomme" not in watch:
-        fail("Watch companion bundle id missing")
+    # Parsed, not substring-matched. These asked whether the file contained
+    # "<true/>" and, separately, "WKApplication" — two independent presences
+    # joined by `or`, neither tied to the other. That was correct only by
+    # accident: BonhommeWatch/Info.plist happens to hold exactly one <true/> and
+    # it happens to be WKApplication's. Adding any second true key —
+    # UIRequiresFullScreen, WKWatchOnly, anything routine — would let
+    # WKApplication be false while the check sailed through. Same for the
+    # companion id, where the key name and the value were checked independently
+    # and could have come from different keys entirely.
+    watch_plist = load_plist("BonhommeWatch/Info.plist")
+    if watch_plist.get("WKApplication") is not True:
+        fail(f"WKApplication must be Boolean true, got {watch_plist.get('WKApplication')!r}")
+    if watch_plist.get("WKCompanionAppBundleIdentifier") != "com.natural.Bonhomme":
+        fail("Watch companion bundle id must be com.natural.Bonhomme, got "
+             f"{watch_plist.get('WKCompanionAppBundleIdentifier')!r}")
     if "authorizationStatus()" not in read(
         "Bonhomme/Services/Music/HeadphoneMotionActuator.swift"
     ):
@@ -571,7 +735,7 @@ def test_identity() -> None:
         "BonhommeTV/Info.plist",
         "BonhommeVision/Info.plist",
     ):
-        info = plistlib.loads((ROOT / rel).read_bytes())
+        info = load_plist(rel)
         if info.get("ITSAppUsesNonExemptEncryption") is not False:
             fail(f"{rel} must declare ITSAppUsesNonExemptEncryption false"
                  " — determination: Docs/AppStore/review-answers-derivation.md")
@@ -589,17 +753,85 @@ def test_brand_tokens_and_design_system() -> None:
             fail(f"MASTER.md missing brand token {token}")
     if "#0891B2" in master_text and "Brand override" not in master_text:
         fail("MASTER.md still uses generic spa teal as source of truth")
+    # The tool's default wellness palette must never displace the FlexAIDdS v2 brand.
+    # Naming a token on the retired line is how a ban is recorded, so that line is
+    # excluded from the scan — a guard that forbids the name outright makes the ban
+    # undocumentable, and absence invites reinvention. Everything else is scanned.
+    retired_lines = [ln for ln in master_text.splitlines()
+                     if "Retired — do not reintroduce" in ln]
+    if not retired_lines:
+        fail("MASTER.md must carry a retired list naming the banned tokens")
+    body = "\n".join(ln for ln in master_text.splitlines() if ln not in retired_lines)
+    for banned in ("--teal", "--gold", "--terra", "--coral", "--cyan"):
+        if banned in body:
+            fail(f"MASTER.md must not introduce the generic wellness token {banned}")
+        if banned not in " ".join(retired_lines):
+            fail(f"MASTER.md retired list must name {banned}")
+    # Small text on the session surface must clear WCAG AA. White at 0.40 over #08091A
+    # composites to #6B6B76 for 3.75:1; the breathing readout is 10pt, so the 3:1
+    # large-text allowance does not apply. Brand tokens give 15.60:1 and 6.12:1.
+    # Every brand colorset must carry a light/dark pair, and the light value must
+    # sit in `universal` — the direction Apple resolves. The catalog previously
+    # held the DARK value in `universal` with no variant, which was invisible only
+    # because .preferredColorScheme(.dark) is pinned at every entry point; removing
+    # that modifier would have rendered light appearance dark-on-dark, silently,
+    # with no missing-asset error. Pairs are generated by the canonical
+    # design-system session and consumed here, never authored locally.
+    catalog = ROOT / "BonhommeCore/Sources/BonhommeCore/Resources/BrandColors.xcassets"
+    colorsets = sorted(catalog.glob("*.colorset/Contents.json"))
+    if len(colorsets) < 11:
+        fail(f"expected at least 11 brand colorsets, found {len(colorsets)}")
+    ink = (0x08, 0x09, 0x1A)
+    for path in colorsets:
+        entries = json.loads(path.read_text(encoding="utf-8")).get("colors", [])
+        universal = [c for c in entries if "appearances" not in c]
+        dark = [c for c in entries if "appearances" in c]
+        name = path.parent.name
+        if not dark:
+            fail(f"{name} has no dark appearance twin")
+            continue
+        if not universal:
+            fail(f"{name} has no universal (light) entry")
+            continue
+        def rgb(entry):
+            comp = entry["color"]["components"]
+            return tuple(round(float(comp[k]) * 255) for k in ("red", "green", "blue"))
+        # The light half must not be the dark half: catch a re-inversion directly.
+        if rgb(universal[0]) == ink and name != "BrandBg":
+            fail(f"{name} universal entry holds the dark ink value; light belongs in universal")
+
+    breathing = read("BonhommeCore/Sources/BonhommeCore/UI/BreathingGuideView.swift")
+    if ".white.opacity(0.4)" in breathing or ".white.opacity(0.40)" in breathing:
+        fail("breathing readout must not use 0.40 white (3.75:1, below WCAG AA at 10pt)")
+    if "BrandColor.fgMuted" not in breathing or "BrandColor.fg)" not in breathing:
+        fail("breathing guide labels must use BrandColor.fg / fgMuted, not raw white")
     brand = read("BonhommeCore/Sources/BonhommeCore/UI/BrandColor.swift")
     for needle in (
         "0x45E0A8",
         "0x8B5CF6",
         "0x08091A",
-        "0xC4A359",
         "Color(brandHex: BrandPalette.mint)",
         "Color(brandHex: BrandPalette.violet)",
     ):
         if needle not in brand:
             fail(f"BrandColor/BrandPalette missing {needle}")
+    # Gold #C4A359 is retired (20 September 2026). This loop used to PIN the value,
+    # which meant deleting the declaration would have silently removed the only
+    # thing naming it. Banning it instead: the value may appear in MASTER.md's
+    # retired list, so that it is recorded as forbidden rather than merely absent,
+    # and nowhere in shipping Swift. Docs prose is history, not an enforcement
+    # surface, so it is out of scope here.
+    for swift in ROOT.rglob("*.swift"):
+        if any(part in (".build", "build", ".git") for part in swift.parts):
+            continue
+        if "C4A359" in swift.read_text(encoding="utf-8", errors="replace"):
+            fail(f"retired gold #C4A359 reappeared in {swift.relative_to(ROOT)}")
+    master_md = (ROOT / "design-system/natural/MASTER.md").read_text(encoding="utf-8")
+    if "Retired — do not reintroduce" not in master_md:
+        fail("MASTER.md must keep a retired list so banned values are recorded, not just absent")
+    if "#C4A359" not in master_md:
+        fail("MASTER.md retired list must name gold #C4A359 explicitly")
+
     for page in ("ios.md", "ipad.md", "watchos.md", "tvos.md", "visionos.md"):
         if not (ROOT / "design-system/natural/pages" / page).is_file():
             fail(f"design-system page {page} missing")
@@ -638,6 +870,7 @@ def main() -> int:
     test_circular_wrap_is_not_linear()
     test_sci_and_grounding_policy()
     test_hud_honesty()
+    test_claim_honesty()
     test_privacy_and_no_cloud()
     test_identity()
     test_brand_tokens_and_design_system()
@@ -647,7 +880,7 @@ def main() -> int:
         for item in FAILS:
             print(" -", item)
         return 1
-    print("OK 8 NATURaL contracts")
+    print("OK 9 NATURaL contracts")
     return 0
 
 

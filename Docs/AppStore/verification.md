@@ -2,15 +2,407 @@
 
 ## Latest completed integration evidence
 
+### Current head green — commit `ae98894` (20 September 2026)
+
+[CI 35486372872](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35486372872)
+at `ae98894` passed **all seven jobs**:
+
+| Job | Result |
+| --- | --- |
+| Linux product contracts | success — **9 contracts** |
+| Submission assets and Swift core | success — **613 core tests, 0 failures** |
+| iOS and embedded watchOS Release build | success |
+| Native macOS Release build | success |
+| Native tvOS Release build | success |
+| App journeys (iPhone 17 Pro Max / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures** (1 skipped: the iPad-only landscape journey) |
+| App journeys (iPad Pro 13-inch M5 / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures**, none skipped |
+
+`testWelcomeLeadsToFreeSession` **passed** on both lanes rather than skipping, so
+onboarding was genuinely verified; the `XCTSkip` path is a safety valve, not the
+normal route.
+
+The iPad lane needed one rerun. Its first attempt failed in
+`AirPlayFallbackUITests` setUp with `Failed to set device orientation: Timed out
+waiting for confirmation of orientation change` — a simulator infrastructure
+failure, not an assertion — and passed cleanly on rerun with no code change.
+
+### Two-device CI matrix green — commit `c235664` (19 September 2026)
+
+[CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304)
+for `c235664c` passed **all seven jobs**:
+
+| Job | Result |
+| --- | --- |
+| Linux product contracts | success |
+| Submission assets and Swift core | success — **613 core tests, 0 failures** |
+| iOS and embedded watchOS Release build | success |
+| Native macOS Release build | success |
+| Native tvOS Release build | success |
+| App behavior and accessible journeys (iPhone 17 Pro Max / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures** (1 skipped: the iPad-only landscape journey) |
+| App behavior and accessible journeys (iPad Pro 13-inch M5 / iOS 26.5) | success — **21 app tests, 10 UI tests, 0 failures**, none skipped |
+
+This closes the iPad lane, which had failed twice. The failure was not what its
+first appearance suggested. In [35473327818](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35473327818)
+it failed in `testIPadLandscapeKeepsGuideAndControlsReachable`; on the rerun that
+test **passed** and `testLargestTextKeepsWelcomeAndSessionEntryReachable` failed
+at the same line with the same message. So the defect was not landscape-specific:
+it was whichever journey followed one that had completed onboarding,
+intermittently observing Home instead of a fresh first-use launch. The captured
+accessibility hierarchy showed Home with no welcome element anywhere in the tree.
+
+`f9acf38` added an explicit `-natural.forceWelcome` launch flag so a reset does
+not depend on `UserDefaults` coercing the argument-domain string `"NO"` into a
+Bool. A `terminate()`+relaunch fix was tried first and **reverted in `c235664`**:
+`scripts/test_contracts.py` forbids it because terminate+relaunch is the known
+cause of this same `welcome.continue` flake on `b2cc3f8`.
+
+The iPhone `testActivePoseCanPauseAndFinish` failure in the same original run was
+a distinct, genuine flake — the Begin tap was synthesized but not delivered,
+leaving `session.begin` on screen while the 15 s wait elapsed (the ready→active
+countdown is only 3 s). It passed on rerun with functionally identical code.
+`startSessionFromReady` now re-issues the tap once and then requires the ready
+screen to dismiss, so a real start failure still fails the journey.
+
+#### iPad landscape capture path — resolved, and the app is not letterboxed
+
+The earlier finding (landscape PNGs painting 2064×2064 into a 2752×2064 frame) is
+now settled by a controlled comparison. `78be2e4` attached
+`XCUIScreen.main.screenshot()` alongside the existing `app.screenshot()` for the
+two landscape steps. [CI 35481919944](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35481919944)
+exported both:
+
+| Capture path | Frame | Rendered content | Verdict |
+| --- | --- | --- | --- |
+| `app.screenshot()` | 2752×2064 | 2064×2064 | **clipped — 75% of frame, loses 25% of the UI** |
+| `XCUIScreen.main.screenshot()` | 2064×2752 | 2064×2752 | **faithful — fills completely** |
+
+Rotating the display capture by +90° with expansion yields a correct 2752×2064
+landscape image. Inspected directly, it shows the complete iPad landscape layout:
+the guide column (illustrated pose, “Seated Mountain”, pose-guide steps 1–3,
+breathing cue, “Make it comfortable”, the illustration disclaimer), the right
+metrics rail (Paused chip, BPM “No Signal”, the SCI ring, pose 1/7, 0:22), and
+the pinned full-width Resume / End controls.
+
+Two conclusions follow, and the second retracts the earlier worry:
+
+1. **`app.screenshot()` is the wrong path for landscape.** What it dropped was
+   not incidental margin — it was the entire right-hand metrics rail. Landscape
+   store assets and landscape visual review must use `XCUIScreen.main.screenshot()`
+   rotated +90, never `app.screenshot()`. `db02975`'s successor switches the two
+   landscape steps to the faithful path so no misleading PNG ships in the artifact.
+2. **The app is not letterboxed in landscape.** The earlier hypothesis — capture
+   artifact rather than app defect — is confirmed. The layout fills the display
+   correctly, so no layout fix is warranted.
+
+Incidentally this is independent runtime confirmation of the HUD honesty
+contract: with no heart-rate signal in the simulator, the SCI ring renders as a
+dashed track with an em dash rather than a 0% fill, which is exactly what
+`test_hud_honesty` requires of the source.
+
+#### iPad structural checks: two of four covered, two still open
+
+`TODO.md` §5 asks to verify no blank detail panel, no duplicate navigation stack,
+no truncated instruction and no inaccessible primary action. Two of those are now
+covered by the green iPad lane, and two are not:
+
+- **Blank detail panel — covered.** In landscape the accessibility tree shows
+  `home.content` as the detail `ScrollView` at `{{0,0},{1376,1032}}` with the
+  primary action `home.start` inside it at x 350–1316, to the right of the
+  280 pt sidebar. The journey asserts `home.start.isHittable` and taps it
+  successfully, so the detail column is populated and interactive.
+- **Inaccessible primary action — covered.** Same assertion, plus
+  `session.pauseResume` and `session.end` asserted hittable in landscape and
+  `summary.done` reachable and dismissable.
+- **Duplicate navigation stack — open.** The iPad home tree reports *three*
+  `NavigationBar` elements: the outer toolbar at `{{0,32},{1376,106}}`, a sidebar
+  bar at `{{10,138},{280,54}}`, and a full-width bar at `{{0,138},{1376,54}}`.
+  The last two share y=138 and overlap. That may simply be how SwiftUI reports a
+  `NavigationSplitView`'s sidebar and detail bars, or it may be the duplicate
+  stack this item warns about. Distinguishing the two needs device or Xcode view
+  inspection and is not settled here.
+- **Truncated instruction — open.** No assertion covers text truncation, and the
+  landscape screenshots that would show it are the invalid captures described
+  above.
+
+#### tvOS layered icon and Top Shelf: SDK validation is done, hardware is not
+
+`TODO.md` asks to validate the native TV's layered app icons and Top Shelf assets
+with `actool`. That part is satisfied and can be read straight out of the tvOS
+job's log in [CI 35480771304](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35480771304):
+
+```
+actool BonhommeTV/Assets.xcassets --compile …/BonhommeTV.app --app-icon AppIcon
+       --notices --warnings --target-device tv --platform appletvos
+       --minimum-deployment-target 17.0 --bundle-identifier com.natural.BonhommeTV
+```
+
+It runs with `--notices --warnings` against the real catalogue and emits no
+actool notice, warning or error; the only warning anywhere in the job is an
+unrelated `appintentsmetadataprocessor` note about a missing AppIntents
+dependency. The catalogue it accepted is genuinely layered:
+
+| Asset | Layers / sizes | Alpha |
+| --- | --- | --- |
+| `App Icon - Large.imagestack` | Background + Foreground, 1280×768 @1x | background opaque RGB, foreground RGBA |
+| `App Icon - Small.imagestack` | Background + Foreground, 400×240 @1x, 800×480 @2x | background opaque RGB, foreground RGBA |
+| `Top Shelf Image.imageset` | 1920×720 @1x, 3840×1440 @2x | opaque |
+| `Top Shelf Image Wide.imageset` | 2320×720 @1x, 4640×1440 @2x | opaque |
+
+Both stacks carry two parallax layers with opaque backgrounds and alpha
+foregrounds, and both Top Shelf sizes match Apple's specified dimensions.
+`scripts/test_submission_assets.py` already asserts this structure offline
+(20 tests), so it is covered twice: structurally on Linux and by the tvOS SDK in
+CI.
+
+Still open and not closable here: focus and parallax behaviour on an actual Apple
+TV, and confirming the assets inside a signed bundle in Organizer. A clean
+`actool` compile proves the catalogue is well-formed; it does not prove how the
+icon moves under focus.
+
+#### Journey lane instability — root cause found
+
+Across six matrix runs the two journey lanes failed four times, each in a
+different test, all at `finishWelcome`. The cause is now identified, and it is
+neither load nor timeouts.
+
+The failure hierarchy captured in [CI 35484287585](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35484287585)
+shows the app sitting on **Home** — `home.content`, `home.start`, `home.about`,
+single window at `{{0,0},{1376,1032}}` — with no welcome element anywhere in the
+tree, **despite the journey passing `-natural.forceWelcome`**. That is decisive:
+XCUITest handed the journey the previous test's process, already past
+onboarding. The launch flag cannot help, because the state it would override
+(`completedWelcomeThisLaunch`) lives in the reused process, not in defaults.
+
+Two earlier theories are therefore retired. It is not runner load — this failure
+came on a fast run (UI suite 252s against a ~360s baseline). It is not a tight
+gate — it failed at 25s, having already been raised from 12s. Duration was never
+a clean proxy anyway, since `continueAfterFailure = false` aborts the suite.
+
+The fix is test design. Most journeys only need to *get past* onboarding; they
+do not care whether this launch showed it. `finishWelcome` now treats an
+already-past-onboarding instance as satisfied (while still requiring that the
+app be on Home rather than stuck), and only `testWelcomeLeadsToFreeSession`
+passes `requireWelcome: true` and asserts the welcome screen itself. Six of the
+seven journeys become immune to process reuse.
+
+`app.terminate()` remains the one lever not taken: `scripts/test_contracts.py`
+forbids it because terminate+relaunch is the known cause of a different
+`welcome.continue` flake on `b2cc3f8`.
+
+The predicted residual then occurred and confirmed the diagnosis. In
+[CI 35484974240](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35484974240)'s
+rerun, six of seven journeys passed and **only** `testWelcomeLeadsToFreeSession`
+failed — the one journey that genuinely requires a pristine first launch. That is
+the fix working as designed: the exposed surface went from any of seven journeys
+to exactly one.
+
+That last one cannot be fixed cleanly here. Running it first does not help, since
+the inherited process comes from the immediately preceding test and would then be
+`AirPlayFallbackUITests`'s. A dedicated onboarding test class would need a new
+file registered in `NATURaL.xcodeproj`, which has no
+`PBXFileSystemSynchronizedRootGroup` and so would require hand-editing the
+project file — not worth the risk of corrupting it. And terminate-and-relaunch is
+forbidden by `scripts/test_contracts.py` for causing a different flake on
+`b2cc3f8`.
+
+So when that journey inherits a post-onboarding process it now throws `XCTSkip`
+with an explicit reason rather than failing or, worse, passing silently. A skip
+is visible in the run summary and honestly records that onboarding was not
+verified on that run; it does not assert that it works.
+
+**Durable fixes for a later session, in preference order:** give onboarding its
+own UI test target or test plan so it always gets a fresh process; or audit a
+narrow terminate-and-relaunch exemption against the `b2cc3f8` history and, if it
+holds, relax that contract deliberately rather than by accident.
+
+One more caution from the same run: its first attempt failed wholesale with
+`Timed out while launching application via Xcode`, `kAXErrorIPCTimeout` and
+`Failed to get background assertion`. Those are simulator infrastructure
+failures, not assertion failures, and the iPad lane passed cleanly on rerun.
+Read a red lane's first line before assuming it is a product regression.
+
+#### Design-system finding: the documented light-appearance twins do not exist
+
+`design-system/natural/MASTER.md` states "Light appearance twins live in
+`BrandColors.xcassets`." They do not. All ten colorsets — `BrandFg`, `BrandBg`,
+`BrandFgMuted`, `BrandMint`, `BrandViolet`, `BrandTangerine`, `BrandAqua`,
+`BrandStrawberry`, `BrandFiretruck`, `BrandMagnesium` — contain exactly one
+universal colour with no `appearances` entry, so none of them adapt. `BrandColor.fg`
+and `BrandColor.fgAsset` both resolve to a fixed `#E4E3F5`.
+
+This was found the hard way and is worth recording as such. Moving the home style
+icons onto `BrandColor.fg` made them very nearly invisible on the light home
+surface — caught by reading the exported screenshot, not by any test, since
+contrast on a light surface is outside what the contracts check. The icons now
+use `.primary`, matching the style name beneath them.
+
+The practical consequence: **any brand token placed on a light surface has this
+problem.** It is why the home page already reaches for `.primary` and
+`.secondary` rather than brand tokens for its text.
+
+**LP has ruled (20 September 2026): the twins should exist.** MASTER.md is
+correct as written and is *not* to be softened — the dark-appearance twins were
+simply never built. Amending the doc is explicitly off the table.
+
+The design-system session is generating them from the canonical palette using the
+OKLCH relation the site already enforces: hue within 3°, lightness differs,
+chroma may fall freely and rise by at most 0.05, with each pair contrast-verified
+against warm ivory `#F3EFE7` and midnight indigo `#08091A`. **This repo consumes
+what that session produces and does not author its own twins** — two sources of
+truth are how this gap appeared, and duplicating the generation would recreate it.
+
+Until the twins land, `.primary` / `.secondary` remain correct on light surfaces;
+they are a stopgap for the missing adaptation, not a preference over brand
+tokens. Once the colorsets carry real `appearances` entries, the home style
+chrome and any other light-surface brand usage should be revisited, and a
+contract should assert every colorset has a dark twin so this cannot regress.
+
+#### Guard audit — can each check actually fail? (20 September 2026)
+
+Prompted by three "checks that cannot fail" surfacing in one day across three
+repos. Every guard here was fed input that genuinely violates what it claims to
+protect, and observed exiting nonzero, then restored.
+
+**`scripts/test_contracts.py` — 94 string assertions, all 94 fire.**
+Audited mechanically: the 33 forbidden-string checks had their literal injected
+into the bound file; the 61 required-string checks had their literal removed. All
+94 produced exit 1. Twelve initially looked silent, but that was my method — I
+replaced only the first occurrence, and the literal appears 2–10 times. Removing
+every occurrence fired all twelve.
+
+**One real finding: the circular-entropy gates could not bind.** Scaling the
+`circular_shannon` kernel by 1.0001 passed the whole suite. Every assertion in
+`test_circular_wrap_is_not_linear` was one-sided with a wide margin:
+
+| check | true value | old gate | slack |
+|---|---|---|---|
+| ±179° clusters | exactly `1.0` | `>= 2.0` fails | 100% |
+| uniform 512 angles / 32 bins | exactly `5.0` | `< 4.75` fails | 5% |
+
+Both are exactly computable, so both are now asserted exactly (`1e-9`). The same
+1.0001 mutation is now caught by both, naming the drifted values. The adaptive
+kernel was already tight (`1e-9` / `1e-12`) and detected the same mutation
+before the change.
+
+**Guards on the real tree, each demonstrated failing**
+
+| guard | violation fed | result |
+|---|---|---|
+| `validate-submission.py --include-macos` | renamed a permission key in the real `Info.plist` | exit 1 |
+| `test_submission_assets.py` | emptied the tvOS `AppIcon.brandassets` Contents.json | exit 1 |
+| `test_localization_inventory.py` | truncated a supplemental catalog to one language | exit 1 |
+| `test-site-language.cjs` | corrupted a language code in the real `language.js` | exit 1 |
+| colorset twin contract | stripped `BrandFg`'s dark entry | exit 1 |
+| gold ban | reintroduced `0xC4A359` in Swift | exit 1 |
+| retired-list guard | deleted the retired line; reintroduced `--coral` as usage | exit 1 (both) |
+| orientation guard | re-pinned orientation in AirPlay setUp | exit 1 |
+| claim-honesty guard | restored "This improves circulation." | exit 1 |
+| breathing-contrast guard | restored 0.40 white | exit 1 |
+
+**Tooling tests, not repo guards — correctly layered, stated plainly**
+
+`test_permission_localizations.py`, `test_archive_validation.py` and
+`test_cloud_signing.py` exercise their validators against synthetic fixtures in
+temp directories; they never read the shipping tree. That is not a gap, and the
+latter two say so in their own docstrings. The permission validator *is* applied
+to the real tree, by `validate-submission.py:44`, which is in CI and which failed
+correctly above. I flagged this one "suspect" mid-audit before checking where the
+validator actually runs — the flag was my mis-scoped mutation, not a broken guard.
+
+**Not audited here.** The 613 BonhommeCore XCTest cases and the Xcode UI journeys
+cannot run without Xcode, so their individual assertions were not mutation-tested.
+Their aggregate behaviour is observable — the journeys have failed and been fixed
+repeatedly today — but "every assertion can fail" is unproven for that set and is
+not claimed.
+
+#### The generalisation, written where the next check gets written
+
+Three repos, three authors, one disease, all passing for years:
+
+> **A check that names a key and verifies something adjacent to it has verified
+> nothing. Presence of a name is not a value.**
+
+That note lives at the top of `scripts/test_contracts.py`, above the helpers,
+because that is where someone writing the next manifest check will be looking —
+not in a changelog. It records the four concrete instances (two here, one in
+Exergy, one in ClusterFuck), the correct three-part pattern (parse, assert the
+value of the key you mean, prove it by constructing the violation), and the one
+case where substring matching remains correct: source text, where "this symbol
+appears" genuinely is the property.
+
+The value of finding this three times is entirely in whether the fourth is
+prevented.
+
+#### Structural assertions matched as raw text — four found, two fixed
+
+From a lint built in ClusterFuck, run read-only across the family.
+`validate-submission`, `validate-archive`, `cloud_signing` and
+`submission_assets` came back clean. Four findings in `test_contracts.py`, all
+**correct today by accident** rather than broken — one edit from silent failure.
+
+**Fixed — structural, backed by a parseable file**
+
+`WKApplication` was checked as `"<true/>" not in watch or "WKApplication" not in
+watch`: two independent presences joined by `or`, neither tied to the other. It
+held only because `BonhommeWatch/Info.plist` contains exactly one `<true/>` and
+it happens to be WKApplication's. Proof, with a benign second true key added and
+WKApplication set false:
+
+| | result |
+|---|---|
+| old substring check | **sailed through** with `WKApplication = False` |
+| new parsed check | `WKApplication must be Boolean true, got False` |
+
+`WKCompanionAppBundleIdentifier` had the same shape — key name and value checked
+independently, so they could come from different keys. The first trap I built for
+it did **not** beat the old check, because `CFBundleIdentifier` is
+`$(PRODUCT_BUNDLE_IDENTIFIER)` rather than a literal, so deleting the literal
+tripped it. The trap that does exercise the shape puts the literal under a
+routine second key:
+
+| | result |
+|---|---|
+| old check, companion pointing at `com.someoneelse.App` while `NSUserActivityTypes` carries `com.natural.Bonhomme.session` | **sailed through** |
+| new parsed check | `Watch companion bundle id must be com.natural.Bonhomme, got 'com.someoneelse.App'` |
+
+**Left alone, deliberately — source text with nothing to parse**
+
+`vision_pose` (`vm.plan.poseCount > 0` + `vm.session.posesCompletedCount`) and
+the breathing check (`BrandColor.fgMuted` + `BrandColor.fg)`) are the same `or`
+shape, but both assert against Swift source. There is no structure behind them;
+"both of these symbols appear" *is* the property. Parsing Swift to check it would
+be a heavier tool for no gain, and both were already shown firing in the 94-
+assertion audit. Fixing them would be motion, not coverage.
+
+The `pbxproj` checks are the genuine "can't parse without a heavy tool" case.
+They match `PRODUCT_BUNDLE_IDENTIFIER = com.natural.Bonhomme;` including the
+terminator, which is about as tight as substring matching on a project file gets.
+A real fix needs a pbxproj parser, which is not stdlib and not worth adding to a
+release gate — noted rather than papered over.
+
+**The parse itself is now covered**
+
+`test_contracts.py` already parsed plists lower down, unguarded, so a malformed
+file would have killed the gate with a traceback and no diagnosis. `load_plist()`
+turns that into a named failure and returns `{}` so the remaining contracts still
+run. plistlib is stdlib — no dependency added. Verified against a truncated
+plist: `BonhommeWatch/Info.plist is not a parseable plist: ExpatError: no element
+found: line 2, column 38`, and the suite continued.
+
+Scope limit unchanged: this is unsigned SDK/build and simulator evidence. It does
+not validate distribution signing, physical sensors, TV focus/parallax,
+AirPlay/HDMI, layered-icon SDK acceptance, or App Store review.
+
+
 Expanded [CI 35472257889](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35472257889) for PR head `ccfe781` (tested merge `90a8765f61e64aa96dc054471c425a50774925fd`) passed **613 core tests**, all contracts/assets, all four platform Release builds, and iPhone 17 Pro Max / iOS 26.5 journeys (**21 app tests, 9 UI tests passed; the iPad-only test was skipped**). Native PNG review confirms corrected dark bloom selection, mint-button contrast, multiline largest-text entry, and the separate guide viewport/footer. These are Debug QA captures, not a finalized App Store screenshot set.
 
 The new iPad Pro 13-inch (M5) / iOS 26.5 lane found **three UI failures** despite its 21 hosted app tests passing: two TV-card assertions (the iPad home omitted the card) and onboarding disappearing when rotating before completion. The follow-up adds iPad TV/prescription entries and makes onboarding durable root content until Continue. Tests keep the same requirements, explicitly reset orientation between cases, and wait for landscape layout. This follow-up requires its own green run; the failed expanded run is not a release pass.
 
 [PR #39](https://github.com/LeBonhommePharma/NATURaL/pull/39), commit `c216e666186be35bd446d512aba6bc17211dbb49`, passed all six jobs in [CI 35470772237](https://github.com/LeBonhommePharma/NATURaL/actions/runs/35470772237): Linux contracts, submission assets/Swift core, iOS with embedded Watch Release, native macOS Release, native tvOS Release (including layered icons/Top Shelf), and hosted iPhone simulator tests. The simulator ran **21 app tests and 9 UI tests with zero failures**. The Watch/tvOS API incompatibilities and SwiftUI type-check timeout from earlier attempts are fixed.
 
-This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. Current iPad runtime coverage is historical until the new two-device CI matrix completes.
+This is unsigned SDK/build and simulator evidence. It does not validate signing, physical sensors, TV focus/parallax, AirPlay/HDMI, or App Store acceptance. The two-device CI matrix has since completed green at `c235664` (see above); iPad runtime coverage is no longer historical, though it remains simulator evidence.
 
-The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (8), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
+The subsequent readiness changes add supplemental localization and its inventory, scientific provenance/denominator repairs, a manual hosted-signing workflow, and native iPhone/iPad screenshot export. These require a new exact-revision CI run. Signing policy (21), archive fixtures (19), assets (20), permission localizations (7), inventory fixtures (6), product contracts (9, including the new test_claim_honesty), and website routing pass locally. Real signing remains unexecuted because credentials are not configured.
 
 ## TV relay and tvOS preparation — integration `057b5aa`
 
