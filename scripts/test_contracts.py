@@ -573,7 +573,8 @@ def test_identity() -> None:
     ):
         info = plistlib.loads((ROOT / rel).read_bytes())
         if info.get("ITSAppUsesNonExemptEncryption") is not False:
-            fail(f"{rel} must declare ITSAppUsesNonExemptEncryption false")
+            fail(f"{rel} must declare ITSAppUsesNonExemptEncryption false"
+                 " — determination: Docs/AppStore/review-answers-derivation.md")
         if info.get("CFBundleDisplayName") != "NATURaL":
             fail(f"{rel} display name must stay NATURaL")
 
