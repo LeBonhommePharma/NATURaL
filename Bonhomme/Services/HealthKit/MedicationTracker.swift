@@ -52,6 +52,11 @@ final class MedicationTracker: ObservableObject {
         try consentStore.validateAccess(access)
 
         guard HKHealthStore.isHealthDataAvailable() else { return }
+        // Second door. This query reaches HKClinicalType directly rather than through
+        // HealthKitManager.isClinicalMedicationTypeAvailable, so gating that alone would
+        // leave the read reachable. Cut from 1.0 — see HealthKitManager
+        // .clinicalMedicationRecordsEnabled and Docs/AppStore/clinical-records-cut-from-1-0.md.
+        guard HealthKitManager.clinicalMedicationRecordsEnabled else { return }
 
         #if os(iOS)
         guard let medType = HKObjectType.clinicalType(forIdentifier: .medicationRecord) else {
