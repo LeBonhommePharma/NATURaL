@@ -38,15 +38,6 @@
 	<array>
 		<string>en</string>
 		<string>fr</string>
-		<string>es</string>
-		<string>ja</string>
-		<string>zh</string>
-		<string>ko</string>
-		<string>ru</string>
-		<string>de</string>
-		<string>ar</string>
-		<string>it</string>
-		<string>pt</string>
-	</array>
+</array>
 </dict>
 </plist>
