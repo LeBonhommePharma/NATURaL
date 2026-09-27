@@ -144,12 +144,16 @@ public struct BreathingGuideView: View {
                 .frame(width: 72, height: 72)
 
                 if prominence == .grounding {
+                    // Brand foreground tokens, not raw white: #E4E3F5 reads 15.60:1 and
+                    // #8D8CB0 reads 6.12:1 on #08091A. The previous white at 0.40 opacity
+                    // composited to #6B6B76 for 3.75:1 — below WCAG AA 4.5:1, and at 10pt
+                    // far too small to claim the 3:1 large-text allowance.
                     Text(half.label.localized)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.75))
+                        .foregroundStyle(BrandColor.fg)
                     Text(String(format: "%.0f / min", breathsPerMinute > 0.1 ? breathsPerMinute : BreathingGuideActuatorChannel.defaultBreathsPerMinute))
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(BrandColor.fgMuted)
                 }
             }
             .accessibilityElement(children: .ignore)
