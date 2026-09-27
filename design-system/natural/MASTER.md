@@ -30,7 +30,6 @@
 | Primary CTA / pass / ΔH | `#45E0A8` | `--color-accent` / `BrandColor.mint` | Enthalpy |
 | SCI / ΔS | `#8B5CF6` | `BrandColor.violet` | Configurational entropy |
 | Stats / ΔG | `#FF9300` | `BrandColor.tangerine` | Free energy |
-| Gold chrome (optional) | `#C4A359` | thermodynamic family | Not a CTA; never replace mint |
 | Destructive / T | `#F5232B` | `BrandColor.firetruck` | Temperature fail |
 | Warn / receptor | `#FF2F92` | `BrandColor.strawberry` | Grounding / pause |
 | Apo baseline | `#DCDCE4` | `BrandColor.magnesium` | Unknown / waiting |
@@ -38,7 +37,9 @@
 
 **Approved icon direction (19 September 2026):** Preserve the jewel bloom. Light appearance uses warm ivory `#F3EFE7`; dark appearance uses website midnight indigo `#08091A` with a subtle violet lift to soften the contrast. Approved exports and the original are retained in `assets/approved/`. iOS supports system dark icon appearance; legacy macOS/watchOS catalogs use the ivory default. Layered tvOS/visionOS delivery is tracked separately.
 
-**Color Notes:** Midnight indigo + jewel bloom. Gold is allowed as thermodynamic chrome. Do not restyle NATURaL as Exergy (usage tracker) or a generic spa app.
+**Color Notes:** Midnight indigo + jewel bloom. ΔG chrome reads tangerine `#FF9300` (8.86:1 on ink). Do not restyle NATURaL as Exergy (usage tracker) or a generic spa app.
+
+**Retired — do not reintroduce:** `--teal`, `--gold`, `--terra`, `--cyan`, `--coral`, `--green`, any yellow, any salmon, and gold `#C4A359`. Gold was permitted as optional thermodynamic chrome until 20 September 2026; it had no call sites, is the same off-palette brass as the website's `--hp-gold`, and ΔG already belongs to tangerine. `scripts/test_contracts.py` fails if `C4A359` reappears in any Swift source, so the value is recorded as forbidden rather than merely absent.
 
 Light appearance twins live in `BrandColors.xcassets`. **Session HUD always reads the sRGB values above** so SCI / ΔH / ΔG stay identical across themes.
 

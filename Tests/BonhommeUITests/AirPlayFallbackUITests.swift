@@ -12,7 +12,11 @@ final class AirPlayFallbackUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        XCUIDevice.shared.orientation = .portrait
+        // No orientation command here. These journeys locate the TV card by
+        // scrolling and assert on it, so they hold in either orientation, and
+        // commanding device orientation is itself flaky in the simulator —
+        // "Failed to set device orientation: Timed out waiting for confirmation"
+        // failed this file at CI 35486372872 before the assertions even ran.
         app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-natural.didFinishWelcome", "YES"]
         app.launch()

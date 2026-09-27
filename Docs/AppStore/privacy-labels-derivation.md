@@ -1,7 +1,5 @@
 # App Privacy labels — derived from source, 20 September 2026
 
-*Ported to `main` 20 September 2026 from `claude/measure-active-pose-render-latency`. Every file:line citation was re-verified against `main`; claims that did not hold are corrected and marked inline.*
-
 Every answer below is derived from code and cites the file and line that
 establishes it. Where the code does not settle a question, the answer is an em
 dash and the question is listed under **Open — needs LP**. Nothing here is filled
@@ -77,7 +75,7 @@ Complete enumeration of outbound networking in shipping code:
 |---|---|---|
 | Local-network TLS-PSK to a paired Apple TV | `Bonhomme/TVRelay/NativeCompanionClient.swift:45`, `BonhommeTV/Networking/CompanionListener.swift:30` | **Yes** — LAN only, no internet, no developer server |
 | `https://www.youtube.com/iframe_api` in a `WKWebView` | `Bonhomme/Features/Workout/YouTubePlayerView.swift:80,109` | **No** — file is `#if DEBUG && canImport(UIKit)` at line 2 |
-| `https://www.apple.com/legal/privacy/` | `Bonhomme/App/BonhommeApp.swift:428` | Yes — a `Link` the user taps; opens Safari |
+| `https://www.apple.com/legal/privacy/` | `Bonhomme/App/BonhommeApp.swift:436` | Yes — a `Link` the user taps; opens Safari |
 
 **There is no developer-operated server.** No `URLSession`, no `URLRequest`, no
 upload endpoint anywhere in shipping sources.
@@ -102,12 +100,11 @@ AppsFlyer, Adjust, Facebook, AdMob and Google Analytics. Zero hits.
   `BonhommeCore/.../ClusterFleetPresence.swift:8` describing a wire format. The
   API is never called.
 - `ClusterFleetPresenceCoordinator` uses `UserDefaults` only and documents "Does
-  not publish presence off this device"
-  (`Bonhomme/Services/Music/ClusterFleetPresenceCoordinator.swift:19`).
+  not publish presence off this device" (`Bonhomme/Services/Music/ClusterFleetPresenceCoordinator.swift:19`).
 
 ## Tracking
 
-`NSPrivacyTracking = false` and `NSPrivacyTrackingDomains = []` in all seven
+`NSPrivacyTracking = false` and `NSPrivacyTrackingDomains = []` in all eight
 manifests. No ATT prompt, no IDFA, no `AppTrackingTransparency` import.
 **Answer: no tracking.**
 
@@ -119,8 +116,10 @@ leaves.
 
 ## Cross-check against the shipped manifests — one finding
 
-All seven source manifests agree with this derivation: tracking false, tracking
-domains empty, collected data types empty.
+All eight source manifests agree with this derivation: tracking false, tracking
+domains empty, collected data types empty. The eighth is
+`BonhommeMac/PrivacyInfo.xcprivacy`; earlier versions of this document counted
+seven because the guard below iterated seven and the Mac manifest was outside it.
 
 **The finding is in the guard, not the manifests.** `test_contracts.py` checked
 each manifest by asking whether the text contained `<key>NSPrivacyTracking</key>`
@@ -128,22 +127,16 @@ and, separately, `<false/>` anywhere. Those are independent substrings: a manife
 declaring `NSPrivacyTracking=true` satisfied both as long as any other key was
 false. Verified by flipping it — the suite stayed green.
 
-This is the only guard for five of the seven, because `validate-submission.py`
-parses manifests inside its `Bonhomme`/`BonhommeWatch` loop only (line 56).
+Coverage elsewhere is partial rather than absent: `validate-submission.py` checks
+`NSPrivacyTracking` and `NSPrivacyCollectedDataTypes` for every manifest, but
+checks `NSPrivacyTrackingDomains` only inside its `Bonhomme`/`BonhommeWatch` loop
+(line 56). So for the other six, `test_contracts.py` is the only tracking-domains
+guard.
 
-> **Ported correction — the fix is NOT on `main`.** The branch this document
-> came from replaced the substring test with a `plistlib` parse that asserts
-> values (`NSPrivacyTracking is not False` → fail), and there the flip is caught
-> in all seven. That change is stranded with the branch. On `main`,
-> `scripts/test_contracts.py:516` still reads
-> `if "<key>NSPrivacyTracking</key>" not in text or "<false/>" not in text:` —
-> the two-independent-substrings check described above. **The guard weakness is
-> live on `main` as of this document.** The manifests themselves are all
-> correct; it is the guard that would not catch a regression.
-
-Seven manifests are what the guard iterates. There are eight `PrivacyInfo.xcprivacy`
-files in the tree — `BonhommeMac/PrivacyInfo.xcprivacy` is the eighth and is not
-in that loop on `main`.
+Fixed on `main`: the check now parses with `plistlib` and asserts values (#48),
+and it iterates all eight manifests, including `BonhommeMac` (#47). The tracking
+flip is caught in all eight, and a tracking domain added to the Mac manifest now
+fails the contracts (mutation-checked 27 September 2026).
 
 `NATURaLLiveActivity` carries no `NSPrivacyAccessedAPITypes`. That is correct,
 not an omission — it has zero `UserDefaults`/`@AppStorage` references.

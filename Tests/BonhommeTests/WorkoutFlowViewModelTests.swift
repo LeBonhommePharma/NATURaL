@@ -165,4 +165,56 @@ final class WorkoutFlowViewModelTests: XCTestCase {
                               "\(plan.id) has identical EN/FR descriptions")
         }
     }
+
+    // MARK: - Session start reaches the active pose
+
+    /// Asserts, deterministically, the fact the UI journey has been asserting through
+    /// the accessibility tree: starting a session progresses ready -> countdown ->
+    /// active, so an active pose exists to render.
+    ///
+    /// That assertion moved here because the UI layer could not make it reliably. The
+    /// render itself is fast — measured at 1.25-3.55s against a 15s bar, with no cold
+    /// start and no correlation to machine speed (Pearson r = -0.40) — but
+    /// `waitForExistence` cannot distinguish "element absent" from "accessibility tree
+    /// unreadable", and CI 35544612808 failed with
+    /// `kAXErrorIPCTimeout from AXUIElementCopyMultipleAttributeValues`. The journey
+    /// was reporting an infrastructure failure as a product timeout.
+    ///
+    /// This is not a dropped assertion. It fails for the same product reason the
+    /// journey did — break `startCountdownSequence`, or strand the countdown so it
+    /// never reaches `.active`, and this test fails — while being immune to the
+    /// accessibility server. The journey keeps asserting what only it can: that the
+    /// control is reachable, wired, and that the transition happens on screen.
+    @MainActor
+    func testStartingASessionReachesTheActivePose() async throws {
+        let plan = PoseCatalog.beginnerFlow
+        let viewModel = WorkoutFlowViewModel(plan: plan)
+        XCTAssertEqual(viewModel.phase, .ready, "a fresh session must begin ready")
+
+        viewModel.start()
+
+        // The countdown is entered synchronously; nothing may skip it.
+        guard case .countdown = viewModel.phase else {
+            return XCTFail("start() must enter the countdown, got \(viewModel.phase)")
+        }
+
+        // The countdown is three one-second steps. Poll rather than sleep a fixed
+        // total so a slow machine lengthens the test instead of failing it — the
+        // assertion is that it *arrives*, not how fast.
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline {
+            if case .active = viewModel.phase { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        guard case .active(let poseIndex) = viewModel.phase else {
+            return XCTFail("session must reach the active pose, stuck at \(viewModel.phase)")
+        }
+        XCTAssertEqual(poseIndex, 0, "the first active pose must be the first in the plan")
+        XCTAssertNotNil(viewModel.currentPose, "an active pose must be published to render")
+        XCTAssertEqual(viewModel.currentPose?.id, plan.poses.first?.id)
+        XCTAssertFalse(viewModel.isPaused, "a started session must not be paused")
+
+        viewModel.stop()
+    }
 }

@@ -1,7 +1,5 @@
 # Screenshot plan — 20 September 2026
 
-*Ported to `main` 20 September 2026 from `claude/measure-active-pose-render-latency`. Claims depending on unmerged branches are corrected and marked inline.*
-
 LP cannot capture these until signing works, but he should not be deciding *what*
 to photograph at that point. Dimensions are the accepted families as of the
 checked date; **re-verify immediately before upload** — Apple changes slots.
@@ -10,14 +8,7 @@ Capture path matters. For any landscape shot use
 `XCUIScreen.main.screenshot()` rotated +90 with expansion, never
 `app.screenshot()`: the latter writes portrait-width content into a
 landscape-sized buffer and clips it, losing 25% of the UI including the entire
-metrics rail.
-
-> **Unverified on `main`.** The supporting evidence lives in
-> `verification.md` *on* `claude/measure-active-pose-render-latency`, not on
-> `main` — `main`'s `verification.md` contains no `XCUIScreen` discussion. The
-> capture-path guidance is retained because it is sound advice, but the
-> citation cannot be followed from this branch. Treat it as a recommendation
-> pending that evidence landing.
+metrics rail. Evidence in [verification.md](verification.md).
 
 ## iPhone — required
 
@@ -105,14 +96,16 @@ App previews (video). Not required for 1.0 and not planned here.
    20 September 2026: English and French Canadian, both.** LP's answer stands as
    the capture scope.
 
-   **Corrected for `main`:** the original reasoning said this "follows from" the
-   build shipping `en` and `fr` only. That is not true of `main`, where
+   **Corrected:** the original reasoning said this "follows from" the build
+   shipping `en` and `fr` only. That is not true of `main`, where
    `LocalizedString.supportedLanguages`
    (`BonhommeCore/Sources/BonhommeCore/Models/LocalizedString.swift:36`) is
    `["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]` — eleven
-   languages. The narrowing to `en`/`fr` is **PR #40, which is unmerged**. So
-   en/fr is LP's decision, not a consequence of the current code; if #40 does not
-   land, the shipped build will still declare eleven languages while only two
+   languages. The narrowing to `en`/`fr` is PR #40, which **is merged — but into
+   `codex/app-store-native-refinement-20260919`, not into `main`** (merge commit
+   `db78a75`, 23 September 2026; re-checked 27 September 2026). So en/fr is LP's
+   decision, not a consequence of the code on `main`; until #40's change reaches
+   `main`, the shipped build will still declare eleven languages while only two
    have screenshots. Every table above is therefore captured
    **twice**: once per locale, per platform. Budget accordingly — this doubles the
    capture count for iPhone, iPad, Apple Watch and Mac.

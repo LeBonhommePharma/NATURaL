@@ -25,6 +25,13 @@ concurrency:
   # handled while providing nothing.
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
+  #
+  # EXPECTED, NOT A FAILURE: because the two events now share a group, a routine
+  # push to a branch with an open PR will leave one run concluded as `cancelled`.
+  # GitHub notifies on cancelled runs, so this looks like a failing build in email
+  # and in the app. It is not. `cancelled` and `failure` are different conclusions
+  # and only `failure` means something is wrong - check the conclusion field rather
+  # than the notification. A superseded run being cancelled is this block working.
 
 jobs:
   contracts:

@@ -71,8 +71,16 @@ struct BonhommeApp: App {
         .modelContainer(persistentContainer)
     }
 
+    /// Deterministic first-use reset for the UI journeys. `-natural.didFinishWelcome NO`
+    /// arrives in the argument domain as the *string* `"NO"`, so its Bool coercion is not a
+    /// dependable reset once a prior journey has persisted completion. Presence of this
+    /// flag forces onboarding for that launch only; it never alters shipping behavior,
+    /// because no released launch passes it.
+    private static let forcesWelcome = ProcessInfo.processInfo.arguments.contains("-natural.forceWelcome")
+
     private var hasCompletedWelcome: Bool {
-        didFinishWelcome || completedWelcomeThisLaunch
+        if Self.forcesWelcome { return completedWelcomeThisLaunch }
+        return didFinishWelcome || completedWelcomeThisLaunch
     }
 
     /// Handles scene phase transitions for state persistence.
