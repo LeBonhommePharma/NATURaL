@@ -83,7 +83,8 @@ def load_plist(rel: str) -> dict:
     plists further down. What it adds is coverage of the parse itself: an
     unhandled exception in a release gate reports a failure with no diagnosis,
     which is its own kind of unhelpful. On breakage this records why and returns
-    {} so the remaining contracts still run and still report.
+    {} so the remaining contracts still run and still report — and {} then fails
+    every value assertion made on it, so an unreadable manifest cannot reach green.
     """
     try:
         return plistlib.loads((ROOT / rel).read_bytes())
@@ -656,14 +657,21 @@ def test_privacy_and_no_cloud() -> None:
         "NATURaLWidgets/PrivacyInfo.xcprivacy",
         "NATURaLLiveActivity/PrivacyInfo.xcprivacy",
         "BonhommeCore/Sources/BonhommeCore/Resources/PrivacyInfo.xcprivacy",
+        # Eighth manifest. It was in neither this loop nor validate-submission's
+        # per-target loop; only a single combined Mac assertion covered it, and
+        # that one does not check tracking domains. A guard cannot fail for what
+        # it does not look at.
+        "BonhommeMac/PrivacyInfo.xcprivacy",
     ):
         # Parsed, not substring-matched. The previous check asked whether the file
         # contained "<key>NSPrivacyTracking</key>" and, separately, "<false/>"
         # anywhere — two independent substrings that a manifest declaring
         # NSPrivacyTracking=true still satisfies, as long as any other key is
         # false. Verified: flipping tracking to true left this suite green.
-        # It matters because validate-submission.py only parses the manifests for
-        # Bonhomme and BonhommeWatch, so for the other five this is the only guard.
+        # validate-submission.py also checks NSPrivacyTracking and
+        # NSPrivacyCollectedDataTypes for every manifest, but checks
+        # NSPrivacyTrackingDomains only for Bonhomme and BonhommeWatch, so for the
+        # other six this is the only tracking-domains guard.
         manifest = load_plist(rel)
         if manifest.get("NSPrivacyTracking") is not False:
             fail(f"{rel} must declare NSPrivacyTracking false, got {manifest.get('NSPrivacyTracking')!r}")
