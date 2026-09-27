@@ -100,11 +100,11 @@ AppsFlyer, Adjust, Facebook, AdMob and Google Analytics. Zero hits.
   `BonhommeCore/.../ClusterFleetPresence.swift:8` describing a wire format. The
   API is never called.
 - `ClusterFleetPresenceCoordinator` uses `UserDefaults` only and documents "Does
-  not publish presence off this device" (`.../ClusterFleetPresenceCoordinator.swift:19`).
+  not publish presence off this device" (`Bonhomme/Services/Music/ClusterFleetPresenceCoordinator.swift:19`).
 
 ## Tracking
 
-`NSPrivacyTracking = false` and `NSPrivacyTrackingDomains = []` in all seven
+`NSPrivacyTracking = false` and `NSPrivacyTrackingDomains = []` in all eight
 manifests. No ATT prompt, no IDFA, no `AppTrackingTransparency` import.
 **Answer: no tracking.**
 
@@ -116,8 +116,10 @@ leaves.
 
 ## Cross-check against the shipped manifests — one finding
 
-All seven source manifests agree with this derivation: tracking false, tracking
-domains empty, collected data types empty.
+All eight source manifests agree with this derivation: tracking false, tracking
+domains empty, collected data types empty. The eighth is
+`BonhommeMac/PrivacyInfo.xcprivacy`; earlier versions of this document counted
+seven because the guard below iterated seven and the Mac manifest was outside it.
 
 **The finding is in the guard, not the manifests.** `test_contracts.py` checked
 each manifest by asking whether the text contained `<key>NSPrivacyTracking</key>`
@@ -125,10 +127,16 @@ and, separately, `<false/>` anywhere. Those are independent substrings: a manife
 declaring `NSPrivacyTracking=true` satisfied both as long as any other key was
 false. Verified by flipping it — the suite stayed green.
 
-This was the only guard for five of the seven, because `validate-submission.py`
-parses manifests inside its `Bonhomme`/`BonhommeWatch` loop only (line 56).
-Fixed: the check now parses with `plistlib` and asserts values, and the flip is
-caught in all seven.
+Coverage elsewhere is partial rather than absent: `validate-submission.py` checks
+`NSPrivacyTracking` and `NSPrivacyCollectedDataTypes` for every manifest, but
+checks `NSPrivacyTrackingDomains` only inside its `Bonhomme`/`BonhommeWatch` loop
+(line 56). So for the other six, `test_contracts.py` is the only tracking-domains
+guard.
+
+Fixed on `main`: the check now parses with `plistlib` and asserts values (#48),
+and it iterates all eight manifests, including `BonhommeMac` (#47). The tracking
+flip is caught in all eight, and a tracking domain added to the Mac manifest now
+fails the contracts (mutation-checked 27 September 2026).
 
 `NATURaLLiveActivity` carries no `NSPrivacyAccessedAPITypes`. That is correct,
 not an omission — it has zero `UserDefaults`/`@AppStorage` references.

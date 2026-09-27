@@ -38,9 +38,26 @@ running it. Those are separate claims and only the second is proof.
 
 PR #41 adds absence assertions against this same sheet — that Apple-pairing
 controls are hidden while the AirPlay row and sharing toggle remain. Those
-assertions are only meaningful if the sheet opens. It does not, so they pass by
-asserting the absence of controls in a sheet that never appeared. That is
-vacuous rather than green. **#41 needs re-examining before it merges.**
+assertions are only meaningful if the sheet opens.
+
+> **Corrected 21 September 2026 — #41's assertions do NOT pass vacuously.**
+> An earlier version of this section said they "pass by asserting the absence of
+> controls in a sheet that never appeared … vacuous rather than green." **That
+> was wrong.** #41's author guarded against exactly that vacuity with a positive
+> presence assertion before the absence checks, and that guard is what fails:
+>
+> ```
+> AirPlayFallbackUITests testTVSheetHidesApplePairingButKeepsAirPlayAndSharingToggle :
+> XCTAssertTrue failed - the TV sheet must actually open, or the absence checks below prove nothing
+> ```
+>
+> CI 35542112178, on #41's head `2619f07`, failed this way in **both** the iPhone
+> and iPad lanes (re-checked 27 September 2026). So #41 is **red because of this
+> bug**, not silently green despite it: it is blocked by the bug rather than
+> hiding it, and fixing the sheet presentation is what unblocks it. The proposed
+> fix is PR #49 (unmerged; parked with #41 and #50 pending the scaffolding
+> decision), which turns that guard green; #41's absence assertions then become
+> meaningful for the first time.
 
 ## Why this is a document and not a test
 
@@ -57,6 +74,12 @@ pre-existing tests in the same class, `testTVSectionShowsOnHomeScreen` and
 `testTVConnectionPromptDescribesFeature`, which then failed at
 `AirPlayFallbackUITests.swift:33` waiting for a `home.content` scroll view that
 was never shown.
+
+> **Note.** The diagnostic test named above was added and removed within
+> `claude/measure-active-pose-render-latency` (merged to `main` as #48), and does
+> not exist in the tree. The pollution sequence below is a record of what
+> happened on that branch, not something reproducible from `main` as it stands.
+> The line reference `:33` is correct on `main` after #48.
 
 Confirmed by controlled subtraction rather than by argument — same code, same
 test selection, same simulator, with persisted app state as the only variable:

@@ -59,7 +59,7 @@ signal.
 
 ## Appendix: Apple TV — DEFERRED, not part of 1.0
 
-tvOS is deferred (PR #41 gates the Apple TV pairing UI behind `TVRelayPairing.appleTVAppIsPublished = false`). Capture nothing here for the 1.0 submission. Retained verbatim so the set does not have to be re-derived when tvOS is picked up.
+tvOS is deferred. PR #41 *would* gate the Apple TV pairing UI behind `TVRelayPairing.appleTVAppIsPublished = false`, but **that PR is unmerged and the symbol does not exist on `main`** — there is no such gate in the tree today. (PR #41 is separately blocked: see `tv-sheet-unreachable.md`.) Capture nothing here for the 1.0 submission. Retained verbatim so the set does not have to be re-derived when tvOS is picked up.
 
 **1920×1080 or 3840×2160, no alpha.**
 
@@ -93,10 +93,20 @@ App previews (video). Not required for 1.0 and not planned here.
 1. ~~Is the app offered on iPad?~~ **Answered:** yes — iPad ships in 1.0, iPad set required.
 2. ~~Is the native Mac app submitted for 1.0?~~ **Answered:** yes — submitted, Mac set required.
 3. ~~Localized screenshots — English only, or also French Canadian?~~ **Answered
-   20 September 2026: English and French Canadian, both.** This follows from the
-   1.0 locale scope rather than being a separate preference — the build ships `en`
-   and `fr` only (`LocalizedString.supportedLanguages`), so those are exactly the
-   two sets that can be captured honestly. Every table above is therefore captured
+   20 September 2026: English and French Canadian, both.** LP's answer stands as
+   the capture scope.
+
+   **Corrected:** the original reasoning said this "follows from" the build
+   shipping `en` and `fr` only. That is not true of `main`, where
+   `LocalizedString.supportedLanguages`
+   (`BonhommeCore/Sources/BonhommeCore/Models/LocalizedString.swift:36`) is
+   `["en", "fr", "es", "ja", "zh", "ko", "ru", "de", "ar", "it", "pt"]` — eleven
+   languages. The narrowing to `en`/`fr` is PR #40, which **is merged — but into
+   `codex/app-store-native-refinement-20260919`, not into `main`** (merge commit
+   `db78a75`, 23 September 2026; re-checked 27 September 2026). So en/fr is LP's
+   decision, not a consequence of the code on `main`; until #40's change reaches
+   `main`, the shipped build will still declare eleven languages while only two
+   have screenshots. Every table above is therefore captured
    **twice**: once per locale, per platform. Budget accordingly — this doubles the
    capture count for iPhone, iPad, Apple Watch and Mac.
 
