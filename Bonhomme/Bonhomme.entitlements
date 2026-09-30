@@ -7,10 +7,11 @@
 	<true/>
 	<key>com.apple.developer.healthkit.background-delivery</key>
 	<true/>
-	<key>com.apple.developer.healthkit.access</key>
-	<array>
-		<string>health-records</string>
-	</array>
+	<!-- com.apple.developer.healthkit.access (health-records) was removed for 1.0.
+	     Clinical medication records are cut from this release; the code is retained and
+	     gated behind HealthKitManager.clinicalMedicationRecordsEnabled. Restoring the
+	     feature requires restoring this entitlement as well as flipping that flag.
+	     Rationale: Docs/AppStore/clinical-records-cut-from-1-0.md -->
 
 	<!-- App Groups: on-device widget and Live Activity state only. No cloud container. -->
 	<key>com.apple.security.application-groups</key>

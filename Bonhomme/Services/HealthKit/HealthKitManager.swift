@@ -9,10 +9,24 @@ final class HealthKitManager: Sendable {
         HKHealthStore.isHealthDataAvailable()
     }
 
+    /// Clinical medication records are **cut from 1.0** (LP, 21 September 2026).
+    ///
+    /// The code below is retained deliberately and must not be deleted. `HKClinicalTypeIdentifier
+    /// .medicationRecord` reports what a provider *prescribed*, not what the person *took*, so it
+    /// cannot answer the adherence question 1.0 is built around. The intended 1.1+ role is a
+    /// demotion rather than a removal: the prescription becomes a coded-vocabulary source that
+    /// populates the logging picker, with the user recording administration events against it.
+    /// Rationale and target state: `Docs/AppStore/clinical-records-cut-from-1-0.md`.
+    ///
+    /// Flipping this to `true` is not sufficient on its own — the `health-records` entitlement
+    /// was removed from `Bonhomme.entitlements` and must be restored with it.
+    static let clinicalMedicationRecordsEnabled = false
+
     /// Whether clinical medication records can be requested on this OS / entitlement surface.
     /// Clinical types exist from iOS 12+; actual data still requires Health Records entitlement,
     /// institutional connection in the Health app, and **explicit in-app consent**.
     static var isClinicalMedicationTypeAvailable: Bool {
+        guard clinicalMedicationRecordsEnabled else { return false }
         #if os(iOS)
         return HKObjectType.clinicalType(forIdentifier: .medicationRecord) != nil
         #else
