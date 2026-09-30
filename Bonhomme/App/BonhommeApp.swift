@@ -42,8 +42,13 @@ struct BonhommeApp: App {
                     appState.pendingTVInvitation = url
                     appState.showsTVDisplay = true
                 }
+                // Not while a workout is presented: the session runs in a
+                // .fullScreenCover and this sheet is anchored above it, so it
+                // cannot present there. WorkoutFlowView carries its own presenter
+                // for that case. Excluding it here keeps exactly one presenter
+                // bound to showsTVDisplay rather than two competing.
                 .sheet(isPresented: Binding(
-                    get: { hasCompletedWelcome && appState.showsTVDisplay },
+                    get: { hasCompletedWelcome && appState.showsTVDisplay && !appState.isWorkoutActive },
                     set: { appState.showsTVDisplay = $0 }
                 ), onDismiss: {
                     appState.pendingTVInvitation = nil
